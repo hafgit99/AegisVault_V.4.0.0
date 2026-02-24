@@ -63,5 +63,13 @@ jobs:
               echo "| $file | \`$hash\` |" >> $GITHUB_STEP_SUMMARY
             fi
           done
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Aegis-Vault-${{ matrix.os }}
+          path: release/*.{dmg,zip,AppImage,deb}
+          if-no-files-found: warn
+          retention-days: 7
           # macOS builds require certificates for code signing, but we'll try to build without it first
           # If it fails, you might need to provide CSC_LINK and CSC_KEY_PASSWORD
