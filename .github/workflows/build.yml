@@ -33,10 +33,35 @@ jobs:
         run: npm run build
 
       - name: Build/Release Electron App
+        id: electron_builder
         uses: samuelmeuli/action-electron-builder@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           release: ${{ startsWith(github.ref, 'refs/tags/v') }}
           max_attempts: 3
+
+      - name: Generate & Display Checksums
+        if: always()
+        shell: bash
+        run: |
+          echo "### 🛡️ Aegis Vault Artifact Verification (SHA-256)" >> $GITHUB_STEP_SUMMARY
+          echo "Copy these hashes into your Release Notes for the 'Verification' section." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Software Asset | SHA-256 Checksum |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          
+          # Find all relevant artifacts in the release folder
+          cd release
+          for file in *.{dmg,AppImage,deb,zip,exe}; do
+            if [ -f "$file" ]; then
+              # Calculate SHA-256
+              if [[ "$OSTYPE" == "darwin"* ]]; then
+                hash=$(shasum -a 256 "$file" | cut -d ' ' -f 1)
+              else
+                hash=$(sha256sum "$file" | cut -d ' ' -f 1)
+              fi
+              echo "| $file | \`$hash\` |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
           # macOS builds require certificates for code signing, but we'll try to build without it first
           # If it fails, you might need to provide CSC_LINK and CSC_KEY_PASSWORD
