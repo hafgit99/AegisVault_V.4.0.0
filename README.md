@@ -5,7 +5,7 @@
 > **The Ultimate Secure Vault for Your Digital Life.**
 > Experience professional-grade security with a premium aesthetic.
 
-[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-4.0.0-blue.svg)](https://github.com/hafgit99/AegisVault_V.4.0.0)
 [![React](https://img.shields.io/badge/React-19-61dafb.svg?logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6.svg?logo=typescript)](https://www.typescriptlang.org/)
@@ -84,17 +84,18 @@ Aegis Vault is designed with a **Zero-Knowledge Architecture**. Your data is enc
 
 ## 🤝 Support & Donation
 
-If you find Aegis Vault useful, consider supporting the project. Your contributions help us maintain and improve the security features.
+If you find Aegis Vault useful, consider supporting the project. **Donations are accepted exclusively within the application** via the secure Donation Modal, supporting various cryptocurrencies.
 
--   **Crypto Donations**: Available in-app via the Donation Modal.
--   **GitHub**: [hafgit99](https://github.com/hafgit99)
+- **Crypto Donations**: Open the app and click on the "Donate" button in the menu or footer.
+- **GitHub**: Star the project on [GitHub](https://github.com/hafgit99/AegisVault_V.4.0.0)
 
 ---
 
 ## ⚖️ License
 
-Copyright © 2026 Aegis Vault. All Rights Reserved.
-This project is proprietary. Unauthorized copying of files, via any medium, is strictly prohibited.
+Distributed under the MIT License. See `LICENSE` for more information.
+
+Copyright © 2026 Aegis Vault.
 
 ---
 
