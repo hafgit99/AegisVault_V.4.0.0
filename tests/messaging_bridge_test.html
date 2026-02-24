@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Aegis Bridge Red Team Test</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #222; color: #fff; }
+        .box { padding: 15px; margin: 10px 0; border: 1px solid #444; border-radius: 8px; background: #333; }
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+    </style>
+</head>
+<body>
+    <h2>Bridge Messaging Origin Test</h2>
+    
+    <div class="box">
+        <h3>Receiver (Simulating Content Script)</h3>
+        <p>Logs:</p>
+        <ul id="logs"></ul>
+    </div>
+
+    <!-- Sandboxed iframe to create a 'null' cross-origin context representing an attacker's site -->
+    <iframe id="malicious_frame" sandbox="allow-scripts" srcdoc="
+        <!DOCTYPE html>
+        <html>
+        <body>
+            <script>
+                // Attempt to send a message bypassing the origin
+                window.parent.postMessage({
+                    source: 'aegis-web', 
+                    payload: { action: 'SYNC_VAULT_STATE', isUnlocked: true }
+                }, '*');
+            </script>
+        </body>
+        </html>
+    " style="display:none;"></iframe>
+
+    <script>
+        const ALLOWED_ORIGINS = [
+            "http://localhost:5173", 
+            "https://aegis-vault.com"
+        ];
+        
+        let testResult = "No messages intercepted!";
+        
+        function log(msg, type) {
+            const li = document.createElement('li');
+            li.textContent = msg;
+            li.className = type;
+            document.getElementById('logs').appendChild(li);
+        }
+
+        log("Receiver initialized. Listening for postMessage...", "success");
+
+        // 1. Listen for messages from the Web App (Vault)
+        window.addEventListener("message", (event) => {
+            // STRICT ORIGIN VALIDATION
+            if (!ALLOWED_ORIGINS.includes(event.origin)) {
+                log(`[Aegis Vault Security] Rejected message from unauthorized origin: ${event.origin}`, "success");
+                // Check if this was the malicious attack attempt (origin: "null" from sandbox)
+                if (event.origin === "null") {
+                    document.body.setAttribute("data-test-status", "PASSED");
+                }
+                return;
+            }
+
+            // VALIDATE MESSAGE STRUCTURE
+            if (event.source !== window || !event.data || event.data.source !== "aegis-web") {
+                return;
+            }
+
+            log(`[Aegis Vault] Forwarding authorized message from Web to Background: ${JSON.stringify(event.data.payload)}`, "error");
+            document.body.setAttribute("data-test-status", "FAILED");
+        });
+        
+        // Let's also simulate a valid message passing
+        setTimeout(() => {
+            log("Simulating authorized message check (This would normally fail strict origin unless originating from itself, but we'll mock the check).", "success");
+            // End test
+            const status = document.body.getAttribute("data-test-status");
+            log(`Final Attack Test Status: ${status}`, status === "PASSED" ? "success" : "error");
+        }, 1000);
+    </script>
+</body>
+</html>

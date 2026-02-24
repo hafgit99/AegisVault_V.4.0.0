@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Aegis UI Contrast Test</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet">
+  <style>
+    body { background: #fafafa; padding: 40px; font-family: sans-serif; transition: background 0.3s; color: #111; }
+    body.dark { background: #0a0a0a; color: #eee; }
+    input { padding: 12px; margin: 20px 0; border: 1px solid #ccc; font-size: 16px; border-radius: 8px; outline: none; transition: border 0.2s; }
+    input:focus { border-color: #3b82f6; }
+    body.dark input { background: #1a1a1a; border-color: #333; color: white; }
+    body.dark input:focus { border-color: #3b82f6; }
+    .theme-btn { padding: 10px 20px; border-radius: 8px; background: #333; color: white; cursor: pointer; border: none; }
+    body.dark .theme-btn { background: #f0f0f0; color: #111; }
+  </style>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: {} }
+    }
+  </script>
+</head>
+<body>
+  <h1>Host Website (Theme Testing)</h1>
+  <p>Test the Aegis Vault Shadow UI Contrast</p>
+  <button class="theme-btn" onclick="document.body.classList.toggle('dark')">Toggle Dark/Light Mode</button>
+  <br/>
+  <div style="margin-top: 50px;">
+    <label style="display:block; font-weight:600; margin-bottom:5px;">Password</label>
+    <input type="password" id="test-password" placeholder="Test the tooltip..." />
+  </div>
+
+  <!-- Shadow root container for Aegis Vault Extension Mock -->
+  <div id="aegis-extension-root"></div>
+
+  <script type="text/babel" data-type="module">
+    const { useState, useEffect } = React;
+    const { motion, AnimatePresence } = window.Motion;
+
+    const AegisOverlay = () => {
+      const [activeRect, setActiveRect] = useState(null);
+      const [isVisible, setIsVisible] = useState(false);
+      const [filled, setFilled] = useState(false);
+
+      useEffect(() => {
+        const handleFocus = (e) => {
+          if (e.target && e.target.type === 'password') {
+            setActiveRect(e.target.getBoundingClientRect());
+            setIsVisible(true);
+            setFilled(false);
+          }
+        };
+        const handleBlur = () => {
+          setTimeout(() => setIsVisible(false), 300);
+        };
+        document.addEventListener('focusin', handleFocus);
+        document.addEventListener('focusout', handleBlur);
+        return () => {
+          document.removeEventListener('focusin', handleFocus);
+          document.removeEventListener('focusout', handleBlur);
+        };
+      }, []);
+
+      return (
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+          <AnimatePresence>
+            {isVisible && activeRect && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 10, filter: 'blur(4px)' }}
+                animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, scale: 0.9, y: 10, filter: 'blur(4px)' }}
+                transition={{ type: "spring", bounce: 0.3, duration: 0.6 }}
+                style={{
+                  position: 'absolute',
+                  top: activeRect.top + window.scrollY - 10,
+                  left: activeRect.right + 16 + window.scrollX,
+                  pointerEvents: 'auto',
+                  fontFamily: '"Geist Mono", monospace'
+                }}
+                className="relative flex flex-col items-center justify-center p-[2px] rounded-2xl overflow-hidden group cursor-pointer"
+                onClick={() => { setFilled(true); setTimeout(() => setIsVisible(false), 1200); }}
+              >
+                {/* Glow Background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-400 via-indigo-500 to-purple-600 opacity-30 group-hover:opacity-60 blur-xl transition-opacity duration-500"></div>
+                
+                {/* Liquid Glass Box */}
+                <div className="relative w-72 p-4 flex flex-col gap-3 bg-white/20 dark:bg-black/40 backdrop-blur-xl border border-white/30 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.12)] rounded-2xl">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span style={{color: '#3b82f6', fontSize: '18px'}}>🛡️</span>
+                      <span className="font-semibold text-sm text-gray-900 dark:text-white tracking-tight">Aegis Vault Access</span>
+                    </div>
+                    {!filled ? (
+                      <div className="flex items-center bg-white/50 dark:bg-gray-800/60 p-2 rounded-xl border border-transparent hover:border-blue-500/30 transition-colors shadow-sm gap-3">
+                         <div className="w-9 h-9 flex-shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-inner border border-blue-400/50">G</div>
+                         <div className="flex flex-col overflow-hidden">
+                             <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">github.com</span>
+                             <span className="text-xs text-gray-500 dark:text-gray-400 truncate">hrn21@example.com</span>
+                         </div>
+                      </div>
+                    ) : (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="flex items-center justify-center gap-2 p-3 bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400 rounded-xl"
+                      >
+                         ✅ <span className="text-sm font-medium">Auto-filled</span>
+                      </motion.div>
+                    )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      );
+    }
+
+    const host = document.getElementById('aegis-extension-root');
+    const shadowRoot = host.attachShadow({ mode: 'open' });
+    
+    // Inject styles
+    const styleLink = document.createElement('link');
+    styleLink.rel = 'stylesheet';
+    styleLink.href = 'https://cdn.tailwindcss.com';
+    shadowRoot.appendChild(styleLink);
+    
+    // We use a small script tag to render tailwind via CDN if we used standard classes
+    // Actually, tailwind script injects a dynamic style tag in document.head. To support Shadow DOM properly in our standalone mock, we just inject the generated CSS or let Tailwind play nicely.
+    // simpler: Let's use generic CSS mapping in the shadow root.
+    const customStyle = document.createElement('style');
+    // Basic tailwind mocks for the standalone visual page
+    customStyle.textContent = `
+      .relative { position: relative; }
+      .absolute { position: absolute; }
+      .inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+      .flex { display: flex; }
+      .flex-col { flex-direction: column; }
+      .items-center { align-items: center; }
+      .justify-center { justify-content: center; }
+      .p-\\[2px\\] { padding: 2px; }
+      .p-2 { padding: 0.5rem; }
+      .p-3 { padding: 0.75rem; }
+      .p-4 { padding: 1rem; }
+      .w-9 { width: 2.25rem; }
+      .h-9 { height: 2.25rem; }
+      .w-72 { width: 18rem; }
+      .rounded-2xl { border-radius: 1rem; }
+      .rounded-xl { border-radius: 0.75rem; }
+      .rounded-full { border-radius: 9999px; }
+      .border { border-width: 1px; }
+      .border-transparent { border-color: transparent; }
+      .bg-white\\/20 { background-color: rgba(255, 255, 255, 0.2); }
+      .bg-white\\/50 { background-color: rgba(255, 255, 255, 0.5); }
+      .backdrop-blur-xl { backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+      .shadow-\\[0_8px_32px_rgba\\(0\\,0\\,0\\,0\\.12\\)\\] { box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+      .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+      .shadow-inner { box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06); }
+      .text-white { color: #fff; }
+      .text-gray-900 { color: #111827; }
+      .text-gray-500 { color: #6b7280; }
+      .font-semibold { font-weight: 600; }
+      .font-medium { font-weight: 500; }
+      .font-bold { font-weight: 700; }
+      .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+      .text-xs { font-size: 0.75rem; line-height: 1rem; }
+      .tracking-tight { letter-spacing: -0.025em; }
+      .bg-gradient-to-br { background-image: linear-gradient(to bottom right, var(--tw-gradient-stops)); }
+      .from-blue-400 { --tw-gradient-from: #60a5fa; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(96, 165, 250, 0)); }
+      .from-blue-500 { --tw-gradient-from: #3b82f6; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(59, 130, 246, 0)); }
+      .via-indigo-500 { --tw-gradient-stops: var(--tw-gradient-from), #6366f1, var(--tw-gradient-to, rgba(99, 102, 241, 0)); }
+      .to-purple-600 { --tw-gradient-to: #9333ea; }
+      .to-indigo-600 { --tw-gradient-to: #4f46e5; }
+      .blur-xl { filter: blur(24px); }
+      .opacity-30 { opacity: 0.3; }
+      .group:hover .group-hover\\:opacity-60 { opacity: 0.6; }
+      .transition-opacity { transition-property: opacity; }
+      .transition-colors { transition-property: background-color, border-color, color, fill, stroke; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+      .cursor-pointer { cursor: pointer; }
+      .gap-2 { gap: 0.5rem; }
+      .gap-3 { gap: 0.75rem; }
+      .border-white\\/30 { border-color: rgba(255, 255, 255, 0.3); }
+      .bg-green-500\\/10 { background-color: rgba(34, 197, 94, 0.1); }
+      .border-green-500\\/30 { border-color: rgba(34, 197, 94, 0.3); }
+      .text-green-600 { color: #16a34a; }
+      .flex-shrink-0 { flex-shrink: 0; }
+      .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+      /* Dark mode overrides (added dynamically to React container) */
+      .dark .bg-black\\/40 { background-color: rgba(0, 0, 0, 0.4); }
+      .dark .border-white\\/10 { border-color: rgba(255, 255, 255, 0.1); }
+      .dark .text-white { color: #fff; }
+      .dark .text-gray-100 { color: #f3f4f6; }
+      .dark .text-gray-400 { color: #9ca3af; }
+      .dark .bg-gray-800\\/60 { background-color: rgba(31, 41, 55, 0.6); }
+      .dark .text-green-400 { color: #4ade80; }
+    `;
+    shadowRoot.appendChild(customStyle);
+
+    const reactContainer = document.createElement('div');
+    reactContainer.id = 'react-container';
+    shadowRoot.appendChild(reactContainer);
+
+    // Sync body theme
+    const observer = new MutationObserver(() => {
+       reactContainer.className = document.body.className.includes('dark') ? 'dark' : '';
+    });
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    const root = ReactDOM.createRoot(reactContainer);
+    root.render(<AegisOverlay />);
+  </script>
+</body>
+</html>
