@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "build:extension": "vite build -c vite.extension.config.ts",
-    "build:electron": "npm run build && electron-builder -w",
+    "build:electron": "npm run build && electron-builder -w && node scripts/generate-hashes.js",
     "start:electron": "electron .",
     "lint": "eslint .",
     "preview": "vite preview"
