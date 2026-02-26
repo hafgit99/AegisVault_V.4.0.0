@@ -49,6 +49,24 @@ if (app) {
             
             if (domainEl) domainEl.innerText = currentDomain || 'Bilinmeyen Site';
 
+            // 🔒 Önce kasa kilit durumunu kontrol et
+            const vaultStatus = await browser.runtime.sendMessage({ type: "GET_VAULT_STATUS" });
+            
+            if (!vaultStatus?.isUnlocked) {
+                // Kasa kilitli - hiçbir veri gösterme
+                if (statusEl) {
+                    statusEl.innerText = "Kasa Kilitli";
+                    statusEl.style.color = "#f59e0b";
+                }
+                if (containerEl) {
+                    const closedHTML = `<div style="text-align: center; padding: 20px 0; color: #f59e0b; font-size: 12px; font-weight: 500;">Kasa Kilitli!</div><div style="font-size:11px; color:#475569; text-align:center;">Lütfen Aegis Vault programını açıp<br/>şifrenizle giriş yapın.</div>`;
+                    const parsedClosed = new DOMParser().parseFromString(DOMPurify.sanitize(closedHTML), 'text/html');
+                    containerEl.replaceChildren(...Array.from(parsedClosed.body.childNodes));
+                }
+                return;
+            }
+
+            // Kasa açık - şifreleri getir
             const passwords = await browser.runtime.sendMessage({ type: "GET_VAULT" });
             
             if (passwords && passwords.length > 0) {

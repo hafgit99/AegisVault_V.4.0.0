@@ -17,7 +17,25 @@ const AegisOverlay = () => {
   const [filled, setFilled] = useState(false);
   const [vaultPasswords, setVaultPasswords] = useState<any[]>([]);
   const [matchingPasswords, setMatchingPasswords] = useState<any[]>([]);
+  const [isVaultLocked, setIsVaultLocked] = useState(true);
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // 🔒 Kasa kilit durumunu dinle (Background Service Worker'dan)
+  useEffect(() => {
+    const checkVaultStatus = async () => {
+      try {
+        const status = await browser.runtime.sendMessage({ type: "GET_VAULT_STATUS" });
+        setIsVaultLocked(!status?.isUnlocked);
+      } catch (e) {
+        setIsVaultLocked(true);
+      }
+    };
+    checkVaultStatus();
+    
+    // Periyodik kontrol (her 30 saniyede bir)
+    const intervalId = setInterval(checkVaultStatus, 30000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
     const handleFocus = async (e: FocusEvent) => {
@@ -29,6 +47,16 @@ const AegisOverlay = () => {
       ) {
         
         try {
+          // 🔒 Önce kasa durumunu kontrol et
+          const status = await browser.runtime.sendMessage({ type: "GET_VAULT_STATUS" });
+          if (!status?.isUnlocked) {
+            setIsVaultLocked(true);
+            setVaultPasswords([]);
+            setMatchingPasswords([]);
+            return; // Kasa kilitli, overlay gösterme
+          }
+          setIsVaultLocked(false);
+
           // Arka plandan güncel şifre listesini çek
           const res = await browser.runtime.sendMessage({ type: "GET_VAULT" });
           if (res && res.length > 0) {
@@ -51,6 +79,10 @@ const AegisOverlay = () => {
             setActiveRect(target.getBoundingClientRect());
             setIsVisible(true);
             setFilled(false);
+          } else {
+            // Boş döndüyse kasa kapalıdır
+            setVaultPasswords([]);
+            setMatchingPasswords([]);
           }
         } catch (error) {
           console.error("Aegis Vault arka plan ile iletişim kuramadı:", error);
@@ -212,14 +244,35 @@ export default defineContentScript({
     console.log('[Aegis Vault] WXT Shadow DOM UI Active');
 
     // Eklenti, Aegis sunucusundan (localhost veya üretim) gelen şifreleri arka plana gönderir
+    // Ayrıca kasa kilitleme sinyallerini de dinler
     window.addEventListener("message", (event) => {
-      if (event.source !== window || !event.data || event.data.type !== "AEGIS_SYNC_VAULT") return;
-      try {
-        import('wxt/browser').then(({ browser }) => {
-          browser.runtime.sendMessage({ type: "SAVE_VAULT", data: event.data.payload }).catch(() => {});
-        });
-      } catch (e) {}
+      if (event.source !== window || !event.data) return;
+      
+      // 🔓 Kasa açıldı: Şifreleri background'a gönder
+      if (event.data.type === "AEGIS_SYNC_VAULT") {
+        try {
+          import('wxt/browser').then(({ browser }) => {
+            browser.runtime.sendMessage({ type: "SAVE_VAULT", data: event.data.payload }).catch(() => {});
+          });
+        } catch (e) {}
+      }
+      
+      // 🔒 Kasa kilitlendi: Background'daki önbelleği temizle
+      if (event.data.type === "AEGIS_LOCK_VAULT") {
+        try {
+          import('wxt/browser').then(({ browser }) => {
+            browser.runtime.sendMessage({ type: "LOCK_VAULT" }).catch(() => {});
+            console.log("[Aegis Vault] 🔐 Kilit sinyali arka plana iletildi.");
+          });
+        } catch (e) {}
+      }
     });
+
+    // 🤝 Handshake: Content script yüklendiğinde sayfaya "hazırım" sinyali gönder.
+    // Eğer Aegis Vault PWA bu sayfada açıksa, kasa verilerini yeniden gönderecektir.
+    // Bu, eklenti yenilenmesi veya geç yüklenme durumlarını çözer.
+    window.postMessage({ type: 'AEGIS_EXTENSION_READY' }, "*");
+    console.log("[Aegis Vault] 🤝 Content script hazır sinyali gönderildi.");
     
     // Create the global style injection for Geist Mono font
     const fontLink = document.createElement('link');

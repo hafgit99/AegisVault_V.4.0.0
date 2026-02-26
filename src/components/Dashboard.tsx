@@ -13,6 +13,7 @@ import { SpotlightWalkthrough } from './SpotlightWalkthrough';
 import autoTable from 'jspdf-autotable';
 import { useTranslation } from 'react-i18next';
 import { DonationModal } from './DonationModal';
+import { extensionBridge } from '../lib/ExtensionBridge';
 
 // Optional: Magic UI Components for premium feel
 function GlowCard({ children, className = "" }: { children: React.ReactNode, className?: string }) {
@@ -229,6 +230,7 @@ export function Dashboard({ onLock, secretKey }: DashboardProps) {
   const handleLock = () => {
     // Memory Sanitization Process
     vaultService.lock(); // Nulls out AES-GCM CryptoKey
+    extensionBridge.lockAndDisconnect(); // Chrome externally_connectable port bağlantısını kopar
     
     // Completely overwrite plaintext states before unmounting
     setPasswords(prev => {
@@ -238,9 +240,28 @@ export function Dashboard({ onLock, secretKey }: DashboardProps) {
     setStandalonePassword("");
     setNewEntry({});
     setVisiblePasswords(new Set());
+
+    // 🔒 GÜVENLİK: Eklentideki (Background Service Worker) önbelleği temizle
+    // Web eklentisi için: Content Script üzerinden LOCK_VAULT mesajı gönder
+    window.postMessage({
+      type: 'AEGIS_LOCK_VAULT'
+    }, "*");
+
+    // Electron (Desktop) İçin IPC Kilitleme Sinyali
+    try {
+      if (typeof window !== 'undefined' && (window as any).require) {
+        const electron = (window as any).require('electron');
+        if (electron && electron.ipcRenderer) {
+          electron.ipcRenderer.send('lock-vault');
+        }
+      }
+    } catch (e) {
+      // Web modunda çalışıyorken patlamasın diye yutulur
+    }
     
     onLock(); // Switch back to Kilit Açma
   };
+
 
   const handleExport = async (format: 'vault' | 'csv' | 'json' = 'vault') => {
     try {
@@ -359,33 +380,59 @@ export function Dashboard({ onLock, secretKey }: DashboardProps) {
   }, [searchQuery, categoryFilter, autoLockTime]);
 
   useEffect(() => {
-    // Kasa açıldığında AES ile çözülmüş şifreleri Chrome Eklentisine (Background) gönder
-    if (passwords.length > 0) {
-       const payload = passwords.map(p => ({
-            title: p.title,
-            username: p.username,
-            pass: p.pass,
-            website: p.website
-         }));
+    // 🔄 Eklentiye kasa verilerini gönderen merkezi fonksiyon
+    const syncToExtension = () => {
+      if (passwords.length === 0) return;
+      
+      const payload = passwords.map(p => ({
+        title: p.title,
+        username: p.username,
+        pass: p.pass,
+        website: p.website
+      }));
 
-       // Web İçin:
-       window.postMessage({
-         type: 'AEGIS_SYNC_VAULT',
-         payload
-       }, "*");
+      // Web İçin: Content Script üzerinden gönder
+      window.postMessage({
+        type: 'AEGIS_SYNC_VAULT',
+        payload
+      }, "*");
 
-       // Electron (Desktop) İçin IPC İletişimi
-       try {
-          if (typeof window !== 'undefined' && (window as any).require) {
-             const electron = (window as any).require('electron');
-             if (electron && electron.ipcRenderer) {
-                electron.ipcRenderer.send('sync-vault', payload);
-             }
+      // Electron (Desktop) İçin IPC İletişimi
+      try {
+        if (typeof window !== 'undefined' && (window as any).require) {
+          const electron = (window as any).require('electron');
+          if (electron && electron.ipcRenderer) {
+            electron.ipcRenderer.send('sync-vault', payload);
           }
-       } catch (e) {
-          // Web modunda çalışıyorken patlamasın diye yutulur
-       }
-    }
+        }
+      } catch (e) {
+        // Web modunda çalışıyorken patlamasın diye yutulur
+      }
+    };
+
+    // 1. İlk yükleme: Passwords değiştiğinde hemen gönder
+    syncToExtension();
+
+    // 2. Eklenti yeniden yüklendiğinde veya geç yüklendiğinde
+    //    Content script "AEGIS_EXTENSION_READY" sinyali gönderir,
+    //    biz de kasayı yeniden eşitleriz.
+    const handleExtensionReady = (event: MessageEvent) => {
+      if (event.source !== window) return;
+      if (event.data?.type === 'AEGIS_EXTENSION_READY') {
+        console.log("[Aegis Vault] 🤝 Eklenti hazır sinyali alındı, kasa yeniden eşitleniyor...");
+        syncToExtension();
+      }
+    };
+    window.addEventListener('message', handleExtensionReady);
+
+    // 3. Periyodik yeniden eşitleme (MV3 SW ölüp yeniden başlamasına karşı)
+    //    Her 30 saniyede bir eklentiye güncel veriyi tekrar gönder
+    const periodicSyncId = setInterval(syncToExtension, 30000);
+
+    return () => {
+      window.removeEventListener('message', handleExtensionReady);
+      clearInterval(periodicSyncId);
+    };
   }, [passwords]);
 
   const handleCreateEntry = async (e: React.FormEvent) => {

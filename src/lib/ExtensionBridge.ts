@@ -3,6 +3,7 @@ import { vaultService } from "../vaultService";
 class ExtensionBridge {
   private sessionToken: string | null = null;
   private isListening: boolean = false;
+  private activePort: any = null; // Aktif eklenti port referansı
 
   private messageListener = async (event: MessageEvent) => {
     // Sadece ayni origin (veya extension) uzerinden gelen mesajlara guven
@@ -21,6 +22,7 @@ class ExtensionBridge {
        if ((window as any).chrome && (window as any).chrome.runtime) {
          try {
            const port = (window as any).chrome.runtime.connect(data.extensionId, { name: "aegis-pwa-vault-port" });
+           this.activePort = port; // Port referansını sakla
            
            this.sessionToken = this.generateToken();
            
@@ -65,6 +67,7 @@ class ExtensionBridge {
            port.onDisconnect.addListener(() => {
              console.log("[PWA Bridge] Eklenti baglantisi koptu.");
              this.sessionToken = null;
+             this.activePort = null;
            });
          } catch(e) {
            console.error("[PWA Bridge] Eklentiyle runtime (externally_connectable) uzerinden baglanti kurulamadi.", e);
@@ -79,10 +82,30 @@ class ExtensionBridge {
     window.addEventListener("message", this.messageListener);
   }
 
+  /**
+   * 🔒 Kasa kilitlendiğinde çağrılır.
+   * Aktif port bağlantısını koparır ve oturum token'ını geçersiz kılar.
+   * Bu, externally_connectable kanalı üzerinden veri sızmasını engeller.
+   */
+  public lockAndDisconnect() {
+    if (this.activePort) {
+      try {
+        // Eklentiye kasa kilitlendi bilgisini gönder
+        this.activePort.postMessage({ type: "VAULT_LOCKED" });
+        this.activePort.disconnect();
+      } catch (e) {
+        // Port zaten kapanmış olabilir
+      }
+      this.activePort = null;
+    }
+    this.sessionToken = null;
+    console.log("[PWA Bridge] 🔐 Eklenti bağlantısı güvenli şekilde kapatıldı.");
+  }
+
   public dispose() {
     this.isListening = false;
     window.removeEventListener("message", this.messageListener);
-    this.sessionToken = null;
+    this.lockAndDisconnect();
   }
 
   private generateToken() {
@@ -93,3 +116,4 @@ class ExtensionBridge {
 }
 
 export const extensionBridge = new ExtensionBridge();
+

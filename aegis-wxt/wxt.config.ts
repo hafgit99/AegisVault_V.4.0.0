@@ -34,8 +34,6 @@ export default defineConfig({
       "contextMenus"
     ],
     host_permissions: [
-      "http://127.0.0.1/*",
-      "http://localhost/*",
       "<all_urls>"
     ],
     ...(env.browser === 'firefox' ? {} : {

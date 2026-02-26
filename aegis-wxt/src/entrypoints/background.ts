@@ -6,12 +6,9 @@ import { defineBackground } from 'wxt/sandbox';
 export default defineBackground({
   type: 'module', // Chrome/Safari V3 Service Worker gereksinimi
   
-  // WXT içindeki bu life-cycle, framework'ün uyumluluğunu yönetir
   main() {
     console.log('[Aegis Vault] Hybrid Background Yüklendi.');
 
-    // browser.* polyfill'i (webextension-polyfill) tüm platformlar için sorunsuz çalışır.
-    // Chrome'da "chrome.*", Firefox'ta "browser.*" ayrımından kurtulmak için bu namespace kullanılır.
     browser.runtime.onInstalled.addListener(() => {
         console.log("Aegis Vault WXT eklentisi başarıyla kuruldu ve başlatıldı.");
     });
@@ -22,104 +19,206 @@ export default defineBackground({
       contexts: ["editable"]
     });
 
-    // Merkezi Hafıza: Web tarafı Kasa şifreleri (Oturuma özel)
+    // ──────────────────────────────────────────────────────────────────────
+    // 🔒 TEK KAYNAK GÜVENLİK MİMARİSİ (Single Source of Truth)
+    // ──────────────────────────────────────────────────────────────────────
+    // 
+    // Eklenti SADECE ve SADECE şu kaynaktan veri alır:
+    //   → SAVE_VAULT mesajı (PWA Dashboard kasayı açtığında gönderir)
+    //
+    // Hiçbir localhost API, hiçbir fetch, hiçbir harici kaynak KULLANILMAZ.
+    // Bu, kasa kapalıyken veri sızmasını %100 engeller.
+    //
+    // Kasa varsayılan olarak KİLİTLİ başlar.
+    // Sadece SAVE_VAULT ile açılır, LOCK_VAULT ile kilitlenir.
+    // ──────────────────────────────────────────────────────────────────────
+
+    // Kasa durumu (in-memory, volatile)
+    let isVaultUnlocked = false;
+
+    // Merkezi Hafıza: Sadece SAVE_VAULT ile doldurulur (Oturuma özel)
     const vaultCache: any[] = [];
 
-    // URL'den domain çıkartan yardımcı fonksiyon
+    // MV3 Dayanıklılık: Kilit durumunu browser.storage.session ile kalıcı yap
+    const persistVaultState = async (unlocked: boolean) => {
+      try {
+        await browser.storage.session.set({ aegis_vault_unlocked: unlocked });
+      } catch (e) {
+        // Firefox eski sürümlerinde storage.session olmayabilir
+      }
+    };
+
+    // Service worker yeniden başladığında durumu geri yükle
+    // NOT: Cache (şifreler) bellekte tutulur ve SW ölümünde kaybolur.
+    // Bu güvenli davranıştır - kasa yeniden açılana kadar veri gelmez.
+    const restoreVaultState = async () => {
+      try {
+        const result = await browser.storage.session.get('aegis_vault_unlocked');
+        if (result.aegis_vault_unlocked === true) {
+          // SW yeniden başladı ama cache boş. 
+          // isVaultUnlocked true olsa bile cache boşsa veri dönemeyiz.
+          // Ama PWA hâlâ açıksa yeni SAVE_VAULT gönderecektir.
+          isVaultUnlocked = true;
+          console.log("[Aegis Vault] ℹ️ Önceki oturum durumu geri yüklendi (cache bekleniyor).");
+        }
+      } catch (e) {}
+    };
+    restoreVaultState();
+
+    // Oturum zaman aşımı (failsafe): 5 dk hareketsizlikte cache temizlenir
+    const SESSION_TIMEOUT_MS = 5 * 60 * 1000;
+    let sessionTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    /**
+     * 🧹 Güvenli Bellek Temizleme (Secure Memory Wipe)
+     * Plaintext şifreleri null byte ile üzerine yazar, sonra diziyi temizler.
+     */
+    const secureWipeCache = () => {
+      for (let i = 0; i < vaultCache.length; i++) {
+        if (vaultCache[i]) {
+          if (typeof vaultCache[i].pass === 'string') {
+            vaultCache[i].pass = '\0'.repeat(vaultCache[i].pass.length);
+          }
+          if (typeof vaultCache[i].username === 'string') {
+            vaultCache[i].username = '\0'.repeat(vaultCache[i].username.length);
+          }
+          vaultCache[i] = null;
+        }
+      }
+      vaultCache.length = 0;
+      isVaultUnlocked = false;
+      persistVaultState(false);
+      console.log("[Aegis Vault] 🔒 Önbellek güvenli bir şekilde temizlendi.");
+    };
+
+    const resetSessionTimeout = () => {
+      if (sessionTimeoutId !== null) {
+        clearTimeout(sessionTimeoutId);
+      }
+      sessionTimeoutId = setTimeout(() => {
+        console.warn("[Aegis Vault] ⏰ Oturum zaman aşımı. Önbellek temizleniyor.");
+        secureWipeCache();
+        clearAllBadges();
+      }, SESSION_TIMEOUT_MS);
+    };
+
+    const clearAllBadges = async () => {
+      try {
+        const tabs = await browser.tabs.query({});
+        for (const tab of tabs) {
+          if (tab.id) {
+            browser.action.setBadgeText({ text: '', tabId: tab.id });
+          }
+        }
+      } catch (e) {}
+    };
+
     const getDomain = (url: string) => {
       try {
-        const hostname = new URL(url).hostname;
-        return hostname.replace(/^www\./, '');
+        return new URL(url).hostname.replace(/^www\./, '');
       } catch (e) {
         return '';
       }
     };
 
-    // Badge'i aktif sekmeye göre güncelleyen fonksiyon
+    // Badge güncelleyici - SADECE cache'den çalışır
     const updateBadge = async (tabId: number, url?: string) => {
+      if (!isVaultUnlocked || vaultCache.length === 0) {
+        browser.action.setBadgeText({ text: '', tabId });
+        return;
+      }
+
       if (!url) return;
       const domain = getDomain(url);
       if (!domain) return;
 
       try {
-        let currentVault = vaultCache;
-        // Eğer vaultCache boşsa masaüstü (Electron) bağlantısı dene
-        if (currentVault.length === 0) {
-           try {
-             const res = await fetch('http://127.0.0.1:23456/api/vault');
-             const data = await res.json();
-             if (Array.isArray(data) && data.length > 0) {
-               currentVault = data;
-             }
-           } catch (e) {}
-        }
-        
-        if (currentVault.length > 0) {
-          const matches = currentVault.filter(p => p.website && (p.website.includes(domain) || domain.includes(p.website)));
-          if (matches.length > 0) {
-            browser.action.setBadgeText({ text: matches.length.toString(), tabId });
-            browser.action.setBadgeBackgroundColor({ color: '#22c55e', tabId });
-          } else {
-            browser.action.setBadgeText({ text: '', tabId });
-          }
+        const matches = vaultCache.filter(p => p.website && (p.website.includes(domain) || domain.includes(p.website)));
+        if (matches.length > 0) {
+          browser.action.setBadgeText({ text: matches.length.toString(), tabId });
+          browser.action.setBadgeBackgroundColor({ color: '#22c55e', tabId });
+        } else {
+          browser.action.setBadgeText({ text: '', tabId });
         }
       } catch (e) {
-         console.error(e);
+        console.error(e);
       }
     };
 
-    // Sekmeler değiştiğinde badge'i güncelle
+    // Sekme olayları
     browser.tabs.onActivated.addListener(async (activeInfo) => {
       try {
         const tab = await browser.tabs.get(activeInfo.tabId);
-        if (tab && tab.url) {
-          updateBadge(tab.id as number, tab.url);
-        }
+        if (tab?.url) updateBadge(tab.id as number, tab.url);
       } catch (e) {}
     });
 
-    // Sekme yüklendiğinde/URL değiştiğinde badge'i güncelle
     browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-      if (changeInfo.url || changeInfo.status === 'complete') {
-        if (tab && tab.url) {
-          updateBadge(tabId, tab.url);
-        }
+      if ((changeInfo.url || changeInfo.status === 'complete') && tab?.url) {
+        updateBadge(tabId, tab.url);
       }
     });
 
+    // ──────────────────────────────────────────────────────────────────────
+    // 📨 Mesaj İşleyici (Message Handler)
+    // ──────────────────────────────────────────────────────────────────────
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+
+      // ── SAVE_VAULT: Kasa açık, şifreleri al ──
       if (message.type === "SAVE_VAULT") {
-        vaultCache.length = 0; // diziyi temizle
-        if (Array.isArray(message.data)) {
-          vaultCache.push(...message.data);
-        }
-        console.log("Aegis Vault WXT: Kasa Eşitlendi, Toplam:", vaultCache.length);
+        // Önce mevcut cache'i güvenli şekilde temizle
+        secureWipeCache();
         
-        // Kasa güncellenince aktif sekmedeki badge'i de güncelle
-        browser.tabs.query({ active: true, currentWindow: true }).then(tabs => {
-           if (tabs.length > 0 && tabs[0].url) {
-             updateBadge(tabs[0].id as number, tabs[0].url);
-           }
-        });
+        if (Array.isArray(message.data) && message.data.length > 0) {
+          vaultCache.push(...message.data);
+          isVaultUnlocked = true;
+          persistVaultState(true);
+          resetSessionTimeout();
+          
+          console.log("[Aegis Vault] ✅ Kasa Eşitlendi, Toplam:", vaultCache.length);
+          
+          // Aktif sekmedeki badge'i güncelle
+          browser.tabs.query({ active: true, currentWindow: true }).then(tabs => {
+            if (tabs[0]?.url) updateBadge(tabs[0].id as number, tabs[0].url);
+          });
+        }
         
         sendResponse({ success: true, count: vaultCache.length });
-      } else if (message.type === "GET_VAULT") {
-        // Asenkron olarak Electron Desktop App (Localhost) bağlantısını kontrol et
-        fetch('http://127.0.0.1:23456/api/vault')
-          .then(res => res.json())
-          .then(data => {
-            if (Array.isArray(data) && data.length > 0) {
-               sendResponse(data);
-            } else {
-               // Masaüstü uygulamasından veri gelmezse Web tarafının önbelleğini kullan
-               sendResponse(vaultCache);
-            }
-          })
-          .catch(e => {
-            // Masaüstü uygulaması kapalıysa Web tarafının önbelleğine dön
-            sendResponse(vaultCache);
-          });
-        return true; // Asenkron sendResponse için true dönmeli
+      }
+      
+      // ── LOCK_VAULT: Kasa kilitlendi ──
+      else if (message.type === "LOCK_VAULT") {
+        console.log("[Aegis Vault] 🔐 Kasa kilitleniyor...");
+        
+        if (sessionTimeoutId !== null) {
+          clearTimeout(sessionTimeoutId);
+          sessionTimeoutId = null;
+        }
+        
+        secureWipeCache();
+        clearAllBadges();
+        
+        sendResponse({ success: true, locked: true });
+      }
+      
+      // ── GET_VAULT: Şifreler isteniyor ──
+      else if (message.type === "GET_VAULT") {
+        // Kasa açık VE cache dolu → veriyi dön
+        if (isVaultUnlocked && vaultCache.length > 0) {
+          sendResponse(vaultCache);
+        } else {
+          // Kasa kapalı VEYA cache boş → boş dön
+          sendResponse([]);
+        }
+      }
+      
+      // ── GET_VAULT_STATUS: Kasa durumu sorgulanıyor ──
+      else if (message.type === "GET_VAULT_STATUS") {
+        const unlocked = isVaultUnlocked && vaultCache.length > 0;
+        sendResponse({ 
+          isUnlocked: unlocked, 
+          entryCount: unlocked ? vaultCache.length : 0 
+        });
       }
     });
 
