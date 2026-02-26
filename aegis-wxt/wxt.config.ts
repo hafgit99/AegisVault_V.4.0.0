@@ -31,7 +31,8 @@ export default defineConfig({
     permissions: [
       "storage",
       "activeTab",
-      "contextMenus"
+      "contextMenus",
+      "alarms"
     ],
     host_permissions: [
       "<all_urls>"

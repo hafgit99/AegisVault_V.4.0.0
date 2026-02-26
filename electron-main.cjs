@@ -23,6 +23,15 @@ const syncServer = http.createServer((req, res) => {
     return;
   }
   
+  if (req.url === '/api/status' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ 
+      isUnlocked: vaultCache.length > 0,
+      version: '4.0.0'
+    }));
+    return;
+  }
+  
   res.writeHead(404);
   res.end();
 });
@@ -35,6 +44,10 @@ syncServer.listen(23456, '127.0.0.1', () => {
 // Sync event from Dashboard's active vault
 ipcMain.on('sync-vault', (event, passwords) => {
   vaultCache = passwords;
+});
+
+ipcMain.on('lock-vault', () => {
+  vaultCache = [];
 });
 
 function createWindow() {

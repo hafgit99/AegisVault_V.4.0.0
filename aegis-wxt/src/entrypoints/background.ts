@@ -55,15 +55,57 @@ export default defineBackground({
       try {
         const result = await browser.storage.session.get('aegis_vault_unlocked');
         if (result.aegis_vault_unlocked === true) {
-          // SW yeniden başladı ama cache boş. 
-          // isVaultUnlocked true olsa bile cache boşsa veri dönemeyiz.
-          // Ama PWA hâlâ açıksa yeni SAVE_VAULT gönderecektir.
           isVaultUnlocked = true;
           console.log("[Aegis Vault] ℹ️ Önceki oturum durumu geri yüklendi (cache bekleniyor).");
         }
       } catch (e) {}
     };
     restoreVaultState();
+
+    /**
+     * 🖥️ Desktop Sync (Electron)
+     * Masaüstü uygulaması açık ve kilitliyse (port 23456), verileri oradan çek.
+     * Bu, PWA (localhost:5173) kapalı olsa bile eklentinin çalışmasını sağlar.
+     * MV3 için setInterval yerine alarms kullanıyoruz (Sürekli uyanık kalma garantisi için).
+     */
+    const pollDesktopVault = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:23456/api/vault');
+        if (response.ok) {
+           const data = await response.json();
+           if (Array.isArray(data) && data.length > 0) {
+              // Veri varsa eşitle
+              vaultCache.length = 0;
+              vaultCache.push(...data);
+              
+              if (!isVaultUnlocked) {
+                 isVaultUnlocked = true;
+                 persistVaultState(true);
+                 console.log("[Aegis Vault] 🖥️ Masaüstü uygulaması ile otomatik eşitleme başarılı.");
+              }
+              resetSessionTimeout();
+           } else if (isVaultUnlocked && data.length === 0) {
+              // Masaüstü kilitlenmişse biz de temizleyelim
+              console.log("[Aegis Vault] 🖥️ Masaüstü kasası kilitli tespit edildi. Önbellek temizleniyor.");
+              secureWipeCache();
+              clearAllBadges();
+           }
+        }
+      } catch (e) {
+        // Masaüstü uygulaması kapalıdır, sessizce devam et
+      }
+    };
+
+    // Alarmları kur ve dinle (MV3 Service Worker dostu polling)
+    browser.alarms.create('desktop-sync', { periodInMinutes: 0.15 }); // ~9 saniyede bir
+    browser.alarms.onAlarm.addListener((alarm) => {
+      if (alarm.name === 'desktop-sync') {
+        pollDesktopVault();
+      }
+    });
+
+    // İlk yüklemede ve SW uyandığında hemen kontrol et
+    pollDesktopVault();
 
     // Oturum zaman aşımı (failsafe): 5 dk hareketsizlikte cache temizlenir
     const SESSION_TIMEOUT_MS = 5 * 60 * 1000;
