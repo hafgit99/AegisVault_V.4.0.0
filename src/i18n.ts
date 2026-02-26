@@ -12,7 +12,7 @@ export const resources = {
       initialize: "Initialize",
       masterPassword: "Master Password",
       createMasterPassword: "Create Master Password",
-      deviceSecretKey: "Device Secret Key (Optional for DB sim, use 'secret-128')",
+      deviceSecretKey: "Device Secret Key",
       twoSecretConcept: "Two-Secret Concept Active",
       twoSecretDesc: "Your vault key will be derived from both your password and this device-specific 128-bit secret.",
       downloadKit: "Download Emergency Kit",
@@ -176,7 +176,11 @@ export const resources = {
       addressCopied: "Address copied securely!",
       privacyQuote: "Privacy is not a luxury, it's a fundamental right. Your support helps us protect that right for everyone.",
       qrScanSupport: "Scan this QR code with your wallet app to contribute to Aegis Vault.",
-      copyAddressBtn: "Copy Address"
+      copyAddressBtn: "Copy Address",
+      invalidDeviceKey: "Invalid Device Secret Key",
+      vaultAlreadyExists: "A vault already exists on this device. Please unlock it or reset all data to start fresh.",
+      confirmFullWipe: "Are you sure you want to PERMANENTLY WIPE ALL VAULT DATA? This cannot be undone.",
+      factoryResetBtn: "Factory Reset (Wipe All)"
     }
   },
   tr: {
@@ -188,7 +192,7 @@ export const resources = {
       initialize: "Başlat",
       masterPassword: "Ana Şifre",
       createMasterPassword: "Ana Şifre Oluştur",
-      deviceSecretKey: "Cihaz Gizli Anahtarı (DB sim. için 'secret-128')",
+      deviceSecretKey: "Cihaz Gizli Anahtarı",
       twoSecretConcept: "İki-Sır Konsepti Aktif",
       twoSecretDesc: "Kasa anahtarınız hem şifrenizden hem de cihaza özel 128-bit gizli anahtardan türetilecektir.",
       downloadKit: "Acil Kurtarma Kitini İndir",
@@ -352,7 +356,11 @@ export const resources = {
       addressCopied: "Adres güvenle kopyalandı!",
       privacyQuote: "Gizlilik bir lüks değil, temel bir haktır. Desteğiniz bu hakkı herkes için korumamıza yardımcı olur.",
       qrScanSupport: "Aegis Vault'a katkıda bulunmak için bu QR kodu cüzdan uygulamanızla tarayın.",
-      copyAddressBtn: "Adresi Kopyala"
+      copyAddressBtn: "Adresi Kopyala",
+      invalidDeviceKey: "Cihaz Gizli Anahtarı Hatalı",
+      vaultAlreadyExists: "Bu cihazda zaten bir kasa mevcut. Lütfen kilidi açın veya yeni bir başlangıç için sıfırlama yapın.",
+      confirmFullWipe: "TÜM KASA VERİLERİNİ KALICI OLARAK SİLMEK istediğinize emin misiniz? Bu işlem geri alınamaz.",
+      factoryResetBtn: "Fabrika Ayarlarına Dön (Sıfırla)"
     }
   }
 };

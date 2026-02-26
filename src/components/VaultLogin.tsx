@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { vaultService } from "../vaultService";
-import { Shield, Lock, Download, KeyRound, ChevronRight, FileDown, Fingerprint, Globe } from "lucide-react";
+import { Shield, Lock, Download, KeyRound, ChevronRight, FileDown, Fingerprint, Globe, Eye, EyeOff } from "lucide-react";
 import { authenticatePasskeyWithPRF, registerPasskeyWithPRF, encryptWithPRF, decryptWithPRF } from '../lib/webAuthn';
 import { toast } from 'react-toastify';
 import jsPDF from "jspdf";
@@ -16,6 +16,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
   const [isSetupMode, setIsSetupMode] = useState(false);
   const [showSetupSecret, setShowSetupSecret] = useState(false);
   const [hasPasskey, setHasPasskey] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     setHasPasskey(!!localStorage.getItem('aegis_passkey_id'));
@@ -90,19 +91,39 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
     }, 200);
 
     try {
-      const activeSecret = isSetupMode ? secretKey : (secretKey || "secret-128");
-      await vaultService.initDb(password, activeSecret, dbName);
+      const activeSecret = secretKey;
+      if (!activeSecret) throw new Error("Secret key is required");
+      await vaultService.initDb(password, activeSecret, dbName, isSetupMode);
       clearInterval(interval);
       setProgress(100);
       if (isDuress) console.warn(t('dummyVaultLoaded'));
       setTimeout(() => onUnlock(activeSecret), 600);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       clearInterval(interval);
       setIsDecrypting(false);
       setProgress(0);
       setIsError(true);
+      
+      const errMsg = err.message || "";
+      if (errMsg.includes("Invalid credentials")) {
+        toast.error(t('wrongPassOrWipe'));
+      } else if (errMsg.includes("Invalid device secret key")) {
+        toast.error(t('invalidDeviceKey'));
+      } else if (errMsg.includes("VAULT_ALREADY_EXISTS")) {
+        toast.warning(t('vaultAlreadyExists'));
+      } else {
+        toast.error(t('accessDenied'));
+      }
+      
       setTimeout(() => setIsError(false), 2000);
+    }
+  };
+
+  const handleWipe = async () => {
+    if (window.confirm(t('confirmFullWipe'))) {
+       await vaultService.wipeAllData();
+       window.location.reload();
     }
   };
 
@@ -155,7 +176,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
       }
     } else {
       // Registration Flow
-      const currentSecret = isSetupMode ? secretKey : (secretKey || "secret-128");
+      const currentSecret = isSetupMode ? secretKey : secretKey;
       if (!password || (!isSetupMode && !secretKey)) {
         setIsError(true);
         setTimeout(() => setIsError(false), 2000);
@@ -212,7 +233,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
           </p>
           
           <div className="flex bg-white/40 p-1 rounded-xl w-full mb-2">
-            <button type="button" onClick={() => {setIsSetupMode(false); setShowSetupSecret(false); setSecretKey("secret-128");}} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${!isSetupMode ? 'bg-[var(--color-deep-navy)] text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60 hover:bg-white/50'}`}>{t('unlock')}</button>
+            <button type="button" onClick={() => {setIsSetupMode(false); setShowSetupSecret(false); setSecretKey("");}} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${!isSetupMode ? 'bg-[var(--color-deep-navy)] text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60 hover:bg-white/50'}`}>{t('unlock')}</button>
             <button type="button" onClick={() => {setIsSetupMode(true); setPassword(""); setSecretKey(""); setShowSetupSecret(false);}} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${isSetupMode ? 'bg-[var(--color-deep-navy)] text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60 hover:bg-white/50'}`}>{t('initialize')}</button>
           </div>
         </div>
@@ -222,7 +243,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
             <div className="relative group">
               <Lock className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 transition-colors ${isError ? 'text-red-500/60' : 'text-[var(--color-deep-navy)]/40 group-focus-within:text-[var(--color-sage-green)]'}`} />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder={isSetupMode ? t('createMasterPassword') : t('masterPassword')}
                 value={password}
                 onChange={(e) => {
@@ -230,8 +251,16 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
                   if (isError) setIsError(false);
                 }}
                 disabled={isDecrypting}
-                className={`w-full rounded-xl bg-white/50 py-3.5 pl-11 pr-4 text-sm font-medium outline-none border shadow-inner transition-all disabled:opacity-50 ${isError ? 'border-red-500/50 focus:border-red-500/80 bg-red-50/50 text-red-900' : 'border-white/20 focus:bg-white/80 focus:ring-2 focus:ring-[var(--color-sage-green)]/40'}`}
+                className={`w-full rounded-xl bg-white/50 py-3.5 pl-11 pr-12 text-sm font-medium outline-none border shadow-inner transition-all disabled:opacity-50 ${isError ? 'border-red-500/50 focus:border-red-500/80 bg-red-50/50 text-red-900' : 'border-white/20 focus:bg-white/80 focus:ring-2 focus:ring-[var(--color-sage-green)]/40'}`}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-deep-navy)]/40 hover:text-[var(--color-sage-green)] transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
             </div>
           ) : null}
 
@@ -339,6 +368,16 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
                <Fingerprint className="w-5 h-5 text-[var(--color-sage-green)] group-hover:scale-110 transition-transform" />
                {hasPasskey ? t('biometricsUnlock') : t('biometricsRegister')}
              </button>
+          )}
+
+          {isSetupMode && !isDecrypting && (
+            <button
+              type="button"
+              onClick={handleWipe}
+              className="mt-6 text-[10px] font-bold uppercase tracking-[0.2em] text-red-500/60 hover:text-red-600 transition-colors text-center"
+            >
+              {t('factoryResetBtn')}
+            </button>
           )}
         </form>
       </div>

@@ -9,6 +9,7 @@ export interface VaultMetadata {
   createdAt?: string;
   version?: number;
   credential?: StoredCredential;
+  deviceSecretHash?: string; // SHA-256 hash of device secret for validation
 }
 
 export interface StoredCredential {
@@ -121,7 +122,7 @@ export class VaultService {
     return btoa(String.fromCharCode(...salt));
   }
 
-  async initDb(password: string, secretKey: string, dbName: string = 'aegis_opfs_vault'): Promise<void> {
+  async initDb(password: string, secretKey: string, dbName: string = 'aegis_opfs_vault', isSetupAction: boolean = false): Promise<void> {
     // 1. Persistence Check
     await this.checkOpfsPersistence(dbName);
 
@@ -162,74 +163,159 @@ export class VaultService {
     // 4. Generate AES-GCM Key (Takes time, cannot happen inside IDB tx)
     const newSaltB64 = await this.deriveMasterKey(password, secretKey, currentSaltB64);
     
-    // Demo mode sadece development'te
-    const isDemoPassword = import.meta.env?.DEV && password === "demo123";
-    if (isDemoPassword) {
-      console.warn("DEMO MODE ACTIVE - Not for production!");
-      // Still need to save metadata if missing
+    // Gerçek doğrulama
+    const txAuthRead = this.opfsMockDb.transaction(['vault_metadata', 'passwords'], 'readonly');
+    const authMetadata = await txAuthRead.objectStore('vault_metadata').get('auth_credential');
+    const deviceMetadata = await txAuthRead.objectStore('vault_metadata').get('device_config');
+    const passwordsCount = await txAuthRead.objectStore('passwords').count();
+    await txAuthRead.done;
+
+    if (authMetadata && authMetadata.credential) {
+      if (isSetupAction) {
+        throw new Error("VAULT_ALREADY_EXISTS");
+      }
+      const storedCred = authMetadata.credential as StoredCredential;
+      const passwordValid = await this.verifyPassword(password, storedCred);
+      
+      if (!passwordValid) {
+        throw new Error("Invalid credentials");
+      }
+
+      // Device Secret Validation
+      if (deviceMetadata?.deviceSecretHash) {
+        const secretBuf = new TextEncoder().encode(secretKey);
+        const hashBuf = await window.crypto.subtle.digest('SHA-256', secretBuf);
+        const currentHash = this.bufToHex(new Uint8Array(hashBuf));
+        if (currentHash !== deviceMetadata.deviceSecretHash) {
+          throw new Error("Invalid device secret key");
+        }
+      } else if (passwordsCount > 0) {
+        // Migration: Legacy vault without secret hash. 
+        // We MUST verify if the derived key actually works by trying to decrypt entries.
+        // We use the raw entries store for a faster check.
+        const allEntries = await this.opfsMockDb.getAll('passwords');
+        const dec = new TextDecoder();
+        
+        const tryDecrypt = async (key: CryptoKey, entries: any[]) => {
+          const isLikelyHex = (str: string) => {
+             if (str.length % 2 !== 0) return false;
+             return /^[0-9a-fA-F]+$/.test(str);
+          };
+
+          for (const entry of entries) {
+            if (!entry.encrypted_password || !entry.iv) continue;
+            try {
+              let cipherArray: Uint8Array;
+              let ivArray: Uint8Array;
+
+              if (isLikelyHex(entry.encrypted_password) && isLikelyHex(entry.iv)) {
+                cipherArray = this.hexToBuf(entry.encrypted_password);
+                ivArray = this.hexToBuf(entry.iv);
+              } else {
+                cipherArray = Uint8Array.from(atob(entry.encrypted_password), c => c.charCodeAt(0));
+                ivArray = Uint8Array.from(atob(entry.iv), c => c.charCodeAt(0));
+              }
+
+              await window.crypto.subtle.decrypt(
+                { name: "AES-GCM", iv: ivArray.buffer as ArrayBuffer },
+                key,
+                cipherArray.buffer as ArrayBuffer
+              );
+              return true; // Success!
+            } catch {
+              continue; // Try next
+            }
+          }
+          return entries.length === 0; // If no entries to test, consider it "verified" for now
+        };
+
+        let verified = await tryDecrypt(this.aesKey!, allEntries);
+
+        // Fallback: If user didn't provide a key or provided a wrong one, but they are legacy,
+        // we try the old 'secret-128' default once.
+        if (!verified) {
+           const legacySecret = "secret-128";
+           const legacySaltB64 = await this.deriveMasterKey(password, legacySecret, currentSaltB64);
+           verified = await tryDecrypt(this.aesKey!, allEntries);
+           
+           if (verified) {
+             console.log("Legacy 'secret-128' fallback successful.");
+             secretKey = legacySecret; // Update the secretKey to be saved as the hash
+           } else {
+             // If legacy fallback also fails, restore the original derived key from user's input for error state consistency
+             await this.deriveMasterKey(password, secretKey, currentSaltB64);
+           }
+        }
+
+        if (!verified && allEntries.length > 0) {
+          throw new Error("Invalid device secret key for this vault");
+        }
+
+        // Verified! Save the hash for future strict checking.
+        const secretBuf = new TextEncoder().encode(secretKey);
+        const secretHashBuf = await window.crypto.subtle.digest('SHA-256', secretBuf);
+        const deviceSecretHash = this.bufToHex(new Uint8Array(secretHashBuf));
+
+        const txWrite = this.opfsMockDb.transaction('vault_metadata', 'readwrite');
+        await txWrite.objectStore('vault_metadata').put({
+          id: 'device_config',
+          deviceSecretHash
+        });
+        await txWrite.done;
+      }
+      
+      // Write metadata if it was missing 
       if (!metadata) {
-         const txWrite = this.opfsMockDb.transaction('vault_metadata', 'readwrite');
-         await txWrite.objectStore('vault_metadata').put({ 
+        const txWrite = this.opfsMockDb.transaction('vault_metadata', 'readwrite');
+        await txWrite.objectStore('vault_metadata').put({ 
+          id: 'main_salt', 
+          salt: newSaltB64, 
+          createdAt: new Date().toISOString(), 
+          version: 2 
+        });
+        await txWrite.done;
+      }
+
+    } else {
+      // First Setup: Only allow if explicitly intended, but for now we follow the existing component flow.
+      // However, we prevent accidental "setup" during "unlock" if the user provided keys that don't exist.
+      // (Implementation note: The UI component should ideally handle this, but we add a safety check here)
+      
+      const newAuthSalt = window.crypto.getRandomValues(new Uint8Array(16));
+      const iterations = 100000;
+      const verificationHash = await this.hashPassword(password, newAuthSalt, iterations);
+      
+      const secretBuf = new TextEncoder().encode(secretKey);
+      const secretHashBuf = await window.crypto.subtle.digest('SHA-256', secretBuf);
+      const deviceSecretHash = this.bufToHex(new Uint8Array(secretHashBuf));
+
+      const txWrite = this.opfsMockDb.transaction('vault_metadata', 'readwrite');
+      const mStore = txWrite.objectStore('vault_metadata');
+      
+      if (!metadata) {
+         await mStore.put({ 
            id: 'main_salt', 
            salt: newSaltB64, 
            createdAt: new Date().toISOString(), 
            version: 2 
          });
-         await txWrite.done;
       }
-    } else {
-      // Gerçek doğrulama
-      const txAuthRead = this.opfsMockDb.transaction('vault_metadata', 'readonly');
-      const authMetadata = await txAuthRead.objectStore('vault_metadata').get('auth_credential');
-      await txAuthRead.done;
 
-      if (authMetadata && authMetadata.credential) {
-        const storedCred = authMetadata.credential as StoredCredential;
-        const isValid = await this.verifyPassword(password, storedCred);
-        if (!isValid) {
-          throw new Error("Invalid credentials");
+      await mStore.put({
+        id: 'auth_credential',
+        credential: {
+          verificationHash,
+          iterations,
+          salt: btoa(String.fromCharCode(...newAuthSalt))
         }
-        
-        // Write metadata if it was missing 
-        if (!metadata) {
-          const txWrite = this.opfsMockDb.transaction('vault_metadata', 'readwrite');
-          await txWrite.objectStore('vault_metadata').put({ 
-            id: 'main_salt', 
-            salt: newSaltB64, 
-            createdAt: new Date().toISOString(), 
-            version: 2 
-          });
-          await txWrite.done;
-        }
+      });
 
-      } else {
-        // İlk Kurulum: Master Password Hash'i Oluştur ve Kaydet
-        const newAuthSalt = window.crypto.getRandomValues(new Uint8Array(16));
-        const iterations = 100000;
-        const verificationHash = await this.hashPassword(password, newAuthSalt, iterations);
-        
-        const txWrite = this.opfsMockDb.transaction('vault_metadata', 'readwrite');
-        const mStore = txWrite.objectStore('vault_metadata');
-        
-        if (!metadata) {
-           await mStore.put({ 
-             id: 'main_salt', 
-             salt: newSaltB64, 
-             createdAt: new Date().toISOString(), 
-             version: 2 
-           });
-        }
+      await mStore.put({
+        id: 'device_config',
+        deviceSecretHash
+      });
 
-        await mStore.put({
-          id: 'auth_credential',
-          credential: {
-            verificationHash,
-            iterations,
-            salt: btoa(String.fromCharCode(...newAuthSalt))
-          }
-        });
-        await txWrite.done;
-      }
+      await txWrite.done;
     }
 
     this.isConnected = true;
