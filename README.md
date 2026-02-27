@@ -14,6 +14,12 @@
 
 ---
 
+<p align="center">
+  <img src="public/AegisVault_V4.0.0.png" alt="Aegis Vault V4.0.0 Infographic" width="100%">
+</p>
+
+---
+
 ## 🌟 Overview
 
 **Aegis Vault** is a high-security, multi-platform vault application designed to protect your sensitive information—from passwords to private documents. Built with a focus on **Visual Excellence** and **Unbreakable Security**, Aegis Vault offers a seamless experience across Web, Desktop (Windows), and Browser Extensions (Chrome/Edge/Firefox).
