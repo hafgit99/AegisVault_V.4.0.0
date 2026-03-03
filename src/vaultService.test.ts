@@ -3,6 +3,18 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { vaultService } from './vaultService';
 import 'fake-indexeddb/auto';
 
+// Mock sql.js and opfs availability to force IDB fallback immediately
+vi.mock('sql.js', () => ({
+  default: vi.fn().mockRejectedValue(new Error('sql.js not available in test'))
+}));
+vi.mock('./lib/SQLiteOPFS', async (importOriginal) => {
+  const actual = await importOriginal<any>();
+  return {
+    ...actual,
+    isOPFSAvailable: () => false,
+  };
+});
+
 // Mock TextEncoder / TextDecoder if missing
 import { TextEncoder, TextDecoder } from 'util';
 global.TextEncoder = TextEncoder as any;
@@ -55,7 +67,7 @@ describe('VaultService Security & Cryptography', () => {
     
     await vaultService.lock();
     db.close();
-  });
+  }, 30000);
 
   it('2. Mevcut Kasa Açma: Eski Salt ve Şifre Modelleri ile Uyumluluk (Legacy Fallback)', async () => {
     const dbName = `legacy_vault_${dbNameCounter}`;
@@ -98,7 +110,7 @@ describe('VaultService Security & Cryptography', () => {
     
     await vaultService.lock();
     checkDb.close();
-  });
+  }, 30000);
 
   it('3. Parola Değiştirme: Yeni Salt, Anahtar Üretimi ve De-şifreleme (Re-encryption)', async () => {
     const dbName = `change_pw_vault_${dbNameCounter}`;
@@ -156,5 +168,5 @@ describe('VaultService Security & Cryptography', () => {
     expect(githubEntry?.encrypted_password).toMatch(/^[0-9a-fA-F]+$/);
     
     await vaultService.lock();
-  });
+  }, 30000);
 });

@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { vaultService } from "../vaultService";
-import { Shield, Lock, Download, KeyRound, ChevronRight, FileDown, Fingerprint, Globe, Eye, EyeOff } from "lucide-react";
+import { Shield, Lock, Download, KeyRound, ChevronRight, FileDown, Fingerprint, Globe, Eye, EyeOff, Plus, Trash2, ChevronDown } from "lucide-react";
 import { authenticatePasskeyWithPRF, registerPasskeyWithPRF, encryptWithPRF, decryptWithPRF } from '../lib/webAuthn';
 import { toast } from 'react-toastify';
 import jsPDF from "jspdf";
 import { useTranslation } from 'react-i18next';
+import { VaultManager, type VaultProfile } from '../lib/VaultManager';
 
 export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void }) {
   const { t, i18n } = useTranslation();
@@ -18,9 +19,50 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
   const [hasPasskey, setHasPasskey] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Multi-Vault state
+  const [vaultProfiles, setVaultProfiles] = useState<VaultProfile[]>([]);
+  const [activeProfile, setActiveProfile] = useState<VaultProfile | null>(null);
+  const [showVaultSelector, setShowVaultSelector] = useState(false);
+  const [newVaultName, setNewVaultName] = useState("");
+  const [showNewVaultInput, setShowNewVaultInput] = useState(false);
+
   useEffect(() => {
     setHasPasskey(!!localStorage.getItem('aegis_passkey_id'));
+    // Vault profillerini yükle
+    const profiles = VaultManager.getProfiles();
+    setVaultProfiles(profiles);
+    setActiveProfile(VaultManager.getActiveProfile());
   }, []);
+
+  const handleCreateVault = () => {
+    if (!newVaultName.trim()) return;
+    const newProfile = VaultManager.createProfile(newVaultName);
+    setVaultProfiles(VaultManager.getProfiles());
+    setNewVaultName("");
+    setShowNewVaultInput(false);
+    toast.success(t("vaultCreated", `"${newProfile.name}" vault created`));
+  };
+
+  const handleSwitchVault = (profile: VaultProfile) => {
+    VaultManager.setActiveVaultId(profile.id);
+    setActiveProfile(profile);
+    setShowVaultSelector(false);
+    // Vault DB adını vaultService'e bildir
+    vaultService.setVaultDbName(profile.dbName);
+    toast.info(t("vaultSwitched", `Switched to "${profile.name}"`));
+  };
+
+  const handleDeleteVault = (id: string) => {
+    const profile = vaultProfiles.find(p => p.id === id);
+    if (!profile) return;
+    if (window.confirm(t("confirmDeleteVault", `Delete "${profile.name}"? This cannot be undone.`))) {
+      VaultManager.deleteProfile(id);
+      const updated = VaultManager.getProfiles();
+      setVaultProfiles(updated);
+      setActiveProfile(VaultManager.getActiveProfile());
+      toast.success(t("vaultDeleted", "Vault deleted"));
+    }
+  };
   
   // Create a fast random hex string for 128-bit key simulation
   const generateSecretKey = () => {
@@ -46,24 +88,6 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
     e.preventDefault();
     if (!password) return;
 
-    // Duress Mode & Silent Wipe Check
-    const duressPin = localStorage.getItem('aegis_duress_pin');
-    const killPin = localStorage.getItem('aegis_kill_pin');
-
-    if (password === killPin && killPin) {
-      setIsDecrypting(true);
-      setProgress(0);
-      const interval = setInterval(() => setProgress(p => p < 100 ? p + 20 : 100), 100);
-      await new Promise(r => setTimeout(r, 1000));
-      await vaultService.wipeAllData();
-      clearInterval(interval);
-      toast.error(t('wrongPassOrWipe')); // Stealth: show error instead of "Wiped"
-      setIsDecrypting(false);
-      setProgress(0);
-      setPassword("");
-      return;
-    }
-
     if (isSetupMode && !showSetupSecret) {
       generateSecretKey();
       return;
@@ -76,9 +100,6 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
 
     setIsDecrypting(true);
     setIsError(false);
-
-    const isDuress = password === duressPin && duressPin;
-    const dbName = isDuress ? 'aegis_dummy_vault' : 'aegis_opfs_vault';
 
     const interval = setInterval(() => {
       setProgress((p) => {
@@ -93,10 +114,39 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
     try {
       const activeSecret = secretKey;
       if (!activeSecret) throw new Error("Secret key is required");
-      await vaultService.initDb(password, activeSecret, dbName, isSetupMode);
+      
+      // 🔒 Önce ana kasayı aç (AES anahtarı türetilir)
+      const currentDbName = activeProfile?.dbName || 'aegis_opfs_vault';
+      await vaultService.initDb(password, activeSecret, currentDbName, isSetupMode);
+
+      // 🔒 Kasa açıldıktan sonra şifreli PIN'leri kontrol et
+      const pins = await vaultService.getSecurityPins();
+      
+      // Kill PIN kontrolü: Eşleşirse kasayı sessizce sil
+      if (pins.killPin && password === pins.killPin) {
+        await vaultService.wipeAllData();
+        clearInterval(interval);
+        toast.error(t('wrongPassOrWipe')); // Stealth: Hata gibi göster
+        setIsDecrypting(false);
+        setProgress(0);
+        setPassword("");
+        return;
+      }
+
+      // Duress PIN kontrolü: Sahte kasayı aç
+      if (pins.duressPin && password === pins.duressPin) {
+        // Mevcut bağlantıyı kapat ve sahte kasayı aç
+        await vaultService.lock();
+        await vaultService.initDb(password, activeSecret, 'aegis_dummy_vault', false);
+        clearInterval(interval);
+        setProgress(100);
+        console.warn(t('dummyVaultLoaded'));
+        setTimeout(() => onUnlock(activeSecret), 600);
+        return;
+      }
+
       clearInterval(interval);
       setProgress(100);
-      if (isDuress) console.warn(t('dummyVaultLoaded'));
       setTimeout(() => onUnlock(activeSecret), 600);
     } catch (err: any) {
       console.error(err);
@@ -106,7 +156,10 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
       setIsError(true);
       
       const errMsg = err.message || "";
-      if (errMsg.includes("Invalid credentials")) {
+      if (errMsg === "NO_VAULT_FOUND") {
+        toast.warning(t('noVaultFound', "No vault found. Please use 'Initialize' to create a new one."));
+        setIsSetupMode(true);
+      } else if (errMsg.includes("Invalid credentials")) {
         toast.error(t('wrongPassOrWipe'));
       } else if (errMsg.includes("Invalid device secret key")) {
         toast.error(t('invalidDeviceKey'));
@@ -231,7 +284,78 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
           <p className="mb-6 text-sm text-[var(--color-deep-navy)]/70">
             {t('subtitle')}
           </p>
-          
+
+          {/* ─── Multi-Vault Selector ─── */}
+          {vaultProfiles.length > 0 && activeProfile && (
+            <div className="relative w-full mb-3">
+              <button
+                type="button"
+                onClick={() => setShowVaultSelector(!showVaultSelector)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/50 border border-white/30 hover:bg-white/70 transition-all text-left group"
+                aria-expanded={showVaultSelector}
+                aria-haspopup="listbox"
+              >
+                <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: activeProfile.color }} />
+                <span className="text-sm font-semibold text-[var(--color-deep-navy)] flex-1 truncate">{activeProfile.name}</span>
+                <ChevronDown className={`w-4 h-4 text-[var(--color-deep-navy)]/40 transition-transform ${showVaultSelector ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showVaultSelector && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white/90 backdrop-blur-xl border border-white/40 rounded-xl shadow-xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150" role="listbox">
+                  {vaultProfiles.map(profile => (
+                    <div
+                      key={profile.id}
+                      className={`flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--color-sage-green)]/10 transition-colors cursor-pointer group ${profile.id === activeProfile.id ? 'bg-[var(--color-sage-green)]/5' : ''}`}
+                      onClick={() => handleSwitchVault(profile)}
+                      role="option"
+                      aria-selected={profile.id === activeProfile.id}
+                    >
+                      <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: profile.color }} />
+                      <span className="text-sm font-medium text-[var(--color-deep-navy)] flex-1 truncate">{profile.name}</span>
+                      {profile.id === activeProfile.id && (
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-sage-green)] bg-[var(--color-sage-green)]/10 px-2 py-0.5 rounded-full">{t("active", "Active")}</span>
+                      )}
+                      {!profile.isDefault && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleDeleteVault(profile.id); }}
+                          className="p-1 rounded-md hover:bg-red-100 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                          aria-label={t("deleteVault", "Delete vault")}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* New Vault */}
+                  {showNewVaultInput ? (
+                    <div className="flex items-center gap-2 px-4 py-2.5 border-t border-gray-100">
+                      <input
+                        autoFocus
+                        type="text"
+                        value={newVaultName}
+                        onChange={(e) => setNewVaultName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleCreateVault(); if (e.key === "Escape") setShowNewVaultInput(false); }}
+                        placeholder={t("vaultName", "Vault name...")}
+                        className="flex-1 text-sm bg-transparent outline-none placeholder:text-gray-400"
+                      />
+                      <button type="button" onClick={handleCreateVault} className="text-[var(--color-sage-green)] text-xs font-bold hover:underline">{t("create", "Create")}</button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowNewVaultInput(true)}
+                      className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-bold text-[var(--color-sage-green)] hover:bg-[var(--color-sage-green)]/5 transition-colors border-t border-gray-100"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> {t("createNewVault", "Create New Vault")}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex bg-white/40 p-1 rounded-xl w-full mb-2">
             <button type="button" onClick={() => {setIsSetupMode(false); setShowSetupSecret(false); setSecretKey("");}} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${!isSetupMode ? 'bg-[var(--color-deep-navy)] text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60 hover:bg-white/50'}`}>{t('unlock')}</button>
             <button type="button" onClick={() => {setIsSetupMode(true); setPassword(""); setSecretKey(""); setShowSetupSecret(false);}} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${isSetupMode ? 'bg-[var(--color-deep-navy)] text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60 hover:bg-white/50'}`}>{t('initialize')}</button>

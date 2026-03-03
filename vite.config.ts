@@ -14,5 +14,20 @@ export default defineConfig({
   },
   optimizeDeps: {
     entries: ['index.html']
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Ağır kütüphaneleri ayrı chunk'lara böl
+          'vendor-sql': ['sql.js'],
+          'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas'],
+          'vendor-ui': ['react-toastify', 'lucide-react'],
+          'vendor-crypto': ['hash-wasm'],
+          'vendor-i18n': ['i18next', 'react-i18next'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 600,
   }
 });

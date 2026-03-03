@@ -49,6 +49,8 @@ export const resources = {
       copiedToClipboard: "Copied securely to clipboard!",
       updateNow: "Update Now",
       strong: "Strong",
+      average: "Average",
+      weak: "Weak",
       pwned: "Pwned",
       pwnedWarning: "This password was found in data breaches!",
       secretMenuActive: "Secret Menu Active: Duress and Silent Wipe available.",
@@ -180,7 +182,42 @@ export const resources = {
       invalidDeviceKey: "Invalid Device Secret Key",
       vaultAlreadyExists: "A vault already exists on this device. Please unlock it or reset all data to start fresh.",
       confirmFullWipe: "Are you sure you want to PERMANENTLY WIPE ALL VAULT DATA? This cannot be undone.",
-      factoryResetBtn: "Factory Reset (Wipe All)"
+      factoryResetBtn: "Factory Reset (Wipe All)",
+      addTOTP: "Add 2FA (TOTP)",
+      totpSetup: "TOTP Setup",
+      totpPlaceholder: "otpauth://totp/... or Base32 secret key",
+      totpCopied: "2FA code copied!",
+      copyTOTP: "Copy 2FA Code",
+      secureNotes: "Secure Notes",
+      secureNotesPlaceholder: "Add encrypted notes (optional)...",
+      storageBackend: "Storage: SQLite-WASM + OPFS",
+      copiedClipboard: "Copied securely to clipboard!",
+
+      // Multi-Vault
+      active: "Active",
+      vaultCreated: "New vault created!",
+      vaultSwitched: "Vault switched.",
+      vaultDeleted: "Vault deleted.",
+      confirmDeleteVault: "Delete this vault? This action cannot be undone.",
+      deleteVault: "Delete vault",
+      vaultName: "Vault name...",
+      create: "Create",
+      createNewVault: "Create New Vault",
+
+      // QR Scanner
+      scanQRCode: "Scan QR Code",
+      scanQR: "Scan QR Code",
+      qrScanned: "QR code scanned successfully!",
+      invalidQR: "Invalid QR code format.",
+      notTotpQR: "Not a TOTP QR code. Expected otpauth:// URI.",
+      cameraPermissionDenied: "Camera permission denied. Please allow camera access.",
+      noCameraFound: "No camera found on this device.",
+      cameraError: "Camera error: ",
+      cameraFeed: "Camera feed for QR scanning",
+      qrScanHint: "Point your camera at a TOTP QR code to scan it automatically",
+      tryAgain: "Try Again",
+      close: "Close",
+      noVaultFound: "No vault found. Please use 'Initialize' to create a new one."
     }
   },
   tr: {
@@ -229,6 +266,8 @@ export const resources = {
       copiedToClipboard: "Güvenli bir şekilde panoya kopyalandı!",
       updateNow: "Şimdi Güncelle",
       strong: "Güçlü",
+      average: "Orta",
+      weak: "Zayıf",
       pwned: "Sızmış",
       pwnedWarning: "Bu şifre veri sızıntılarında bulundu!",
       secretMenuActive: "Gizli Menü Aktif: Duress Mode ve Silent Wipe erişilebilir.",
@@ -360,7 +399,42 @@ export const resources = {
       invalidDeviceKey: "Cihaz Gizli Anahtarı Hatalı",
       vaultAlreadyExists: "Bu cihazda zaten bir kasa mevcut. Lütfen kilidi açın veya yeni bir başlangıç için sıfırlama yapın.",
       confirmFullWipe: "TÜM KASA VERİLERİNİ KALICI OLARAK SİLMEK istediğinize emin misiniz? Bu işlem geri alınamaz.",
-      factoryResetBtn: "Fabrika Ayarlarına Dön (Sıfırla)"
+      factoryResetBtn: "Fabrika Ayarlarına Dön (Sıfırla)",
+      addTOTP: "2FA Ekle (TOTP)",
+      totpSetup: "TOTP Kurulumu",
+      totpPlaceholder: "otpauth://totp/... veya Base32 gizli anahtar",
+      totpCopied: "2FA kodu kopyalandı!",
+      copyTOTP: "2FA Kodunu Kopyala",
+      secureNotes: "Güvenli Notlar",
+      secureNotesPlaceholder: "Şifreli not ekle (opsiyonel)...",
+      storageBackend: "Depolama: SQLite-WASM + OPFS",
+      copiedClipboard: "Güvenli şekilde panoya kopyalandı!",
+
+      // Çoklu Kasa
+      active: "Aktif",
+      vaultCreated: "Yeni kasa oluşturuldu!",
+      vaultSwitched: "Kasa değiştirildi.",
+      vaultDeleted: "Kasa silindi.",
+      confirmDeleteVault: "Bu kasayı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
+      deleteVault: "Kasayı sil",
+      vaultName: "Kasa adı...",
+      create: "Oluştur",
+      createNewVault: "Yeni Kasa Oluştur",
+
+      // QR Tarayıcı
+      scanQRCode: "QR Kod Tara",
+      scanQR: "QR Kod Tara",
+      qrScanned: "QR kod başarıyla tarandı!",
+      invalidQR: "Geçersiz QR kod formatı.",
+      notTotpQR: "Bu bir TOTP QR kodu değil. otpauth:// URI'si bekleniyor.",
+      cameraPermissionDenied: "Kamera izni reddedildi. Lütfen kamera erişimine izin verin.",
+      noCameraFound: "Bu cihazda kamera bulunamadı.",
+      cameraError: "Kamera hatası: ",
+      cameraFeed: "QR tarama için kamera görüntüsü",
+      qrScanHint: "QR kodu otomatik taramak için kameranızı TOTP QR koduna doğrultun",
+      tryAgain: "Tekrar Dene",
+      close: "Kapat",
+      noVaultFound: "Kasa bulunamadı. Yeni bir kasa oluşturmak için lütfen 'Başlat'ı kullanın."
     }
   }
 };

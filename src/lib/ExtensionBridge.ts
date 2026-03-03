@@ -4,42 +4,56 @@ class ExtensionBridge {
   private sessionToken: string | null = null;
   private isListening: boolean = false;
   private activePort: any = null; // Aktif eklenti port referansı
+  private trustedExtensionId: string | null = null; // 🔒 İlk bağlantıda kaydedilen güvenilir eklenti ID'si
 
   private messageListener = async (event: MessageEvent) => {
-    // Sadece ayni origin (veya extension) uzerinden gelen mesajlara guven
+    // 🔒 Güvenlik: Sadece aynı origin veya doğrulanmış extension origin'den gelen mesajları kabul et
     if (event.origin !== window.location.origin && !event.origin.startsWith('chrome-extension://')) {
-      return; // Cok ondan gelmeyen yabanci originleri reddet
+      return;
     }
 
     const data = event.data;
     if (typeof data !== 'object' || !data) return;
 
-    // Secure Handshake (Eklenti kendini tanitiyor ve ID'sini sunuyor)
-    // Eklenti sayfaya PWA'i tespit ettiginde merhaba der.
+    // Secure Handshake (Eklenti kendini tanıtıyor ve ID'sini sunuyor)
     if (data.type === "AEGIS_EXTENSION_HELLO") {
-       console.log("[PWA Bridge] Eklenti tespit edildi, baglanti hazirlaniyor...");
-       // Eklentiye guvenli port acalim
+       // 🔒 Extension ID doğrulaması
+       const incomingExtensionId = data.extensionId;
+       if (!incomingExtensionId || typeof incomingExtensionId !== 'string') {
+         console.warn("[PWA Bridge] Geçersiz eklenti ID'si reddedildi.");
+         return;
+       }
+
+       // İlk bağlantıda extension ID'yi kaydet, sonrakilerde karşılaştır
+       if (this.trustedExtensionId && this.trustedExtensionId !== incomingExtensionId) {
+         console.warn(`[PWA Bridge] 🚫 Bilinmeyen eklenti ID'si reddedildi: ${incomingExtensionId.substring(0, 8)}...`);
+         return;
+       }
+
+       console.log("[PWA Bridge] Eklenti tespit edildi, bağlantı hazırlanıyor...");
+       
+       // Eklentiye güvenli port açalım
        if ((window as any).chrome && (window as any).chrome.runtime) {
          try {
-           const port = (window as any).chrome.runtime.connect(data.extensionId, { name: "aegis-pwa-vault-port" });
-           this.activePort = port; // Port referansını sakla
+           const port = (window as any).chrome.runtime.connect(incomingExtensionId, { name: "aegis-pwa-vault-port" });
+           this.activePort = port;
+           this.trustedExtensionId = incomingExtensionId; // İlk başarılı bağlantıda ID'yi kaydet
            
            this.sessionToken = this.generateToken();
            
-           // handshake token paylasimi
+           // handshake token paylaşımı
            port.postMessage({ type: "SYNC_TOKEN", token: this.sessionToken });
 
            port.onMessage.addListener(async (msg: any) => {
-             // Sadece Token yetkilendirmesi basarili olan mesajlari isle
+             // Sadece Token yetkilendirmesi başarılı olan mesajları işle
              if (msg.token !== this.sessionToken) {
-               console.warn("[PWA Bridge] Yetkisiz eklenti istegi reddedildi (Token Uyumsuz).");
+               console.warn("[PWA Bridge] Yetkisiz eklenti isteği reddedildi (Token Uyumsuz).");
                port.postMessage({ type: "ERROR", error: "UNAUTHORIZED_TOKEN" });
                return;
              }
 
              if (msg.type === "get_decrypted_creds") {
-               // Sadece kasa aktif (unlocked) ise yanit ver
-               // VaultService 'isConnected' degiskeni bu kontrolu saglar.
+               // Sadece kasa aktif (unlocked) ise yanıt ver
                if (!vaultService['isConnected']) {
                  port.postMessage({ type: "ERROR", error: "VAULT_LOCKED" });
                  return;
@@ -47,17 +61,17 @@ class ExtensionBridge {
 
                try {
                  const creds = await vaultService.getPasswords();
-                 // Belirli siteye gore filtrele, eger istenmisse
+                 // Belirli siteye göre filtrele, eğer istenmişse
                  const filteredCreds = msg.domain 
                    ? creds.filter(c => c.website.includes(msg.domain)) 
                    : creds;
 
-                 // Sadece secilen veriyi (credential listesini) gonder
+                 // Sadece seçilen veriyi (credential listesini) gönder
                  port.postMessage({ 
                    type: "DECRYPTED_CREDS_RESPONSE", 
                    data: filteredCreds 
                  });
-                 console.log("[PWA Bridge] Kasa acik, veriler eklentiye iletildi.");
+                 console.log("[PWA Bridge] Kasa açık, veriler eklentiye iletildi.");
                } catch (err) {
                  port.postMessage({ type: "ERROR", error: "INTERNAL_ERROR" });
                }
@@ -65,12 +79,12 @@ class ExtensionBridge {
            });
            
            port.onDisconnect.addListener(() => {
-             console.log("[PWA Bridge] Eklenti baglantisi koptu.");
+             console.log("[PWA Bridge] Eklenti bağlantısı koptu.");
              this.sessionToken = null;
              this.activePort = null;
            });
          } catch(e) {
-           console.error("[PWA Bridge] Eklentiyle runtime (externally_connectable) uzerinden baglanti kurulamadi.", e);
+           console.error("[PWA Bridge] Eklentiyle runtime (externally_connectable) üzerinden bağlantı kurulamadı.", e);
          }
        }
     }

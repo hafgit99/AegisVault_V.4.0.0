@@ -18,6 +18,12 @@
   "build": {
     "appId": "com.aegis.vault",
     "productName": "Aegis Vault",
+    "asar": true,
+    "files": [
+      "dist/**/*",
+      "electron-main.cjs",
+      "preload.cjs"
+    ],
     "directories": {
       "output": "release"
     },
@@ -25,7 +31,8 @@
       "target": [
         "nsis"
       ],
-      "icon": "public/icon.png"
+      "icon": "public/icon.png",
+      "requestedExecutionLevel": "asInvoker"
     },
     "mac": {
       "target": [
@@ -44,6 +51,8 @@
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "installerLanguages": [
@@ -79,12 +88,14 @@
     "idb": "^8.0.3",
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
+    "jsqr": "^1.4.0",
     "lucide-react": "^0.575.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-i18next": "^16.5.4",
     "react-toastify": "^11.0.5",
+    "sql.js": "^1.14.0",
     "tailwind-merge": "^3.5.0",
     "wa-sqlite": "^1.0.0"
   },

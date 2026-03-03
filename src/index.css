@@ -115,4 +115,74 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(135, 159, 132, 0.6);
   }
+
+  /* ─── WCAG AA Accessibility ─── */
+  
+  /* Focus indicator — belirgin odak çerçevesi (klavye navigasyonu) */
+  *:focus-visible {
+    outline: 3px solid var(--color-sage-green);
+    outline-offset: 2px;
+    border-radius: 4px;
+    box-shadow: 0 0 0 6px rgba(114, 136, 111, 0.15);
+  }
+  
+  /* Mouse ile tıklamalarda gereksiz focus ring'i gizle */
+  *:focus:not(:focus-visible) {
+    outline: none;
+    box-shadow: none;
+  }
+  
+  /* Skip-to-content link (ekran okuyucular ve klavye kullanıcıları için) */
+  .skip-to-content {
+    position: absolute;
+    top: -100%;
+    left: 16px;
+    z-index: 9999;
+    padding: 12px 24px;
+    background: var(--color-deep-navy);
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    border-radius: 0 0 8px 8px;
+    text-decoration: none;
+    transition: top 0.2s;
+  }
+  
+  .skip-to-content:focus {
+    top: 0;
+  }
+  
+  /* Screen reader only — sadece SR'ler için görünür metin */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
+
+/* ─── Reduced Motion (vestibüler hassasiyet) ─── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─── Forced Colors / High Contrast Mode ─── */
+@media (forced-colors: active) {
+  .glass-card {
+    border: 2px solid CanvasText;
+  }
+  
+  button, [role="button"] {
+    border: 1px solid ButtonText;
+  }
 }

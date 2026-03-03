@@ -69,30 +69,47 @@ export default defineBackground({
      * MV3 için setInterval yerine alarms kullanıyoruz (Sürekli uyanık kalma garantisi için).
      */
     const pollDesktopVault = async () => {
-      try {
-        const response = await fetch('http://127.0.0.1:23456/api/vault');
-        if (response.ok) {
-           const data = await response.json();
-           if (Array.isArray(data) && data.length > 0) {
-              // Veri varsa eşitle
-              vaultCache.length = 0;
-              vaultCache.push(...data);
-              
-              if (!isVaultUnlocked) {
-                 isVaultUnlocked = true;
-                 persistVaultState(true);
-                 console.log("[Aegis Vault] 🖥️ Masaüstü uygulaması ile otomatik eşitleme başarılı.");
-              }
-              resetSessionTimeout();
-           } else if (isVaultUnlocked && data.length === 0) {
-              // Masaüstü kilitlenmişse biz de temizleyelim
-              console.log("[Aegis Vault] 🖥️ Masaüstü kasası kilitli tespit edildi. Önbellek temizleniyor.");
+      const ports = ['23456'];
+      const hosts = ['127.0.0.1', 'localhost'];
+
+      for (const host of hosts) {
+        try {
+          // 1. Önce status endpoint'ten token al
+          const statusRes = await fetch(`http://${host}:23456/api/status`);
+          if (!statusRes.ok) continue;
+          const status = await statusRes.json();
+          
+          if (!status.isUnlocked || !status.token) {
+            if (isVaultUnlocked) {
+              console.log("[Aegis Vault] 🖥️ Masaüstü kasası kilitli tespit edildi.");
               secureWipeCache();
               clearAllBadges();
-           }
+            }
+            return; // Bulduk ama kilitli, diğer host'u denemeye gerek yok
+          }
+
+          // 2. Token ile vault verilerini al
+          const vaultRes = await fetch(`http://${host}:23456/api/vault`, {
+            headers: { 'X-Aegis-Token': status.token }
+          });
+          if (!vaultRes.ok) continue;
+          const data = await vaultRes.json();
+          
+          if (Array.isArray(data) && data.length > 0) {
+            vaultCache.length = 0;
+            vaultCache.push(...data);
+            
+            if (!isVaultUnlocked) {
+              isVaultUnlocked = true;
+              persistVaultState(true);
+              console.log(`[Aegis Vault] ✅ Masaüstü (${host}) ile eşitleme başarılı. ${data.length} kayıt.`);
+            }
+            resetSessionTimeout();
+            return; // Başarılı, döngüden çık
+          }
+        } catch (e) {
+          // Bu host/port kombinasyonu erişilebilir değil
         }
-      } catch (e) {
-        // Masaüstü uygulaması kapalıdır, sessizce devam et
       }
     };
 

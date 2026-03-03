@@ -85,10 +85,19 @@ export class ImportService {
     const lines = text.split(/\r?\n/);
     if (lines.length < 2) throw new Error("CSV file is empty or lacks headers.");
 
-    const headerLine = lines[0].toLowerCase();
-    const isBitwarden = headerLine.includes('folder') && headerLine.includes('favorite') && headerLine.includes('type') && headerLine.includes('name');
-    const is1Password = headerLine.includes('title') && headerLine.includes('url') && headerLine.includes('username') && headerLine.includes('password');
-
+    const firstLine = lines[0];
+    const firstLineLower = firstLine.toLowerCase();
+    const commaCount = (firstLineLower.match(/,/g) || []).length;
+    const semicolonCount = (firstLineLower.match(/;/g) || []).length;
+    const separator = semicolonCount > commaCount ? ';' : ',';
+    const headers = firstLineLower.split(separator).map(h => h.replace(/(^["']|["']$)/g, '').trim());
+    
+    // Header mappings
+    const titleIdx = headers.findIndex(h => h === 'name' || h === 'title' || h === 'website name');
+    const urlIdx = headers.findIndex(h => h === 'url' || h === 'website' || h === 'login_uri' || h === 'uri');
+    const userIdx = headers.findIndex(h => h === 'username' || h === 'login_username' || h === 'login' || h === 'email');
+    const passIdx = headers.findIndex(h => h === 'password' || h === 'login_password' || h === 'pass');
+    
     for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
@@ -102,7 +111,7 @@ export class ImportService {
             const char = line[j];
             if (char === '"') {
                 inQuotes = !inQuotes;
-            } else if (char === ',' && !inQuotes) {
+            } else if (char === separator && !inQuotes) {
                 cols.push(curStr.replace(/(^"|"$)/g, '').replace(/""/g, '"').trim());
                 curStr = "";
             } else {
@@ -111,37 +120,37 @@ export class ImportService {
         }
         cols.push(curStr.replace(/(^"|"$)/g, '').replace(/""/g, '"').trim()); // push last col
 
-        let title = "Imported Entry";
-        let username = "";
-        let pass = "";
-        let website = "";
-        
         try {
-            if (isBitwarden) {
-                // Typical bitwarden order: folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp
-                title = cols[3] || "Imported Bitwarden";
-                website = cols[7] || "";
-                username = cols[8] || "";
-                pass = cols[9] || "";
-            } else if (is1Password) {
-                // Typical 1password order: Title,URL,Username,Password,OTPAuth
-                title = cols[0] || "Imported 1Password";
-                website = cols[1] || "";
-                username = cols[2] || "";
-                pass = cols[3] || "";
-            } else {
-                // Generic Aegis/fallback: title,username,password,category
-                title = cols[0] || "Imported";
-                username = cols[1] || "";
-                pass = cols[2] || "";
+            let title = titleIdx !== -1 ? cols[titleIdx] : "";
+            let website = urlIdx !== -1 ? cols[urlIdx] : "";
+            let username = userIdx !== -1 ? cols[userIdx] : "";
+            let pass = passIdx !== -1 ? cols[passIdx] : "";
+
+            // Fallbacks for unknown formats (try to guess blindly)
+            if (titleIdx === -1 && headers.length >= 3) {
+              if (passIdx === -1) pass = cols[headers.length - 1] || ""; // Usually last is pass
+              if (userIdx === -1) username = cols[headers.length - 2] || "";
+              if (urlIdx === -1 && website === "") website = cols[0] || "";
+              
+              if (website) {
+                try {
+                  title = new URL(website.startsWith('http') ? website : `https://${website}`).hostname;
+                } catch {
+                  title = "Imported Entry";
+                }
+              } else {
+                title = "Imported Entry";
+              }
+            } else if (!title) {
+               title = website || "Imported Entry";
             }
-            
+
             if (pass) {
                 entries.push({ title, username, pass, website, category: 'General' });
             }
         } catch (e) {
             console.warn(`Skipping corrupted line ${i}:`, e);
-            continue; // Skip malformed lines instead of crashing
+            continue; // Skip malformed lines
         }
     }
 

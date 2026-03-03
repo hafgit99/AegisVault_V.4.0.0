@@ -8,7 +8,7 @@ export default defineConfig({
   manifest: (env) => ({
     name: "Aegis Vault",
     description: "Secure, zero-knowledge password manager and 2FA authenticator extension. Autofill passwords, sync securely across devices with end-to-end encryption in 2026.",
-    version: "4.0.3",
+    version: "4.1.0",
     
     icons: {
       "16": "icon-16.png",
@@ -25,7 +25,7 @@ export default defineConfig({
       }
     },
     content_security_policy: {
-      extension_pages: "script-src 'self'; worker-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+      extension_pages: "script-src 'self'; worker-src 'self' 'wasm-unsafe-eval'; connect-src 'self' http://127.0.0.1:23456 http://localhost:23456; object-src 'self';"
     },
     
     permissions: [

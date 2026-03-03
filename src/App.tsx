@@ -19,17 +19,25 @@ function App() {
   }, [isUnlocked]);
 
   return (
-    <div className="min-h-screen relative bg-[var(--color-cloud-dancer)] text-[var(--color-deep-navy)] flex flex-col items-center">
-      {isUnlocked && secretKeyStr ? (
-        <Dashboard onLock={() => setIsUnlocked(false)} secretKey={secretKeyStr} />
-      ) : (
-        <VaultLogin onUnlock={(sk) => {
-          setSecretKeyStr(sk);
-          setIsUnlocked(true);
-        }} />
-      )}
-      <ToastContainer position="bottom-right" theme="light" />
-    </div>
+    <>
+      {/* Skip-to-content — klavye kullanıcıları için atla bağlantısı */}
+      <a href="#main-content" className="skip-to-content">
+        Skip to main content
+      </a>
+      <div className="min-h-screen relative bg-[var(--color-cloud-dancer)] text-[var(--color-deep-navy)] flex flex-col items-center w-full" role="application" aria-label="Aegis Vault Password Manager">
+        <div id="main-content" className="w-full flex flex-col items-center flex-1">
+          {isUnlocked && secretKeyStr ? (
+            <Dashboard onLock={() => setIsUnlocked(false)} secretKey={secretKeyStr} />
+          ) : (
+            <VaultLogin onUnlock={(sk) => {
+              setSecretKeyStr(sk);
+              setIsUnlocked(true);
+            }} />
+          )}
+        </div>
+        <ToastContainer position="bottom-right" theme="light" role="status" aria-live="polite" />
+      </div>
+    </>
   );
 }
 
