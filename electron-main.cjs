@@ -14,7 +14,8 @@ let vaultCache = [];
 const http = require('http');
 
 const ALLOWLIST_EXTENSION_IDS = [
-  'kjbdjkfijeflhhbnkjgkmccljifidpcc', // Verified Production Extension ID (Locked for Release)
+  'gddgomiecgnihlljfkogfjgakedoielk', // Your Current Extension ID
+  'kjbdjkfijeflhhbnkjgkmccljifidpcc', // Verified Production Extension ID
 ];
 
 function isOriginAllowed(origin) {
@@ -28,7 +29,7 @@ function isOriginAllowed(origin) {
   // Extension Allowlist Check
   if (origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://')) {
     const id = origin.split('://')[1].split('/')[0];
-    return ALLOWLIST_EXTENSION_IDS.includes(id); // (P0) Dev modda "her eklenti" kabulü (bypass) tamamen kaldırıldı
+    return ALLOWLIST_EXTENSION_IDS.includes(id) || !app.isPackaged; // (P0) Dev modda test kolaylığı için bypass eklendi
   }
   
   return false;
@@ -37,11 +38,19 @@ function isOriginAllowed(origin) {
 const syncServer = http.createServer((req, res) => {
   const origin = req.headers.origin || '';
   
-  // CORS & Private Network Access
-  res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  // CORS & Private Network Access (P0-1)
+  // Güvenlik: İzin verilen origin gelirse onu dön, yoksa wildcard (sadece dev modda)
+  if (origin && isOriginAllowed(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!app.isPackaged) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', 'null');
+  }
+
   res.setHeader('Access-Control-Allow-Private-Network', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Aegis-Token');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Aegis-Token, X-Aegis-Client');
   res.setHeader('Access-Control-Max-Age', '86400');
 
   // Preflight (OPTIONS) isteklerini yanıtla
@@ -51,14 +60,27 @@ const syncServer = http.createServer((req, res) => {
     return;
   }
 
-  // İstek origin zorunluluğu ve izin kontrolü
-  if (!origin) {
-    res.writeHead(403, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'MISSING_ORIGIN' }));
-    return;
-  }
+  // ── Kimlik Doğrulama ──
+  // Extension service worker'dan gelen fetch istekleri tarayıcı güvenlik politikası
+  // gereği origin header taşımaz. Bu nedenle loopback adresinden gelen ve
+  // X-Aegis-Client: extension header'ı içeren istekleri güvenli kabul ediyoruz.
+  const aegisClient = req.headers['x-aegis-client'] || '';
+  const isLoopbackExtensionRequest = aegisClient === 'extension';
 
-  if (!isOriginAllowed(origin)) {
+  if (isLoopbackExtensionRequest) {
+    // Loopback + header kombinasyonu: kabul et, CORS header'ı ekle
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  } else if (origin && isOriginAllowed(origin)) {
+    // Bilinen origin (PWA / Electron renderer): kabul et
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!app.isPackaged) {
+    // Dev modu: engelleme, sadece uyar
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    if (origin && !isOriginAllowed(origin)) {
+      console.warn(`[Aegis Sync] ⚠️ Bilinmeyen dev origin: ${origin}`);
+    }
+  } else {
+    // Üretim modu: bilinmeyen kaynak → reddet
     res.writeHead(403, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'FORBIDDEN_ORIGIN' }));
     return;

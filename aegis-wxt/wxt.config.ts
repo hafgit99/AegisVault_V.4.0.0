@@ -36,7 +36,7 @@ export default defineConfig({
       "scripting"
     ],
     host_permissions: [
-      "https://*.aegisvault.xyz/*"
+      "<all_urls>"
     ],
     ...(env.browser === 'firefox' ? {} : {
       externally_connectable: {

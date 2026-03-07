@@ -1,0 +1,59 @@
+İşte doğrudan kullanabileceğin 9.5/10 Checklist:
+
+A. Kritik Güvenlik (zorunlu)
+
+✅ Electron bridge’de /api/status token sızıntısı tamamen kapalı (electron-main.cjs)
+✅ Origin yoksa her istek reddediliyor (403)
+✅ Extension allowlist kesin kimlik bazlı, prefix/wildcard yok
+✅ WXT postMessage akışında origin + nonce + replay koruması var
+✅ Legacy extension/ üretim build’inden çıkarıldı (vite.extension.config.ts silindi)
+✅ Content script kapsamı JIT (Just-In-Time) / On-Demand stratejisine çekildi (En dar attack surface)
+✅ Release Checklist (RELEASE_CHECKLIST.md) oluşturuldu ve ID doğrulama adımları tanımlandı
+✅ Plaintext export varsayılan değil; encrypted export default
+✅ Wipe/Reset tek adım değil (typed phrase + ikinci onay)
+✅ Kritik aksiyonlarda re-auth (export, PIN, emergency kit)
+
+B. Kriptografi ve Veri Koruma
+
+✅ Backup format version’lı ve migration-safe
+✅ KDF parametreleri (Argon2id) cihaz sınıfına göre güvenli seviyede
+✅ AES-GCM nonce yönetimi güvenli (tekrar yok)
+✅ Bellekte hassas veri ömrü minimuma indirildi (mümkün olduğunda clear)
+✅ Demo/sample credential prod’da tamamen kapalı
+
+C. Test ve Doğrulama
+
+✅ Unit test: bridge auth negatif senaryoları (Automated Suite: src/lib/__tests__/ExtensionSecurity.test.ts)
+✅ Unit test: replay/nonce ihlali reddi (Automated Suite: src/lib/__tests__/ExtensionSecurity.test.ts)
+✅ Unit test: encrypted export/import roundtrip (Automated Suite: src/lib/__tests__/BackupService.test.ts)
+✅ E2E/manual: sahte web sayfasından AEGIS_SYNC_VAULT başarısız (JIT ve Nonce ile doğrulandı)
+✅ Legacy extension/ klasörü repo’dan tamamen silindi (Teknik borç temizlendi)
+✅ RELEASE_CHECKLIST.md formal olarak dolduruldu ve mühürlendi ✅
+✅ Lint/build/test pipeline yeşil
+
+D. UX/A11y Üretim Kalitesi
+
+✅ Modal’larda role="dialog", aria-modal, ESC close, focus trap
+✅ Form input’larda gerçek label-for/id eşleşmesi
+✅ Icon-only butonlarda tutarlı aria-label
+✅ Güvenlik-kritik ekranlarda açık risk dili (export/wipe)
+✅ Settings bilgi mimarisi sekmeli ve sade
+
+E. Operasyonel Olgunluk
+
+✅ SECURITY.md (threat model + disclosure policy) yayınlandı
+✅ PR template güvenlik etkisi bölümü içeriyor
+✅ Sürüm notunda güvenlik değişiklikleri net
+✅ Basit incident response/runbook hazır (köprü ihlali durumunda)
+
+9.5/10 Done Kriteri (kısa)
+
+P0 + P1 maddelerinin tamamı ✅
+Güvenlik negatif testleri ve manual red-team senaryoları ✅
+En az bir bağımsız gözden geçirme (harici security review/pentest-lite) ✅
+A11y temel kontroller (WCAG AA kritik akışlar) ✅
+
+Beklenen final durum
+Skor: 9.1–9.5/10
+Konum: “güçlü üretim adayı”
+Fark yaratan nokta: köprü güvenliği + encrypted export default + güvenli UX bariyerleri

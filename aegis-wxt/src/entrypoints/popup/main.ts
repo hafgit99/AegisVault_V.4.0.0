@@ -1,6 +1,4 @@
-// browser.* namespace'i WXT'nin polyfill deposundan aktarılır.
 import { browser } from 'wxt/browser';
-
 import DOMPurify from 'dompurify';
 
 const app = document.getElementById('wxt-app');
@@ -9,152 +7,165 @@ if (app) {
     const rawHTML = `
         <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 320px; font-family: system-ui, -apple-system, sans-serif;">
             <header style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(114,136,111,0.2); padding-bottom: 12px;">
-                <div>
-                   <h1 style="margin: 0; font-size: 16px; font-weight: 600; color: #101828;">Aegis Vault</h1>
-                   <p style="margin: 2px 0 0 0; font-size: 11px; color: #475569;" id="active-domain">Bağlanıyor...</p>
+                <div style="display:flex;align-items:center;gap:8px;">
+                   <div style="width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#72886f,#101828);display:flex;align-items:center;justify-content:center;">
+                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z" fill="white"/></svg>
+                   </div>
+                   <div>
+                      <h1 style="margin: 0; font-size: 15px; font-weight: 700; color: #101828; letter-spacing:-0.3px;">Aegis Vault</h1>
+                      <p style="margin: 1px 0 0 0; font-size: 10px; color: #72886f; font-weight:600;" id="active-domain">Bağlanıyor...</p>
+                   </div>
                 </div>
-                <div style="background: rgba(114,136,111,0.1); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(114,136,111,0.2);">
-                   <span style="font-size: 10px; font-weight: 700; color: #72886f;" id="vault-status">Kasa Bekleniyor</span>
+                <div style="background: rgba(114,136,111,0.10); padding: 3px 9px; border-radius: 20px; border: 1px solid rgba(114,136,111,0.20);">
+                   <span style="font-size: 10px; font-weight: 700; color: #72886f;" id="vault-status">Bekleniyor</span>
                 </div>
             </header>
-            
-            <section id="cards-container" style="display: flex; flex-direction: column; gap: 8px;">
-               <div style="text-align: center; padding: 20px 0; color: #64748b; font-size: 12px;">Şifre aranıyor...</div>
+            <section id="cards-container" style="display: flex; flex-direction: column; gap: 6px;">
+               <div style="text-align: center; padding: 20px 0; color: #64748b; font-size: 12px;">Yükleniyor...</div>
             </section>
         </div>
     `;
-    
-    // XSS Protection: DOMPurify and DOMParser to eliminate unsafe innerHTML error for AMO
+
     const parsedApp = new DOMParser().parseFromString(DOMPurify.sanitize(rawHTML), 'text/html');
     app.replaceChildren(...Array.from(parsedApp.body.childNodes));
 
     const getDomain = (url: string) => {
         try {
-            const hostname = new URL(url).hostname;
-            return hostname.replace(/^www\./, '');
-        } catch (e) {
-            return '';
-        }
+            return new URL(url).hostname.replace(/^www\./, '');
+        } catch { return ''; }
     };
 
     const loadPopup = async () => {
-        const domainEl = document.getElementById('active-domain');
-        const statusEl = document.getElementById('vault-status');
+        const domainEl  = document.getElementById('active-domain');
+        const statusEl  = document.getElementById('vault-status');
         const containerEl = document.getElementById('cards-container');
-        
+
         try {
             const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-            const currentUrl = tabs[0]?.url || "";
+            const tab  = tabs[0];
+            const currentUrl    = tab?.url || '';
             const currentDomain = getDomain(currentUrl);
-            
+            const tabId         = tab?.id;
+
             if (domainEl) domainEl.innerText = currentDomain || 'Bilinmeyen Site';
 
-            // 🔒 Önce kasa kilit durumunu kontrol et
-            const vaultStatus = await browser.runtime.sendMessage({ type: "GET_VAULT_STATUS" });
-            
+            // Kasa durumu
+            const vaultStatus = await browser.runtime.sendMessage({ type: 'GET_VAULT_STATUS' });
+
             if (!vaultStatus?.isUnlocked) {
-                // Kasa kilitli - hiçbir veri gösterme
-                if (statusEl) {
-                    statusEl.innerText = "Kasa Kilitli";
-                    statusEl.style.color = "#f59e0b";
-                }
+                if (statusEl) { statusEl.innerText = 'Kasa Kilitli'; statusEl.style.color = '#f59e0b'; }
                 if (containerEl) {
-                    const closedHTML = `<div style="text-align: center; padding: 20px 0; color: #f59e0b; font-size: 12px; font-weight: 500;">Kasa Kilitli!</div><div style="font-size:11px; color:#475569; text-align:center;">Lütfen Aegis Vault programını açıp<br/>şifrenizle giriş yapın.</div>`;
-                    const parsedClosed = new DOMParser().parseFromString(DOMPurify.sanitize(closedHTML), 'text/html');
-                    containerEl.replaceChildren(...Array.from(parsedClosed.body.childNodes));
+                    const h = `<div style="text-align:center;padding:20px 0;color:#f59e0b;font-size:12px;font-weight:600;">Kasa Kilitli</div>
+                               <div style="font-size:11px;color:#475569;text-align:center;">Aegis Vault uygulamasını açıp<br/>şifrenizle giriş yapın.</div>`;
+                    containerEl.replaceChildren(...Array.from(new DOMParser().parseFromString(DOMPurify.sanitize(h), 'text/html').body.childNodes));
                 }
                 return;
             }
 
-            // Kasa açık - şifreleri getir
-            const passwords = await browser.runtime.sendMessage({ type: "GET_VAULT" });
-            
-            if (passwords && passwords.length > 0) {
-                if (statusEl) {
-                    statusEl.innerText = "Kasa Açık";
-                    statusEl.style.color = "#22c55e";
-                }
-                
-                let matches = passwords.filter((p: any) => p.website && currentDomain && (p.website.includes(currentDomain) || currentDomain.includes(p.website)));
-                
-                if (containerEl) {
-                    if (matches.length > 0) {
-                        containerEl.textContent = '';
-                        matches.forEach((p: any) => {
-                            const cardHTML = `
-                              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
-                                 <div style="display: flex; align-items: center; justify-content: space-between;">
-                                    <span style="font-weight: 600; font-size: 13px; color: #0f172a; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${p.title}</span>
-                                 </div>
-                                 <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    <div style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 6px; border-radius: 4px; border: 1px solid #f1f5f9;">
-                                       <span style="font-size: 11px; color: #475569; font-family: monospace; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${p.username || 'Kullanıcı adı yok'}</span>
-                                       <button class="copy-btn" data-value="${p.username || ''}" style="background: none; border: none; cursor: pointer; color: #72886f; font-size: 10px; font-weight: bold; flex-shrink: 0;" title="Kopyala">
-                                          Kopyala
-                                       </button>
-                                    </div>
-                                    <div style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 6px; border-radius: 4px; border: 1px solid #f1f5f9;">
-                                       <span style="font-size: 11px; color: #475569; font-family: monospace;">••••••••</span>
-                                       <button class="copy-btn" data-value="${p.pass}" style="background: none; border: none; cursor: pointer; color: #72886f; font-size: 10px; font-weight: bold; flex-shrink: 0;" title="Kopyala">
-                                          Kopyala
-                                       </button>
-                                    </div>
-                                 </div>
-                              </div>
-                            `;
-                            // safe rendering without executing scripts (though we sanitize first in overall context ideally, building safely is fine)
-                            // sanitize with DOMPurify
-                            const safeDiv = document.createElement('div');
-                            const parsedCard = new DOMParser().parseFromString(DOMPurify.sanitize(cardHTML), 'text/html');
-                            safeDiv.replaceChildren(...Array.from(parsedCard.body.childNodes));
-                            
-                            // attach event listeners to buttons
-                            const btns = safeDiv.querySelectorAll('.copy-btn');
-                            btns.forEach((btn) => {
-                               btn.addEventListener('click', (e) => {
-                                  const val = (e.currentTarget as HTMLButtonElement).getAttribute('data-value');
-                                  if (val) {
-                                     navigator.clipboard.writeText(val);
-                                     const originalText = (e.currentTarget as HTMLButtonElement).innerText;
-                                     (e.currentTarget as HTMLButtonElement).innerText = 'Kopyalandı!';
-                                     (e.currentTarget as HTMLButtonElement).style.color = '#22c55e';
-                                     setTimeout(() => {
-                                        (e.currentTarget as HTMLButtonElement).innerText = originalText;
-                                        (e.currentTarget as HTMLButtonElement).style.color = '#72886f';
-                                     }, 1500);
-                                  }
-                               });
-                            });
-                            
-                            containerEl.appendChild(safeDiv);
-                        });
-                    } else {
-                        const fallbackHTML = `<div style="text-align: center; padding: 20px 0; color: #64748b; font-size: 12px;">Bu site için kayıtlı şifre bulunamadı.<br/><br/><span style="font-size:10px; color:#94a3b8;">Kasa Aktif (${passwords.length} kayıt)</span></div>`;
-                        const parsedFallback = new DOMParser().parseFromString(DOMPurify.sanitize(fallbackHTML), 'text/html');
-                        containerEl.replaceChildren(...Array.from(parsedFallback.body.childNodes));
-                    }
-                }
-            } else {
-                if (statusEl) {
-                    statusEl.innerText = "Kasa Kapalı";
-                    statusEl.style.color = "#f59e0b";
-                }
-                if (containerEl) {
-                    const closedHTML = `<div style="text-align: center; padding: 20px 0; color: #f59e0b; font-size: 12px; font-weight: 500;">Kasa Bulunamadı veya Kilitli!</div><div style="font-size:11px; color:#475569; text-align:center;">Lütfen Aegis Vault programını açıp<br/>şifrenizle giriş yapın.</div>`;
-                    const parsedClosed = new DOMParser().parseFromString(DOMPurify.sanitize(closedHTML), 'text/html');
-                    containerEl.replaceChildren(...Array.from(parsedClosed.body.childNodes));
-                }
+            const passwords = await browser.runtime.sendMessage({ type: 'GET_VAULT' });
+
+            if (!passwords || passwords.length === 0) {
+                if (statusEl) { statusEl.innerText = 'Kasa Boş'; statusEl.style.color = '#f59e0b'; }
+                return;
             }
-        } catch (error) {
-            console.error(error);
+
+            if (statusEl) { statusEl.innerText = 'Kasa Açık'; statusEl.style.color = '#22c55e'; }
+
+            // Domain eşleştirme
+            let matches = passwords.filter((p: any) =>
+                p.website && currentDomain && (p.website.includes(currentDomain) || currentDomain.includes(p.website))
+            );
+            const hasMatch = matches.length > 0;
+            if (!hasMatch) matches = passwords.slice(0, 5);
+            else matches = matches.slice(0, 5);
+
+            if (!containerEl) return;
+            containerEl.textContent = '';
+
+            // Eşleşme başlığı
+            if (!hasMatch && currentDomain) {
+                const note = document.createElement('div');
+                note.style.cssText = 'font-size:10px;color:#94a3b8;text-align:center;padding:2px 0 4px;';
+                note.innerText = `"${currentDomain}" için kayıt bulunamadı — tüm kayıtlar gösteriliyor`;
+                containerEl.appendChild(note);
+            }
+
+            // Kartlar
+            matches.forEach((p: any) => {
+                const card = document.createElement('div');
+                card.style.cssText = `
+                    display:flex;align-items:center;gap:10px;padding:9px 10px;
+                    border-radius:10px;cursor:pointer;transition:all 0.15s;
+                    background:rgba(114,136,111,0.05);border:1px solid rgba(114,136,111,0.12);
+                `;
+
+                const letter = (p.title || '?').charAt(0).toUpperCase();
+                const avatarStyle = `
+                    width:34px;height:34px;border-radius:9px;flex-shrink:0;
+                    background:linear-gradient(135deg,#72886f,#101828);
+                    display:flex;align-items:center;justify-content:center;
+                    color:white;font-weight:800;font-size:13px;
+                    box-shadow:0 2px 8px rgba(114,136,111,0.25);
+                `;
+
+                const safeTitle    = DOMPurify.sanitize(p.title    || '');
+                const safeUsername = DOMPurify.sanitize(p.username || '');
+
+                const inner = `
+                    <div style="${avatarStyle}">${letter}</div>
+                    <div style="flex:1;overflow:hidden;">
+                        <div style="font-size:12px;font-weight:700;color:#101828;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${safeTitle}</div>
+                        <div style="font-size:10px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">${safeUsername || 'Kullanıcı adı yok'}</div>
+                    </div>
+                    <div style="font-size:11px;color:#72886f;font-weight:700;flex-shrink:0;">Doldur →</div>
+                `;
+                const parsed = new DOMParser().parseFromString(DOMPurify.sanitize(inner), 'text/html');
+                card.replaceChildren(...Array.from(parsed.body.childNodes));
+
+                // Hover efekti
+                card.addEventListener('mouseenter', () => {
+                    card.style.background = 'rgba(114,136,111,0.13)';
+                    card.style.border = '1px solid rgba(114,136,111,0.28)';
+                    card.style.transform = 'translateX(2px)';
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.background = 'rgba(114,136,111,0.05)';
+                    card.style.border = '1px solid rgba(114,136,111,0.12)';
+                    card.style.transform = 'none';
+                });
+
+                // Tıklanınca background'a fill komutu gönder
+                card.addEventListener('click', async () => {
+                    if (!tabId) return;
+
+                    // Butonu geçici olarak güncelle
+                    const fillBtn = card.querySelector('div:last-child') as HTMLElement;
+                    if (fillBtn) { fillBtn.innerText = '✓ Dolduruldu'; fillBtn.style.color = '#22c55e'; }
+
+                    await browser.runtime.sendMessage({
+                        type: 'FILL_CREDENTIALS',
+                        tabId,
+                        entry: {
+                            username: p.username || '',
+                            pass:     p.pass     || '',
+                        }
+                    });
+
+                    // 800ms sonra popup'ı kapat
+                    setTimeout(() => window.close(), 800);
+                });
+
+                containerEl.appendChild(card);
+            });
+
+        } catch (err) {
+            console.error('[Aegis Popup]', err);
             if (containerEl) {
-               const errorHTML = "<div style='color:red; font-size:12px; text-align:center;'>Hata: Arkaplan servisine ulaşılamadı.</div>";
-               const parsedError = new DOMParser().parseFromString(DOMPurify.sanitize(errorHTML), 'text/html');
-               containerEl.replaceChildren(...Array.from(parsedError.body.childNodes));
+                const h = "<div style='color:red;font-size:12px;text-align:center;'>Hata: Arkaplan servisine ulaşılamadı.</div>";
+                containerEl.replaceChildren(...Array.from(new DOMParser().parseFromString(DOMPurify.sanitize(h), 'text/html').body.childNodes));
             }
         }
     };
 
-    // Load payload automatically
     loadPopup();
 }

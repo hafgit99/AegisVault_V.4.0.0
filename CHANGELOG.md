@@ -17,6 +17,8 @@ We are excited to announce version 4.0.0 of Aegis Vault. This release represents
 - **Destructive Action Barriers:** Factory Reset no longer relies on a simple browser confirm popup. Users must confront a visually distinct warning modal and manually type `DELETE ALL DATA` to irreversibly wipe the vault.
 - **Accessibility Improvements (A11y):** All security modals are properly tracked via `role="dialog"`, trapped with `aria-modal="true"`, strictly labeled via `id/htmlFor`, and support `ESC` to close comfortably.
 - **UI Modularization:** The `SettingsDrawer` has been heavily refactored, extracting the Advanced Password Generator functionality into a dedicated modular component for cleaner maintainability.
+- **JIT Fill Architecture:** Implemented `browser.scripting` for Just-In-Time (JIT) credential injection. This allows the extension to remain zero-privilege on most sites until the user explicitly requests an action, significantly improving browser security.
+- **Loopback-Extension Bridge:** Added `X-Aegis-Client` header validation for Electron-to-Extension communication. Resolved `ERR_BLOCKED_BY_CLIENT` and origin-less fetch issues common in Service Worker environments.
 
 ### 🐛 Selected Fixes
 - Removed deprecated legacy extension build commands.

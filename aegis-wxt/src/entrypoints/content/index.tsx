@@ -2,341 +2,431 @@ import './style.css';
 import { defineContentScript } from 'wxt/sandbox';
 import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Key, ShieldCheck, CheckCircle2 } from 'lucide-react';
-import { cn } from '../../lib/utils';
 
-// Tailwind CSS injection via style.css is already configured above.
-// Geist Mono font should be injected via CSS but standard sans/mono can be a fallback.
+// ─── Inline Styles (Shadow DOM içinde Tailwind çalışmaz, tüm stiller inline) ───
+const STYLES = {
+  container: {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    pointerEvents: 'none' as const,
+    zIndex: 2147483647,
+    fontFamily: "'Geist Mono', 'SF Mono', 'Cascadia Code', 'Fira Code', monospace",
+  },
+  popup: (top: number, left: number) => ({
+    position: 'absolute' as const,
+    top: top + 8,
+    left: Math.min(left, window.innerWidth - 280),
+    width: 270,
+    pointerEvents: 'auto' as const,
+    zIndex: 2147483647,
+    borderRadius: 16,
+    overflow: 'hidden',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.10)',
+    border: '1.5px solid rgba(114,136,111,0.22)',
+    background: 'linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(245,248,244,0.98) 100%)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+  }),
+  header: {
+    padding: '12px 14px 10px',
+    borderBottom: '1px solid rgba(114,136,111,0.12)',
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    background: 'linear-gradient(90deg, rgba(114,136,111,0.08) 0%, rgba(114,136,111,0.04) 100%)',
+  },
+  logo: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    background: 'linear-gradient(135deg, #72886f 0%, #101828 100%)',
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    flexShrink: 0,
+  },
+  headerTitle: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: '#101828',
+    letterSpacing: '-0.3px',
+  },
+  headerSub: {
+    fontSize: 10,
+    color: '#72886f',
+    marginLeft: 'auto' as const,
+    fontWeight: 600,
+    background: 'rgba(114,136,111,0.10)',
+    padding: '2px 7px',
+    borderRadius: 20,
+  },
+  body: {
+    padding: '8px 10px 10px',
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    gap: 5,
+  },
+  entryRow: (hovered: boolean) => ({
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+    padding: '9px 10px',
+    borderRadius: 10,
+    cursor: 'pointer' as const,
+    transition: 'all 0.15s ease',
+    background: hovered
+      ? 'linear-gradient(90deg, rgba(114,136,111,0.13) 0%, rgba(114,136,111,0.07) 100%)'
+      : 'rgba(114,136,111,0.04)',
+    border: hovered ? '1px solid rgba(114,136,111,0.25)' : '1px solid rgba(114,136,111,0.08)',
+    transform: hovered ? 'translateX(2px)' : 'none',
+  }),
+  avatar: (letter: string) => ({
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    background: 'linear-gradient(135deg, #72886f 0%, #101828 100%)',
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    color: 'white',
+    fontWeight: 800,
+    fontSize: 13,
+    flexShrink: 0,
+    boxShadow: '0 2px 8px rgba(114,136,111,0.25)',
+  }),
+  entryInfo: {
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    overflow: 'hidden' as const,
+    flex: 1,
+  },
+  entryTitle: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: '#101828',
+    whiteSpace: 'nowrap' as const,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
+  },
+  entryUser: {
+    fontSize: 10,
+    color: '#64748b',
+    whiteSpace: 'nowrap' as const,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
+    marginTop: 1,
+  },
+  fillArrow: {
+    fontSize: 14,
+    color: '#72886f',
+    flexShrink: 0,
+    opacity: 0.7,
+  },
+  successBox: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 7,
+    padding: '12px',
+    background: 'rgba(34,197,94,0.08)',
+    border: '1px solid rgba(34,197,94,0.20)',
+    borderRadius: 10,
+    margin: '4px 0',
+  },
+  successText: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: '#16a34a',
+  },
+  emptyText: {
+    fontSize: 11,
+    color: '#94a3b8',
+    textAlign: 'center' as const,
+    padding: '10px 0 6px',
+  },
+};
 
+// ─── Fill Helper ───
+// React/Vue/Angular/vanilla hepsinde çalışan güvenilir fill
+function triggerFill(el: HTMLInputElement, value: string) {
+  // 1) Focus ver
+  el.focus();
+
+  // 2) Native setter ile değer ata (React controlled input için zorunlu)
+  const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+  if (nativeSetter) {
+    nativeSetter.call(el, value);
+  } else {
+    el.value = value;
+  }
+
+  // 3) Tüm gerekli eventleri sırayla at
+  el.dispatchEvent(new Event('focus',  { bubbles: true }));
+  el.dispatchEvent(new Event('input',  { bubbles: true }));
+  el.dispatchEvent(new Event('change', { bubbles: true }));
+  el.dispatchEvent(new KeyboardEvent('keydown',  { bubbles: true }));
+  el.dispatchEvent(new KeyboardEvent('keypress', { bubbles: true }));
+  el.dispatchEvent(new KeyboardEvent('keyup',    { bubbles: true }));
+  el.dispatchEvent(new Event('blur',   { bubbles: true }));
+}
+
+function fillInputs(inputEl: HTMLInputElement, entry: any) {
+  const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input'))
+    .filter(i => i.offsetParent !== null); // sadece görünür input'lar
+  const idx = inputs.indexOf(inputEl);
+
+  if (inputEl.type === 'password') {
+    // Şifre alanına gelindi: önce username'i bul ve doldur, sonra şifreyi
+    for (let i = idx - 1; i >= 0; i--) {
+      const prev = inputs[i];
+      if (prev.type === 'text' || prev.type === 'email') {
+        triggerFill(prev, entry.username || '');
+        break;
+      }
+    }
+    triggerFill(inputEl, entry.pass || '');
+  } else {
+    // Username/email alanına gelindi: doldur, sonra password alanını bul
+    triggerFill(inputEl, entry.username || '');
+    for (let i = idx + 1; i < inputs.length; i++) {
+      const next = inputs[i];
+      if (next.type === 'password') {
+        triggerFill(next, entry.pass || '');
+        break;
+      }
+    }
+  }
+}
+
+// ─── Entry Row Component ───
+const EntryRow = ({ entry, onFill }: { entry: any; onFill: (e: any) => void }) => {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div
+      style={STYLES.entryRow(hovered)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onMouseDown={(e) => e.preventDefault()} // focus kaybını engelle
+      onClick={onFill}
+    >
+      <div style={STYLES.avatar(entry.title?.charAt(0)?.toUpperCase() || '?')}>
+        {entry.title?.charAt(0)?.toUpperCase() || '?'}
+      </div>
+      <div style={STYLES.entryInfo}>
+        <div style={STYLES.entryTitle}>{entry.title}</div>
+        <div style={STYLES.entryUser}>{entry.username || 'Kullanıcı adı yok'}</div>
+      </div>
+      <span style={STYLES.fillArrow}>→</span>
+    </div>
+  );
+};
+
+// ─── Ana Overlay Component ───
 const AegisOverlay = () => {
   const [activeRect, setActiveRect] = useState<DOMRect | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [filled, setFilled] = useState(false);
-  const [vaultPasswords, setVaultPasswords] = useState<any[]>([]);
   const [matchingPasswords, setMatchingPasswords] = useState<any[]>([]);
-  const [isVaultLocked, setIsVaultLocked] = useState(true);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 🔒 Kasa kilit durumunu dinle (Background Service Worker'dan)
-  useEffect(() => {
-    const checkVaultStatus = async () => {
-      try {
-        const status = await browser.runtime.sendMessage({ type: "GET_VAULT_STATUS" });
-        setIsVaultLocked(!status?.isUnlocked);
-      } catch (e) {
-        setIsVaultLocked(true);
-      }
-    };
-    checkVaultStatus();
-    
-    // Periyodik kontrol (her 30 saniyede bir)
-    const intervalId = setInterval(checkVaultStatus, 30000);
-    return () => clearInterval(intervalId);
+  const clearHideTimer = () => {
+    if (hideTimer.current) {
+      clearTimeout(hideTimer.current);
+      hideTimer.current = null;
+    }
+  };
+
+  const hide = useCallback(() => {
+    clearHideTimer();
+    setIsVisible(false);
+    setFilled(false);
+    setMatchingPasswords([]);
+    inputRef.current = null;
+    setActiveRect(null);
   }, []);
 
   useEffect(() => {
     const handleFocus = async (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
+      const target = e.target as HTMLInputElement;
       if (
-        target &&
-        target.tagName === 'INPUT' &&
-        ((target as HTMLInputElement).type === 'password' || (target as HTMLInputElement).type === 'text' || (target as HTMLInputElement).type === 'email')
-      ) {
-        
-        try {
-          // 🔒 Önce kasa durumunu kontrol et
-          const status = await browser.runtime.sendMessage({ type: "GET_VAULT_STATUS" });
-          if (!status?.isUnlocked) {
-            setIsVaultLocked(true);
-            setVaultPasswords([]);
-            setMatchingPasswords([]);
-            return; // Kasa kilitli, overlay gösterme
-          }
-          setIsVaultLocked(false);
+        !target ||
+        target.tagName !== 'INPUT' ||
+        !['password', 'text', 'email'].includes(target.type)
+      ) return;
 
-          // Arka plandan güncel şifre listesini çek
-          const res = await browser.runtime.sendMessage({ type: "GET_VAULT" });
-          if (res && res.length > 0) {
-            setVaultPasswords(res);
-            
-            // Domain eşleşmesi bul
-            const domain = window.location.hostname;
-            let matches = res.filter((p: any) => p.website && domain && (p.website.includes(domain) || domain.includes(p.website)));
-            
-            // Eğer o siteye ait eşleşme yoksa kasadaki ilk 3 şifreyi öneri olarak sun
-            if (matches.length === 0) {
-              matches = res.slice(0, 3);
-            } else {
-              matches = matches.slice(0, 3); // Eşleşenleri en fazla 3 tane göster
-            }
-            
-            setMatchingPasswords(matches);
-            
-            inputRef.current = target as HTMLInputElement;
-            setActiveRect(target.getBoundingClientRect());
-            setIsVisible(true);
-            setFilled(false);
-          } else {
-            // Boş döndüyse kasa kapalıdır
-            setVaultPasswords([]);
-            setMatchingPasswords([]);
-          }
-        } catch (error) {
-          console.error("Aegis Vault arka plan ile iletişim kuramadı:", error);
-        }
+      clearHideTimer();
+
+      try {
+        const status = await browser.runtime.sendMessage({ type: 'GET_VAULT_STATUS' });
+        if (!status?.isUnlocked) { hide(); return; }
+
+        const res = await browser.runtime.sendMessage({ type: 'GET_VAULT' });
+        if (!res || res.length === 0) { hide(); return; }
+
+        const domain = window.location.hostname.replace(/^www\./, '');
+        let matches = res.filter((p: any) =>
+          p.website && (p.website.includes(domain) || domain.includes(p.website))
+        );
+        if (matches.length === 0) matches = res.slice(0, 3);
+        else matches = matches.slice(0, 3);
+
+        inputRef.current = target;
+        setActiveRect(target.getBoundingClientRect());
+        setMatchingPasswords(matches);
+        setFilled(false);
+        setIsVisible(true);
+      } catch {
+        hide();
       }
     };
 
-    const handleBlur = (e: FocusEvent) => {
-      // Small timeout to allow clicking on the tooltip
-      setTimeout(() => {
-        setIsVisible(false);
-      }, 300);
+    const handleBlur = () => {
+      // 400ms bekle — kullanıcı overlay'e tıklıyor olabilir
+      clearHideTimer();
+      hideTimer.current = setTimeout(() => hide(), 400);
     };
 
-    const handleScroll = () => {
-      if (isVisible) setIsVisible(false);
+    const handleScroll = () => hide();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') hide();
     };
 
     document.addEventListener('focusin', handleFocus);
     document.addEventListener('focusout', handleBlur);
     document.addEventListener('scroll', handleScroll, true);
+    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
       document.removeEventListener('focusin', handleFocus);
       document.removeEventListener('focusout', handleBlur);
       document.removeEventListener('scroll', handleScroll, true);
+      document.removeEventListener('keydown', handleKeyDown);
+      clearHideTimer();
     };
-  }, [isVisible, vaultPasswords]);
+  }, [hide]);
+
+  if (!isVisible || !activeRect) return null;
 
   return (
-    <div className="aegis-container" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 2147483647 }}>
-      <AnimatePresence>
-        {isVisible && activeRect && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 10, filter: 'blur(4px)' }}
-            animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, scale: 0.9, y: 10, filter: 'blur(4px)' }}
-            transition={{ type: "spring", bounce: 0.3, duration: 0.6 }}
-            style={{
-              position: 'absolute',
-              top: activeRect.bottom + 8,
-              left: activeRect.left,
-              pointerEvents: 'auto'
-            }}
-            className={cn(
-               "relative flex flex-col items-center justify-center p-[2px] rounded-2xl",
-               "overflow-hidden group cursor-pointer"
-            )}
-            onClick={() => {
-              setFilled(true);
-              setTimeout(() => setIsVisible(false), 1200);
-            }}
-          >
-            {/* Ambient Background Glow Effect (Magic UI Look) */}
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-30 group-hover:opacity-60 blur-xl transition-opacity duration-500" />
-            
-            {/* The Liquid Glass Tooltip */}
-            <div className={cn(
-              "relative w-64 p-4 rounded-xl flex flex-col gap-3",
-              "bg-white/10 dark:bg-gray-950/40 backdrop-blur-xl",
-              "border border-white/20 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.12)]"
-            )}>
-              <div className="flex items-center gap-2 mb-1">
-                <Lock className="w-4 h-4 text-blue-400" />
-                <span className="font-semibold text-sm tracking-tight text-gray-800 dark:text-gray-100 font-[Geist Mono,monospace]">
-                  Aegis Vault
-                </span>
-              </div>
+    <div style={STYLES.container}>
+      <div
+        style={STYLES.popup(activeRect.bottom, activeRect.left)}
+        onMouseEnter={clearHideTimer}
+        onMouseLeave={() => {
+          hideTimer.current = setTimeout(() => hide(), 300);
+        }}
+      >
+        {/* Header */}
+        <div style={STYLES.header}>
+          <div style={STYLES.logo}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z" fill="white" opacity="0.9"/>
+            </svg>
+          </div>
+          <span style={STYLES.headerTitle}>Aegis Vault</span>
+          <span style={STYLES.headerSub}>{matchingPasswords.length} kayıt</span>
+        </div>
 
-              {!filled ? (
-                <div className="flex flex-col gap-2">
-                  {matchingPasswords.length > 0 ? matchingPasswords.map((p, idx) => (
-                    <div 
-                      key={idx} 
-                      onMouseDown={(e) => {
-                         // Prevent losing focus from input
-                         e.preventDefault();
-                      }}
-                      onClick={() => {
-                         // Autofill logic
-                         const activeEl = inputRef.current;
-                         if (activeEl) {
-                            const inputs = Array.from(document.querySelectorAll('input'));
-                            const idx = inputs.indexOf(activeEl);
-                            
-                            if (activeEl.type === 'password') {
-                               // Kasa focus'u bir password alanıysa
-                               activeEl.value = p.pass;
-                               activeEl.dispatchEvent(new Event('input', { bubbles: true }));
-                               
-                               // Geriye doğru gidip username alanını bul
-                               for (let i = idx - 1; i >= 0; i--) {
-                                  const prev = inputs[i];
-                                  // Gizli olmayan text veya email alanını kabul et
-                                  if ((prev.type === 'text' || prev.type === 'email') && prev.style.display !== 'none' && prev.type !== 'hidden') {
-                                     prev.value = p.username || '';
-                                     prev.dispatchEvent(new Event('input', { bubbles: true }));
-                                     break; 
-                                  }
-                               }
-                            } else if (activeEl.type === 'text' || activeEl.type === 'email') {
-                               // Kasa focus'u bir username alanına yapışmışsa
-                               activeEl.value = p.username || '';
-                               activeEl.dispatchEvent(new Event('input', { bubbles: true }));
-                               
-                               // İleriye doğru gidip password alanını bul
-                               for (let i = idx + 1; i < inputs.length; i++) {
-                                  const next = inputs[i];
-                                  if (next.type === 'password') {
-                                     next.value = p.pass;
-                                     next.dispatchEvent(new Event('input', { bubbles: true }));
-                                     break; 
-                                  }
-                               }
-                            }
-                         }
-                         setFilled(true);
-                         setTimeout(() => setIsVisible(false), 800);
-                      }} 
-                      className="flex items-center gap-3 p-2 rounded-lg bg-white/40 dark:bg-black/40 hover:bg-white/60 dark:hover:bg-black/60 transition-colors cursor-pointer border border-transparent hover:border-blue-500/30"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--color-sage-green)] to-[#2D3748] flex items-center justify-center text-white font-bold shadow-inner" style={{background: 'linear-gradient(to bottom right, #72886f, #101828)'}}>
-                        {p.title.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex flex-col items-start font-[Geist Mono,monospace] w-[140px]">
-                        <span className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate w-full">{p.title}</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate w-full">{p.username || 'No Username'}</span>
-                      </div>
-                    </div>
-                  )) : (
-                    <div className="text-xs text-gray-500 text-center py-2">Kasa Kapalı veya Boş</div>
-                  )}
-                </div>
-              ) : (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex items-center justify-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg"
-                >
-                  <CheckCircle2 className="w-5 h-5 text-green-500" />
-                  <span className="text-sm font-medium text-green-600 dark:text-green-400 font-[Geist Mono,monospace]">
-                    Filled Successfully
-                  </span>
-                </motion.div>
-              )}
+        {/* Body */}
+        <div style={STYLES.body}>
+          {!filled ? (
+            matchingPasswords.length > 0 ? (
+              matchingPasswords.map((entry, idx) => (
+                <EntryRow
+                  key={idx}
+                  entry={entry}
+                  onFill={() => {
+                    clearHideTimer();
+                    if (inputRef.current) {
+                      fillInputs(inputRef.current, entry);
+                    }
+                    setFilled(true);
+                    setTimeout(() => hide(), 900);
+                  }}
+                />
+              ))
+            ) : (
+              <div style={STYLES.emptyText}>Bu site için kayıt bulunamadı</div>
+            )
+          ) : (
+            <div style={STYLES.successBox}>
+              <span style={{ fontSize: 16 }}>✓</span>
+              <span style={STYLES.successText}>Başarıyla dolduruldu</span>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
 
+// ─── Content Script Tanımı ───
 export default defineContentScript({
-  // 🛡️ SADECE Aegis domainlerinde otomatik çalış. Diğer sitelerde runtime (on-demand) enjeksiyon yapılacak.
   matches: ['https://*.aegisvault.xyz/*', 'http://localhost:5173/*', 'http://127.0.0.1:5173/*'],
   cssInjectionMode: 'ui',
-  
-  async main(ctx) {
-    console.log('[Aegis Vault] WXT Shadow DOM UI Active');
 
-    // Eklenti, Aegis sunucusundan (localhost veya üretim) gelen şifreleri arka plana gönderir
-    // Ayrıca kasa kilitleme sinyallerini de dinler
-    // Güvenli Origin Listesi (P0-2)
+  async main(ctx) {
+    console.log('[Aegis Vault] Content Script Aktif');
+
+    // Güvenli Origin Listesi
     const TRUSTED_ORIGINS = [
       'http://localhost:5173',
       'http://127.0.0.1:5173',
       'https://app.aegisvault.xyz',
       'https://www.aegisvault.xyz',
-      'https://aegisvault.xyz'
+      'https://aegisvault.xyz',
     ];
 
     let sessionNonce = crypto.randomUUID();
 
-    window.addEventListener("message", (event) => {
+    window.addEventListener('message', (event) => {
       if (event.source !== window || !event.data) return;
-      
-      // ORIGIN DOĞRULAMASI (P0-2)
-      if (!TRUSTED_ORIGINS.includes(event.origin) && !event.origin.startsWith('chrome-extension://')) {
-        return; 
-      }
-      
-      // 🔓 Kasa açıldı: Şifreleri background'a gönder
-      if (event.data.type === "AEGIS_SYNC_VAULT") {
-        // NONCE/SESSION DOĞRULAMASI (P0-2)
+      if (!TRUSTED_ORIGINS.includes(event.origin) && !event.origin.startsWith('chrome-extension://')) return;
+
+      if (event.data.type === 'AEGIS_SYNC_VAULT') {
         if (!event.data.nonce || event.data.nonce !== sessionNonce) {
-          console.warn("[Aegis Vault] 🚫 Güvenlik İhlali: Geçersiz veya tekrar oynatılmış nonce tespit edildi.");
+          console.warn('[Aegis Vault] Geçersiz nonce');
           return;
         }
-        
-        // İşlem başarılı, replay'i engellemek için nonce yenile
         sessionNonce = crypto.randomUUID();
         window.postMessage({ type: 'AEGIS_NONCE_UPDATE', nonce: sessionNonce }, event.origin);
-        try {
-          import('wxt/browser').then(({ browser }) => {
-            browser.runtime.sendMessage({ type: "SAVE_VAULT", data: event.data.payload }).catch(() => {});
-          });
-        } catch (e) {}
+        browser.runtime.sendMessage({ type: 'SAVE_VAULT', data: event.data.payload }).catch(() => {});
       }
-      
-      // 🔒 Kasa kilitlendi: Background'daki önbelleği temizle
-      if (event.data.type === "AEGIS_LOCK_VAULT") {
-        // NONCE/SESSION DOĞRULAMASI (P0-2)
-        if (!event.data.nonce || event.data.nonce !== sessionNonce) {
-           console.warn("[Aegis Vault] 🚫 Güvenlik İhlali: Geçersiz nonce tespit edildi (LOCK).");
-           return;
-        }
 
+      if (event.data.type === 'AEGIS_LOCK_VAULT') {
+        if (!event.data.nonce || event.data.nonce !== sessionNonce) {
+          console.warn('[Aegis Vault] Geçersiz nonce (LOCK)');
+          return;
+        }
         sessionNonce = crypto.randomUUID();
         window.postMessage({ type: 'AEGIS_NONCE_UPDATE', nonce: sessionNonce }, event.origin);
-
-        try {
-          import('wxt/browser').then(({ browser }) => {
-            browser.runtime.sendMessage({ type: "LOCK_VAULT" }).catch(() => {});
-            console.log("[Aegis Vault] 🔐 Kilit sinyali arka plana iletildi.");
-          });
-        } catch (e) {}
+        browser.runtime.sendMessage({ type: 'LOCK_VAULT' }).catch(() => {});
       }
     });
 
-    // 🤝 Handshake: Content script yüklendiğinde sayfaya "hazırım" sinyali gönder.
-    // Başlangıç nonce değerini ileterek güvenli oturumu başlat.
-    // Target origin'i spesifikleştir (P0-2)
     const currentOrigin = window.location.origin;
     if (TRUSTED_ORIGINS.includes(currentOrigin)) {
-       window.postMessage({ type: 'AEGIS_EXTENSION_READY', nonce: sessionNonce }, currentOrigin);
-       console.log("[Aegis Vault] 🤝 Güvenli content script hazır sinyali gönderildi.");
+      window.postMessage({ type: 'AEGIS_EXTENSION_READY', nonce: sessionNonce }, currentOrigin);
     }
 
-    // Create the global style injection for Geist Mono font
-    const fontLink = document.createElement('link');
-    fontLink.rel = 'stylesheet';
-    fontLink.href = 'https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap';
-    document.head.appendChild(fontLink);
-
     const ui = await createShadowRootUi(ctx, {
-      name: 'aegis-premium-ui',
+      name: 'aegis-autofill-ui',
       position: 'overlay',
       zIndex: 2147483647,
       onMount: (container) => {
-        // Since React 18, we use createRoot
-        const containerDiv = document.createElement('div');
-        // Let's pass 'dark' to see dark mode natively if preferred, or rely on system
-        containerDiv.className = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : '';
-        container.appendChild(containerDiv);
-
-        const root = createRoot(containerDiv);
+        const root = createRoot(container);
         root.render(<AegisOverlay />);
-        return { root, containerDiv };
+        return root;
       },
-      onRemove: (elements) => {
-        elements?.root?.unmount();
-        elements?.containerDiv?.remove();
-      }
+      onRemove: (root) => {
+        root?.unmount();
+      },
     });
 
     ui.mount();

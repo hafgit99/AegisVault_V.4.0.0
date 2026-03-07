@@ -107,8 +107,12 @@ export default defineBackground({
 
       for (const host of hosts) {
         try {
-          // 1. Önce status endpoint'ten token al
-          const statusRes = await fetch(`http://${host}:23456/api/status`);
+          // Extension service worker fetch'leri origin header taşımaz.
+          // X-Aegis-Client header ile kimliğimizi bildiriyoruz.
+          const aegisHeaders = { 'X-Aegis-Client': 'extension' };
+
+          // 1. Status endpoint — kasa açık mı?
+          const statusRes = await fetch(`http://${host}:23456/api/status`, { headers: aegisHeaders });
           if (!statusRes.ok) continue;
           const status = await statusRes.json();
           
@@ -121,8 +125,8 @@ export default defineBackground({
             return; // Bulduk ama kilitli, diğer host'u denemeye gerek yok
           }
 
-          // 2. Vault verilerini al (Origin tabanlı doğrulama yeterli)
-          const vaultRes = await fetch(`http://${host}:23456/api/vault`);
+          // 2. Vault verilerini al
+          const vaultRes = await fetch(`http://${host}:23456/api/vault`, { headers: aegisHeaders });
           if (!vaultRes.ok) continue;
           const data = await vaultRes.json();
           
@@ -140,6 +144,7 @@ export default defineBackground({
           }
         } catch (e) {
           // Bu host/port kombinasyonu erişilebilir değil
+          console.debug(`[Aegis Vault] 🔍 Desktop sync deneme başarısız (${host}):`, e);
         }
       }
     };
@@ -309,6 +314,72 @@ export default defineBackground({
           isUnlocked: unlocked, 
           entryCount: unlocked ? vaultCache.length : 0 
         });
+      }
+
+      // ── FILL_CREDENTIALS: Popup'tan gelen fill komutu ──
+      // scripting.executeScript ile doğrudan sayfaya fill yapar.
+      // WXT context gerektirmez, her sitede çalışır.
+      else if (message.type === "FILL_CREDENTIALS") {
+        const { tabId, entry } = message;
+        if (!tabId || !entry) { sendResponse({ success: false }); return true; }
+
+        browser.scripting.executeScript({
+          target: { tabId },
+          func: (username: string, password: string) => {
+            // ── Güvenilir fill fonksiyonu (React/Vue/Angular/vanilla) ──
+            function fillField(el: HTMLInputElement, value: string) {
+              el.focus();
+              // React controlled input için native setter zorunlu
+              const nativeSetter = Object.getOwnPropertyDescriptor(
+                window.HTMLInputElement.prototype, 'value'
+              )?.set;
+              if (nativeSetter) nativeSetter.call(el, value);
+              else el.value = value;
+
+              ['input', 'change'].forEach(evtName => {
+                el.dispatchEvent(new Event(evtName, { bubbles: true, cancelable: true }));
+              });
+              el.dispatchEvent(new KeyboardEvent('keydown',  { bubbles: true }));
+              el.dispatchEvent(new KeyboardEvent('keyup',    { bubbles: true }));
+              el.dispatchEvent(new Event('blur', { bubbles: true }));
+            }
+
+            // Görünür input'ları topla
+            const inputs = Array.from(
+              document.querySelectorAll<HTMLInputElement>('input')
+            ).filter(i => {
+              const s = window.getComputedStyle(i);
+              return s.display !== 'none' && s.visibility !== 'hidden' && i.offsetParent !== null;
+            });
+
+            // Şifre alanını bul
+            const pwField = inputs.find(i => i.type === 'password');
+            if (pwField) {
+              // Şifre alanından geriye doğru username'i bul
+              const pwIdx = inputs.indexOf(pwField);
+              for (let i = pwIdx - 1; i >= 0; i--) {
+                const f = inputs[i];
+                if (f.type === 'text' || f.type === 'email') {
+                  fillField(f, username);
+                  break;
+                }
+              }
+              fillField(pwField, password);
+            } else {
+              // Şifre alanı yoksa (tek adımlı giriş) ilk text/email'i doldur
+              const textField = inputs.find(i => i.type === 'text' || i.type === 'email');
+              if (textField) fillField(textField, username);
+            }
+          },
+          args: [entry.username, entry.pass],
+        }).then(() => {
+          sendResponse({ success: true });
+        }).catch((err: any) => {
+          console.error('[Aegis] Fill hatası:', err);
+          sendResponse({ success: false, error: String(err) });
+        });
+
+        return true; // async sendResponse için gerekli
       }
     });
 

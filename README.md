@@ -28,8 +28,9 @@
 ## ✨ Key Features
 
 -   **🔒 Military-Grade Encryption**: Powered by AES-256 via `crypto-js` and `hash-wasm`.
--   **🛡️ JIT Extension Bridge**: Just-In-Time (JIT) content script injection ensures the extension only acts on your command.
+-   **🛡️ JIT Scripting Injection**: Uses high-performance `browser.scripting` for injection, eliminating persistent content script overhead and increasing privacy.
 -   **🔄 Nonce & Replay Protection**: Secure `postMessage` protocol with single-use cryptographic nonces for sync actions.
+-   **🌉 Loopback-Extension Bridge**: A dedicated `X-Aegis-Client` header-based authentication for reliable communication between the extension and desktop client.
 -   **🏗️ Hardened KDF**: Implements Argon2id (64MB / 3 iterations) for master password hashing and encrypted backups.
 -   **📊 QR Data Sync**: Synchronize your vault across devices securely using local QR-based data sync (No cloud needed).
 -   **🎨 Premium UI/UX**: Stunning interface with glassmorphism, Framer Motion, and a curated color palette.
