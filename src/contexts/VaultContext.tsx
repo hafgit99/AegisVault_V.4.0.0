@@ -7,6 +7,19 @@ import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import DOMPurify from "dompurify";
 
+// Güvenli eklenti haberleşmesi için oturum nonce'u (P0-2)
+let currentExtensionNonce: string | null = null;
+
+if (typeof window !== "undefined") {
+  window.addEventListener("message", (event) => {
+    if (event.data?.type === "AEGIS_EXTENSION_READY" || event.data?.type === "AEGIS_NONCE_UPDATE") {
+      if (event.data.nonce) {
+        currentExtensionNonce = event.data.nonce;
+      }
+    }
+  });
+}
+
 // ─────────────────────────────────────────────────────────────────
 // Türler
 // ─────────────────────────────────────────────────────────────────
@@ -184,7 +197,11 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
         website: p.website,
       }));
 
-      window.postMessage({ type: "AEGIS_SYNC_VAULT", payload }, "*");
+      if (currentExtensionNonce) {
+        window.postMessage({ type: "AEGIS_SYNC_VAULT", payload, nonce: currentExtensionNonce }, window.location.origin);
+        // Sadece bir kez kullanılabilir, yeni nonce gelene kadar bekletir
+        currentExtensionNonce = null; 
+      }
 
       try {
         const electronApi = (window as any).aegisElectron;
@@ -363,7 +380,10 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
     });
     setVisiblePasswords(new Set());
 
-    window.postMessage({ type: "AEGIS_LOCK_VAULT" }, "*");
+    if (currentExtensionNonce) {
+      window.postMessage({ type: "AEGIS_LOCK_VAULT", nonce: currentExtensionNonce }, window.location.origin);
+      currentExtensionNonce = null;
+    }
 
     try {
       const electronApi = (window as any).aegisElectron;

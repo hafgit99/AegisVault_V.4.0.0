@@ -14,9 +14,42 @@ export default defineBackground({
     });
     
     browser.contextMenus.create({
-      id: "aegis-wxt-context",
-      title: "Kasa ile ilgilen",
-      contexts: ["editable"]
+      id: "aegis-fill",
+      title: "Aegis: Bu sayfayı analiz et ve doldur",
+      contexts: ["page", "editable"]
+    });
+
+    // ─── RUNTIME ENJEKSİYON (P0-3: Attack Surface Reduction) ───
+    // Kullanıcı ikona tıkladığında veya sağ tık menüsünü kullandığında
+    // content script o sekmeye inject edilir.
+    const injectContentScript = async (tabId: number) => {
+      try {
+        // Script ve CSS enjeksiyonu
+        await browser.scripting.executeScript({
+          target: { tabId },
+          files: ['content-scripts/content.js']
+        });
+        
+        // CSS dosyasının varlığından emin olun (WXT build çıktısı)
+        await browser.scripting.insertCSS({
+          target: { tabId },
+          files: ['content-scripts/content.css']
+        }).catch(() => {}); // CSS olmayabilirse hata fırlatmasın
+        
+        console.log(`[Aegis Vault] 💉 JIT: Content script tabId:${tabId} üzerine enjekte edildi.`);
+      } catch (err) {
+        console.error("[Aegis Vault] ❌ Enjeksiyon hatası (Scripting API):", err);
+      }
+    };
+
+    browser.action.onClicked.addListener((tab) => {
+      if (tab.id) injectContentScript(tab.id);
+    });
+
+    browser.contextMenus.onClicked.addListener((info, tab) => {
+      if (info.menuItemId === "aegis-fill" && tab?.id) {
+        injectContentScript(tab.id);
+      }
     });
 
     // ──────────────────────────────────────────────────────────────────────
@@ -79,7 +112,7 @@ export default defineBackground({
           if (!statusRes.ok) continue;
           const status = await statusRes.json();
           
-          if (!status.isUnlocked || !status.token) {
+          if (!status.isUnlocked) {
             if (isVaultUnlocked) {
               console.log("[Aegis Vault] 🖥️ Masaüstü kasası kilitli tespit edildi.");
               secureWipeCache();
@@ -88,10 +121,8 @@ export default defineBackground({
             return; // Bulduk ama kilitli, diğer host'u denemeye gerek yok
           }
 
-          // 2. Token ile vault verilerini al
-          const vaultRes = await fetch(`http://${host}:23456/api/vault`, {
-            headers: { 'X-Aegis-Token': status.token }
-          });
+          // 2. Vault verilerini al (Origin tabanlı doğrulama yeterli)
+          const vaultRes = await fetch(`http://${host}:23456/api/vault`);
           if (!vaultRes.ok) continue;
           const data = await vaultRes.json();
           

@@ -137,6 +137,21 @@ export class VaultService {
     return computedHash === stored.verificationHash;
   }
 
+  // P1-3 Kritik aksiyonlarda re-auth
+  async verifyCurrentPassword(password: string): Promise<boolean> {
+    if (!this.opfsMockDb && !this.sqliteDb) return false;
+    let authMetadata: any = null;
+    if (this.useSQLite && this.sqliteDb) {
+      const sqlAuth = this.sqliteDb.getMetadata('auth_credential');
+      if (sqlAuth && sqlAuth.credential) authMetadata = sqlAuth;
+    }
+    if (!authMetadata && this.opfsMockDb) {
+      authMetadata = await this.opfsMockDb.get('vault_metadata', 'auth_credential');
+    }
+    if (!authMetadata || !authMetadata.credential) return false;
+    return this.verifyPassword(password, authMetadata.credential);
+  }
+
   // Derives Web Crypto AES-GCM Key from Password & Device Secret (Zero Knowledge) via Argon2id
   async deriveMasterKey(password: string, secretKey: string, saltB64?: string): Promise<string> {
     let salt: Uint8Array;
@@ -441,15 +456,18 @@ export class VaultService {
 
     this.isConnected = true;
     
-    // Auto-seed if empty for demo
-    const count = await this.opfsMockDb.count('passwords');
-    if (count === 0) {
-      if (dbName === 'aegis_opfs_vault') {
-        await this.addPassword({ title: "Google", category: "Work", username: "admin@company.com", pass: "p@ssw0rd123!", website: "https://google.com" });
-        await this.addPassword({ title: "Bank of America", category: "Bank", username: "user123", pass: "S3cur3B@nk!99", website: "https://bankofamerica.com" });
-      } else {
-        await this.addPassword({ title: "Instagram", category: "Social", username: "traveler_99", pass: "Summer2023!", website: "https://instagram.com" });
-        await this.addPassword({ title: "Netflix", category: "Entertainment", username: "family_share", pass: "NetflixAndChill", website: "https://netflix.com" });
+    // Auto-seed if empty for demo (P0-4)
+    // Sadece Dev ortamında otomatik örnek veri ekle
+    if (import.meta.env.DEV) {
+      const count = await this.opfsMockDb.count('passwords');
+      if (count === 0) {
+        if (dbName === 'aegis_opfs_vault') {
+          await this.addPassword({ title: "Google", category: "Work", username: "admin@company.com", pass: "p@ssw0rd123!", website: "https://google.com" });
+          await this.addPassword({ title: "Bank of America", category: "Bank", username: "user123", pass: "S3cur3B@nk!99", website: "https://bankofamerica.com" });
+        } else {
+          await this.addPassword({ title: "Instagram", category: "Social", username: "traveler_99", pass: "Summer2023!", website: "https://instagram.com" });
+          await this.addPassword({ title: "Netflix", category: "Entertainment", username: "family_share", pass: "NetflixAndChill", website: "https://netflix.com" });
+        }
       }
     }
     

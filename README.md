@@ -1,12 +1,13 @@
-# 🛡️ Aegis Vault V.4.0.0
+# 🛡️ Aegis Vault V.4.0.0 (Fort Knox Update)
 
 ![Aegis Vault Banner](https://raw.githubusercontent.com/hafgit99/AegisVault_V.4.0.0/main/public/icon.png)
 
 > **The Ultimate Secure Vault for Your Digital Life.**
-> Experience professional-grade security with a premium aesthetic.
+> Experience professional-grade security with a premium aesthetic and a hardened cross-platform bridge.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-4.0.0-blue.svg)](https://github.com/hafgit99/AegisVault_V.4.0.0)
+[![Version](https://img.shields.io/badge/Version-4.0.0--Hardened-blue.svg)](https://github.com/hafgit99/AegisVault_V.4.0.0)
+[![Security Audit](https://img.shields.io/badge/Security-Verified-green.svg)](RELEASE_CHECKLIST.md)
 [![React](https://img.shields.io/badge/React-19-61dafb.svg?logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6.svg?logo=typescript)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-7-646cff.svg?logo=vite)](https://vitejs.dev/)
@@ -26,13 +27,13 @@
 
 ## ✨ Key Features
 
--   **🔒 Military-Grade Encryption**: Powered by AES-256 via `crypto-js` and `hash-wasm` for maximum data protection.
--   **🌐 Multi-Platform Support**: Use it as a Web App, a Desktop application (Electron), or a Browser Extension.
--   **🎨 Premium UI/UX**: A stunning, modern interface with glassmorphism, smooth animations (Framer Motion), and a curated Sage Green & Cloud Dancer color palette.
--   **🌍 Multi-lingual**: Full support for **English** and **Turkish**, automatically detecting your preference.
--   **📊 QR Data Sync**: Synchronize your vault across devices securely using local QR-based data sync.
--   **♻️ Smart Trash System**: Recently deleted items are held in a secure trash bin for 30 days before permanent removal.
--   **🔑 Password Generator**: Built-in secure password generator with strength analysis.
+-   **🔒 Military-Grade Encryption**: Powered by AES-256 via `crypto-js` and `hash-wasm`.
+-   **🛡️ JIT Extension Bridge**: Just-In-Time (JIT) content script injection ensures the extension only acts on your command.
+-   **🔄 Nonce & Replay Protection**: Secure `postMessage` protocol with single-use cryptographic nonces for sync actions.
+-   **🏗️ Hardened KDF**: Implements Argon2id (64MB / 3 iterations) for master password hashing and encrypted backups.
+-   **📊 QR Data Sync**: Synchronize your vault across devices securely using local QR-based data sync (No cloud needed).
+-   **🎨 Premium UI/UX**: Stunning interface with glassmorphism, Framer Motion, and a curated color palette.
+-   **🔑 Password Generator**: Built-in secure password generator with real-time strength analysis.
 
 ---
 
@@ -40,12 +41,12 @@
 
 | Layer | Technologies |
 | :--- | :--- |
-| **Frontend** | React 19, TypeScript, Vite |
-| **Styling** | Tailwind CSS 4, Framer Motion, Lucide Icons |
-| **Desktop** | Electron 40, Electron Builder |
-| **Extension** | WXT / Vite Extension Config |
-| **Storage** | IndexedDB (idb), WA-SQLite |
-| **Security** | Crypto-JS, Hash-WASM, DOMPurify |
+| **Frontend** | React 19, TypeScript, Vite, Framer Motion |
+| **Styling** | Tailwind CSS 4, Lucide Icons, Custom UI System |
+| **Desktop** | Electron 40, Electron Builder (Hardened IPC) |
+| **Extension** | WXT Framework (Manifest V3, JIT Content Script) |
+| **Storage** | IndexedDB (idb), WA-SQLite (OPFS Persistence) |
+| **Security** | Argon2id, AES-GCM, Hash-WASM, DOMPurify |
 
 ---
 

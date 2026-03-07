@@ -237,7 +237,8 @@ const AegisOverlay = () => {
 };
 
 export default defineContentScript({
-  matches: ['<all_urls>'],
+  // 🛡️ SADECE Aegis domainlerinde otomatik çalış. Diğer sitelerde runtime (on-demand) enjeksiyon yapılacak.
+  matches: ['https://*.aegisvault.xyz/*', 'http://localhost:5173/*', 'http://127.0.0.1:5173/*'],
   cssInjectionMode: 'ui',
   
   async main(ctx) {
@@ -245,11 +246,36 @@ export default defineContentScript({
 
     // Eklenti, Aegis sunucusundan (localhost veya üretim) gelen şifreleri arka plana gönderir
     // Ayrıca kasa kilitleme sinyallerini de dinler
+    // Güvenli Origin Listesi (P0-2)
+    const TRUSTED_ORIGINS = [
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'https://app.aegisvault.xyz',
+      'https://www.aegisvault.xyz',
+      'https://aegisvault.xyz'
+    ];
+
+    let sessionNonce = crypto.randomUUID();
+
     window.addEventListener("message", (event) => {
       if (event.source !== window || !event.data) return;
       
+      // ORIGIN DOĞRULAMASI (P0-2)
+      if (!TRUSTED_ORIGINS.includes(event.origin) && !event.origin.startsWith('chrome-extension://')) {
+        return; 
+      }
+      
       // 🔓 Kasa açıldı: Şifreleri background'a gönder
       if (event.data.type === "AEGIS_SYNC_VAULT") {
+        // NONCE/SESSION DOĞRULAMASI (P0-2)
+        if (!event.data.nonce || event.data.nonce !== sessionNonce) {
+          console.warn("[Aegis Vault] 🚫 Güvenlik İhlali: Geçersiz veya tekrar oynatılmış nonce tespit edildi.");
+          return;
+        }
+        
+        // İşlem başarılı, replay'i engellemek için nonce yenile
+        sessionNonce = crypto.randomUUID();
+        window.postMessage({ type: 'AEGIS_NONCE_UPDATE', nonce: sessionNonce }, event.origin);
         try {
           import('wxt/browser').then(({ browser }) => {
             browser.runtime.sendMessage({ type: "SAVE_VAULT", data: event.data.payload }).catch(() => {});
@@ -259,6 +285,15 @@ export default defineContentScript({
       
       // 🔒 Kasa kilitlendi: Background'daki önbelleği temizle
       if (event.data.type === "AEGIS_LOCK_VAULT") {
+        // NONCE/SESSION DOĞRULAMASI (P0-2)
+        if (!event.data.nonce || event.data.nonce !== sessionNonce) {
+           console.warn("[Aegis Vault] 🚫 Güvenlik İhlali: Geçersiz nonce tespit edildi (LOCK).");
+           return;
+        }
+
+        sessionNonce = crypto.randomUUID();
+        window.postMessage({ type: 'AEGIS_NONCE_UPDATE', nonce: sessionNonce }, event.origin);
+
         try {
           import('wxt/browser').then(({ browser }) => {
             browser.runtime.sendMessage({ type: "LOCK_VAULT" }).catch(() => {});
@@ -269,11 +304,14 @@ export default defineContentScript({
     });
 
     // 🤝 Handshake: Content script yüklendiğinde sayfaya "hazırım" sinyali gönder.
-    // Eğer Aegis Vault PWA bu sayfada açıksa, kasa verilerini yeniden gönderecektir.
-    // Bu, eklenti yenilenmesi veya geç yüklenme durumlarını çözer.
-    window.postMessage({ type: 'AEGIS_EXTENSION_READY' }, "*");
-    console.log("[Aegis Vault] 🤝 Content script hazır sinyali gönderildi.");
-    
+    // Başlangıç nonce değerini ileterek güvenli oturumu başlat.
+    // Target origin'i spesifikleştir (P0-2)
+    const currentOrigin = window.location.origin;
+    if (TRUSTED_ORIGINS.includes(currentOrigin)) {
+       window.postMessage({ type: 'AEGIS_EXTENSION_READY', nonce: sessionNonce }, currentOrigin);
+       console.log("[Aegis Vault] 🤝 Güvenli content script hazır sinyali gönderildi.");
+    }
+
     // Create the global style injection for Geist Mono font
     const fontLink = document.createElement('link');
     fontLink.rel = 'stylesheet';

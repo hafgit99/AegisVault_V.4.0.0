@@ -9,6 +9,10 @@ import { QRExporter } from "../QRExporter";
 import { QRScanner } from "../QRScanner";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
+import { BackupService } from "../../lib/BackupService";
+import { ReAuthModal } from "../ReAuthModal";
+import { WipeConfirmationModal } from "../WipeConfirmationModal";
+import { PasswordGenerator } from "../settings/PasswordGenerator";
 
 interface SettingsDrawerProps {
   isOpen: boolean;
@@ -58,43 +62,19 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
   // UI State
   const [showWeakPasswordsPopup, setShowWeakPasswordsPopup] = useState(false);
   const [showSecretMenu, setShowSecretMenu] = useState(false);
+  const [showWipeModal, setShowWipeModal] = useState(false);
   const [logoClicks, setLogoClicks] = useState(0);
 
-  // Entropy hesapla
-  const calculateEntropy = (len: number, num: boolean, sym: boolean) => {
-    let pool = 52; // a-zA-Z
-    if (num) pool += 10;
-    if (sym) pool += 33;
-    return Math.round(len * Math.log2(pool));
-  };
+  // ReAuth State (P1-3)
+  const [reAuthAction, setReAuthAction] = useState<{ name: string; action: () => void } | null>(null);
 
-  useEffect(() => {
-    setGenEntropy(calculateEntropy(genLength, genNumbers, genSymbols));
-  }, [genLength, genNumbers, genSymbols]);
-
-  // Parola üreteci
-  const handleGenerateStandalone = () => {
-    let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    if (genNumbers) chars += "0123456789";
-    if (genSymbols) chars += "!@#$%^&*()_+=-~[]{}|;:,.<>?";
-    const arr = new Uint32Array(genLength);
-    window.crypto.getRandomValues(arr);
-    setStandalonePassword(Array.from(arr).map((n) => chars[n % chars.length]).join(""));
-  };
-
-  useEffect(() => {
-    if (isOpen) handleGenerateStandalone();
-  }, [isOpen]);
-
-  const copyStandalonePassword = () => {
-    navigator.clipboard.writeText(standalonePassword);
-    setIsStandaloneCopied(true);
-    toast.success(t("copiedClipboard"));
-    setTimeout(() => setIsStandaloneCopied(false), 2000);
+  // Action Wrappers for ReAuth (P1-3)
+  const requireAuth = (name: string, action: () => void) => {
+    setReAuthAction({ name, action });
   };
 
   // Export
-  const handleExport = async (format: "vault" | "csv" | "json") => {
+  const executeExport = async (format: "vault" | "csv" | "json") => {
     const data = passwords;
     let content: string;
     let filename: string;
@@ -111,9 +91,22 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
       filename = "aegis_export.json";
       mimeType = "application/json";
     } else {
-      content = JSON.stringify({ version: "4.0.0", exportedAt: new Date().toISOString(), entries: data }, null, 2);
-      filename = "aegis_vault_backup.json";
-      mimeType = "application/json";
+      // P1-1 Encrypted Backup Default
+      try {
+        // Will prompt for password below in a real impl, but here we can just pass a temp UI prompt or use the same auth flow
+        // Since we already did ReAuth, the user typed their password there. 
+        // A better approach: require users to provide a password for the backup file itself. 
+        // For simplicity, we can use the same text prompt.
+        const backupPass = window.prompt(t("enterBackupPassword", "Lütfen yedeği şifrelemek için bir parola belirleyin:"));
+        if (!backupPass) return;
+        
+        content = await BackupService.encryptBackup(data, backupPass);
+        filename = "aegis_vault_backup.aes";
+        mimeType = "application/octet-stream";
+      } catch (err) {
+        toast.error("Encryption failed");
+        return;
+      }
     }
 
     const blob = new Blob([content], { type: mimeType });
@@ -128,6 +121,15 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
     toast.success(t("exportSuccess"));
   };
 
+  const handleExport = (format: "vault" | "csv" | "json") => {
+    if (format !== "vault") {
+      if (!window.confirm("UYARI: Düz metin (Plaintext) dışa aktarım, şifrelerinizin savunmasız bir biçimde kaydedilmesine neden olur. Devam etmek istediğinize emin misiniz?")) {
+        return;
+      }
+    }
+    requireAuth(t("exportAuthName", "Vault Export"), () => executeExport(format));
+  };
+
   // Import
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -136,6 +138,31 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
     setImportReport(null);
 
     try {
+      if (file.name.endsWith('.aes')) {
+         const backupPass = window.prompt("Lütfen yedeğin şifresini girin:");
+         if (!backupPass) {
+           setIsImporting(false);
+           return;
+         }
+         const text = await file.text();
+         const dec = await BackupService.decryptBackup(text, backupPass);
+         // Simulate entries object
+         const entries = dec;
+         let processes = 0;
+         setImportProgress({ status: "importing", totalAnalyzed: entries.length, processed: 0 });
+         for (const entry of entries) {
+           await vaultService.addPassword(entry);
+           processes++;
+           setImportProgress({ status: "importing", totalAnalyzed: entries.length, processed: processes });
+         }
+         setImportProgress({ status: "complete", totalAnalyzed: entries.length, processed: processes });
+         setImportReport({ total: entries.length, weak: 0, missingFields: 0 });
+         loadPasswords();
+         toast.success(t("importSuccess", { count: entries.length }));
+         setIsImporting(false);
+         return;
+      }
+
       const entries = await ImportService.parseFile(file, (progress) => {
         setImportProgress(progress);
       });
@@ -171,11 +198,12 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
     }
   };
 
-  // QR Sync Export
   const handleSyncExportInit = () => {
-    const exportData = JSON.stringify(passwords.map((p) => ({ title: p.title, username: p.username, pass: p.pass, website: p.website, category: p.category, tags: p.tags })));
-    setSyncData(exportData);
-    setSyncMode("export");
+    requireAuth("QR Sync Export", () => {
+      const exportData = JSON.stringify(passwords.map((p) => ({ title: p.title, username: p.username, pass: p.pass, website: p.website, category: p.category, tags: p.tags })));
+      setSyncData(exportData);
+      setSyncMode("export");
+    });
   };
 
   const handleSyncImportSuccess = async (data: string) => {
@@ -194,10 +222,8 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
   };
 
   const handleFactoryReset = async () => {
-    if (window.confirm(t("confirmFullWipe"))) {
-      await vaultService.wipeAllData();
-      window.location.reload();
-    }
+    await vaultService.wipeAllData();
+    window.location.reload();
   };
 
   const handleLogoClick = () => {
@@ -216,6 +242,25 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
 
   return (
     <>
+      {reAuthAction && (
+        <ReAuthModal
+          actionName={reAuthAction.name}
+          onCancel={() => setReAuthAction(null)}
+          onSuccess={() => {
+            const action = reAuthAction.action;
+            setReAuthAction(null);
+            action();
+          }}
+        />
+      )}
+
+      {showWipeModal && (
+        <WipeConfirmationModal
+          onCancel={() => setShowWipeModal(false)}
+          onConfirm={handleFactoryReset}
+        />
+      )}
+
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
         <div className="absolute inset-0 bg-[var(--color-deep-navy)]/40 backdrop-blur-sm" onClick={onClose} />
         <GlowCard className="bg-[rgba(255,255,255,0.9)] max-w-3xl w-full max-h-[90vh] overflow-y-auto backdrop-blur-[40px] border border-white/40 rounded-[2rem] p-8 relative z-10 shadow-2xl animate-in zoom-in-95 duration-300 slide-in-from-bottom-10 custom-scrollbar">
@@ -235,52 +280,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
 
           <div className="space-y-6 flex flex-col">
             {/* Advanced Generator Section */}
-            <div className="border border-[var(--color-sage-green)]/30 bg-gradient-to-br from-[var(--color-sage-green)]/5 to-transparent rounded-3xl p-6 shadow-sm relative overflow-hidden flex flex-col gap-6">
-              <div className="absolute bottom-0 left-0 right-0 h-32 opacity-20 pointer-events-none overflow-hidden">
-                <div className="w-[200%] h-full flex" style={{ transform: `translateX(-${genEntropy % 50}%)` }}>
-                  <svg className={`w-full h-full fill-[var(--color-sage-green)] ${genEntropy > 60 ? "animate-wave-fast" : "animate-wave"}`} viewBox="0 0 1440 320" preserveAspectRatio="none">
-                    <path d="M0,160L40,170.7C80,181,160,203,240,192C320,181,400,139,480,133.3C560,128,640,160,720,181.3C800,203,880,213,960,197.3C1040,181,1120,139,1200,112C1280,85,1360,75,1400,69.3L1440,64L1440,320L1400,320C1360,320,1280,320,1200,320C1120,320,1040,320,960,320C880,320,800,320,720,320C640,320,560,320,480,320C400,320,320,320,240,320C160,320,80,320,40,320L0,320Z"></path>
-                  </svg>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between relative z-10">
-                <div className="flex items-center gap-2">
-                  <Wand2 className="w-5 h-5 text-[var(--color-sage-green)]" />
-                  <h3 className="text-lg font-semibold tracking-tight">{t("advancedGenTitle")}</h3>
-                </div>
-                <span className={`text-xs font-bold px-3 py-1 rounded-md ${genEntropy > 80 ? "bg-[var(--color-sage-green)]/20 text-[var(--color-sage-green)]" : "bg-red-500/10 text-red-500"}`}>
-                  {t("entropyLabel", { entropy: genEntropy })}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between bg-white/70 rounded-xl p-4 border border-[var(--color-sage-green)]/20 shadow-inner relative z-10">
-                <span className="pass-font text-lg font-semibold text-[var(--color-deep-navy)] tracking-widest truncate mr-3 select-all">{standalonePassword}</span>
-                <div className="flex gap-2">
-                  <button onClick={handleGenerateStandalone} className="p-2.5 rounded-lg bg-white/80 hover:bg-white text-[var(--color-deep-navy)] hover:text-[var(--color-sage-green)] transition-all shadow active:scale-95" title={t("regenerateBtn")}>
-                    <Wand2 className="w-5 h-5" />
-                  </button>
-                  <button onClick={copyStandalonePassword} className={`p-2.5 rounded-lg transition-all shadow ${isStandaloneCopied ? "bg-[var(--color-sage-green)] text-white scale-110" : "bg-white/80 hover:bg-white hover:text-[var(--color-sage-green)]"}`} title={t("copyPasswordBtn")}>
-                    {isStandaloneCopied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold opacity-70">{t("lengthLabel")}: <span className="text-[var(--color-sage-green)]">{genLength}</span></label>
-                  <input type="range" min="8" max="64" value={genLength} onChange={(e) => setGenLength(parseInt(e.target.value))} className="w-full accent-[var(--color-sage-green)]" />
-                </div>
-                <div className="flex items-center justify-between md:justify-center gap-3 bg-white/40 p-3 rounded-xl border border-white">
-                  <label className="text-sm font-semibold opacity-70">{t("numbersLabel")}</label>
-                  <input type="checkbox" checked={genNumbers} onChange={(e) => setGenNumbers(e.target.checked)} className="accent-[var(--color-sage-green)] w-5 h-5 rounded cursor-pointer" />
-                </div>
-                <div className="flex items-center justify-between md:justify-center gap-3 bg-white/40 p-3 rounded-xl border border-white">
-                  <label className="text-sm font-semibold opacity-70">{t("symbolsLabel")}</label>
-                  <input type="checkbox" checked={genSymbols} onChange={(e) => setGenSymbols(e.target.checked)} className="accent-[var(--color-sage-green)] w-5 h-5 rounded cursor-pointer" />
-                </div>
-              </div>
-            </div>
+            <PasswordGenerator isOpen={isOpen} />
 
             {/* Watchtower Issues */}
             <div className="border border-red-500/20 bg-red-50/20 rounded-3xl p-6 shadow-sm">
@@ -354,7 +354,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                     <input type="password" placeholder={t("killPinPlaceholder")} value={killPin} onChange={(e) => setKillPin(e.target.value)} className="w-full rounded-xl border border-red-100 bg-white px-4 py-2 text-sm font-mono tracking-widest outline-none focus:ring-2 focus:ring-red-400/20" />
                   </div>
                 </div>
-                <button onClick={saveSecretSettings} className="mt-6 w-full py-3 rounded-xl bg-red-600 text-white font-black uppercase text-xs tracking-widest hover:bg-red-700 transition-all shadow-lg active:scale-95">
+                <button onClick={() => requireAuth("Security Settings", saveSecretSettings)} className="mt-6 w-full py-3 rounded-xl bg-red-600 text-white font-black uppercase text-xs tracking-widest hover:bg-red-700 transition-all shadow-lg active:scale-95">
                   {t("saveSecretSettingsBtn")}
                 </button>
               </div>
@@ -409,7 +409,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                   <label className={`cursor-pointer w-full justify-center flex items-center gap-2 py-2.5 rounded-xl border border-[var(--color-sage-green)]/30 bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)] text-sm font-semibold hover:bg-[var(--color-sage-green)] hover:text-white transition-all active:scale-95 shadow-sm ${isImporting ? "opacity-50 pointer-events-none" : ""}`}>
                     <FileUp className="w-4 h-4" />
                     {isImporting ? t("importProcessing") : t("importBtn")}
-                    <input type="file" accept=".csv,.json" className="hidden" onChange={handleImport} />
+                    <input type="file" accept=".csv,.json,.aes" className="hidden" onChange={handleImport} />
                   </label>
                 </div>
               </div>
@@ -420,7 +420,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                   <h4 className="font-semibold text-sm mb-1 text-red-700">{t("factoryResetBtn")}</h4>
                   <p className="text-[11px] opacity-70 leading-relaxed max-w-sm text-red-900/80">{t("confirmFullWipe")}</p>
                 </div>
-                <button onClick={handleFactoryReset} className="w-full md:w-auto px-6 py-2.5 rounded-xl bg-red-600 text-white font-bold text-xs hover:bg-red-700 transition-all shadow-sm active:scale-95 whitespace-nowrap">
+                <button onClick={() => setShowWipeModal(true)} className="w-full md:w-auto px-6 py-2.5 rounded-xl bg-red-600 text-white font-bold text-xs hover:bg-red-700 transition-all shadow-sm active:scale-95 whitespace-nowrap">
                   {t("factoryResetBtn")}
                 </button>
               </div>

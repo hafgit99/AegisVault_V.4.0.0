@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 import jsPDF from "jspdf";
 import { useTranslation } from 'react-i18next';
 import { VaultManager, type VaultProfile } from '../lib/VaultManager';
+import { WipeConfirmationModal } from './WipeConfirmationModal';
 
 export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void }) {
   const { t, i18n } = useTranslation();
@@ -25,6 +26,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
   const [showVaultSelector, setShowVaultSelector] = useState(false);
   const [newVaultName, setNewVaultName] = useState("");
   const [showNewVaultInput, setShowNewVaultInput] = useState(false);
+  const [showWipeModal, setShowWipeModal] = useState(false);
 
   useEffect(() => {
     setHasPasskey(!!localStorage.getItem('aegis_passkey_id'));
@@ -174,10 +176,8 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
   };
 
   const handleWipe = async () => {
-    if (window.confirm(t('confirmFullWipe'))) {
-       await vaultService.wipeAllData();
-       window.location.reload();
-    }
+    await vaultService.wipeAllData();
+    window.location.reload();
   };
 
   const handlePasskeyAction = async () => {
@@ -495,20 +495,26 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
           )}
 
           {isSetupMode && !isDecrypting && (
-            <button
-              type="button"
-              onClick={handleWipe}
-              className="mt-6 text-[10px] font-bold uppercase tracking-[0.2em] text-red-500/60 hover:text-red-600 transition-colors text-center"
-            >
-              {t('factoryResetBtn')}
-            </button>
-          )}
-        </form>
-      </div>
-
-      <div className="absolute bottom-8 text-center text-xs font-medium text-[var(--color-deep-navy)]/50 tracking-widest uppercase">
-        {t('protectedBy')}
-      </div>
-    </div>
-  );
-}
+             <button
+               type="button"
+               onClick={() => setShowWipeModal(true)}
+               className="mt-6 text-[10px] font-bold uppercase tracking-[0.2em] text-red-500/60 hover:text-red-600 transition-colors text-center"
+             >
+               {t('factoryResetBtn')}
+             </button>
+           )}
+         </form>
+       </div>
+ 
+       <div className="absolute bottom-8 text-center text-xs font-medium text-[var(--color-deep-navy)]/50 tracking-widest uppercase">
+         {t('protectedBy')}
+       </div>
+       {showWipeModal && (
+         <WipeConfirmationModal
+           onCancel={() => setShowWipeModal(false)}
+           onConfirm={handleWipe}
+         />
+       )}
+     </div>
+   );
+ }

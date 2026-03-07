@@ -34,10 +34,10 @@ describe('VaultService Security & Cryptography', () => {
     const dbName = `test_vault_${dbNameCounter}`;
     
     // DB'yi ilk defa init ediyoruz
-    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName);
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
 
     // IndexedDB'den metadata'yı kontrol et
-    const request = indexedDB.open(dbName, 2);
+    const request = indexedDB.open(dbName, 3);
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
@@ -85,13 +85,13 @@ describe('VaultService Security & Cryptography', () => {
 
     // Init the vault - this triggers the migration block under the hood
     // and tests if backward compatibility logic works (falls back to fixed salt logic dynamically wrapped)
-    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName);
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
 
     // Kasa başarıyla bağlanmalı
     expect(vaultService['isConnected']).toBe(true);
 
     // Kontrol: Metadata 2. versiyona taşınmış ve main_salt olarak eski statik kilit dinamik kayda geçmiş mi?
-    const checkReq = indexedDB.open(dbName, 2);
+    const checkReq = indexedDB.open(dbName, 3);
     const checkDb = await new Promise<IDBDatabase>((resolve) => {
       checkReq.onsuccess = () => resolve(checkReq.result);
     });
@@ -116,11 +116,11 @@ describe('VaultService Security & Cryptography', () => {
     const dbName = `change_pw_vault_${dbNameCounter}`;
     
     // 1. Kasayı oluştur ve bir giriş at
-    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName);
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
     await vaultService.addPassword({ title: 'Github', pass: 'token_123', category: 'Work' });
 
     // Önceki Metadata Salt'ını al
-    const request1 = indexedDB.open(dbName, 2);
+    const request1 = indexedDB.open(dbName, 3);
     const db1 = await new Promise<IDBDatabase>((resolve) => { request1.onsuccess = () => resolve(request1.result); });
     const oldMainSaltData = await new Promise<any>((resolve) => {
       const getReq = db1.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('main_salt');
@@ -137,7 +137,7 @@ describe('VaultService Security & Cryptography', () => {
     await vaultService.changeMasterPassword(TEST_PASSWORD, NEW_PASSWORD, SEC_KEY);
 
     // 3. Yeni Metadata'yı kontrol et
-    const request2 = indexedDB.open(dbName, 2);
+    const request2 = indexedDB.open(dbName, 3);
     const db2 = await new Promise<IDBDatabase>((resolve) => { request2.onsuccess = () => resolve(request2.result); });
     
     const newMainSaltData = await new Promise<any>((resolve) => {

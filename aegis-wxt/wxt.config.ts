@@ -8,7 +8,7 @@ export default defineConfig({
   manifest: (env) => ({
     name: "Aegis Vault",
     description: "Secure, zero-knowledge password manager and 2FA authenticator extension. Autofill passwords, sync securely across devices with end-to-end encryption in 2026.",
-    version: "4.1.0",
+    version: "4.0.0",
     
     icons: {
       "16": "icon-16.png",
@@ -32,10 +32,11 @@ export default defineConfig({
       "storage",
       "activeTab",
       "contextMenus",
-      "alarms"
+      "alarms",
+      "scripting"
     ],
     host_permissions: [
-      "<all_urls>"
+      "https://*.aegisvault.xyz/*"
     ],
     ...(env.browser === 'firefox' ? {} : {
       externally_connectable: {

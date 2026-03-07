@@ -6,14 +6,6 @@ const crypto = require('crypto');
 // 🔒 GÜVENLİK: Kasa verileri bellekte tutulur, sıkı erişim kontrolü
 // ─────────────────────────────────────────────────────────────────
 let vaultCache = [];
-let syncToken = null; // Tek kullanımlık oturum token'ı
-
-/**
- * Kriptografik güvenli rastgele token üretir.
- */
-function generateSyncToken() {
-  return crypto.randomBytes(32).toString('hex');
-}
 
 // ─────────────────────────────────────────────────────────────────
 // 📡 Yerel HTTP Sync Server (Extension İletişimi)
@@ -21,17 +13,25 @@ function generateSyncToken() {
 // ─────────────────────────────────────────────────────────────────
 const http = require('http');
 
-// İzin verilen origin'ler — Sadece bilinen kaynaklar
-const ALLOWED_ORIGINS = [
-  'chrome-extension://',       // Chrome eklenti prefix'i
-  'moz-extension://',          // Firefox eklenti prefix'i
-  'http://localhost:5173',     // Vite dev server
-  'http://127.0.0.1:5173'     // Vite dev server (alt)
+const ALLOWLIST_EXTENSION_IDS = [
+  'kjbdjkfijeflhhbnkjgkmccljifidpcc', // Verified Production Extension ID (Locked for Release)
 ];
 
 function isOriginAllowed(origin) {
   if (!origin) return false;
-  return ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed));
+  
+  // Yerel Dashboard (PWA) originleri
+  if (origin === 'http://localhost:5173' || origin === 'http://127.0.0.1:5173' || origin === 'file://' || origin === 'app://localhost') {
+    return true;
+  }
+  
+  // Extension Allowlist Check
+  if (origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://')) {
+    const id = origin.split('://')[1].split('/')[0];
+    return ALLOWLIST_EXTENSION_IDS.includes(id); // (P0) Dev modda "her eklenti" kabulü (bypass) tamamen kaldırıldı
+  }
+  
+  return false;
 }
 
 const syncServer = http.createServer((req, res) => {
@@ -51,34 +51,36 @@ const syncServer = http.createServer((req, res) => {
     return;
   }
 
-  // İstek izin kontrolü
-  if (origin && !isOriginAllowed(origin)) {
+  // İstek origin zorunluluğu ve izin kontrolü
+  if (!origin) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'MISSING_ORIGIN' }));
+    return;
+  }
+
+  if (!isOriginAllowed(origin)) {
     res.writeHead(403, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'FORBIDDEN_ORIGIN' }));
     return;
   }
 
-  // ─── Token Doğrulama ───
-  const requestToken = req.headers['x-aegis-token'];
+  // ─── Token Kaldırıldı (P0-1) ───
+  // Güvenlik: Status endpoint'inden token sızıntısı kaldırıldı. 
+  // Kimlik doğrulama sadece katı Origin + Allowlist kontrolüne dayanır.
   
   if (req.url === '/api/status' && req.method === 'GET') {
-    // Status endpoint — Kasa durumu + token döndür
-    if (!syncToken && vaultCache.length > 0) {
-      syncToken = generateSyncToken();
-    }
+    // Status endpoint — Kasa durumu
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ 
       isUnlocked: vaultCache.length > 0,
-      version: '4.0.0',
-      token: vaultCache.length > 0 ? syncToken : null
+      version: '4.0.0'
     }));
     return;
   }
 
   if (req.url === '/api/vault' && req.method === 'GET') {
-    // 🔒 Vault endpoint — Token doğrulama
-    if (!syncToken || !requestToken || requestToken !== syncToken) {
-      // Token yoksa boş dizi dön (uzantı "kasa kilitli" anlasın)
+    // 🔒 Vault endpoint — Token kaldırıldı, origin auth yeterli
+    if (vaultCache.length === 0) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify([]));
       return;
@@ -86,9 +88,6 @@ const syncServer = http.createServer((req, res) => {
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(vaultCache));
-
-    // Token rotasyonu: Her başarılı istek sonrası yeni token üret
-    syncToken = generateSyncToken();
     return;
   }
 
@@ -113,15 +112,11 @@ ipcMain.on('sync-vault', (_event, passwords) => {
     pass: String(p.pass || ''),
     website: String(p.website || '')
   }));
-  
-  // Her sync'te token yenile
-  syncToken = generateSyncToken();
 });
 
 ipcMain.on('lock-vault', () => {
-  // 🔒 Kasa kilitlendiğinde önbelleği ve token'ı temizle
+  // 🔒 Kasa kilitlendiğinde önbelleği temizle
   vaultCache = [];
-  syncToken = null;
 });
 
 // ─────────────────────────────────────────────────────────────────
@@ -185,7 +180,6 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   // Kasa kapatıldığında güvenli temizlik
   vaultCache = [];
-  syncToken = null;
 
   if (process.platform !== 'darwin') {
     app.quit();
