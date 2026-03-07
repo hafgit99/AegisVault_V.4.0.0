@@ -83,9 +83,15 @@
 
 ---
 
-## 🛡️ Security First
+## 🛡️ Security Protocols
 
-Aegis Vault is designed with a **Zero-Knowledge Architecture**. Your data is encrypted locally on your device before it ever touches storage. We do not have access to your master password or your decrypted data.
+Aegis Vault implements a multi-layered security architecture to ensure your data remains private even in compromised environments.
+
+- **Zero-Knowledge Architecture**: Encryption and decryption happen strictly on the client-side. Your Master Password never leaves your device.
+- **Argon2id KDF**: We utilize the Argon2id algorithm for key derivation, protecting against brute-force attacks with memory-hard parameters.
+- **AES-GCM Authenticated Encryption**: All vault data and backups are encrypted using AES-256-GCM, providing both confidentiality and integrity.
+- **JIT Content Script**: The Aegis extension uses Just-In-Time injection. It only activates when you specifically request actions (Fill/Analyze).
+- **IPC Nonce Validation**: All communication between components is protected by single-use cryptographic nonces to prevent replay attacks.
 
 ---
 
