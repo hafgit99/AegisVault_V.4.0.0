@@ -1,7 +1,7 @@
 import { useState, lazy, Suspense } from "react";
 import { X, Wand2, Eye, EyeOff, ShieldCheck, Lock, Paperclip, FileUp, Tag, KeyRound, FileText, Camera } from "lucide-react";
 import { useVault } from "../../contexts/VaultContext";
-import { type VaultEntry } from "../../vaultService";
+import { vaultService, type VaultEntry } from "../../vaultService";
 import { parseOtpauthUri } from "../../lib/TOTPService";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
@@ -27,9 +27,12 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [newAttachments, setNewAttachments] = useState<File[]>([]);
+  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([]);
   const [totpInput, setTotpInput] = useState(initialEntry?.totpSecret || "");
   const [showTotpSection, setShowTotpSection] = useState(!!(initialEntry?.totpSecret || initialEntry?.totp_secret));
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const existingAttachments = Array.isArray(newEntry.attachments) ? newEntry.attachments : [];
+  const visibleExistingAttachments = existingAttachments.filter((att) => !removedAttachmentIds.includes(att.id));
 
   const generateSecurePassword = () => {
     const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+=-";
@@ -58,7 +61,24 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await handleCreateEntry(newEntry, newAttachments);
+
+    // Edit modunda kaldırılan mevcut ekleri fiziksel olarak da sil
+    if (newEntry.id && removedAttachmentIds.length > 0) {
+      for (const attachmentId of removedAttachmentIds) {
+        try {
+          await vaultService.deleteAttachment(newEntry.id as number, attachmentId);
+        } catch (err: any) {
+          toast.error(err?.message || t("deleteAttachmentFailed", "Failed to delete attachment"));
+        }
+      }
+    }
+
+    const payload: Partial<VaultEntry> = {
+      ...newEntry,
+      attachments: visibleExistingAttachments,
+    };
+
+    await handleCreateEntry(payload, newAttachments);
     onClose();
   };
 
@@ -363,6 +383,31 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                         type="button"
                         onClick={() => setNewAttachments((prev) => prev.filter((_, idx) => idx !== i))}
                         className="hover:text-red-500 ml-1"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {visibleExistingAttachments.length > 0 && (
+              <div className="flex flex-col gap-1.5 mt-2 p-2 bg-[var(--color-sage-green)]/5 rounded-lg border border-[var(--color-sage-green)]/20 shadow-inner">
+                <div className="text-[10px] uppercase font-bold text-[var(--color-sage-green)] tracking-wider flex items-center gap-1">
+                  <Paperclip className="w-3 h-3" /> {t("existingAttachments", "Existing Attachments")}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {visibleExistingAttachments.map((att) => (
+                    <div key={att.id} className="text-xs flex items-center gap-2 bg-white px-2 py-1 rounded shadow-sm border border-black/5">
+                      <FileUp className="w-3 h-3 text-[var(--color-sage-green)]" />
+                      <span className="font-medium text-gray-700 max-w-[120px] truncate">{att.name}</span>
+                      <span className="text-gray-400 text-[10px]">{(att.size / (1024 * 1024)).toFixed(1)}MB</span>
+                      <button
+                        type="button"
+                        onClick={() => setRemovedAttachmentIds((prev) => [...prev, att.id])}
+                        className="hover:text-red-500 ml-1"
+                        title={t("removeAttachment", "Remove attachment")}
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>

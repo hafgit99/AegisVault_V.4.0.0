@@ -730,7 +730,12 @@ export class VaultService {
     return newEntry.id;
   }
 
-  async getPasswords(searchQuery: string = "", categoryFilter: string = "", isTrash: boolean = false): Promise<VaultEntry[]> {
+  async getPasswords(
+    searchQuery: string = "",
+    categoryFilter: string = "",
+    isTrash: boolean = false,
+    searchScope: "all" | "title" | "username" | "tags" = "all"
+  ): Promise<VaultEntry[]> {
     if (!this.aesKey || (!this.opfsMockDb && !this.sqliteDb)) return [];
 
     // SQLite'tan oku (birincil kaynak)
@@ -758,17 +763,128 @@ export class VaultService {
         return e;
     });
 
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase().replace(/\s+/g, '');
-      allEntries = allEntries.filter(e => {
-        const target = [e.title, e.username, e.website, e.category, ...(e.tags || [])].join('').toLowerCase();
-        let queryIndex = 0;
-        for (let char of target) {
-           if (char === q[queryIndex]) queryIndex++;
-           if (queryIndex === q.length) return true;
+    if (searchQuery.trim()) {
+      const normalize = (value: string = "") =>
+        value
+          .toLowerCase()
+          .normalize("NFKD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]/g, "");
+
+      const queryTokens = searchQuery
+        .toLowerCase()
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+      const isSubsequence = (needle: string, haystack: string) => {
+        let i = 0;
+        let j = 0;
+        while (i < needle.length && j < haystack.length) {
+          if (needle[i] === haystack[j]) i++;
+          j++;
         }
-        return false;
-      });
+        return i === needle.length;
+      };
+
+      const scored = allEntries
+        .map((entry) => {
+          const title = normalize(entry.title || "");
+          const username = normalize(entry.username || "");
+          const website = normalize(entry.website || "");
+          const category = normalize(entry.category || "");
+          const tags = (entry.tags || []).map((t) => normalize(t));
+          const scopedFields =
+            searchScope === "title"
+              ? [title]
+              : searchScope === "username"
+              ? [username]
+              : searchScope === "tags"
+              ? tags
+              : [title, username, website, category, ...tags];
+          const fullByScope =
+            searchScope === "title"
+              ? title
+              : searchScope === "username"
+              ? username
+              : searchScope === "tags"
+              ? tags.join("")
+              : `${title}${username}${website}${category}${tags.join("")}`;
+
+          let score = 0;
+          let matchedAllTokens = true;
+          let prefixMatchedAllTokens = true;
+
+          for (const rawToken of queryTokens) {
+            const token = normalize(rawToken);
+            if (!token) continue;
+
+            let tokenMatched = false;
+            const tokenPrefixMatched = scopedFields.some((f) => f.startsWith(token));
+            if (!tokenPrefixMatched) {
+              prefixMatchedAllTokens = false;
+            }
+
+            if ((searchScope === "all" || searchScope === "title") && title.startsWith(token)) {
+              score += 120;
+              tokenMatched = true;
+            } else if ((searchScope === "all" || searchScope === "title") && title.includes(token)) {
+              score += 90;
+              tokenMatched = true;
+            }
+
+            if (!tokenMatched && (searchScope === "all" || searchScope === "username") && username.includes(token)) {
+              score += 60;
+              tokenMatched = true;
+            }
+
+            if (!tokenMatched && searchScope === "all" && website.includes(token)) {
+              score += 50;
+              tokenMatched = true;
+            }
+
+            if (!tokenMatched && searchScope === "all" && category.includes(token)) {
+              score += 35;
+              tokenMatched = true;
+            }
+
+            if (!tokenMatched && (searchScope === "all" || searchScope === "tags") && tags.some((tag) => tag.includes(token))) {
+              score += 40;
+              tokenMatched = true;
+            }
+
+            if (!tokenMatched && token.length >= 4 && isSubsequence(token, fullByScope)) {
+              score += 20;
+              tokenMatched = true;
+            }
+
+            if (!tokenMatched) {
+              matchedAllTokens = false;
+              break;
+            }
+          }
+
+          return { entry, score, matchedAllTokens, prefixMatchedAllTokens };
+        })
+        .filter((item) => item.matchedAllTokens);
+
+      const hasPrefixOnlySet = scored.some((item) => item.prefixMatchedAllTokens);
+      const filteredForSort = hasPrefixOnlySet
+        ? scored.filter((item) => item.prefixMatchedAllTokens)
+        : scored;
+
+      const ranked = filteredForSort
+        .sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          const aTime = a.entry.updated_at ? new Date(a.entry.updated_at).getTime() : 0;
+          const bTime = b.entry.updated_at ? new Date(b.entry.updated_at).getTime() : 0;
+          return bTime - aTime;
+        })
+        .map((item) => item.entry);
+
+      allEntries = ranked;
     }
 
     if (categoryFilter && categoryFilter !== "Trash") {
@@ -1026,7 +1142,7 @@ export class VaultService {
   }
   // --- Secure Attachments (Up to 50MB) ---
   async addAttachment(entryId: number, file: File): Promise<{ id: string, name: string, type: string, size: number }> {
-    if (!this.aesKey || !this.opfsMockDb) throw new Error("Vault not initialized");
+    if (!this.aesKey || (!this.opfsMockDb && !this.sqliteDb)) throw new Error("Vault not initialized");
     if (file.size > 50 * 1024 * 1024) throw new Error("File exceeds 50MB limit");
 
     const fileBuffer = await file.arrayBuffer();
@@ -1046,32 +1162,61 @@ export class VaultService {
       size: file.size
     };
 
-    // Save encrypted payload
-    await this.opfsMockDb.put('attachments', {
-      id: attachmentId,
-      entryId: entryId,
-      iv: iv,
-      encrypted_data: cipherBuffer
-    });
-
-    // Update the parent entry to include this metadata
-    const tx = this.opfsMockDb.transaction('passwords', 'readwrite');
-    const store = tx.objectStore('passwords');
-    const entry = await store.get(entryId);
-    if (entry) {
-      if (!entry.attachments) entry.attachments = [];
-      entry.attachments.push(attachmentMeta);
-      await store.put(entry);
+    // Primary write path: SQLite (if enabled)
+    if (this.useSQLite && this.sqliteDb) {
+      this.sqliteDb.putAttachment(attachmentId, entryId, iv, cipherBuffer);
+      const existingEntries = this.sqliteDb.getAllPasswords();
+      const entry = existingEntries.find((e: any) => Number(e.id) === Number(entryId));
+      if (entry) {
+        const attachments = Array.isArray(entry.attachments) ? entry.attachments : [];
+        attachments.push(attachmentMeta);
+        entry.attachments = attachments;
+        this.sqliteDb.putPassword(entry);
+      }
+      await this.sqliteDb.flushToOPFS();
     }
-    await tx.done;
+
+    // Fallback mirror path: IndexedDB
+    if (this.opfsMockDb) {
+      await this.opfsMockDb.put('attachments', {
+        id: attachmentId,
+        entryId: entryId,
+        iv: iv,
+        encrypted_data: cipherBuffer
+      });
+
+      const tx = this.opfsMockDb.transaction('passwords', 'readwrite');
+      const store = tx.objectStore('passwords');
+      const entry = await store.get(entryId);
+      if (entry) {
+        if (!entry.attachments) entry.attachments = [];
+        entry.attachments.push(attachmentMeta);
+        await store.put(entry);
+      }
+      await tx.done;
+    }
 
     return attachmentMeta;
   }
 
   async getDecryptedAttachment(attachmentId: string): Promise<Blob> {
-    if (!this.aesKey || !this.opfsMockDb) throw new Error("Vault not initialized");
+    if (!this.aesKey || (!this.opfsMockDb && !this.sqliteDb)) throw new Error("Vault not initialized");
 
-    const record = await this.opfsMockDb.get('attachments', attachmentId);
+    let record: any = null;
+
+    // Primary read path: SQLite
+    if (this.useSQLite && this.sqliteDb) {
+      const sqliteRecord = this.sqliteDb.getAttachment(attachmentId);
+      if (sqliteRecord) {
+        record = sqliteRecord;
+      }
+    }
+
+    // Fallback read path: IndexedDB
+    if (!record && this.opfsMockDb) {
+      record = await this.opfsMockDb.get('attachments', attachmentId);
+    }
+
     if (!record) throw new Error("Attachment not found");
 
     const plainBuffer = await window.crypto.subtle.decrypt(
@@ -1086,18 +1231,33 @@ export class VaultService {
   }
 
   async deleteAttachment(entryId: number, attachmentId: string): Promise<void> {
-    if (!this.opfsMockDb) throw new Error("Vault not open");
-    await this.opfsMockDb.delete('attachments', attachmentId);
-    
-    // Remove from parent
-    const tx = this.opfsMockDb.transaction('passwords', 'readwrite');
-    const store = tx.objectStore('passwords');
-    const entry = await store.get(entryId);
-    if (entry && entry.attachments) {
-      entry.attachments = entry.attachments.filter((a: any) => a.id !== attachmentId);
-      await store.put(entry);
+    if (!this.opfsMockDb && !this.sqliteDb) throw new Error("Vault not open");
+
+    // Primary delete path: SQLite
+    if (this.useSQLite && this.sqliteDb) {
+      this.sqliteDb.deleteAttachment(attachmentId);
+      const existingEntries = this.sqliteDb.getAllPasswords();
+      const entry = existingEntries.find((e: any) => Number(e.id) === Number(entryId));
+      if (entry && Array.isArray(entry.attachments)) {
+        entry.attachments = entry.attachments.filter((a: any) => a.id !== attachmentId);
+        this.sqliteDb.putPassword(entry);
+      }
+      await this.sqliteDb.flushToOPFS();
     }
-    await tx.done;
+
+    // Fallback mirror path: IndexedDB
+    if (this.opfsMockDb) {
+      await this.opfsMockDb.delete('attachments', attachmentId);
+
+      const tx = this.opfsMockDb.transaction('passwords', 'readwrite');
+      const store = tx.objectStore('passwords');
+      const entry = await store.get(entryId);
+      if (entry && entry.attachments) {
+        entry.attachments = entry.attachments.filter((a: any) => a.id !== attachmentId);
+        await store.put(entry);
+      }
+      await tx.done;
+    }
   }
 
   // --- Trash & Deletion Features ---

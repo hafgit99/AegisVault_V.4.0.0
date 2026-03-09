@@ -412,7 +412,10 @@ export default defineContentScript({
 
     const currentOrigin = window.location.origin;
     if (TRUSTED_ORIGINS.includes(currentOrigin)) {
+      // Aegis web app sayfalarında sadece güvenli mesaj köprüsü çalışsın.
+      // Autofill overlay'i form inputlarını engellememesi için mount etmiyoruz.
       window.postMessage({ type: 'AEGIS_EXTENSION_READY', nonce: sessionNonce }, currentOrigin);
+      return;
     }
 
     const ui = await createShadowRootUi(ctx, {

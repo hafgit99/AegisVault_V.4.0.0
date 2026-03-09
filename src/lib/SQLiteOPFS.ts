@@ -336,7 +336,7 @@ export class SQLiteOPFS {
     stmt.bind([id]);
     let result: any = null;
     if (stmt.step()) {
-      const row = stmt.getAsObject({ ":id": id }) as any;
+      const row = stmt.getAsObject() as any;
       result = {
         iv: new Uint8Array(row.iv),
         encrypted_data: new Uint8Array(row.encrypted_data),

@@ -1,4 +1,4 @@
-import { Search, LogOut, Settings, Globe, Heart, Clock } from "lucide-react";
+import { Search, LogOut, Settings, Globe, Heart, Clock, Rows3, Rows2 } from "lucide-react";
 import { SecurityScoreGauge } from "../ui/SecurityScoreGauge";
 import { useVault } from "../../contexts/VaultContext";
 import { useTranslation } from "react-i18next";
@@ -11,7 +11,20 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick }: DashboardHeaderProps) {
   const { t, i18n } = useTranslation();
-  const { watchtower, searchQuery, setSearchQuery, handleLock, timeLeft, timeoutSeconds } = useVault();
+  const {
+    watchtower,
+    searchQuery,
+    setSearchQuery,
+    searchScope,
+    setSearchScope,
+    viewDensity,
+    setViewDensity,
+    sortOption,
+    setSortOption,
+    handleLock,
+    timeLeft,
+    timeoutSeconds,
+  } = useVault();
 
   return (
     <>
@@ -50,7 +63,7 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick }:
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap justify-end">
           <button
             type="button"
             onClick={() => i18n.changeLanguage(i18n.language.startsWith("en") ? "tr" : "en")}
@@ -89,6 +102,72 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick }:
               className="pl-10 pr-4 py-2 w-48 md:w-64 text-sm bg-white/40 border border-white/20 rounded-full shadow-sm outline-none focus:bg-white/80 focus:ring-2 focus:ring-[var(--color-sage-green)]/40 transition-all font-medium"
             />
           </div>
+          <div className="flex items-center gap-1.5 bg-white/30 border border-white/20 rounded-full px-1.5 py-1">
+            <button
+              type="button"
+              onClick={() => setSearchScope("all")}
+              className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
+                searchScope === "all"
+                  ? "bg-[var(--color-sage-green)] text-white"
+                  : "text-[var(--color-deep-navy)]/70 hover:bg-white/60"
+              }`}
+            >
+              {t("searchScopeAll", "All")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSearchScope("title")}
+              className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
+                searchScope === "title"
+                  ? "bg-[var(--color-sage-green)] text-white"
+                  : "text-[var(--color-deep-navy)]/70 hover:bg-white/60"
+              }`}
+            >
+              {t("searchScopeTitle", "Title")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSearchScope("username")}
+              className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
+                searchScope === "username"
+                  ? "bg-[var(--color-sage-green)] text-white"
+                  : "text-[var(--color-deep-navy)]/70 hover:bg-white/60"
+              }`}
+            >
+              {t("searchScopeUsername", "User")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSearchScope("tags")}
+              className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
+                searchScope === "tags"
+                  ? "bg-[var(--color-sage-green)] text-white"
+                  : "text-[var(--color-deep-navy)]/70 hover:bg-white/60"
+              }`}
+            >
+              {t("searchScopeTags", "Tags")}
+            </button>
+          </div>
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value as "updated_desc" | "updated_asc" | "title_asc" | "title_desc")}
+            className="px-3 py-2 rounded-full bg-white/40 border border-white/20 hover:bg-white/80 text-xs md:text-sm font-semibold text-[var(--color-deep-navy)] shadow-sm outline-none focus:ring-2 focus:ring-[var(--color-sage-green)]/40"
+            aria-label={t("sortBy", "Sort by")}
+          >
+            <option value="updated_desc">{t("sortUpdatedDesc", "Date (Newest)")}</option>
+            <option value="updated_asc">{t("sortUpdatedAsc", "Date (Oldest)")}</option>
+            <option value="title_asc">{t("sortTitleAsc", "Name (A-Z)")}</option>
+            <option value="title_desc">{t("sortTitleDesc", "Name (Z-A)")}</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => setViewDensity(viewDensity === "comfortable" ? "compact" : "comfortable")}
+            className="px-3 py-2 rounded-full bg-white/40 border border-white/20 hover:bg-white/80 text-xs md:text-sm font-semibold text-[var(--color-deep-navy)] shadow-sm outline-none focus:ring-2 focus:ring-[var(--color-sage-green)]/40 flex items-center gap-1.5"
+            title={t("viewDensityToggle", "Toggle card density")}
+          >
+            {viewDensity === "comfortable" ? <Rows3 className="w-4 h-4" /> : <Rows2 className="w-4 h-4" />}
+            {viewDensity === "comfortable" ? t("densityCompact", "Compact") : t("densityComfortable", "Comfortable")}
+          </button>
           <button
             onClick={handleLock}
             className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all text-red-600 font-semibold text-sm shadow-sm active:scale-95"

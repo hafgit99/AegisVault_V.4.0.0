@@ -203,7 +203,7 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
           </div>
 
           <div
-            className="flex flex-col gap-3 mt-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar"
+            className="flex flex-col gap-4 mt-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar"
             onScroll={(e) => {
               const bottom = Math.abs(e.currentTarget.scrollHeight - e.currentTarget.scrollTop - e.currentTarget.clientHeight) < 50;
               if (bottom && visibleCount < passwords.length) {

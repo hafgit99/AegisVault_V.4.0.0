@@ -26,6 +26,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
     loadPasswords,
     handleDeleteEntry,
     handleRestoreEntry,
+    viewDensity,
   } = useVault();
 
   const isCopied = copiedId === p.id;
@@ -54,14 +55,17 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
     (p.updated_at && Date.now() - new Date(p.updated_at).getTime() > 1000 * 60 * 60 * 24 * 365) ||
     (p.pwned_count || 0) > 0;
 
+  const compact = viewDensity === "compact";
+
   return (
-    <div className="flex items-center justify-between p-5 md:p-6 rounded-[1.25rem] bg-white/50 border border-white/30 hover:bg-white/80 hover:shadow-sm transition-all relative overflow-hidden group/item">
-      <div className="flex items-center gap-5 relative z-10 w-full overflow-hidden">
-        <div className="w-14 h-14 md:w-16 md:h-16 shrink-0 rounded-[1.25rem] bg-white flex items-center justify-center shadow-sm">
-          <div className="scale-110 md:scale-125">{getCategoryIcon(p.category)}</div>
+    <article className={`grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] ${compact ? "gap-3 p-4" : "gap-4 p-5 md:p-6"} rounded-[1.25rem] bg-white/55 border border-white/35 hover:bg-white/85 hover:shadow-md transition-all relative group/item`}>
+      <div className="flex items-start gap-5 relative z-10 min-w-0">
+        <div className={`${compact ? "w-12 h-12" : "w-14 h-14 md:w-16 md:h-16"} shrink-0 rounded-[1.25rem] bg-white flex items-center justify-center shadow-sm`}>
+          <div className={compact ? "scale-100" : "scale-110 md:scale-125"}>{getCategoryIcon(p.category)}</div>
         </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-lg text-[var(--color-deep-navy)] truncate flex items-center gap-2">
+        <div className="flex-1 min-w-0 flex flex-col gap-3">
+          <div className="min-h-7 flex items-center">
+          <h3 className={`${compact ? "text-base" : "text-lg"} font-bold text-[var(--color-deep-navy)] truncate flex items-center gap-2 min-w-0`}>
             {p.title}
             {(p.pwned_count || 0) > 0 && (
               <span
@@ -72,7 +76,8 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
               </span>
             )}
           </h3>
-          <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mt-1 text-sm">
+          </div>
+          <div className={`flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mt-1 ${compact ? "text-xs" : "text-sm"}`}>
             <p className="opacity-60 font-[var(--font-geist-mono)] tracking-tight truncate flex items-center gap-2">
               {p.username}
               {p.tags && p.tags.length > 0 && (
@@ -84,7 +89,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             <span className="hidden md:block w-1.5 h-1.5 rounded-full bg-black/20 shrink-0" />
             <div className="flex items-center gap-2">
               <span
-                className={`pass-font text-sm rounded-md select-all transition-all duration-300 ${
+                className={`pass-font ${compact ? "text-xs" : "text-sm"} rounded-md select-all transition-all duration-300 ${
                   visiblePasswords.has(p.id)
                     ? "bg-[rgba(255,255,255,0.6)] backdrop-blur-[20px] px-2 py-1 border border-white/50 text-[var(--color-deep-navy)]"
                     : "tracking-[0.25em] opacity-40 select-none mt-1"
@@ -102,52 +107,55 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             </div>
           </div>
 
-          {/* Attachments */}
-          {p.attachments && p.attachments.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {p.attachments.map((att) => (
-                <button
-                  key={att.id}
-                  onClick={() => handleDownloadAttachment(att.id, att.name)}
-                  className="group flex items-center gap-1.5 bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)] border border-[var(--color-sage-green)]/30 hover:bg-[var(--color-sage-green)]/20 px-2.5 py-1 rounded-md text-[11px] font-bold shadow-sm transition-all relative overflow-hidden"
-                  title={`Download ${att.name} (${(att.size / (1024 * 1024)).toFixed(2)}MB)`}
-                >
-                  <Paperclip className="w-3 h-3 group-hover:scale-110 transition-transform" />
-                  <span className="max-w-[150px] truncate">{att.name}</span>
-                  <DownloadCloud className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2" />
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="space-y-2">
+            {/* Attachments */}
+            {p.attachments && p.attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {p.attachments.map((att) => (
+                  <button
+                    key={att.id}
+                    onClick={() => handleDownloadAttachment(att.id, att.name)}
+                    className="group flex items-center gap-1.5 bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)] border border-[var(--color-sage-green)]/30 hover:bg-[var(--color-sage-green)]/20 px-2.5 py-1 rounded-md text-[11px] font-bold shadow-sm transition-all relative overflow-hidden"
+                    title={`Download ${att.name} (${(att.size / (1024 * 1024)).toFixed(2)}MB)`}
+                  >
+                    <Paperclip className="w-3 h-3 group-hover:scale-110 transition-transform" />
+                    <span className="max-w-[150px] truncate">{att.name}</span>
+                    <DownloadCloud className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2" />
+                  </button>
+                ))}
+              </div>
+            )}
 
-          {/* TOTP 2FA Widget */}
-          {p.totpSecret && (
-            <div className="mt-2">
-              <TOTPWidget
-                totpSecret={p.totpSecret}
-                issuer={p.totp_issuer}
-                algorithm={p.totp_algorithm}
-                digits={p.totp_digits}
-                period={p.totp_period}
-              />
-            </div>
-          )}
+            {/* TOTP 2FA Widget */}
+            {p.totpSecret && (
+              <div>
+                <TOTPWidget
+                  totpSecret={p.totpSecret}
+                  issuer={p.totp_issuer}
+                  algorithm={p.totp_algorithm}
+                  digits={p.totp_digits}
+                  period={p.totp_period}
+                />
+              </div>
+            )}
 
-          {/* Secure Notes Preview */}
-          {p.notes && p.category !== "Notes" && (
-            <div className="mt-2 flex items-start gap-1.5 bg-amber-50/50 border border-amber-200/30 px-2.5 py-1.5 rounded-lg">
-              <FileText className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
-              <p className="text-[11px] text-[var(--color-deep-navy)]/70 line-clamp-2 leading-relaxed">
-                {p.notes.length > 120 ? p.notes.slice(0, 120) + "..." : p.notes}
-              </p>
-            </div>
-          )}
+            {/* Secure Notes Preview */}
+            {p.notes && p.category !== "Notes" && (
+              <div className="flex items-start gap-1.5 bg-amber-50/50 border border-amber-200/30 px-2.5 py-1.5 rounded-lg">
+                <FileText className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-[11px] text-[var(--color-deep-navy)]/70 line-clamp-2 leading-relaxed">
+                  {p.notes.length > 120 ? p.notes.slice(0, 120) + "..." : p.notes}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-8 relative z-10 ml-4 shrink-0">
-        <div className="hidden lg:flex items-center gap-3">
+      <div className="flex items-stretch xl:items-start justify-end relative z-10 shrink-0 xl:min-w-[238px]">
+        <div className="flex flex-col-reverse xl:flex-col justify-between gap-3 w-full xl:w-auto">
+        <div className="hidden lg:flex items-center justify-end gap-3 xl:min-h-7">
           <div className="w-24 h-2 bg-black/5 rounded-full overflow-hidden">
             <div 
               className="h-full" 
@@ -165,7 +173,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2 xl:ml-4 flex-wrap">
           <div className="relative flex items-center gap-2">
             {isVulnerable && (
               <button
@@ -247,7 +255,8 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             )}
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </article>
   );
 }

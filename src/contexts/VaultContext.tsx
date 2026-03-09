@@ -38,6 +38,12 @@ export interface VaultContextType {
   isDecrypting: boolean;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
+  searchScope: "all" | "title" | "username" | "tags";
+  setSearchScope: (s: "all" | "title" | "username" | "tags") => void;
+  viewDensity: "comfortable" | "compact";
+  setViewDensity: (d: "comfortable" | "compact") => void;
+  sortOption: "updated_desc" | "updated_asc" | "title_asc" | "title_desc";
+  setSortOption: (s: "updated_desc" | "updated_asc" | "title_asc" | "title_desc") => void;
   categoryFilter: string;
   setCategoryFilter: (f: string) => void;
   visiblePasswords: Set<number>;
@@ -108,6 +114,16 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchScope, setSearchScope] = useState<"all" | "title" | "username" | "tags">("all");
+  const [viewDensity, setViewDensity] = useState<"comfortable" | "compact">(() => {
+    try {
+      const saved = localStorage.getItem("aegis:view-density");
+      return saved === "compact" ? "compact" : "comfortable";
+    } catch {
+      return "comfortable";
+    }
+  });
+  const [sortOption, setSortOption] = useState<"updated_desc" | "updated_asc" | "title_asc" | "title_desc">("updated_desc");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [visiblePasswords, setVisiblePasswords] = useState<Set<number>>(new Set());
   const [visibleCount, setVisibleCount] = useState(20);
@@ -142,13 +158,37 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem("aegis:view-density", viewDensity);
+    } catch {
+      // ignore storage errors
+    }
+  }, [viewDensity]);
+
   // ─── Veri Yükleme ───
   const loadPasswords = useCallback(() => {
     setIsDecrypting(true);
     const isTrash = categoryFilter === "Trash";
-    vaultService.getPasswords(debouncedSearch, categoryFilter, isTrash).then(data => {
+    vaultService.getPasswords(debouncedSearch, categoryFilter, isTrash, searchScope).then(data => {
+      const sortedData = [...data].sort((a, b) => {
+        if (sortOption === "title_asc") {
+          return (a.title || "").localeCompare((b.title || ""), undefined, { sensitivity: "base", numeric: true });
+        }
+        if (sortOption === "title_desc") {
+          return (b.title || "").localeCompare((a.title || ""), undefined, { sensitivity: "base", numeric: true });
+        }
+
+        const aTime = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+        const bTime = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+        if (sortOption === "updated_asc") {
+          return aTime - bTime;
+        }
+        return bTime - aTime;
+      });
+
       setTimeout(() => {
-        setPasswords(data);
+        setPasswords(sortedData);
         setVisibleCount(20);
         setIsDecrypting(false);
       }, 900);
@@ -159,7 +199,7 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
       setDuressPin(pins.duressPin);
       setKillPin(pins.killPin);
     }).catch(() => {});
-  }, [debouncedSearch, categoryFilter]);
+  }, [debouncedSearch, categoryFilter, sortOption, searchScope]);
 
   // İlk yükleme + filtre/arama değişikliği
   useEffect(() => {
@@ -408,6 +448,12 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
     isDecrypting,
     searchQuery,
     setSearchQuery,
+    searchScope,
+    setSearchScope,
+    viewDensity,
+    setViewDensity,
+    sortOption,
+    setSortOption,
     categoryFilter,
     setCategoryFilter,
     visiblePasswords,
