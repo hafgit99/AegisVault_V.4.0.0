@@ -1,5 +1,12 @@
 import { vaultService } from "../vaultService";
 
+// 🔒 SECURITY HARDENED: Allowlist tabanlı extension ID doğrulama
+// Race condition saldırılarını önlemek için sabit allowlist kullanılır
+const ALLOWED_EXTENSION_IDS = [
+  'gddgomiecgnihlljfkogfjgakedoielk', // Current Extension ID
+  'kjbdjkfijeflhhbnkjgkmccljifidpcc', // Verified Production Extension ID
+];
+
 class ExtensionBridge {
   private sessionToken: string | null = null;
   private isListening: boolean = false;
@@ -17,20 +24,28 @@ class ExtensionBridge {
 
     // Secure Handshake (Eklenti kendini tanıtıyor ve ID'sini sunuyor)
     if (data.type === "AEGIS_EXTENSION_HELLO") {
-       // 🔒 Extension ID doğrulaması
+       // 🔒 SECURITY HARDENED: Extension ID allowlist kontrolü — race condition koruması
        const incomingExtensionId = data.extensionId;
+       
+       // Extension ID format validasyonu
        if (!incomingExtensionId || typeof incomingExtensionId !== 'string') {
-         console.warn("[PWA Bridge] Geçersiz eklenti ID'si reddedildi.");
+         console.warn("[PWA Bridge] ❌ Geçersiz extension ID formatı, reddedildi.");
          return;
        }
 
-       // İlk bağlantıda extension ID'yi kaydet, sonrakilerde karşılaştır
+       // 🔒 ALLOWLIST KONTROLÜ — İlk bağlantıda bile allowlist dışı ID reddedilir
+       if (!ALLOWED_EXTENSION_IDS.includes(incomingExtensionId)) {
+         console.warn(`[PWA Bridge] ❌ Extension ID allowlist dışı, reddedildi: ${incomingExtensionId.substring(0, 8)}...`);
+         return;
+       }
+
+       // İlk bağlantıda trusted ID'yi kaydet (defense in depth)
        if (this.trustedExtensionId && this.trustedExtensionId !== incomingExtensionId) {
-         console.warn(`[PWA Bridge] 🚫 Bilinmeyen eklenti ID'si reddedildi: ${incomingExtensionId.substring(0, 8)}...`);
+         console.warn(`[PWA Bridge] ❌ Trusted ID uyuşmazlığı! Beklenen: ${this.trustedExtensionId.substring(0, 8)}..., Gelen: ${incomingExtensionId.substring(0, 8)}...`);
          return;
        }
 
-       console.log("[PWA Bridge] Eklenti tespit edildi, bağlantı hazırlanıyor...");
+       console.log(`[PWA Bridge] ✅ Allowlist extension tespit edildi, bağlantı hazırlanıyor: ${incomingExtensionId.substring(0, 8)}...`);
        
        // Eklentiye güvenli port açalım
        if ((window as any).chrome && (window as any).chrome.runtime) {

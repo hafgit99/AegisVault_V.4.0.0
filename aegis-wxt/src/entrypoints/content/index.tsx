@@ -1,4 +1,3 @@
-import './style.css';
 import { defineContentScript } from 'wxt/sandbox';
 import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/client';

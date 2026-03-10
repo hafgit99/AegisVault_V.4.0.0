@@ -18,33 +18,48 @@ const ALLOWLIST_EXTENSION_IDS = [
   'kjbdjkfijeflhhbnkjgkmccljifidpcc', // Verified Production Extension ID
 ];
 
+// 🔒 DEV MODE: Sadece belirli localhost originlerine izin ver (wildcard YOK)
+const DEV_ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173'
+];
+
 function isOriginAllowed(origin) {
   if (!origin) return false;
-  
+
   // Yerel Dashboard (PWA) originleri
   if (origin === 'http://localhost:5173' || origin === 'http://127.0.0.1:5173' || origin === 'file://' || origin === 'app://localhost') {
     return true;
   }
-  
-  // Extension Allowlist Check
+
+  // Extension Allowlist Check — DEV modda bile allowlist dışına izin YOK
   if (origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://')) {
     const id = origin.split('://')[1].split('/')[0];
-    return ALLOWLIST_EXTENSION_IDS.includes(id) || !app.isPackaged; // (P0) Dev modda test kolaylığı için bypass eklendi
+    // Dev modda sadece allowlist veya DEV_ALLOWED_ORIGINS'den gelen istekler
+    if (ALLOWLIST_EXTENSION_IDS.includes(id)) {
+      return true;
+    }
+    // Dev modda unknown extension ID'yi logla ama reddet
+    if (!app.isPackaged) {
+      console.warn(`[Aegis Sync] ⚠️ Dev modda bilinmeyen extension ID reddedildi: ${id.substring(0, 8)}...`);
+    }
+    return false;
   }
-  
+
   return false;
 }
 
 const syncServer = http.createServer((req, res) => {
   const origin = req.headers.origin || '';
-  
-  // CORS & Private Network Access (P0-1)
-  // Güvenlik: İzin verilen origin gelirse onu dön, yoksa wildcard (sadece dev modda)
+
+  // ─────────────────────────────────────────────────────────────
+  // 🔒 CORS & Private Network Access (P0-1 HARDENED)
+  // Güvenlik: DEV modda bile wildcard (*) YOK — sadece allowlist
+  // ─────────────────────────────────────────────────────────────
   if (origin && isOriginAllowed(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-  } else if (!app.isPackaged) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
   } else {
+    // Production ve Dev modda bilinmeyen origin → reddet
     res.setHeader('Access-Control-Allow-Origin', 'null');
   }
 
@@ -60,10 +75,12 @@ const syncServer = http.createServer((req, res) => {
     return;
   }
 
-  // ── Kimlik Doğrulama ──
+  // ─────────────────────────────────────────────────────────────
+  // ── Kimlik Doğrulama (P0-1 HARDENED) ──
   // Extension service worker'dan gelen fetch istekleri tarayıcı güvenlik politikası
   // gereği origin header taşımaz. Bu nedenle loopback adresinden gelen ve
   // X-Aegis-Client: extension header'ı içeren istekleri güvenli kabul ediyoruz.
+  // ─────────────────────────────────────────────────────────────
   const aegisClient = req.headers['x-aegis-client'] || '';
   const isLoopbackExtensionRequest = aegisClient === 'extension';
 
@@ -73,14 +90,8 @@ const syncServer = http.createServer((req, res) => {
   } else if (origin && isOriginAllowed(origin)) {
     // Bilinen origin (PWA / Electron renderer): kabul et
     res.setHeader('Access-Control-Allow-Origin', origin);
-  } else if (!app.isPackaged) {
-    // Dev modu: engelleme, sadece uyar
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    if (origin && !isOriginAllowed(origin)) {
-      console.warn(`[Aegis Sync] ⚠️ Bilinmeyen dev origin: ${origin}`);
-    }
   } else {
-    // Üretim modu: bilinmeyen kaynak → reddet
+    // Üretim ve Dev modu: bilinmeyen kaynak → reddet (403)
     res.writeHead(403, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'FORBIDDEN_ORIGIN' }));
     return;
