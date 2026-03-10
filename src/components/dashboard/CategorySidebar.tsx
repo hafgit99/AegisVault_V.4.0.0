@@ -22,12 +22,12 @@ export function CategorySidebar({ onDownloadEmergencyKit, isGeneratingKit }: Cat
   return (
     <>
       {/* Categories */}
-      <GlowCard className="bg-[rgba(255,255,255,0.25)] backdrop-blur-[40px] -webkit-backdrop-filter:blur(40px) border border-white/40 rounded-3xl p-6 flex-1 flex flex-col">
+      <GlowCard className="category-surface bg-[rgba(255,255,255,0.25)] backdrop-blur-[40px] -webkit-backdrop-filter:blur(40px) border border-white/40 rounded-3xl p-6 flex-1 flex flex-col">
         <h3 className="text-sm font-semibold opacity-60 uppercase tracking-widest mb-4">{t("categoriesTitle")}</h3>
         <div className="flex flex-col gap-2">
           <button
             onClick={() => setCategoryFilter("")}
-            className={`flex items-center justify-between p-3 rounded-xl hover:bg-white/60 transition-colors w-full text-left ${
+            className={`category-item flex items-center justify-between p-3 rounded-xl hover:bg-white/60 transition-colors w-full text-left ${
               categoryFilter === "" ? "bg-white/80 shadow-sm border border-white/40" : "bg-transparent"
             }`}
           >
@@ -40,7 +40,7 @@ export function CategorySidebar({ onDownloadEmergencyKit, isGeneratingKit }: Cat
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
-              className={`flex items-center justify-between p-3 rounded-xl hover:bg-white/60 transition-colors w-full text-left ${
+              className={`category-item flex items-center justify-between p-3 rounded-xl hover:bg-white/60 transition-colors w-full text-left ${
                 categoryFilter === cat ? "bg-white/80 shadow-sm border border-white/40" : "bg-transparent"
               }`}
             >
@@ -54,7 +54,7 @@ export function CategorySidebar({ onDownloadEmergencyKit, isGeneratingKit }: Cat
           <div className="h-px bg-black/5 my-1 w-full" />
           <button
             onClick={() => setCategoryFilter("Trash")}
-            className={`flex items-center justify-between p-3 rounded-xl hover:bg-white/60 transition-colors w-full text-left ${
+            className={`category-item flex items-center justify-between p-3 rounded-xl hover:bg-white/60 transition-colors w-full text-left ${
               categoryFilter === "Trash"
                 ? "bg-white/80 shadow-sm border border-white/40 text-red-600"
                 : "bg-transparent text-gray-500"
@@ -92,7 +92,7 @@ export function CategorySidebar({ onDownloadEmergencyKit, isGeneratingKit }: Cat
       </GlowCard>
 
       {/* Offline PWA & Emergency Kit */}
-      <GlowCard className="bg-gradient-to-br from-[rgba(255,255,255,0.4)] to-[rgba(255,255,255,0.1)] backdrop-blur-[40px] border border-[var(--color-sage-green)]/30 rounded-3xl shadow-lg p-6">
+      <GlowCard className="offline-surface bg-gradient-to-br from-[rgba(255,255,255,0.4)] to-[rgba(255,255,255,0.1)] backdrop-blur-[40px] border border-[var(--color-sage-green)]/30 rounded-3xl shadow-lg p-6">
         <div className="absolute inset-0 bg-[var(--color-sage-green)] opacity-0 group-hover/glow:opacity-5 transition-opacity rounded-3xl pointer-events-none" />
         <div className="flex flex-col items-center text-center gap-3 relative z-10">
           <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center shadow-inner">
@@ -106,7 +106,7 @@ export function CategorySidebar({ onDownloadEmergencyKit, isGeneratingKit }: Cat
           <button
             onClick={onDownloadEmergencyKit}
             disabled={isGeneratingKit}
-            className="mt-2 w-full flex items-center justify-center gap-2 bg-white/60 hover:bg-white text-[var(--color-deep-navy)] outline outline-1 outline-black/5 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95 disabled:opacity-50"
+            className="emergency-kit-btn mt-2 w-full flex items-center justify-center gap-2 bg-white/60 hover:bg-white text-[var(--color-deep-navy)] outline outline-1 outline-black/5 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95 disabled:opacity-50"
           >
             {isGeneratingKit ? (
               <span className="animate-pulse">{t("generatingPdf")}</span>

@@ -44,7 +44,7 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-[2.5rem] bg-[var(--color-cloud-dancer)] border border-white/20 shadow-2xl flex flex-col md:flex-row"
+        className="donation-surface relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-[2.5rem] bg-[var(--color-cloud-dancer)] border border-white/20 shadow-2xl flex flex-col md:flex-row"
       >
         {/* Left Side: Info */}
         <div className="w-full md:w-2/5 p-8 md:p-12 bg-gradient-to-br from-[var(--color-sage-green)] to-[#6b8268] text-white flex flex-col justify-between relative overflow-hidden">
@@ -68,7 +68,7 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         </div>
 
         {/* Right Side: Crypto Grid */}
-        <div className="flex-1 p-8 md:p-10 overflow-y-auto custom-scrollbar bg-white/30 backdrop-blur-sm">
+        <div className="donation-right-panel flex-1 p-8 md:p-10 overflow-y-auto custom-scrollbar bg-white/30 backdrop-blur-sm">
           <div className="flex justify-between items-center mb-8">
             <h3 className="text-xl font-bold text-[var(--color-deep-navy)]">{t('donateBtn')}</h3>
             <button onClick={onClose} className="p-2 rounded-full hover:bg-black/5 text-gray-500 transition-colors">
@@ -78,7 +78,7 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {cryptoAddresses.map((crypto, index) => (
-              <div key={crypto.symbol} className="group p-4 rounded-2xl bg-white border border-black/5 shadow-sm hover:shadow-md transition-all">
+              <div key={crypto.symbol} className="donation-card group p-4 rounded-2xl bg-white border border-black/5 shadow-sm hover:shadow-md transition-all">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div 
@@ -100,13 +100,13 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                   </button>
                 </div>
 
-                <div className="font-mono text-[10px] bg-black/5 p-2 rounded-lg break-all text-[var(--color-deep-navy)]/60 mb-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="donation-address font-mono text-[10px] bg-black/5 p-2 rounded-lg break-all text-[var(--color-deep-navy)]/70 mb-3 opacity-100 transition-opacity">
                   {crypto.address}
                 </div>
 
                 <button
                   onClick={() => copyToClipboard(crypto.address, index)}
-                  className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-[var(--color-deep-navy)] text-white text-xs font-bold hover:bg-opacity-90 shadow-md active:scale-95 transition-all"
+                  className="btn-ink w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-[var(--color-deep-navy)] text-white text-xs font-bold hover:bg-opacity-90 shadow-md active:scale-95 transition-all"
                 >
                   {copiedIndex === index ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   {copiedIndex === index ? t('copiedToClipboard') : t('copyAddressBtn')}
@@ -123,7 +123,7 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="absolute inset-0 z-[210] bg-white flex flex-col items-center justify-center p-12 text-center"
+              className="donation-qr-surface absolute inset-0 z-[210] bg-white flex flex-col items-center justify-center p-12 text-center"
             >
               <button onClick={() => setActiveQr(null)} className="absolute top-8 right-8 p-3 rounded-full hover:bg-black/5 text-gray-500 transition-colors">
                 <X className="w-8 h-8" />

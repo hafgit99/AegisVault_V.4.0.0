@@ -58,9 +58,9 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
   const compact = viewDensity === "compact";
 
   return (
-    <article className={`grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] ${compact ? "gap-3 p-4" : "gap-4 p-5 md:p-6"} rounded-[1.25rem] bg-white/55 border border-white/35 hover:bg-white/85 hover:shadow-md transition-all relative group/item`}>
+    <article className={`vault-entry-card grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] ${compact ? "gap-3 p-4" : "gap-4 p-5 md:p-6"} rounded-[1.25rem] bg-white/55 border border-white/35 hover:bg-white/85 hover:shadow-md transition-all relative group/item`}>
       <div className="flex items-start gap-5 relative z-10 min-w-0">
-        <div className={`${compact ? "w-12 h-12" : "w-14 h-14 md:w-16 md:h-16"} shrink-0 rounded-[1.25rem] bg-white flex items-center justify-center shadow-sm`}>
+        <div className={`vault-entry-icon ${compact ? "w-12 h-12" : "w-14 h-14 md:w-16 md:h-16"} shrink-0 rounded-[1.25rem] bg-white flex items-center justify-center shadow-sm`}>
           <div className={compact ? "scale-100" : "scale-110 md:scale-125"}>{getCategoryIcon(p.category)}</div>
         </div>
         <div className="flex-1 min-w-0 flex flex-col gap-3">
@@ -91,7 +91,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
               <span
                 className={`pass-font ${compact ? "text-xs" : "text-sm"} rounded-md select-all transition-all duration-300 ${
                   visiblePasswords.has(p.id)
-                    ? "bg-[rgba(255,255,255,0.6)] backdrop-blur-[20px] px-2 py-1 border border-white/50 text-[var(--color-deep-navy)]"
+                    ? "password-reveal-chip bg-[rgba(255,255,255,0.6)] backdrop-blur-[20px] px-2 py-1 border border-white/50 text-[var(--color-deep-navy)]"
                     : "tracking-[0.25em] opacity-40 select-none mt-1"
                 }`}
               >
@@ -188,7 +188,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             )}
             <button
               onClick={() => onEdit({ ...p, pass: p.pass || "" })}
-              className="p-3 rounded-xl bg-white/60 hover:bg-white hover:shadow-md transition-all flex items-center justify-center text-[var(--color-deep-navy)]/70 hover:text-[var(--color-sage-green)]"
+              className="vault-action-btn p-3 rounded-xl bg-white/60 hover:bg-white hover:shadow-md transition-all flex items-center justify-center text-[var(--color-deep-navy)]/70 hover:text-[var(--color-sage-green)]"
               title={t("editEntry", "Edit")}
             >
               <Edit2 className="w-5 h-5" />
@@ -199,7 +199,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                 className={`relative z-10 p-3 rounded-xl transition-all flex items-center justify-center ${
                   isCopied
                     ? "bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)] shadow-[0_0_15px_rgba(135,159,132,0.4)] scale-110"
-                    : "bg-white/60 hover:bg-white hover:shadow-md"
+                    : "vault-action-btn bg-white/60 hover:bg-white hover:shadow-md"
                 }`}
               >
                 {isCopied ? (
@@ -247,7 +247,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             ) : (
               <button
                 onClick={() => handleDeleteEntry(p.id)}
-                className="p-3 rounded-xl bg-white/60 hover:bg-red-500/10 hover:text-red-500 transition-all flex items-center justify-center text-[var(--color-deep-navy)]/70"
+                className="vault-action-btn p-3 rounded-xl bg-white/60 hover:bg-red-500/10 hover:text-red-500 transition-all flex items-center justify-center text-[var(--color-deep-navy)]/70"
                 title={t("moveToTrash")}
               >
                 <Trash2 className="w-5 h-5" />

@@ -19,7 +19,7 @@ export const QRScanner = ({ onScanSuccess, onCancel }: { onScanSuccess: (data: s
   }, [progress]);
 
   return (
-    <div className="flex flex-col items-center justify-center space-y-6 p-8 bg-gradient-to-br from-[var(--color-cloud-dancer)] to-white rounded-3xl border border-black/5 shadow-inner relative min-h-[400px]">
+    <div className="qr-scanner-surface flex flex-col items-center justify-center space-y-6 p-8 bg-gradient-to-br from-[var(--color-cloud-dancer)] to-white rounded-3xl border border-black/5 shadow-inner relative min-h-[400px]">
       <div className="text-center z-10">
         <h3 className="text-xl font-bold text-[var(--color-deep-navy)] tracking-tight">P2P Sync Receiver</h3>
         <p className="text-sm opacity-60 mt-1 max-w-sm">Kameranızı diğer cihazdaki aktarılan animasyonlu QR kod serisine odaklayın.</p>

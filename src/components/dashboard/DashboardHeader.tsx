@@ -1,4 +1,4 @@
-import { Search, LogOut, Settings, Globe, Heart, Clock, Rows3, Rows2 } from "lucide-react";
+import { Search, LogOut, Settings, Globe, Heart, Clock, Rows3, Rows2, Moon, Sun } from "lucide-react";
 import { SecurityScoreGauge } from "../ui/SecurityScoreGauge";
 import { useVault } from "../../contexts/VaultContext";
 import { useTranslation } from "react-i18next";
@@ -7,9 +7,11 @@ interface DashboardHeaderProps {
   onSettingsOpen: () => void;
   onDonationOpen: () => void;
   onLogoClick: () => void;
+  themeMode: "light" | "dark";
+  onThemeToggle: () => void;
 }
 
-export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick }: DashboardHeaderProps) {
+export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick, themeMode, onThemeToggle }: DashboardHeaderProps) {
   const { t, i18n } = useTranslation();
   const {
     watchtower,
@@ -48,9 +50,11 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick }:
 
       {/* Header */}
       <header className="max-w-[1400px] mx-auto flex justify-between items-center mb-10 p-4 xl:px-8">
-        <div className="flex items-center gap-6">
+        <div className="flex items-start gap-6 pt-2">
           {watchtower && typeof watchtower.score === "number" && (
-            <SecurityScoreGauge score={watchtower.score} onClick={onSettingsOpen} />
+            <div className="pt-1">
+              <SecurityScoreGauge score={watchtower.score} onClick={onSettingsOpen} />
+            </div>
           )}
           <div className="flex items-center gap-3 cursor-help" onClick={onLogoClick}>
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--color-sage-green)] to-[var(--color-deep-navy)] flex items-center justify-center shadow-lg active:scale-95 transition-transform p-1">
@@ -67,7 +71,7 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick }:
           <button
             type="button"
             onClick={() => i18n.changeLanguage(i18n.language.startsWith("en") ? "tr" : "en")}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/40 border border-[var(--color-sage-green)]/20 hover:bg-white/80 transition-all text-xs font-bold shadow-sm backdrop-blur-md text-[var(--color-deep-navy)]"
+            className="toolbar-control flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/40 border border-[var(--color-sage-green)]/20 hover:bg-white/80 transition-all text-xs font-bold shadow-sm backdrop-blur-md text-[var(--color-deep-navy)]"
             aria-label="Change language"
           >
             <Globe className="w-3.5 h-3.5" />
@@ -75,7 +79,7 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick }:
           </button>
           <button
             onClick={onDonationOpen}
-            className="p-2.5 rounded-full bg-white/40 border border-white/20 hover:bg-white/80 transition-all text-red-500 shadow-sm group relative"
+            className="toolbar-control p-2.5 rounded-full bg-white/40 border border-white/20 hover:bg-white/80 transition-all text-red-500 shadow-sm group relative"
             title={t("donateBtn")}
             aria-label="Donate"
           >
@@ -87,10 +91,20 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick }:
           </button>
           <button
             onClick={onSettingsOpen}
-            className="p-2.5 rounded-full bg-white/40 border border-white/20 hover:bg-white/80 transition-all text-[var(--color-sage-green)] shadow-sm"
+            className="toolbar-control p-2.5 rounded-full bg-white/40 border border-white/20 hover:bg-white/80 transition-all text-[var(--color-sage-green)] shadow-sm"
             aria-label="Settings"
           >
             <Settings className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={onThemeToggle}
+            className="toolbar-control flex items-center gap-2 px-3 py-2 rounded-full bg-white/40 border border-white/20 hover:bg-white/80 transition-all text-xs md:text-sm font-semibold text-[var(--color-deep-navy)] shadow-sm"
+            aria-label={t("toggleTheme", "Toggle theme")}
+            title={themeMode === "dark" ? t("switchToLight", "Switch to light mode") : t("switchToDark", "Switch to dark mode")}
+          >
+            {themeMode === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {themeMode === "dark" ? t("lightMode", "Light") : t("darkMode", "Dark")}
           </button>
           <div className="relative group">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-50 transition-opacity group-focus-within:opacity-100" />
@@ -99,10 +113,10 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick }:
               placeholder={t("searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 w-48 md:w-64 text-sm bg-white/40 border border-white/20 rounded-full shadow-sm outline-none focus:bg-white/80 focus:ring-2 focus:ring-[var(--color-sage-green)]/40 transition-all font-medium"
+              className="toolbar-control pl-10 pr-4 py-2 w-48 md:w-64 text-sm bg-white/40 border border-white/20 rounded-full shadow-sm outline-none focus:bg-white/80 focus:ring-2 focus:ring-[var(--color-sage-green)]/40 transition-all font-medium"
             />
           </div>
-          <div className="flex items-center gap-1.5 bg-white/30 border border-white/20 rounded-full px-1.5 py-1">
+          <div className="toolbar-chip-group flex items-center gap-1.5 bg-white/30 border border-white/20 rounded-full px-1.5 py-1">
             <button
               type="button"
               onClick={() => setSearchScope("all")}
@@ -151,7 +165,7 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick }:
           <select
             value={sortOption}
             onChange={(e) => setSortOption(e.target.value as "updated_desc" | "updated_asc" | "title_asc" | "title_desc")}
-            className="px-3 py-2 rounded-full bg-white/40 border border-white/20 hover:bg-white/80 text-xs md:text-sm font-semibold text-[var(--color-deep-navy)] shadow-sm outline-none focus:ring-2 focus:ring-[var(--color-sage-green)]/40"
+            className="toolbar-control px-3 py-2 rounded-full bg-white/40 border border-white/20 hover:bg-white/80 text-xs md:text-sm font-semibold text-[var(--color-deep-navy)] shadow-sm outline-none focus:ring-2 focus:ring-[var(--color-sage-green)]/40"
             aria-label={t("sortBy", "Sort by")}
           >
             <option value="updated_desc">{t("sortUpdatedDesc", "Date (Newest)")}</option>
@@ -162,7 +176,7 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick }:
           <button
             type="button"
             onClick={() => setViewDensity(viewDensity === "comfortable" ? "compact" : "comfortable")}
-            className="px-3 py-2 rounded-full bg-white/40 border border-white/20 hover:bg-white/80 text-xs md:text-sm font-semibold text-[var(--color-deep-navy)] shadow-sm outline-none focus:ring-2 focus:ring-[var(--color-sage-green)]/40 flex items-center gap-1.5"
+            className="toolbar-control px-3 py-2 rounded-full bg-white/40 border border-white/20 hover:bg-white/80 text-xs md:text-sm font-semibold text-[var(--color-deep-navy)] shadow-sm outline-none focus:ring-2 focus:ring-[var(--color-sage-green)]/40 flex items-center gap-1.5"
             title={t("viewDensityToggle", "Toggle card density")}
           >
             {viewDensity === "comfortable" ? <Rows3 className="w-4 h-4" /> : <Rows2 className="w-4 h-4" />}

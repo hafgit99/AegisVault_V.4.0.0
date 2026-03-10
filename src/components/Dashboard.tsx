@@ -43,6 +43,24 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
   const [showDonation, setShowDonation] = useState(false);
   const [showEmergencyKit, setShowEmergencyKit] = useState(false);
   const [logoClicks, setLogoClicks] = useState(0);
+  const [themeMode, setThemeMode] = useState<"light" | "dark">(() => {
+    try {
+      const saved = localStorage.getItem("aegis:theme-mode");
+      if (saved === "light" || saved === "dark") return saved;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    } catch {
+      return "light";
+    }
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", themeMode);
+    try {
+      localStorage.setItem("aegis:theme-mode", themeMode);
+    } catch {
+      // ignore storage errors
+    }
+  }, [themeMode]);
 
   const handleLogoClick = () => {
     setLogoClicks((prev) => {
@@ -145,13 +163,15 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
   };
 
   return (
-    <div className="w-full min-h-screen bg-[var(--color-cloud-dancer)] text-[var(--color-deep-navy)] p-4 md:p-8 font-[var(--font-geist)] animate-in fade-in duration-700">
+    <div className="w-full min-h-screen overflow-visible bg-[var(--color-cloud-dancer)] text-[var(--color-deep-navy)] px-4 pb-4 pt-8 md:px-8 md:pb-8 md:pt-10 font-[var(--font-geist)] animate-in fade-in duration-700">
       <Suspense fallback={null}><SpotlightWalkthrough /></Suspense>
 
       <DashboardHeader
         onSettingsOpen={() => setShowSettings(true)}
         onDonationOpen={() => setShowDonation(true)}
         onLogoClick={handleLogoClick}
+        themeMode={themeMode}
+        onThemeToggle={() => setThemeMode((prev) => (prev === "light" ? "dark" : "light"))}
       />
 
       {/* Bento Grid Layout */}
@@ -194,7 +214,7 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
                     });
                     setIsAdding(true);
                   }}
-                  className="flex items-center gap-2 bg-[var(--color-deep-navy)] text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md hover:bg-opacity-90 transition-all active:scale-95"
+                  className="btn-ink flex items-center gap-2 bg-[var(--color-deep-navy)] text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md hover:bg-opacity-90 transition-all active:scale-95"
                 >
                   <Plus className="w-4 h-4" /> {t("newEntry")}
                 </button>

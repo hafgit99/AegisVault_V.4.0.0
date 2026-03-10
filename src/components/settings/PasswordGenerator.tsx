@@ -44,7 +44,7 @@ export function PasswordGenerator({ isOpen }: { isOpen: boolean }) {
   };
 
   return (
-    <div className="border border-[var(--color-sage-green)]/30 bg-gradient-to-br from-[var(--color-sage-green)]/5 to-transparent rounded-3xl p-6 shadow-sm relative overflow-hidden flex flex-col gap-6">
+    <div className="password-generator-surface border border-[var(--color-sage-green)]/30 bg-gradient-to-br from-[var(--color-sage-green)]/5 to-transparent rounded-3xl p-6 shadow-sm relative overflow-hidden flex flex-col gap-6">
       <div className="absolute bottom-0 left-0 right-0 h-32 opacity-20 pointer-events-none overflow-hidden">
         <div className="w-[200%] h-full flex" style={{ transform: `translateX(-${genEntropy % 50}%)` }}>
           <svg className={`w-full h-full fill-[var(--color-sage-green)] ${genEntropy > 60 ? "animate-wave-fast" : "animate-wave"}`} viewBox="0 0 1440 320" preserveAspectRatio="none">
@@ -61,13 +61,13 @@ export function PasswordGenerator({ isOpen }: { isOpen: boolean }) {
           {t("entropyLabel", { entropy: genEntropy })}
         </span>
       </div>
-      <div className="flex items-center justify-between bg-white/70 rounded-xl p-4 border border-[var(--color-sage-green)]/20 shadow-inner relative z-10">
+      <div className="password-generator-output flex items-center justify-between bg-white/70 rounded-xl p-4 border border-[var(--color-sage-green)]/20 shadow-inner relative z-10">
         <span className="pass-font text-lg font-semibold text-[var(--color-deep-navy)] tracking-widest truncate mr-3 select-all">{standalonePassword}</span>
         <div className="flex gap-2">
-          <button onClick={handleGenerateStandalone} className="p-2.5 rounded-lg bg-white/80 hover:bg-white text-[var(--color-deep-navy)] hover:text-[var(--color-sage-green)] transition-all shadow active:scale-95" title={t("regenerateBtn")}>
+          <button onClick={handleGenerateStandalone} className="password-generator-btn p-2.5 rounded-lg bg-white/80 hover:bg-white text-[var(--color-deep-navy)] hover:text-[var(--color-sage-green)] transition-all shadow active:scale-95" title={t("regenerateBtn")}>
             <Wand2 className="w-5 h-5" />
           </button>
-          <button onClick={copyStandalonePassword} className={`p-2.5 rounded-lg transition-all shadow ${isStandaloneCopied ? "bg-[var(--color-sage-green)] text-white scale-110" : "bg-white/80 hover:bg-white hover:text-[var(--color-sage-green)]"}`} title={t("copyPasswordBtn")}>
+          <button onClick={copyStandalonePassword} className={`password-generator-btn p-2.5 rounded-lg transition-all shadow ${isStandaloneCopied ? "bg-[var(--color-sage-green)] text-white scale-110" : "bg-white/80 hover:bg-white hover:text-[var(--color-sage-green)]"}`} title={t("copyPasswordBtn")}>
             {isStandaloneCopied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
           </button>
         </div>
@@ -77,11 +77,11 @@ export function PasswordGenerator({ isOpen }: { isOpen: boolean }) {
           <label className="text-sm font-semibold opacity-70">{t("lengthLabel")}: <span className="text-[var(--color-sage-green)]">{genLength}</span></label>
           <input type="range" min="8" max="64" value={genLength} onChange={(e) => setGenLength(parseInt(e.target.value))} className="w-full accent-[var(--color-sage-green)]" />
         </div>
-        <div className="flex items-center justify-between md:justify-center gap-3 bg-white/40 p-3 rounded-xl border border-white">
+        <div className="password-generator-toggle flex items-center justify-between md:justify-center gap-3 bg-white/40 p-3 rounded-xl border border-white">
           <label className="text-sm font-semibold opacity-70">{t("numbersLabel")}</label>
           <input type="checkbox" checked={genNumbers} onChange={(e) => setGenNumbers(e.target.checked)} className="accent-[var(--color-sage-green)] w-5 h-5 rounded cursor-pointer" />
         </div>
-        <div className="flex items-center justify-between md:justify-center gap-3 bg-white/40 p-3 rounded-xl border border-white">
+        <div className="password-generator-toggle flex items-center justify-between md:justify-center gap-3 bg-white/40 p-3 rounded-xl border border-white">
           <label className="text-sm font-semibold opacity-70">{t("symbolsLabel")}</label>
           <input type="checkbox" checked={genSymbols} onChange={(e) => setGenSymbols(e.target.checked)} className="accent-[var(--color-sage-green)] w-5 h-5 rounded cursor-pointer" />
         </div>

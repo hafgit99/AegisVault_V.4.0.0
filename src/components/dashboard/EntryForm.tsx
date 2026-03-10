@@ -86,7 +86,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
     <>
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-4 p-5 rounded-2xl bg-white/70 border border-[var(--color-sage-green)]/30 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300"
+      className="entry-form-surface flex flex-col gap-4 p-5 rounded-2xl bg-white/70 border border-[var(--color-sage-green)]/30 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300"
     >
       <div className="flex justify-between items-center mb-1">
         <h3 className="font-semibold text-[var(--color-deep-navy)]">{t("createZeroKnowledgeEntry")}</h3>
@@ -112,12 +112,12 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
           }
           value={newEntry.title}
           onChange={(e) => setNewEntry({ ...newEntry, title: e.target.value })}
-          className="col-span-1 rounded-lg bg-white/50 py-2.5 px-3 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner"
+          className="entry-field col-span-1 rounded-lg bg-white/50 py-2.5 px-3 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner"
         />
         <select
           value={newEntry.category}
           onChange={(e) => setNewEntry({ ...newEntry, category: e.target.value })}
-          className="col-span-1 rounded-lg bg-white/50 py-2.5 px-3 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner"
+          className="entry-field col-span-1 rounded-lg bg-white/50 py-2.5 px-3 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner"
         >
           <option value="General">{t("general")}</option>
           <option value="Cards">{t("cards")}</option>
@@ -140,7 +140,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
             }
             value={newEntry.username}
             onChange={(e) => setNewEntry({ ...newEntry, username: e.target.value })}
-            className="col-span-2 rounded-lg bg-white/50 py-2.5 px-3 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner"
+            className="entry-field col-span-2 rounded-lg bg-white/50 py-2.5 px-3 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner"
           />
         )}
 
@@ -158,7 +158,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
             }
             value={newEntry.website || ""}
             onChange={(e) => setNewEntry({ ...newEntry, website: e.target.value })}
-            className="col-span-2 rounded-lg bg-white/50 py-2.5 px-3 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner"
+            className="entry-field col-span-2 rounded-lg bg-white/50 py-2.5 px-3 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner"
           />
         )}
 
@@ -169,7 +169,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
               placeholder={t("placeholderNotePass")}
               value={newEntry.pass}
               onChange={(e) => setNewEntry({ ...newEntry, pass: e.target.value })}
-              className="w-full rounded-lg bg-white/50 py-2.5 px-3 h-32 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner resize-none overflow-y-auto"
+              className="entry-field w-full rounded-lg bg-white/50 py-2.5 px-3 h-32 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner resize-none overflow-y-auto"
             />
           ) : (
             <input
@@ -186,7 +186,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
               }
               value={newEntry.pass}
               onChange={(e) => setNewEntry({ ...newEntry, pass: e.target.value })}
-              className="w-full rounded-lg bg-white/50 py-2.5 pl-3 pr-20 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner pass-font"
+              className="entry-field w-full rounded-lg bg-white/50 py-2.5 pl-3 pr-20 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner pass-font"
             />
           )}
 
@@ -228,7 +228,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                 setTagInput("");
               }
             }}
-            className="rounded-lg bg-white/50 py-2.5 px-3 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 shadow-inner"
+            className="entry-field rounded-lg bg-white/50 py-2.5 px-3 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 shadow-inner"
           />
           {newEntry.tags && newEntry.tags.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-1">
@@ -263,7 +263,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                 <KeyRound className="w-3.5 h-3.5" /> {t("addTOTP", "Add 2FA (TOTP)")}
               </button>
             ) : (
-              <div className="bg-blue-50/50 border border-blue-200/30 rounded-xl p-3 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="entry-totp-box bg-blue-50/50 border border-blue-200/30 rounded-xl p-3 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] uppercase font-bold tracking-widest text-blue-600 flex items-center gap-1">
                     <KeyRound className="w-3 h-3" /> {t("totpSetup", "TOTP Setup")}
@@ -315,7 +315,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                         }));
                       }
                     }}
-                    className="flex-1 rounded-lg bg-white/70 py-2 px-3 text-sm font-mono outline-none border border-blue-200/50 focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20 shadow-inner"
+                    className="entry-field flex-1 rounded-lg bg-white/70 py-2 px-3 text-sm font-mono outline-none border border-blue-200/50 focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20 shadow-inner"
                   />
                   <button
                     type="button"
@@ -351,7 +351,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
               placeholder={t("secureNotesPlaceholder", "Add encrypted notes (optional)...")}
               value={newEntry.notes || ""}
               onChange={(e) => setNewEntry({ ...newEntry, notes: e.target.value })}
-              className="w-full rounded-lg bg-white/50 py-2.5 px-3 h-20 text-sm font-medium outline-none border border-white/50 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/20 shadow-inner resize-none overflow-y-auto"
+              className="entry-field w-full rounded-lg bg-white/50 py-2.5 px-3 h-20 text-sm font-medium outline-none border border-white/50 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/20 shadow-inner resize-none overflow-y-auto"
             />
           </div>
         )}

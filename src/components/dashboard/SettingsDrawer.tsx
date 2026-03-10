@@ -263,7 +263,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
 
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
         <div className="absolute inset-0 bg-[var(--color-deep-navy)]/40 backdrop-blur-sm" onClick={onClose} />
-        <GlowCard className="bg-[rgba(255,255,255,0.9)] max-w-3xl w-full max-h-[90vh] overflow-y-auto backdrop-blur-[40px] border border-white/40 rounded-[2rem] p-8 relative z-10 shadow-2xl animate-in zoom-in-95 duration-300 slide-in-from-bottom-10 custom-scrollbar">
+        <GlowCard className="settings-drawer-surface bg-[rgba(255,255,255,0.9)] max-w-3xl w-full max-h-[90vh] overflow-y-auto backdrop-blur-[40px] border border-white/40 rounded-[2rem] p-8 relative z-10 shadow-2xl animate-in zoom-in-95 duration-300 slide-in-from-bottom-10 custom-scrollbar">
           <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full hover:bg-black/5 text-gray-500 transition-colors">
             <X className="w-5 h-5" />
           </button>
@@ -283,7 +283,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
             <PasswordGenerator isOpen={isOpen} />
 
             {/* Watchtower Issues */}
-            <div className="border border-red-500/20 bg-red-50/20 rounded-3xl p-6 shadow-sm">
+            <div className="settings-danger-panel border border-red-500/20 bg-red-50/20 rounded-3xl p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <ShieldAlert className="w-5 h-5 text-red-500" />
@@ -291,20 +291,20 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                 </div>
                 <span className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full">{t("issuesFoundLabel", { count: watchtower.weak + watchtower.pwned })}</span>
               </div>
-              <p className="text-xs opacity-70 mb-4 text-red-900/80">{t("watchtowerIssuesDesc")}</p>
+              <p className="watchtower-issues-desc text-xs opacity-80 mb-4 text-red-700">{t("watchtowerIssuesDesc")}</p>
               <button onClick={() => setShowWeakPasswordsPopup(true)} disabled={watchtower.weak + watchtower.pwned === 0} className="w-full py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:grayscale">
                 {t("viewIssuesBtn")}
               </button>
             </div>
 
             {/* Security & Sessions */}
-            <div className="border border-black/5 bg-white/60 rounded-3xl p-6 shadow-sm">
+            <div className="settings-panel border border-black/5 bg-white/60 rounded-3xl p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-6">
                 <ShieldCheck className="w-5 h-5 text-[var(--color-sage-green)]" />
                 <h3 className="text-lg font-semibold tracking-tight">{t("securitySessionTitle")}</h3>
               </div>
 
-              <div className="bg-white/80 p-5 rounded-2xl border border-white flex flex-col md:flex-row justify-between md:items-center gap-4 shadow-inner mb-4">
+              <div className="settings-subpanel bg-white/80 p-5 rounded-2xl border border-white flex flex-col md:flex-row justify-between md:items-center gap-4 shadow-inner mb-4">
                 <div>
                   <h4 className="font-semibold text-sm mb-1 text-[var(--color-deep-navy)]">{t("autoLockTimerTitle")}</h4>
                   <p className="text-xs opacity-70 leading-relaxed max-w-md">{t("autoLockTimerDesc")}</p>
@@ -329,7 +329,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                     <p className="text-xs opacity-70 max-w-sm">{t("donateDesc")}</p>
                   </div>
                 </div>
-                <button onClick={onDonationOpen} className="px-6 py-2.5 bg-[var(--color-deep-navy)] text-white rounded-xl text-sm font-bold shadow-md hover:bg-opacity-90 transition-all active:scale-95 whitespace-nowrap">
+                <button onClick={onDonationOpen} className="btn-ink px-6 py-2.5 bg-[var(--color-deep-navy)] text-white rounded-xl text-sm font-bold shadow-md hover:bg-opacity-90 transition-all active:scale-95 whitespace-nowrap">
                   {t("donateBtn")}
                 </button>
               </div>
@@ -343,12 +343,12 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                   <h3 className="text-lg font-extrabold tracking-tighter text-red-600 uppercase">{t("secretMenuTitle")}</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white/80 p-5 rounded-2xl border border-red-100 shadow-inner">
+                  <div className="settings-subpanel bg-white/80 p-5 rounded-2xl border border-red-100 shadow-inner">
                     <h4 className="font-bold text-sm mb-2 text-[var(--color-deep-navy)]">{t("hiddenVaultTitle")}</h4>
                     <p className="text-xs opacity-70 mb-4">{t("hiddenVaultDesc")}</p>
                     <input type="password" placeholder={t("duressPinPlaceholder")} value={duressPin} onChange={(e) => setDuressPin(e.target.value)} className="w-full rounded-xl border border-red-100 bg-white px-4 py-2 text-sm font-mono tracking-widest outline-none focus:ring-2 focus:ring-red-400/20" />
                   </div>
-                  <div className="bg-white/80 p-5 rounded-2xl border border-red-100 shadow-inner">
+                  <div className="settings-subpanel bg-white/80 p-5 rounded-2xl border border-red-100 shadow-inner">
                     <h4 className="font-bold text-sm mb-2 text-[var(--color-deep-navy)]">{t("silentWipeTitle")}</h4>
                     <p className="text-xs opacity-70 mb-4">{t("silentWipeDesc")}</p>
                     <input type="password" placeholder={t("killPinPlaceholder")} value={killPin} onChange={(e) => setKillPin(e.target.value)} className="w-full rounded-xl border border-red-100 bg-white px-4 py-2 text-sm font-mono tracking-widest outline-none focus:ring-2 focus:ring-red-400/20" />
@@ -361,7 +361,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
             )}
 
             {/* Data Management */}
-            <div className="border border-black/5 bg-white/60 rounded-3xl p-6 shadow-sm">
+            <div className="settings-panel border border-black/5 bg-white/60 rounded-3xl p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-6">
                 <Database className="w-5 h-5 text-[var(--color-sage-green)]" />
                 <h3 className="text-lg font-semibold tracking-tight">{t("dataManagementTitle")}</h3>
@@ -369,20 +369,20 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Export */}
-                <div className="bg-white/80 p-5 rounded-2xl border border-white flex flex-col justify-between shadow-inner">
+                <div className="settings-subpanel bg-white/80 p-5 rounded-2xl border border-white flex flex-col justify-between shadow-inner">
                   <div>
                     <h4 className="font-semibold text-sm mb-1 text-[var(--color-deep-navy)]">{t("exportTitle")}</h4>
                     <p className="text-xs opacity-70 leading-relaxed mb-4">{t("exportDesc")}</p>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <button onClick={() => handleExport("vault")} className="w-full justify-center flex items-center gap-2 py-2 rounded-xl bg-[var(--color-deep-navy)] text-white text-xs font-semibold hover:bg-opacity-90 transition-all active:scale-95 shadow-md">
+                    <button onClick={() => handleExport("vault")} className="btn-ink w-full justify-center flex items-center gap-2 py-2 rounded-xl bg-[var(--color-deep-navy)] text-white text-xs font-semibold hover:bg-opacity-90 transition-all active:scale-95 shadow-md">
                       <FileDown className="w-4 h-4" /> {t("exportVaultBtn")}
                     </button>
                     <div className="grid grid-cols-2 gap-2">
-                      <button onClick={() => handleExport("csv")} className="w-full justify-center flex items-center gap-2 py-2 rounded-xl bg-white/60 border border-black/10 text-[var(--color-deep-navy)] text-xs font-semibold hover:bg-white transition-all active:scale-95 shadow-sm">
+                      <button onClick={() => handleExport("csv")} className="settings-plain-btn w-full justify-center flex items-center gap-2 py-2 rounded-xl bg-white/60 border border-black/10 text-[var(--color-deep-navy)] text-xs font-semibold hover:bg-white transition-all active:scale-95 shadow-sm">
                         {t("exportCsvBtn")}
                       </button>
-                      <button onClick={() => handleExport("json")} className="w-full justify-center flex items-center gap-2 py-2 rounded-xl bg-white/60 border border-black/10 text-[var(--color-deep-navy)] text-xs font-semibold hover:bg-white transition-all active:scale-95 shadow-sm">
+                      <button onClick={() => handleExport("json")} className="settings-plain-btn w-full justify-center flex items-center gap-2 py-2 rounded-xl bg-white/60 border border-black/10 text-[var(--color-deep-navy)] text-xs font-semibold hover:bg-white transition-all active:scale-95 shadow-sm">
                         {t("exportJsonBtn")}
                       </button>
                     </div>
@@ -390,7 +390,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                 </div>
 
                 {/* Import */}
-                <div className="bg-white/80 p-5 rounded-2xl border border-white flex flex-col justify-between shadow-inner">
+                <div className="settings-subpanel bg-white/80 p-5 rounded-2xl border border-white flex flex-col justify-between shadow-inner">
                   <div>
                     <h4 className="font-semibold text-sm mb-1 text-[var(--color-deep-navy)]">{t("importWizardTitle")}</h4>
                     <p className="text-xs opacity-70 leading-relaxed mb-4">{t("importWizardDesc")}</p>
@@ -415,10 +415,10 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
               </div>
 
               {/* Data Reset */}
-              <div className="mt-4 p-5 rounded-2xl border border-red-500/20 bg-red-50/50 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+              <div className="danger-reset-panel mt-4 p-5 rounded-2xl border border-red-500/20 bg-red-50/50 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
                 <div>
-                  <h4 className="font-semibold text-sm mb-1 text-red-700">{t("factoryResetBtn")}</h4>
-                  <p className="text-[11px] opacity-70 leading-relaxed max-w-sm text-red-900/80">{t("confirmFullWipe")}</p>
+                  <h4 className="danger-reset-title font-semibold text-sm mb-1 text-red-700">{t("factoryResetBtn")}</h4>
+                  <p className="danger-reset-desc text-[11px] opacity-90 leading-relaxed max-w-sm text-red-700">{t("confirmFullWipe")}</p>
                 </div>
                 <button onClick={() => setShowWipeModal(true)} className="w-full md:w-auto px-6 py-2.5 rounded-xl bg-red-600 text-white font-bold text-xs hover:bg-red-700 transition-all shadow-sm active:scale-95 whitespace-nowrap">
                   {t("factoryResetBtn")}
@@ -437,10 +437,10 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                     <p className="text-xs opacity-80 max-w-sm">{t("qrSyncDesc")}</p>
                   </div>
                   <div className="flex gap-3 shrink-0">
-                    <button onClick={handleSyncExportInit} className="px-5 py-2.5 bg-white border border-[var(--color-sage-green)]/40 rounded-xl text-[var(--color-deep-navy)] font-bold text-sm hover:bg-[var(--color-sage-green)] hover:text-white transition-all shadow-sm active:scale-95">
+                    <button onClick={handleSyncExportInit} className="settings-secondary-btn px-5 py-2.5 bg-white border border-[var(--color-sage-green)]/40 rounded-xl text-[var(--color-deep-navy)] font-bold text-sm hover:bg-[var(--color-sage-green)] hover:text-white transition-all shadow-sm active:scale-95">
                       {t("qrExportBtn")}
                     </button>
-                    <button onClick={() => setSyncMode("import")} className="px-5 py-2.5 bg-[var(--color-deep-navy)] rounded-xl text-white font-bold text-sm hover:bg-opacity-90 transition-all shadow-md active:scale-95">
+                    <button onClick={() => setSyncMode("import")} className="btn-ink px-5 py-2.5 bg-[var(--color-deep-navy)] rounded-xl text-white font-bold text-sm hover:bg-opacity-90 transition-all shadow-md active:scale-95">
                       {t("qrImportBtn")}
                     </button>
                   </div>
@@ -485,7 +485,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
       {showWeakPasswordsPopup && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-[var(--color-deep-navy)]/40 backdrop-blur-sm" onClick={() => setShowWeakPasswordsPopup(false)} />
-          <GlowCard className="bg-[rgba(255,255,255,0.95)] max-w-2xl w-full max-h-[80vh] overflow-y-auto backdrop-blur-[40px] border border-red-500/20 rounded-[2rem] p-6 relative z-10 shadow-2xl custom-scrollbar">
+          <GlowCard className="weak-passwords-surface bg-[rgba(255,255,255,0.95)] max-w-2xl w-full max-h-[80vh] overflow-y-auto backdrop-blur-[40px] border border-red-500/20 rounded-[2rem] p-6 relative z-10 shadow-2xl custom-scrollbar">
             <button onClick={() => setShowWeakPasswordsPopup(false)} className="absolute top-6 right-6 p-2 rounded-full hover:bg-black/5 text-gray-500 transition-colors">
               <X className="w-5 h-5" />
             </button>
@@ -498,7 +498,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
             </div>
             <div className="flex flex-col gap-3">
               {passwords.filter((p) => !p.pass || p.pass.length < 8 || (p.pwned_count || 0) > 0).map((p) => (
-                <div key={p.id} className="flex items-center justify-between p-4 rounded-xl bg-white/60 border border-black/5 shadow-sm hover:shadow-md transition-all group">
+                <div key={p.id} className="settings-subpanel flex items-center justify-between p-4 rounded-xl bg-white/60 border border-black/5 shadow-sm hover:shadow-md transition-all group">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm shrink-0">{getCategoryIcon(p.category)}</div>
                     <div className="flex flex-col">

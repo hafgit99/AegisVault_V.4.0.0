@@ -46,7 +46,7 @@ export function ReAuthModal({ onSuccess, onCancel, actionName }: ReAuthModalProp
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300" role="dialog" aria-modal="true" aria-labelledby="reauth-modal-title">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} aria-hidden="true" />
-      <GlowCard className="bg-[rgba(255,255,255,0.95)] max-w-sm w-full backdrop-blur-[40px] border border-white/40 rounded-[2rem] p-6 relative z-10 shadow-2xl animate-in zoom-in-95 duration-300 slide-in-from-bottom-5">
+      <GlowCard className="reauth-surface bg-[rgba(255,255,255,0.95)] max-w-sm w-full backdrop-blur-[40px] border border-white/40 rounded-[2rem] p-6 relative z-10 shadow-2xl animate-in zoom-in-95 duration-300 slide-in-from-bottom-5">
         <button onClick={onCancel} className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 text-gray-500 transition-colors" aria-label={t("close", "Close")}>
           <X className="w-4 h-4" />
         </button>
@@ -73,7 +73,7 @@ export function ReAuthModal({ onSuccess, onCancel, actionName }: ReAuthModalProp
           <button
             type="submit"
             disabled={isVerifying || !password}
-            className="w-full py-3 rounded-xl bg-[var(--color-deep-navy)] text-white font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2"
+            className="btn-ink w-full py-3 rounded-xl bg-[var(--color-deep-navy)] text-white font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2"
           >
             {isVerifying ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
             Verify & Proceed
