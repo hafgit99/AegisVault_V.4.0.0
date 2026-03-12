@@ -7,6 +7,9 @@ import jsPDF from "jspdf";
 import { useTranslation } from 'react-i18next';
 import { VaultManager, type VaultProfile } from '../lib/VaultManager';
 import { WipeConfirmationModal } from './WipeConfirmationModal';
+import { PasskeyBindingService } from '../lib/PasskeyBindingService';
+
+const PASSKEY_ROTATION_DAYS = 90;
 
 export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void }) {
   const { t, i18n } = useTranslation();
@@ -18,6 +21,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
   const [isSetupMode, setIsSetupMode] = useState(false);
   const [showSetupSecret, setShowSetupSecret] = useState(false);
   const [hasPasskey, setHasPasskey] = useState(false);
+  const [passkeyNeedsRotation, setPasskeyNeedsRotation] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   // Multi-Vault state
@@ -28,8 +32,42 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
   const [showNewVaultInput, setShowNewVaultInput] = useState(false);
   const [showWipeModal, setShowWipeModal] = useState(false);
 
+  const getCurrentProfileForPasskey = () => {
+    const profile = activeProfile || VaultManager.getActiveProfile();
+    return {
+      profileId: profile?.id || null,
+      dbName: profile?.dbName || 'aegis_opfs_vault',
+    };
+  };
+
+  const clearPasskeyEnrollment = (notifyKey?: string) => {
+    const { profileId, dbName } = getCurrentProfileForPasskey();
+    PasskeyBindingService.revokeBinding(profileId, dbName);
+    setHasPasskey(false);
+    setPasskeyNeedsRotation(false);
+    if (notifyKey) toast.info(t(notifyKey));
+  };
+
+  const refreshPasskeyState = () => {
+    const { profileId, dbName } = getCurrentProfileForPasskey();
+    const binding = PasskeyBindingService.getBinding(profileId, dbName);
+    setHasPasskey(Boolean(binding));
+
+    const createdAt = binding?.meta?.createdAt;
+    if (createdAt) {
+      const createdAtMs = new Date(createdAt).getTime();
+      const ageDays = Number.isFinite(createdAtMs)
+        ? Math.floor((Date.now() - createdAtMs) / (1000 * 60 * 60 * 24))
+        : 0;
+      setPasskeyNeedsRotation(ageDays >= PASSKEY_ROTATION_DAYS);
+    } else {
+      setPasskeyNeedsRotation(false);
+    }
+  };
+
   useEffect(() => {
-    setHasPasskey(!!localStorage.getItem('aegis_passkey_id'));
+    refreshPasskeyState();
+
     // Vault profillerini yükle
     const profiles = VaultManager.getProfiles();
     setVaultProfiles(profiles);
@@ -62,6 +100,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
     // Vault DB adını vaultService'e bildir
     vaultService.setVaultDbName(profile.dbName);
     toast.info(t("vaultSwitched", `Switched to "${profile.name}"`));
+    setTimeout(() => refreshPasskeyState(), 0);
   };
 
   const handleDeleteVault = (id: string) => {
@@ -195,19 +234,43 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
 
     if (hasPasskey) {
       // Authentication Flow
-      const credId = localStorage.getItem('aegis_passkey_id');
-      const encData = localStorage.getItem('aegis_passkey_data');
-      const prfSalt = localStorage.getItem('aegis_prf_salt');
-      if (!credId || !encData || !prfSalt) return;
+      const { profileId, dbName } = getCurrentProfileForPasskey();
+      const binding = PasskeyBindingService.getBinding(profileId, dbName);
+      if (!binding) {
+        clearPasskeyEnrollment('passkeyBindingInvalid');
+        return;
+      }
 
       try {
-        const prfKey = await authenticatePasskeyWithPRF(credId, prfSalt);
+        const prfKey = await authenticatePasskeyWithPRF(binding.credentialId, binding.prfSalt);
         if (prfKey) {
-          const payloadStr = await decryptWithPRF(prfKey, encData);
-          const payload = JSON.parse(payloadStr);
+          const payloadStr = await decryptWithPRF(prfKey, binding.encryptedPayload);
+          const payload = JSON.parse(payloadStr || '{}');
+          const payloadPassword = typeof payload.password === 'string' ? payload.password : '';
+          const payloadSecretKey = typeof payload.secretKey === 'string' ? payload.secretKey : '';
+          const payloadDbName = typeof payload.dbName === 'string' && payload.dbName.trim()
+            ? payload.dbName
+            : (activeProfile?.dbName || 'aegis_opfs_vault');
+          const payloadProfileId = typeof payload.profileId === 'string' ? payload.profileId : null;
+
+          if (!payloadPassword || !payloadSecretKey) {
+            clearPasskeyEnrollment('passkeyPayloadInvalid');
+            return;
+          }
+
+          if (payloadProfileId) {
+            const profile = VaultManager.getProfiles().find((p) => p.id === payloadProfileId);
+            if (profile) {
+              VaultManager.setActiveVaultId(profile.id);
+              setActiveProfile(profile);
+              vaultService.setVaultDbName(profile.dbName);
+            } else {
+              toast.info(t('passkeyProfileNotFound'));
+            }
+          }
           
-          setPassword(payload.password);
-          setSecretKey(payload.secretKey);
+          setPassword(payloadPassword);
+          setSecretKey(payloadSecretKey);
           setIsDecrypting(true);
 
           const interval = setInterval(() => {
@@ -218,16 +281,20 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
           }, 200);
 
           try {
-            await vaultService.initDb(payload.password, payload.secretKey);
+            await vaultService.initDb(payloadPassword, payloadSecretKey, payloadDbName, false);
+
+            PasskeyBindingService.updateLastUsed(payloadProfileId, payloadDbName);
+
             clearInterval(interval);
             setProgress(100);
-            setTimeout(() => onUnlock(payload.secretKey), 600);
+            setTimeout(() => onUnlock(payloadSecretKey), 600);
           } catch (err) {
             console.error(err);
             clearInterval(interval);
             setIsDecrypting(false);
             setProgress(0);
             setIsError(true);
+            toast.error(t('passkeyRebindRequired'));
             setTimeout(() => setIsError(false), 2000);
           }
         } else {
@@ -249,12 +316,29 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
       try {
         const passkeyRes = await registerPasskeyWithPRF();
         if (passkeyRes) {
-          const payload = JSON.stringify({ password, secretKey: currentSecret });
+          const currentProfile = activeProfile || VaultManager.getActiveProfile();
+          const currentDbName = currentProfile?.dbName || 'aegis_opfs_vault';
+          const payload = JSON.stringify({
+            password,
+            secretKey: currentSecret,
+            profileId: currentProfile?.id || null,
+            dbName: currentDbName,
+          });
           const encObj = await encryptWithPRF(passkeyRes.prfKey, payload);
-          localStorage.setItem('aegis_passkey_id', passkeyRes.id);
-          localStorage.setItem('aegis_passkey_data', encObj);
-          localStorage.setItem('aegis_prf_salt', passkeyRes.salt);
+          PasskeyBindingService.saveBinding(currentProfile?.id || null, currentDbName, {
+            credentialId: passkeyRes.id,
+            encryptedPayload: encObj,
+            prfSalt: passkeyRes.salt,
+            meta: {
+              createdAt: new Date().toISOString(),
+              lastUsedAt: new Date().toISOString(),
+              version: 1,
+              profileId: currentProfile?.id || null,
+              dbName: currentDbName,
+            },
+          });
           setHasPasskey(true);
+          setPasskeyNeedsRotation(false);
           toast.success(t('bioAdded'));
         } else {
           toast.error(t('bioNotSupported'));
@@ -264,6 +348,13 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
         toast.error(t('bioCanceled'));
       }
     }
+  };
+
+  const handleRevokePasskey = () => {
+    const confirmed = window.confirm(t('passkeyRevokeConfirm'));
+    if (!confirmed) return;
+    clearPasskeyEnrollment();
+    toast.success(t('passkeyRevoked'));
   };
 
   return (
@@ -505,15 +596,33 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
           )}
 
           {!isSetupMode && !showSetupSecret && !isDecrypting && (
-             <button
-               type="button"
-               onClick={handlePasskeyAction}
-               className="vault-login-passkey relative mt-2 flex w-full items-center justify-center gap-3 rounded-xl py-3.5 text-sm font-semibold tracking-wide text-[var(--color-deep-navy)] transition-all bg-white/40 backdrop-blur-[20px] shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 hover:bg-white/60 hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] active:scale-95 group overflow-hidden"
-             >
-               <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none" />
-               <Fingerprint className="w-5 h-5 text-[var(--color-sage-green)] group-hover:scale-110 transition-transform" />
-               {hasPasskey ? t('biometricsUnlock') : t('biometricsRegister')}
-             </button>
+            <>
+              <button
+                type="button"
+                onClick={handlePasskeyAction}
+                className="vault-login-passkey relative mt-2 flex w-full items-center justify-center gap-3 rounded-xl py-3.5 text-sm font-semibold tracking-wide text-[var(--color-deep-navy)] transition-all bg-white/40 backdrop-blur-[20px] shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 hover:bg-white/60 hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] active:scale-95 group overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none" />
+                <Fingerprint className="w-5 h-5 text-[var(--color-sage-green)] group-hover:scale-110 transition-transform" />
+                {hasPasskey ? t('biometricsUnlock') : t('biometricsRegister')}
+              </button>
+
+              {hasPasskey && passkeyNeedsRotation && (
+                <div className="mt-2 w-full rounded-xl border border-amber-300/40 bg-amber-50/60 px-3 py-2 text-[11px] font-medium text-amber-700">
+                  {t('passkeyRotationRecommended')}
+                </div>
+              )}
+
+              {hasPasskey && (
+                <button
+                  type="button"
+                  onClick={handleRevokePasskey}
+                  className="mt-2 text-[11px] font-semibold text-[var(--color-deep-navy)]/60 hover:text-red-600 transition-colors"
+                >
+                  {t('passkeyRevokeButton')}
+                </button>
+              )}
+            </>
           )}
 
           {isSetupMode && !isDecrypting && (

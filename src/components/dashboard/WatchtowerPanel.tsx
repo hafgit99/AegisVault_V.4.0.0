@@ -10,7 +10,16 @@ import { useTranslation } from "react-i18next";
  */
 export function WatchtowerPanel() {
   const { t } = useTranslation();
-  const { watchtower, isPwnedScanning, pwnedScanProgress, handleScanPwned, passwords } = useVault();
+  const {
+    watchtower,
+    isPwnedScanning,
+    pwnedScanProgress,
+    handleScanPwned,
+    passwords,
+    hibpEnabled,
+    setHibpEnabled,
+    hibpLastResult,
+  } = useVault();
 
   return (
     <GlowCard className="watchtower-surface bg-[rgba(255,255,255,0.25)] backdrop-blur-[40px] -webkit-backdrop-filter:blur(40px) border border-white/40 rounded-3xl p-6 relative">
@@ -56,7 +65,7 @@ export function WatchtowerPanel() {
 
       <button
         onClick={handleScanPwned}
-        disabled={isPwnedScanning || passwords.length === 0}
+        disabled={isPwnedScanning || passwords.length === 0 || !hibpEnabled}
         className="mt-4 w-full flex items-center justify-center gap-2 bg-gradient-to-r from-red-500/10 to-amber-500/10 hover:from-red-500/20 hover:to-amber-500/20 border border-red-500/20 text-red-600 py-2.5 rounded-xl text-xs font-bold shadow-sm transition-all relative overflow-hidden disabled:opacity-50"
       >
         {isPwnedScanning ? (
@@ -73,6 +82,22 @@ export function WatchtowerPanel() {
           </>
         )}
       </button>
+
+      <label className="mt-3 flex items-center justify-between rounded-xl border border-white/30 bg-white/40 px-3 py-2 text-[11px] font-semibold text-[var(--color-deep-navy)]/80">
+        <span>{t('hibpPrivacyToggle')}</span>
+        <input
+          type="checkbox"
+          checked={hibpEnabled}
+          onChange={(e) => setHibpEnabled(e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 text-[var(--color-sage-green)] focus:ring-[var(--color-sage-green)]/40"
+        />
+      </label>
+
+      {hibpLastResult === 'unknown' && (
+        <div className="mt-2 rounded-xl border border-amber-300/40 bg-amber-50/60 px-3 py-2 text-[11px] font-medium text-amber-700">
+          {t('hibpResultUnknown')}
+        </div>
+      )}
     </GlowCard>
   );
 }

@@ -3,6 +3,8 @@ import { X, Wand2, Eye, EyeOff, ShieldCheck, Lock, Paperclip, FileUp, Tag, KeyRo
 import { useVault } from "../../contexts/VaultContext";
 import { vaultService, type VaultEntry } from "../../vaultService";
 import { parseOtpauthUri } from "../../lib/TOTPService";
+import { VaultManager } from "../../lib/VaultManager";
+import { TotpVaultPolicy } from "../../lib/TotpVaultPolicy";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 
@@ -33,6 +35,10 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
   const [showQRScanner, setShowQRScanner] = useState(false);
   const existingAttachments = Array.isArray(newEntry.attachments) ? newEntry.attachments : [];
   const visibleExistingAttachments = existingAttachments.filter((att) => !removedAttachmentIds.includes(att.id));
+  const activeProfile = VaultManager.getActiveProfile();
+  const totpMode = TotpVaultPolicy.getMode();
+  const isSeparateTotpMode = totpMode === 'separate_2fa_vault';
+  const isInTwoFactorVault = TotpVaultPolicy.isTwoFactorVault(activeProfile?.id);
 
   const generateSecurePassword = () => {
     const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+=-";
@@ -77,6 +83,17 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
       ...newEntry,
       attachments: visibleExistingAttachments,
     };
+
+    if (isSeparateTotpMode && !isInTwoFactorVault) {
+      payload.totpSecret = "";
+      payload.totp_issuer = "";
+      payload.totp_algorithm = undefined;
+      payload.totp_digits = undefined;
+      payload.totp_period = undefined;
+      if (newEntry.totpSecret) {
+        toast.info(t('totpSeparateModeBlocked'));
+      }
+    }
 
     await handleCreateEntry(payload, newAttachments);
     onClose();
@@ -254,7 +271,11 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
         {/* TOTP 2FA Section */}
         {newEntry.category !== "Notes" && (
           <div className="col-span-2">
-            {!showTotpSection ? (
+            {isSeparateTotpMode && !isInTwoFactorVault ? (
+              <div className="rounded-xl border border-amber-300/40 bg-amber-50/60 px-3 py-2 text-xs font-medium text-amber-700">
+                {t('totpSeparateModeHint')}
+              </div>
+            ) : !showTotpSection ? (
               <button
                 type="button"
                 onClick={() => setShowTotpSection(true)}

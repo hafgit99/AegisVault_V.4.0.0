@@ -68,6 +68,9 @@ export interface VaultContextType {
   watchtower: WatchtowerData;
   isPwnedScanning: boolean;
   pwnedScanProgress: number;
+  hibpEnabled: boolean;
+  setHibpEnabled: (enabled: boolean) => void;
+  hibpLastResult: 'idle' | 'ok' | 'unknown';
   handleScanPwned: () => Promise<void>;
   uniqueTags: string[];
   
@@ -138,6 +141,14 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
   // HIBP State
   const [isPwnedScanning, setIsPwnedScanning] = useState(false);
   const [pwnedScanProgress, setPwnedScanProgress] = useState(0);
+  const [hibpEnabled, setHibpEnabledState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('aegis_hibp_enabled') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const [hibpLastResult, setHibpLastResult] = useState<'idle' | 'ok' | 'unknown'>('idle');
 
   // Auto-Lock (Persist in localStorage)
   const [autoLockTime, setAutoLockTime] = useState<number>(() => {
@@ -148,6 +159,15 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
   useEffect(() => {
     localStorage.setItem('aegis_auto_lock_time', autoLockTime.toString());
   }, [autoLockTime]);
+
+  const setHibpEnabled = useCallback((enabled: boolean) => {
+    setHibpEnabledState(enabled);
+    try {
+      localStorage.setItem('aegis_hibp_enabled', enabled ? '1' : '0');
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
 
   // Ref for handleLock (avoids stale closure in auto-lock timer)
   const handleLockRef = useRef<() => void>(() => {});
@@ -226,34 +246,62 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
     };
   }, [autoLockTime, t]);
 
-  // Extension senkronizasyonu
+  // ─── Extension Senkronizasyonu ─────────────────────────────────
+  // Çok katmanlı strateji:
+  //   1. Nonce ile güvenli postMessage (content script aynı sayfadaysa)
+  //   2. chrome.runtime.sendMessage direkt (fallback, nonce yoksa)
+  //   3. Electron API (masaüstü uygulaması)
+  // Bu sayede kasa açık olduğunda extension her zaman senkronize olur.
   useEffect(() => {
-    const syncToExtension = () => {
+    const syncToExtension = async () => {
       if (passwords.length === 0) return;
-      const payload = passwords.map(p => ({
-        title: p.title,
-        username: p.username,
-        pass: p.pass,
-        website: p.website,
-      }));
+      const payload = passwords
+        .filter((p) => Boolean(p.pass && p.website && p.website.trim()))
+        .map((p) => ({
+          title: p.title,
+          username: p.username,
+          pass: p.pass,
+          website: p.website,
+        }));
 
+      if (payload.length === 0) return;
+
+      // Yöntem 1: Nonce ile güvenli postMessage (content script üzerinden)
       if (currentExtensionNonce) {
-        window.postMessage({ type: "AEGIS_SYNC_VAULT", payload, nonce: currentExtensionNonce }, window.location.origin);
-        // Sadece bir kez kullanılabilir, yeni nonce gelene kadar bekletir
-        currentExtensionNonce = null; 
+        window.postMessage(
+          { type: "AEGIS_SYNC_VAULT", payload, nonce: currentExtensionNonce },
+          window.location.origin
+        );
+        // Tek kullanımlık — yeni nonce gelene kadar bekletir
+        currentExtensionNonce = null;
       }
 
+      // Yöntem 2: chrome.runtime.sendMessage direkt (nonce olmasa da çalışır)
+      // Bu, Extension chrome.externally_connectable veya content script olmadan da sync sağlar
+      try {
+        const cr = (window as any).chrome?.runtime;
+        if (cr && typeof cr.sendMessage === 'function') {
+          const extId =
+            (import.meta as any)?.env?.VITE_AEGIS_EXTENSION_ID as string | undefined;
+          if (extId) {
+            cr.sendMessage(extId, { type: 'SAVE_VAULT', data: payload }, () => {
+              // Hata olursa gözardı et (extension kurulu olmayabilir)
+              void (window as any).chrome?.runtime?.lastError;
+            });
+          }
+        }
+      } catch (_e) { /* extension yok veya izin yok */ }
+
+      // Yöntem 3: Electron API (masaüstü uygulaması)
       try {
         const electronApi = (window as any).aegisElectron;
         if (electronApi?.syncVault) {
           electronApi.syncVault(payload);
         }
-      } catch (e) {}
+      } catch (_e) {}
     };
 
     syncToExtension();
-    const periodicSyncId = setInterval(syncToExtension, 30000);
-    return () => clearInterval(periodicSyncId);
   }, [passwords]);
 
   // ─── Toggles ───
@@ -381,15 +429,26 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
 
   const handleScanPwned = useCallback(async () => {
     if (passwords.length === 0) return;
+    if (!hibpEnabled) {
+      toast.info(t('hibpEnableFirst'));
+      return;
+    }
     setIsPwnedScanning(true);
     setPwnedScanProgress(0);
+    setHibpLastResult('idle');
+
+    let hadUnknown = false;
 
     let scanned = 0;
     for (const p of passwords) {
       if (p.pass) {
         const pwnedCount = await HIBPService.checkPassword(p.pass);
-        if (pwnedCount > 0 && p.pwned_count !== pwnedCount) {
+        if (pwnedCount === null) {
+          hadUnknown = true;
+        } else if (pwnedCount > 0 && p.pwned_count !== pwnedCount) {
           await vaultService.addPassword({ ...p, pwned_count: pwnedCount });
+        } else if (pwnedCount === 0 && p.pwned_count && p.pwned_count > 0) {
+          await vaultService.addPassword({ ...p, pwned_count: 0 });
         }
         // HIBP API Rate Limit: 1 request per ~1500ms
         await new Promise(resolve => setTimeout(resolve, 1500));
@@ -400,8 +459,14 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
 
     loadPasswords();
     setIsPwnedScanning(false);
-    toast.success(t("watchtowerPwnedScanCompleted"));
-  }, [passwords, loadPasswords, t]);
+    if (hadUnknown) {
+      setHibpLastResult('unknown');
+      toast.info(t('hibpResultUnknown'));
+    } else {
+      setHibpLastResult('ok');
+      toast.success(t("watchtowerPwnedScanCompleted"));
+    }
+  }, [passwords, loadPasswords, t, hibpEnabled]);
 
   const uniqueTags = useMemo(() => {
     const set = new Set<string>();
@@ -424,6 +489,20 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
       window.postMessage({ type: "AEGIS_LOCK_VAULT", nonce: currentExtensionNonce }, window.location.origin);
       currentExtensionNonce = null;
     }
+
+    // Direkt background'a da kilit mesajı gönder
+    try {
+      const cr = (window as any).chrome?.runtime;
+      if (cr && typeof cr.sendMessage === 'function') {
+        const extId =
+          (import.meta as any)?.env?.VITE_AEGIS_EXTENSION_ID as string | undefined;
+        if (extId) {
+          cr.sendMessage(extId, { type: 'LOCK_VAULT' }, () => {
+            void (window as any).chrome?.runtime?.lastError;
+          });
+        }
+      }
+    } catch (_e) {}
 
     try {
       const electronApi = (window as any).aegisElectron;
@@ -472,6 +551,9 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
     watchtower,
     isPwnedScanning,
     pwnedScanProgress,
+    hibpEnabled,
+    setHibpEnabled,
+    hibpLastResult,
     handleScanPwned,
     uniqueTags,
     duressPin,

@@ -8,7 +8,7 @@ export default defineConfig({
   manifest: (env) => ({
     name: "Aegis Vault",
     description: "Secure, zero-knowledge password manager and 2FA authenticator extension. Autofill passwords, sync securely across devices with end-to-end encryption in 2026.",
-    version: "4.0.4",
+    version: "4.0.5",
     
     icons: {
       "16": "icon-16.png",
@@ -43,7 +43,11 @@ export default defineConfig({
         matches: [
           "http://localhost:5173/*",
           "http://127.0.0.1:5173/*",
-          "https://*.aegisvault.local/*"
+          "https://*.aegisvault.local/*",
+          "https://aegisvault.xyz/*",
+          "https://*.aegisvault.xyz/*",
+          "https://app.aegisvault.xyz/*",
+          "https://www.aegisvault.xyz/*"
         ]
       }
     }),

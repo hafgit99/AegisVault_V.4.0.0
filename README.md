@@ -1,13 +1,13 @@
-# 🛡️ Aegis Vault V.4.0.0 (Fort Knox Update)
+# 🛡️ Aegis Vault V.4.0.0 (Hardened Release)
 
 ![Aegis Vault Banner](https://raw.githubusercontent.com/hafgit99/AegisVault_V.4.0.0/main/public/icon.png)
 
 > **The Ultimate Secure Vault for Your Digital Life.**
-> Experience professional-grade security with a premium aesthetic and a hardened cross-platform bridge.
+> Experience professional-grade security with a premium aesthetic and a hardened cross-platform bridge. Built for users who demand zero-knowledge privacy without compromising on design.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-4.0.0--Hardened-blue.svg)](https://github.com/hafgit99/AegisVault_V.4.0.0)
-[![Security Audit](https://img.shields.io/badge/Security-Verified-green.svg)](RELEASE_CHECKLIST.md)
+[![Security](https://img.shields.io/badge/Security-Hardened-red.svg)](guvenlik/SECURITY_WHITEPAPER_EN.md)
 [![React](https://img.shields.io/badge/React-19-61dafb.svg?logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6.svg?logo=typescript)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-7-646cff.svg?logo=vite)](https://vitejs.dev/)
@@ -16,7 +16,7 @@
 ---
 
 <p align="center">
-  <img src="public/AegisVault_V4.0.0.png" alt="Aegis Vault V4.0.0 Infographic" width="100%">
+  <img src="https://raw.githubusercontent.com/hafgit99/AegisVault_V.4.0.0/main/public/AegisVault_V4.0.0.png" alt="Aegis Vault V4.0.0 Infographic" width="100%">
 </p>
 
 ---
@@ -25,16 +25,36 @@
 
 **Aegis Vault** is a high-security, multi-platform vault application designed to protect your sensitive information—from passwords to private documents. Built with a focus on **Visual Excellence** and **Unbreakable Security**, Aegis Vault offers a seamless experience across Web, Desktop (Windows), and Browser Extensions (Chrome/Edge/Firefox).
 
+The V.4.0.0 "Hardened" release introduces a completely redesigned communication bridge and military-grade key derivation parameters.
+
 ## ✨ Key Features
 
--   **🔒 Military-Grade Encryption**: Powered by AES-256 via `crypto-js` and `hash-wasm`.
--   **🛡️ JIT Scripting Injection**: Uses high-performance `browser.scripting` for injection, eliminating persistent content script overhead and increasing privacy.
--   **🔄 Nonce & Replay Protection**: Secure `postMessage` protocol with single-use cryptographic nonces for sync actions.
--   **🌉 Loopback-Extension Bridge**: A dedicated `X-Aegis-Client` header-based authentication for reliable communication between the extension and desktop client.
--   **🏗️ Hardened KDF**: Implements Argon2id (64MB / 3 iterations) for master password hashing and encrypted backups.
--   **📊 QR Data Sync**: Synchronize your vault across devices securely using local QR-based data sync (No cloud needed).
--   **🎨 Premium UI/UX**: Stunning interface with glassmorphism, Framer Motion, and a curated color palette.
--   **🔑 Password Generator**: Built-in secure password generator with real-time strength analysis.
+-   **🔒 Local Zero-Knowledge Architecture**: Encryption and decryption happen strictly on your device. Your Master Password never touches a server.
+-   **🌉 Production-Grade Hardened Bridge**: Secure communication between Extension and Desktop via HMAC-SHA256 signed requests and cryptographic nonces.
+-   **🛡️ JIT Scripting Injection**: Uses high-performance `browser.scripting` for JIT injection, eliminating persistent content script overhead and increasing privacy.
+-   **🏗️ Advanced KDF (Argon2id)**: Protects against brute-force attacks using memory-hard Argon2id (64MB / 3 iterations / 4 parallelism).
+-   **🔐 AES-256-GCM Encryption**: Authenticated encryption for all vault entries, ensuring both confidentiality and data integrity.
+-   **🔄 Cross-Platform Sync**: Reliable synchronization between the PWA, Windows Desktop App, and Browser Extensions.
+-   **🎨 Premium UI/UX**: Stunning interface featuring Glassmorphism, Framer Motion, and a curated professional color palette.
+-   **🔑 Smart Password Generator**: Real-time strength analysis with entropy estimation and customizable complexity.
+-   **📊 QR Data Migration**: Fully offline device-to-device synchronization via encrypted QR data packets.
+
+---
+
+## 🛡️ Security & Transparency
+
+We believe in "Security through Transparency." Our architecture is fully documented and prepared for external audits.
+
+| Document | English (EN) | Türkçe (TR) |
+| :--- | :--- | :--- |
+| **Security Whitepaper** | [Read EN](guvenlik/SECURITY_WHITEPAPER_EN.md) | [Oku TR](guvenlik/SECURITY_WHITEPAPER.md) |
+| **Threat Model** | [View EN](guvenlik/THREAT_MODEL_EN.md) | [Görüntüle TR](guvenlik/THREAT_MODEL.md) |
+| **Security Disclosure** | [Policy](guvenlik/SECURITY_DISCLOSURE_EN.md) | [Politika](guvenlik/SECURITY_DISCLOSURE.md) |
+| **Hardening Plan** | [Plan](guvenlik/HARDENING_PLAN.md) | - |
+| **Security Roadmap** | [Roadmap](guvenlik/SECURITY_ROADMAP.md) | - |
+
+> [!IMPORTANT]
+> Aegis Vault is currently in **Public Technical Draft (Pre-Audit)** status. While the core cryptography is robust, we recommend reviewing our [Whitepaper](guvenlik/SECURITY_WHITEPAPER_EN.md) for full implementation details.
 
 ---
 
@@ -42,12 +62,11 @@
 
 | Layer | Technologies |
 | :--- | :--- |
-| **Frontend** | React 19, TypeScript, Vite, Framer Motion |
-| **Styling** | Tailwind CSS 4, Lucide Icons, Custom UI System |
-| **Desktop** | Electron 40, Electron Builder (Hardened IPC) |
-| **Extension** | WXT Framework (Manifest V3, JIT Content Script) |
-| **Storage** | IndexedDB (idb), WA-SQLite (OPFS Persistence) |
-| **Security** | Argon2id, AES-GCM, Hash-WASM, DOMPurify |
+| **Frontend** | React 19, TypeScript, Vite, Framer Motion, Tailwind CSS 4 |
+| **Desktop** | Electron 40, Electron Builder (Hardened IPC & Local Sync Server) |
+| **Extension** | WXT Framework (Manifest V3, Cross-Browser Support) |
+| **Cryptography** | Argon2id, AES-GCM (Browser Crypto API / SubtleCrypto) |
+| **Storage** | IndexedDB (idb), WA-SQLite with OPFS persistence |
 
 ---
 
@@ -55,8 +74,8 @@
 
 ### Prerequisites
 
--   **Node.js** (Latest LTS recommended)
--   **npm** or **yarn**
+-   **Node.js** (Latest LTS)
+-   **npm** (comes with Node.js)
 
 ### Installation
 
@@ -71,37 +90,25 @@
     npm install
     ```
 
-3.  **Run Development Server**
-    ```bash
-    npm run dev
-    ```
+3.  **Run Development Tools**
+    - **PWA / Web**: `npm run dev`
+    - **Desktop**: `npm run dev:electron` (requires separate terminal)
+    - **Extension**: `cd aegis-wxt && npm run dev`
 
 ### Building for Production
 
 -   **Web App**: `npm run build`
--   **Browser Extension**: `npm run build:extension`
 -   **Desktop App (Windows)**: `npm run build:electron`
-
----
-
-## 🛡️ Security Protocols
-
-Aegis Vault implements a multi-layered security architecture to ensure your data remains private even in compromised environments.
-
-- **Zero-Knowledge Architecture**: Encryption and decryption happen strictly on the client-side. Your Master Password never leaves your device.
-- **Argon2id KDF**: We utilize the Argon2id algorithm for key derivation, protecting against brute-force attacks with memory-hard parameters.
-- **AES-GCM Authenticated Encryption**: All vault data and backups are encrypted using AES-256-GCM, providing both confidentiality and integrity.
-- **JIT Content Script**: The Aegis extension uses Just-In-Time injection. It only activates when you specifically request actions (Fill/Analyze).
-- **IPC Nonce Validation**: All communication between components is protected by single-use cryptographic nonces to prevent replay attacks.
+-   -   **Browser Extension**: `cd aegis-wxt && npm run build` (Outputs to `dist/`)
 
 ---
 
 ## 🤝 Support & Donation
 
-If you find Aegis Vault useful, consider supporting the project. **Donations are accepted exclusively within the application** via the secure Donation Modal, supporting various cryptocurrencies.
+If you find Aegis Vault useful, consider supporting the project. **Donations are accepted exclusively within the application** via the secure Donation Modal.
 
-- **Crypto Donations**: Open the app and click on the "Donate" button in the menu or footer.
 - **GitHub**: Star the project on [GitHub](https://github.com/hafgit99/AegisVault_V.4.0.0)
+- **Contribution**: PRs are welcome! Check our [Hardening Plan](guvenlik/HARDENING_PLAN.md) for open tasks.
 
 ---
 

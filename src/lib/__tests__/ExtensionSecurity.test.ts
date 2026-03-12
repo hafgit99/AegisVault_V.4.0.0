@@ -84,14 +84,14 @@ describe('Extension Bridge Allowlist Hardening (P1-1)', () => {
 
   it('rejects empty extension ID', () => {
     const emptyId = '';
-    const isValid = emptyId && typeof emptyId === 'string' && emptyId.length > 0;
+    const isValid = emptyId.length > 0;
 
     expect(isValid).toBe(false); // Empty ID should be rejected
   });
 
   it('rejects null/undefined extension ID', () => {
     const nullId = null;
-    const isValid = nullId && typeof nullId === 'string';
+    const isValid = Boolean(nullId && typeof nullId === 'string');
 
     expect(isValid).toBe(false); // Null ID should be rejected
   });

@@ -82,11 +82,22 @@ const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS passwords (
   id INTEGER PRIMARY KEY,
   title TEXT NOT NULL DEFAULT 'Untitled',
+  encrypted_title TEXT,
+  title_iv TEXT,
   username TEXT DEFAULT '',
+  encrypted_username TEXT,
+  username_iv TEXT,
   encrypted_password TEXT,
   iv TEXT,
   category TEXT DEFAULT 'General',
+  encrypted_category TEXT,
+  category_iv TEXT,
   website TEXT DEFAULT '',
+  encrypted_website TEXT,
+  website_iv TEXT,
+  encrypted_tags TEXT,
+  tags_iv TEXT,
+  search_index TEXT DEFAULT '[]',
   updated_at TEXT,
   strength INTEGER DEFAULT 0,
   tags TEXT DEFAULT '[]',
@@ -158,6 +169,17 @@ export class SQLiteOPFS {
     const tableInfo = this.db.exec("PRAGMA table_info(passwords)");
     const existingCols = tableInfo.length > 0 ? tableInfo[0].values.map((r: any) => r[1] as string) : [];
     const requiredCols: [string, string][] = [
+      ['encrypted_title', 'TEXT'],
+      ['title_iv', 'TEXT'],
+      ['encrypted_username', 'TEXT'],
+      ['username_iv', 'TEXT'],
+      ['encrypted_website', 'TEXT'],
+      ['website_iv', 'TEXT'],
+      ['encrypted_category', 'TEXT'],
+      ['category_iv', 'TEXT'],
+      ['encrypted_tags', 'TEXT'],
+      ['tags_iv', 'TEXT'],
+      ['search_index', 'TEXT'],
       ['deleted_at', 'TEXT'],
       ['totp_secret', 'TEXT'],
       ['totp_iv', 'TEXT'],
@@ -227,9 +249,9 @@ export class SQLiteOPFS {
     const tags = JSON.stringify(entry.tags || []);
     const attachments = JSON.stringify(entry.attachments || []);
 
-    const sql = `INSERT OR REPLACE INTO passwords 
-       (id, title, username, encrypted_password, iv, category, website, updated_at, strength, tags, pwned_count, attachments, deleted_at, totp_secret, totp_iv, totp_issuer, totp_algorithm, totp_digits, totp_period, encrypted_notes, notes_iv)
-       VALUES (${this.sqlVal(entry.id)}, ${this.sqlVal(entry.title || "Untitled")}, ${this.sqlVal(entry.username || "")}, ${this.sqlVal(entry.encrypted_password || null)}, ${this.sqlVal(entry.iv || null)}, ${this.sqlVal(entry.category || "General")}, ${this.sqlVal(entry.website || "")}, ${this.sqlVal(entry.updated_at || new Date().toISOString())}, ${this.sqlVal(entry.strength || 0)}, ${this.sqlVal(tags)}, ${this.sqlVal(entry.pwned_count || 0)}, ${this.sqlVal(attachments)}, ${this.sqlVal(entry.deletedAt || entry.deleted_at || null)}, ${this.sqlVal(entry.totp_secret || null)}, ${this.sqlVal(entry.totp_iv || null)}, ${this.sqlVal(entry.totp_issuer || null)}, ${this.sqlVal(entry.totp_algorithm || null)}, ${this.sqlVal(entry.totp_digits || null)}, ${this.sqlVal(entry.totp_period || null)}, ${this.sqlVal(entry.encrypted_notes || null)}, ${this.sqlVal(entry.notes_iv || null)})`;
+     const sql = `INSERT OR REPLACE INTO passwords 
+       (id, title, encrypted_title, title_iv, username, encrypted_username, username_iv, encrypted_password, iv, category, encrypted_category, category_iv, website, encrypted_website, website_iv, encrypted_tags, tags_iv, search_index, updated_at, strength, tags, pwned_count, attachments, deleted_at, totp_secret, totp_iv, totp_issuer, totp_algorithm, totp_digits, totp_period, encrypted_notes, notes_iv)
+       VALUES (${this.sqlVal(entry.id)}, ${this.sqlVal(entry.title || "Untitled")}, ${this.sqlVal(entry.encrypted_title || null)}, ${this.sqlVal(entry.title_iv || null)}, ${this.sqlVal(entry.username || "")}, ${this.sqlVal(entry.encrypted_username || null)}, ${this.sqlVal(entry.username_iv || null)}, ${this.sqlVal(entry.encrypted_password || null)}, ${this.sqlVal(entry.iv || null)}, ${this.sqlVal(entry.category || "General")}, ${this.sqlVal(entry.encrypted_category || null)}, ${this.sqlVal(entry.category_iv || null)}, ${this.sqlVal(entry.website || "")}, ${this.sqlVal(entry.encrypted_website || null)}, ${this.sqlVal(entry.website_iv || null)}, ${this.sqlVal(entry.encrypted_tags || null)}, ${this.sqlVal(entry.tags_iv || null)}, ${this.sqlVal(JSON.stringify(entry.search_index || []))}, ${this.sqlVal(entry.updated_at || new Date().toISOString())}, ${this.sqlVal(entry.strength || 0)}, ${this.sqlVal(tags)}, ${this.sqlVal(entry.pwned_count || 0)}, ${this.sqlVal(attachments)}, ${this.sqlVal(entry.deletedAt || entry.deleted_at || null)}, ${this.sqlVal(entry.totp_secret || null)}, ${this.sqlVal(entry.totp_iv || null)}, ${this.sqlVal(entry.totp_issuer || null)}, ${this.sqlVal(entry.totp_algorithm || null)}, ${this.sqlVal(entry.totp_digits || null)}, ${this.sqlVal(entry.totp_period || null)}, ${this.sqlVal(entry.encrypted_notes || null)}, ${this.sqlVal(entry.notes_iv || null)})`;
     this.db.run(sql);
     this.schedulePersist();
   }
@@ -243,6 +265,7 @@ export class SQLiteOPFS {
       // JSON alanlarını parse et
       try { row.tags = JSON.parse(row.tags || "[]"); } catch { row.tags = []; }
       try { row.attachments = JSON.parse(row.attachments || "[]"); } catch { row.attachments = []; }
+      try { row.search_index = JSON.parse(row.search_index || "[]"); } catch { row.search_index = []; }
       // deleted_at → deletedAt dönüşümü (IDB uyumluluğu)
       if (row.deleted_at) row.deletedAt = row.deleted_at;
       results.push(row);

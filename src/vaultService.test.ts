@@ -25,6 +25,18 @@ describe('VaultService Security & Cryptography', () => {
   const SEC_KEY = 'device_secret_xyz';
   let dbNameCounter = 0;
 
+  const deriveLegacyPBKDF2Hash = async (password: string, saltB64: string, iterations: number) => {
+    const salt = Uint8Array.from(atob(saltB64), (c) => c.charCodeAt(0));
+    const enc = new TextEncoder();
+    const keyMaterial = await window.crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+    const hash = await window.crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt: salt.buffer as ArrayBuffer, iterations, hash: 'SHA-256' },
+      keyMaterial,
+      256
+    );
+    return btoa(String.fromCharCode(...new Uint8Array(hash)));
+  };
+
   beforeEach(() => {
     // Tweak to ensure a fresh IndexedDB instance each run
     dbNameCounter++;
@@ -64,6 +76,7 @@ describe('VaultService Security & Cryptography', () => {
 
     expect(authCredData).toBeDefined();
     expect(authCredData.credential.verificationHash).toBeDefined();
+    expect(authCredData.credential.scheme).toBe('argon2id-v1');
     
     await vaultService.lock();
     db.close();
@@ -154,6 +167,7 @@ describe('VaultService Security & Cryptography', () => {
     expect(newMainSaltData.salt).not.toBe(oldMainSaltData.salt);
     expect(newAuthData.credential.salt).not.toBe(oldAuthData.credential.salt);
     expect(newAuthData.credential.verificationHash).not.toBe(oldAuthData.credential.verificationHash);
+    expect(newAuthData.credential.scheme).toBe('argon2id-v1');
     
     // 4. Yeni parola ile şifreleri hala deşifre edebiliyor mu kontrol et
     const passwords = await vaultService.getPasswords();
@@ -168,5 +182,196 @@ describe('VaultService Security & Cryptography', () => {
     expect(githubEntry?.encrypted_password).toMatch(/^[0-9a-fA-F]+$/);
     
     await vaultService.lock();
+  }, 30000);
+
+  it('4. Metadata Encryption + Attachment Metadata: At-rest plaintext sizintisi olmamali', async () => {
+    const dbName = `metadata_enc_vault_${dbNameCounter}`;
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
+
+    const entryId = await vaultService.addPassword({
+      title: 'MetaEnc Entry',
+      username: 'fin.user@example.com',
+      website: 'https://finance.example.com',
+      category: 'Finance',
+      tags: ['bank', 'critical'],
+      pass: 'UltraStrong#123',
+    });
+
+    const attachmentFile = new File(['hello'], 'secret-statement.pdf', { type: 'application/pdf' });
+    await vaultService.addAttachment(Number(entryId), attachmentFile);
+
+    const req = indexedDB.open(dbName, 3);
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+
+    const stored = await new Promise<any>((resolve) => {
+      const getReq = db.transaction('passwords', 'readonly').objectStore('passwords').get(entryId);
+      getReq.onsuccess = () => resolve(getReq.result);
+    });
+
+    expect(stored).toBeDefined();
+    expect(stored.encrypted_title).toBeTypeOf('string');
+    expect(stored.encrypted_username).toBeTypeOf('string');
+    expect(stored.encrypted_website).toBeTypeOf('string');
+    expect(stored.encrypted_category).toBeTypeOf('string');
+    expect(stored.encrypted_tags).toBeTypeOf('string');
+    expect(Array.isArray(stored.search_index)).toBe(true);
+    expect(stored.search_index.length).toBeGreaterThan(0);
+
+    const firstAttachment = Array.isArray(stored.attachments) ? stored.attachments[0] : null;
+    expect(firstAttachment).toBeDefined();
+    expect(firstAttachment.encrypted_name).toBeTypeOf('string');
+    expect(firstAttachment.encrypted_type).toBeTypeOf('string');
+
+    const uiEntries = await vaultService.getPasswords('metaenc');
+    const uiEntry = uiEntries.find((p) => p.id === entryId);
+    expect(uiEntry).toBeDefined();
+    expect(uiEntry?.title).toBe('MetaEnc Entry');
+    expect(uiEntry?.category).toBe('Finance');
+    expect(uiEntry?.tags).toContain('bank');
+    expect(uiEntry?.attachments?.[0]?.name).toBe('secret-statement.pdf');
+    expect(uiEntry?.attachments?.[0]?.type).toBe('application/pdf');
+
+    await vaultService.lock();
+    db.close();
+  }, 30000);
+
+  it('5. Private Search Index: legacy plaintext metadata kayitlari lazy migrate edilmeli', async () => {
+    const dbName = `metadata_migration_vault_${dbNameCounter}`;
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
+
+    const entryId = await vaultService.addPassword({
+      title: 'Legacy Migrating Entry',
+      username: 'legacy.user',
+      website: 'https://legacy.example.com',
+      category: 'Finance',
+      tags: ['legacytag'],
+      pass: 'LegacyPass#2026',
+    });
+
+    const req1 = indexedDB.open(dbName, 3);
+    const db1 = await new Promise<IDBDatabase>((resolve, reject) => {
+      req1.onsuccess = () => resolve(req1.result);
+      req1.onerror = () => reject(req1.error);
+    });
+
+    const tx1 = db1.transaction('passwords', 'readwrite');
+    const store1 = tx1.objectStore('passwords');
+    const existing = await new Promise<any>((resolve) => {
+      const getReq = store1.get(entryId);
+      getReq.onsuccess = () => resolve(getReq.result);
+    });
+
+    existing.title = 'Legacy Migrating Entry';
+    existing.username = 'legacy.user';
+    existing.website = 'https://legacy.example.com';
+    existing.category = 'Finance';
+    existing.tags = ['legacytag'];
+    existing.search_index = [];
+    delete existing.encrypted_title;
+    delete existing.title_iv;
+    delete existing.encrypted_username;
+    delete existing.username_iv;
+    delete existing.encrypted_website;
+    delete existing.website_iv;
+    delete existing.encrypted_category;
+    delete existing.category_iv;
+    delete existing.encrypted_tags;
+    delete existing.tags_iv;
+
+    await new Promise<void>((resolve, reject) => {
+      const putReq = store1.put(existing);
+      putReq.onsuccess = () => resolve();
+      putReq.onerror = () => reject(putReq.error);
+    });
+    await new Promise<void>((resolve, reject) => {
+      tx1.oncomplete = () => resolve();
+      tx1.onerror = () => reject(tx1.error);
+    });
+    db1.close();
+
+    const results = await vaultService.getPasswords('legacy migrating');
+    const migratedUiEntry = results.find((p) => p.id === entryId);
+    expect(migratedUiEntry).toBeDefined();
+    expect(migratedUiEntry?.title).toBe('Legacy Migrating Entry');
+    expect(migratedUiEntry?.category).toBe('Finance');
+
+    const req2 = indexedDB.open(dbName, 3);
+    const db2 = await new Promise<IDBDatabase>((resolve, reject) => {
+      req2.onsuccess = () => resolve(req2.result);
+      req2.onerror = () => reject(req2.error);
+    });
+
+    const migratedRaw = await new Promise<any>((resolve) => {
+      const getReq = db2.transaction('passwords', 'readonly').objectStore('passwords').get(entryId);
+      getReq.onsuccess = () => resolve(getReq.result);
+    });
+
+    expect(migratedRaw.encrypted_title).toBeTypeOf('string');
+    expect(migratedRaw.encrypted_category).toBeTypeOf('string');
+    expect(migratedRaw.encrypted_tags).toBeTypeOf('string');
+    expect(Array.isArray(migratedRaw.search_index)).toBe(true);
+    expect(migratedRaw.search_index.length).toBeGreaterThan(0);
+
+    await vaultService.lock();
+    db2.close();
+  }, 30000);
+
+  it('6. Auth Credential Migration: legacy PBKDF2 dogrulamasi Argon2id modeline otomatik tasinmali', async () => {
+    const dbName = `auth_migration_vault_${dbNameCounter}`;
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
+    await vaultService.lock();
+
+    const req1 = indexedDB.open(dbName, 3);
+    const db1 = await new Promise<IDBDatabase>((resolve, reject) => {
+      req1.onsuccess = () => resolve(req1.result);
+      req1.onerror = () => reject(req1.error);
+    });
+
+    const legacySalt = btoa(String.fromCharCode(...window.crypto.getRandomValues(new Uint8Array(16))));
+    const legacyIterations = 100000;
+    const legacyHash = await deriveLegacyPBKDF2Hash(TEST_PASSWORD, legacySalt, legacyIterations);
+
+    const tx1 = db1.transaction('vault_metadata', 'readwrite');
+    const store1 = tx1.objectStore('vault_metadata');
+
+    await new Promise<void>((resolve, reject) => {
+      const putReq = store1.put({
+        id: 'auth_credential',
+        credential: {
+          verificationHash: legacyHash,
+          iterations: legacyIterations,
+          salt: legacySalt,
+        },
+      });
+      putReq.onsuccess = () => resolve();
+      putReq.onerror = () => reject(putReq.error);
+    });
+    await new Promise<void>((resolve, reject) => {
+      tx1.oncomplete = () => resolve();
+      tx1.onerror = () => reject(tx1.error);
+    });
+    db1.close();
+
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, false);
+
+    const req2 = indexedDB.open(dbName, 3);
+    const db2 = await new Promise<IDBDatabase>((resolve, reject) => {
+      req2.onsuccess = () => resolve(req2.result);
+      req2.onerror = () => reject(req2.error);
+    });
+    const migratedAuth = await new Promise<any>((resolve) => {
+      const getReq = db2.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('auth_credential');
+      getReq.onsuccess = () => resolve(getReq.result);
+    });
+
+    expect(migratedAuth.credential.scheme).toBe('argon2id-v1');
+    expect(migratedAuth.credential.argon2).toBeDefined();
+    expect(migratedAuth.credential.verificationHash).not.toBe(legacyHash);
+
+    await vaultService.lock();
+    db2.close();
   }, 30000);
 });

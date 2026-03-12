@@ -1,6 +1,29 @@
 import { browser } from 'wxt/browser';
 import DOMPurify from 'dompurify';
 
+const isTurkishLocale = (typeof navigator !== 'undefined' ? navigator.language : 'en').toLowerCase().startsWith('tr');
+const POPUP_I18N = {
+    connecting: isTurkishLocale ? 'Baglaniyor...' : 'Connecting...',
+    waiting: isTurkishLocale ? 'Bekleniyor' : 'Waiting',
+    loading: isTurkishLocale ? 'Yukleniyor...' : 'Loading...',
+    unknownSite: isTurkishLocale ? 'Bilinmeyen Site' : 'Unknown Site',
+    vaultLocked: isTurkishLocale ? 'Kasa Kilitli' : 'Vault Locked',
+    openVaultHint: isTurkishLocale
+      ? 'Aegis Vault uygulamasini acip sifrenizle giris yapin.'
+      : 'Open Aegis Vault app and unlock with your password.',
+    vaultEmpty: isTurkishLocale ? 'Kasa Bos' : 'Vault Empty',
+    vaultOpen: isTurkishLocale ? 'Kasa Acik' : 'Vault Unlocked',
+    noRecordForSite: isTurkishLocale
+      ? 'Bu site icin kayit bulunamadi'
+      : 'No records found for this site',
+    noUsername: isTurkishLocale ? 'Kullanici adi yok' : 'No username',
+    fill: isTurkishLocale ? 'Doldur ->' : 'Fill ->',
+    filled: isTurkishLocale ? 'Dolduruldu' : 'Filled',
+    backgroundError: isTurkishLocale
+      ? 'Hata: Arkaplan servisine ulasilamadi.'
+      : 'Error: Background service is unavailable.',
+};
+
 const app = document.getElementById('wxt-app');
 
 if (app) {
@@ -13,15 +36,15 @@ if (app) {
                    </div>
                    <div>
                       <h1 style="margin: 0; font-size: 15px; font-weight: 700; color: #101828; letter-spacing:-0.3px;">Aegis Vault</h1>
-                      <p style="margin: 1px 0 0 0; font-size: 10px; color: #72886f; font-weight:600;" id="active-domain">Bağlanıyor...</p>
+                       <p style="margin: 1px 0 0 0; font-size: 10px; color: #72886f; font-weight:600;" id="active-domain">${POPUP_I18N.connecting}</p>
                    </div>
                 </div>
                 <div style="background: rgba(114,136,111,0.10); padding: 3px 9px; border-radius: 20px; border: 1px solid rgba(114,136,111,0.20);">
-                   <span style="font-size: 10px; font-weight: 700; color: #72886f;" id="vault-status">Bekleniyor</span>
+                   <span style="font-size: 10px; font-weight: 700; color: #72886f;" id="vault-status">${POPUP_I18N.waiting}</span>
                 </div>
             </header>
             <section id="cards-container" style="display: flex; flex-direction: column; gap: 6px;">
-               <div style="text-align: center; padding: 20px 0; color: #64748b; font-size: 12px;">Yükleniyor...</div>
+               <div style="text-align: center; padding: 20px 0; color: #64748b; font-size: 12px;">${POPUP_I18N.loading}</div>
             </section>
         </div>
     `;
@@ -47,48 +70,42 @@ if (app) {
             const currentDomain = getDomain(currentUrl);
             const tabId         = tab?.id;
 
-            if (domainEl) domainEl.innerText = currentDomain || 'Bilinmeyen Site';
+            if (domainEl) domainEl.innerText = currentDomain || POPUP_I18N.unknownSite;
 
             // Kasa durumu
             const vaultStatus = await browser.runtime.sendMessage({ type: 'GET_VAULT_STATUS' });
 
             if (!vaultStatus?.isUnlocked) {
-                if (statusEl) { statusEl.innerText = 'Kasa Kilitli'; statusEl.style.color = '#f59e0b'; }
+                if (statusEl) { statusEl.innerText = POPUP_I18N.vaultLocked; statusEl.style.color = '#f59e0b'; }
                 if (containerEl) {
-                    const h = `<div style="text-align:center;padding:20px 0;color:#f59e0b;font-size:12px;font-weight:600;">Kasa Kilitli</div>
-                               <div style="font-size:11px;color:#475569;text-align:center;">Aegis Vault uygulamasını açıp<br/>şifrenizle giriş yapın.</div>`;
+                    const h = `<div style="text-align:center;padding:20px 0;color:#f59e0b;font-size:12px;font-weight:600;">${POPUP_I18N.vaultLocked}</div>
+                               <div style="font-size:11px;color:#475569;text-align:center;">${POPUP_I18N.openVaultHint}</div>`;
                     containerEl.replaceChildren(...Array.from(new DOMParser().parseFromString(DOMPurify.sanitize(h), 'text/html').body.childNodes));
                 }
                 return;
             }
 
-            const passwords = await browser.runtime.sendMessage({ type: 'GET_VAULT' });
+            const requestNonce = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+                ? crypto.randomUUID()
+                : `${Date.now()}-${Math.random()}`;
+            const response = await browser.runtime.sendMessage({ type: 'GET_DOMAIN_CREDS', domain: currentDomain.toLowerCase(), requestNonce });
+            const passwords = Array.isArray(response?.data) ? response.data : [];
 
-            if (!passwords || passwords.length === 0) {
-                if (statusEl) { statusEl.innerText = 'Kasa Boş'; statusEl.style.color = '#f59e0b'; }
+            if (!response?.success || passwords.length === 0) {
+                if (statusEl) { statusEl.innerText = POPUP_I18N.vaultEmpty; statusEl.style.color = '#f59e0b'; }
+                if (containerEl) {
+                    const h = `<div style="text-align:center;padding:18px 0;color:#64748b;font-size:12px;">${POPUP_I18N.noRecordForSite}</div>`;
+                    containerEl.replaceChildren(...Array.from(new DOMParser().parseFromString(DOMPurify.sanitize(h), 'text/html').body.childNodes));
+                }
                 return;
             }
 
-            if (statusEl) { statusEl.innerText = 'Kasa Açık'; statusEl.style.color = '#22c55e'; }
+            if (statusEl) { statusEl.innerText = POPUP_I18N.vaultOpen; statusEl.style.color = '#22c55e'; }
 
-            // Domain eşleştirme
-            let matches = passwords.filter((p: any) =>
-                p.website && currentDomain && (p.website.includes(currentDomain) || currentDomain.includes(p.website))
-            );
-            const hasMatch = matches.length > 0;
-            if (!hasMatch) matches = passwords.slice(0, 5);
-            else matches = matches.slice(0, 5);
+            const matches = passwords.slice(0, 5);
 
             if (!containerEl) return;
             containerEl.textContent = '';
-
-            // Eşleşme başlığı
-            if (!hasMatch && currentDomain) {
-                const note = document.createElement('div');
-                note.style.cssText = 'font-size:10px;color:#94a3b8;text-align:center;padding:2px 0 4px;';
-                note.innerText = `"${currentDomain}" için kayıt bulunamadı — tüm kayıtlar gösteriliyor`;
-                containerEl.appendChild(note);
-            }
 
             // Kartlar
             matches.forEach((p: any) => {
@@ -115,9 +132,9 @@ if (app) {
                     <div style="${avatarStyle}">${letter}</div>
                     <div style="flex:1;overflow:hidden;">
                         <div style="font-size:12px;font-weight:700;color:#101828;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${safeTitle}</div>
-                        <div style="font-size:10px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">${safeUsername || 'Kullanıcı adı yok'}</div>
+                        <div style="font-size:10px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">${safeUsername || POPUP_I18N.noUsername}</div>
                     </div>
-                    <div style="font-size:11px;color:#72886f;font-weight:700;flex-shrink:0;">Doldur →</div>
+                    <div style="font-size:11px;color:#72886f;font-weight:700;flex-shrink:0;">${POPUP_I18N.fill}</div>
                 `;
                 const parsed = new DOMParser().parseFromString(DOMPurify.sanitize(inner), 'text/html');
                 card.replaceChildren(...Array.from(parsed.body.childNodes));
@@ -140,7 +157,7 @@ if (app) {
 
                     // Butonu geçici olarak güncelle
                     const fillBtn = card.querySelector('div:last-child') as HTMLElement;
-                    if (fillBtn) { fillBtn.innerText = '✓ Dolduruldu'; fillBtn.style.color = '#22c55e'; }
+                    if (fillBtn) { fillBtn.innerText = `✓ ${POPUP_I18N.filled}`; fillBtn.style.color = '#22c55e'; }
 
                     await browser.runtime.sendMessage({
                         type: 'FILL_CREDENTIALS',
@@ -161,7 +178,7 @@ if (app) {
         } catch (err) {
             console.error('[Aegis Popup]', err);
             if (containerEl) {
-                const h = "<div style='color:red;font-size:12px;text-align:center;'>Hata: Arkaplan servisine ulaşılamadı.</div>";
+                const h = `<div style='color:red;font-size:12px;text-align:center;'>${POPUP_I18N.backgroundError}</div>`;
                 containerEl.replaceChildren(...Array.from(new DOMParser().parseFromString(DOMPurify.sanitize(h), 'text/html').body.childNodes));
             }
         }

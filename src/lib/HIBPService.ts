@@ -7,7 +7,7 @@ export class HIBPService {
    * @param password The plaintext password to check.
    * @returns The number of times the password was found in breaches (0 if safe).
    */
-  static async checkPassword(password: string): Promise<number> {
+  static async checkPassword(password: string): Promise<number | null> {
     if (!password) return 0;
 
     try {
@@ -27,7 +27,7 @@ export class HIBPService {
       
       if (!response.ok) {
         console.warn(`HIBP API returned status: ${response.status}`);
-        return 0; 
+        return null;
       }
 
       const responseText = await response.text();
@@ -44,7 +44,7 @@ export class HIBPService {
       return 0; // Not found
     } catch (error) {
       console.error("Error checking HIBP API:", error);
-      return 0; // Fail open (assume safe on network error)
+      return null;
     }
   }
 }

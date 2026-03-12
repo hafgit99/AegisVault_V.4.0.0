@@ -14,24 +14,53 @@ export interface VaultMetadata {
 }
 
 export interface StoredCredential {
-  verificationHash: string; // PBKDF2 hash of master password
-  iterations: number;
+  verificationHash: string;
   salt: string;
+  scheme?: 'pbkdf2-sha256' | 'argon2id-v1';
+  iterations?: number; // legacy PBKDF2 only
+  argon2?: {
+    iterations: number;
+    memorySize: number;
+    parallelism: number;
+    hashLength: number;
+  };
+}
+
+export interface VaultAttachmentMeta {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  encrypted_name?: string;
+  name_iv?: string;
+  encrypted_type?: string;
+  type_iv?: string;
 }
 
 export interface VaultEntry {
   id: number;
   title: string;
   username: string;
+  encrypted_title?: string;
+  title_iv?: string;
+  encrypted_username?: string;
+  username_iv?: string;
   encrypted_password?: string; // Stored as Hex (legacy Base64 supported)
   iv?: string; // Stored as Hex (legacy Base64 supported)
   category: string;
+  encrypted_category?: string;
+  category_iv?: string;
   website: string;
+  encrypted_website?: string;
+  website_iv?: string;
+  encrypted_tags?: string;
+  tags_iv?: string;
+  search_index?: string[];
   updated_at: string;
   strength?: number;
   tags?: string[];
   pwned_count?: number; // Tracks HIBP breaches
-  attachments?: { id: string, name: string, type: string, size: number }[];
+  attachments?: VaultAttachmentMeta[];
   deletedAt?: string; // ISO String indicating when it was moved to trash
 
   // TOTP (2FA) — encrypted at rest
@@ -60,6 +89,14 @@ export class VaultService {
   private sensitiveMaterial: Uint8Array | null = null;
   private isConnected: boolean = false;
   private activeDbName: string = 'aegis_opfs_vault';
+  private readonly metadataEncryptionEnabled: boolean = (((import.meta as any)?.env?.VITE_AEGIS_METADATA_ENCRYPTION ?? '1') !== '0');
+  private searchIndexHmacKey: CryptoKey | null = null;
+  private readonly authArgon2Params = {
+    iterations: 3,
+    memorySize: 65536,
+    parallelism: 1,
+    hashLength: 32,
+  };
 
   /** Aktif vault DB adını değiştir (çoklu vault desteği) */
   setVaultDbName(dbName: string): void {
@@ -110,7 +147,266 @@ export class VaultService {
     return bytes;
   }
 
-  private async hashPassword(password: string, salt: Uint8Array, iterations: number = 100000): Promise<string> {
+  private normalizeSearchValue(value: string = ""): string {
+    return value
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]/g, " ")
+      .trim();
+  }
+
+  private tokenizeSearchFields(fields: string[]): string[] {
+    const tokenSet = new Set<string>();
+    for (const rawField of fields) {
+      const normalized = this.normalizeSearchValue(rawField || "");
+      if (!normalized) continue;
+
+      const parts = normalized.split(/\s+/).filter(Boolean);
+      for (const token of parts) {
+        tokenSet.add(token);
+        const maxPrefix = Math.min(8, token.length);
+        for (let i = 2; i <= maxPrefix; i++) {
+          tokenSet.add(token.slice(0, i));
+        }
+      }
+    }
+    return Array.from(tokenSet).slice(0, 256);
+  }
+
+  private async getSearchIndexHmacKey(): Promise<CryptoKey> {
+    if (this.searchIndexHmacKey) return this.searchIndexHmacKey;
+    if (!this.sensitiveMaterial) throw new Error('Search index key unavailable');
+
+    const rawKey = new Uint8Array(this.sensitiveMaterial);
+    this.searchIndexHmacKey = await window.crypto.subtle.importKey(
+      'raw',
+      rawKey,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    return this.searchIndexHmacKey;
+  }
+
+  private async hashSearchToken(token: string): Promise<string> {
+    const key = await this.getSearchIndexHmacKey();
+    const signature = await window.crypto.subtle.sign(
+      'HMAC',
+      key,
+      new TextEncoder().encode(token)
+    );
+    return this.bufToHex(new Uint8Array(signature));
+  }
+
+  private async buildSearchIndex(title: string, username: string, website: string, category: string, tags: string[]): Promise<string[]> {
+    const tokens = this.tokenizeSearchFields([
+      title || '',
+      username || '',
+      website || '',
+      category || '',
+      ...(Array.isArray(tags) ? tags : []),
+    ]);
+
+    if (tokens.length === 0) return [];
+    return Promise.all(tokens.map((token) => this.hashSearchToken(token)));
+  }
+
+  private async encryptAttachmentMetadataList(attachments: VaultAttachmentMeta[]): Promise<VaultAttachmentMeta[]> {
+    if (!this.metadataEncryptionEnabled) return attachments;
+    return Promise.all(
+      attachments.map(async (item) => {
+        const nameEnc = await this.encryptTextField(item.name || '');
+        const typeEnc = await this.encryptTextField(item.type || '');
+        return {
+          id: item.id,
+          size: item.size,
+          name: '',
+          type: '',
+          encrypted_name: nameEnc.encrypted,
+          name_iv: nameEnc.iv,
+          encrypted_type: typeEnc.encrypted,
+          type_iv: typeEnc.iv,
+        };
+      })
+    );
+  }
+
+  private async decryptAttachmentMetadataList(attachments: VaultAttachmentMeta[]): Promise<VaultAttachmentMeta[]> {
+    if (!this.metadataEncryptionEnabled) return attachments;
+    return Promise.all(
+      attachments.map(async (item) => {
+        const decName = await this.decryptTextField(item.encrypted_name, item.name_iv);
+        const decType = await this.decryptTextField(item.encrypted_type, item.type_iv);
+        return {
+          ...item,
+          name: decName ?? item.name ?? '',
+          type: decType ?? item.type ?? '',
+        };
+      })
+    );
+  }
+
+  private async encryptTextField(value: string): Promise<{ encrypted: string; iv: string }> {
+    if (!this.aesKey) throw new Error('Vault key unavailable');
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const plainBytes = new TextEncoder().encode(value || '');
+    const cipher = await window.crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      this.aesKey,
+      plainBytes
+    );
+    return {
+      encrypted: this.bufToHex(new Uint8Array(cipher)),
+      iv: this.bufToHex(iv),
+    };
+  }
+
+  private async decryptTextField(encrypted?: string, iv?: string): Promise<string | null> {
+    if (!this.aesKey || !encrypted || !iv) return null;
+    try {
+      const cipherArray = this.isLikelyHex(encrypted)
+        ? this.hexToBuf(encrypted)
+        : Uint8Array.from(atob(encrypted), (c) => c.charCodeAt(0));
+      const ivArray = this.isLikelyHex(iv)
+        ? this.hexToBuf(iv)
+        : Uint8Array.from(atob(iv), (c) => c.charCodeAt(0));
+      const plain = await window.crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: ivArray.buffer as ArrayBuffer },
+        this.aesKey,
+        cipherArray.buffer as ArrayBuffer
+      );
+      return new TextDecoder().decode(plain);
+    } catch {
+      return null;
+    }
+  }
+
+  private async buildMetadataAtRest(title: string, username: string, website: string, category: string, tags: string[]) {
+    const searchIndex = await this.buildSearchIndex(title, username, website, category, tags);
+
+    if (!this.metadataEncryptionEnabled) {
+      return {
+        title: title || 'Untitled',
+        username: username || '',
+        website: website || '',
+        category: category || 'General',
+        tags: tags || [],
+        search_index: searchIndex,
+      };
+    }
+
+    const [titleEnc, usernameEnc, websiteEnc, categoryEnc, tagsEnc] = await Promise.all([
+      this.encryptTextField(title || 'Untitled'),
+      this.encryptTextField(username || ''),
+      this.encryptTextField(website || ''),
+      this.encryptTextField(category || 'General'),
+      this.encryptTextField(JSON.stringify(tags || [])),
+    ]);
+
+    return {
+      title: '',
+      username: '',
+      website: '',
+      category: '',
+      tags: [],
+      search_index: searchIndex,
+      encrypted_title: titleEnc.encrypted,
+      title_iv: titleEnc.iv,
+      encrypted_username: usernameEnc.encrypted,
+      username_iv: usernameEnc.iv,
+      encrypted_website: websiteEnc.encrypted,
+      website_iv: websiteEnc.iv,
+      encrypted_category: categoryEnc.encrypted,
+      category_iv: categoryEnc.iv,
+      encrypted_tags: tagsEnc.encrypted,
+      tags_iv: tagsEnc.iv,
+    };
+  }
+
+  private async prepareEntryMetadataForUse(entry: VaultEntry): Promise<{ uiEntry: VaultEntry; storageEntry?: VaultEntry }> {
+    if (!this.metadataEncryptionEnabled) {
+      return { uiEntry: entry };
+    }
+
+    const hasEncryptedMetadata = Boolean(
+      entry.encrypted_title && entry.title_iv &&
+      entry.encrypted_username && entry.username_iv &&
+      entry.encrypted_website && entry.website_iv &&
+      entry.encrypted_category && entry.category_iv &&
+      entry.encrypted_tags && entry.tags_iv
+    );
+    const hasSearchIndex = Array.isArray(entry.search_index) && entry.search_index.length > 0;
+
+    let storageEntry: VaultEntry | undefined;
+    if (!hasEncryptedMetadata || !hasSearchIndex) {
+      const atRest = await this.buildMetadataAtRest(
+        entry.title || 'Untitled',
+        entry.username || '',
+        entry.website || '',
+        entry.category || 'General',
+        entry.tags || []
+      );
+      storageEntry = {
+        ...entry,
+        ...atRest,
+        updated_at: entry.updated_at || new Date().toISOString(),
+      };
+    }
+
+    const source = storageEntry || entry;
+
+    const [decTitle, decUsername, decWebsite] = await Promise.all([
+      this.decryptTextField(source.encrypted_title, source.title_iv),
+      this.decryptTextField(source.encrypted_username, source.username_iv),
+      this.decryptTextField(source.encrypted_website, source.website_iv),
+    ]);
+    const [decCategory, decTagsRaw] = await Promise.all([
+      this.decryptTextField(source.encrypted_category, source.category_iv),
+      this.decryptTextField(source.encrypted_tags, source.tags_iv),
+    ]);
+
+    let decTags: string[] = source.tags || [];
+    if (decTagsRaw) {
+      try {
+        const parsed = JSON.parse(decTagsRaw);
+        decTags = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        decTags = source.tags || [];
+      }
+    }
+
+    const rawAttachments = Array.isArray(source.attachments) ? source.attachments : [];
+    const uiAttachments = await this.decryptAttachmentMetadataList(rawAttachments);
+
+    if (this.metadataEncryptionEnabled) {
+      const needsAttachmentMigration = rawAttachments.some(
+        (item) => (item.name && !item.encrypted_name) || (item.type && !item.encrypted_type)
+      );
+      if (needsAttachmentMigration) {
+        const encryptedAttachments = await this.encryptAttachmentMetadataList(uiAttachments);
+        storageEntry = {
+          ...(storageEntry || source),
+          attachments: encryptedAttachments,
+          updated_at: source.updated_at || new Date().toISOString(),
+        };
+      }
+    }
+
+    const uiEntry: VaultEntry = {
+      ...source,
+      title: decTitle ?? source.title ?? 'Untitled',
+      username: decUsername ?? source.username ?? '',
+      website: decWebsite ?? source.website ?? '',
+      category: decCategory ?? source.category ?? 'General',
+      tags: decTags,
+      attachments: uiAttachments,
+    };
+
+    return { uiEntry, storageEntry };
+  }
+
+  private async hashPasswordPBKDF2(password: string, salt: Uint8Array, iterations: number = 100000): Promise<string> {
     const enc = new TextEncoder();
     const keyMaterial = await window.crypto.subtle.importKey(
       "raw",
@@ -131,10 +427,48 @@ export class VaultService {
     return btoa(String.fromCharCode(...new Uint8Array(hash)));
   }
 
+  private async hashPasswordArgon2(password: string, salt: Uint8Array, params?: Partial<NonNullable<StoredCredential['argon2']>>): Promise<string> {
+    const effective = {
+      ...this.authArgon2Params,
+      ...(params || {}),
+    };
+    return argon2id({
+      password,
+      salt,
+      parallelism: effective.parallelism,
+      iterations: effective.iterations,
+      memorySize: effective.memorySize,
+      hashLength: effective.hashLength,
+      outputType: 'hex',
+    });
+  }
+
+  private async createAuthCredential(password: string): Promise<StoredCredential> {
+    const salt = window.crypto.getRandomValues(new Uint8Array(16));
+    const verificationHash = await this.hashPasswordArgon2(password, salt, this.authArgon2Params);
+    return {
+      scheme: 'argon2id-v1',
+      verificationHash,
+      salt: btoa(String.fromCharCode(...salt)),
+      argon2: { ...this.authArgon2Params },
+    };
+  }
+
   async verifyPassword(password: string, stored: StoredCredential): Promise<boolean> {
-    const salt = Uint8Array.from(atob(stored.salt), c => c.charCodeAt(0));
-    const computedHash = await this.hashPassword(password, salt, stored.iterations);
+    const salt = Uint8Array.from(atob(stored.salt), (c) => c.charCodeAt(0));
+
+    if (stored.scheme === 'argon2id-v1') {
+      const computedHash = await this.hashPasswordArgon2(password, salt, stored.argon2 || this.authArgon2Params);
+      return computedHash === stored.verificationHash;
+    }
+
+    const computedHash = await this.hashPasswordPBKDF2(password, salt, stored.iterations || 100000);
     return computedHash === stored.verificationHash;
+  }
+
+  private async migrateAuthCredentialToArgon2(password: string, oldCredential: StoredCredential): Promise<StoredCredential> {
+    if (oldCredential.scheme === 'argon2id-v1') return oldCredential;
+    return this.createAuthCredential(password);
   }
 
   // P1-3 Kritik aksiyonlarda re-auth
@@ -175,6 +509,7 @@ export class VaultService {
     });
 
     this.sensitiveMaterial = derivedBits;
+    this.searchIndexHmacKey = null;
 
     // 2. Import raw derived bits as AES-GCM Key
     const keyBuf = new ArrayBuffer(this.sensitiveMaterial!.byteLength);
@@ -294,6 +629,20 @@ export class VaultService {
         throw new Error("Invalid credentials");
       }
 
+      if (storedCred.scheme !== 'argon2id-v1') {
+        const migratedCredential = await this.migrateAuthCredentialToArgon2(password, storedCred);
+        const txCredWrite = this.opfsMockDb.transaction('vault_metadata', 'readwrite');
+        await txCredWrite.objectStore('vault_metadata').put({
+          id: 'auth_credential',
+          credential: migratedCredential,
+        });
+        await txCredWrite.done;
+        if (this.useSQLite && this.sqliteDb) {
+          this.sqliteDb.putMetadata('auth_credential', { credential: migratedCredential });
+        }
+        authMetadata = { ...authMetadata, credential: migratedCredential };
+      }
+
       // Device Secret Validation
       if (deviceMetadata?.deviceSecretHash) {
         const secretBuf = new TextEncoder().encode(secretKey);
@@ -398,9 +747,7 @@ export class VaultService {
         throw new Error("NO_VAULT_FOUND");
       }
       
-      const newAuthSalt = window.crypto.getRandomValues(new Uint8Array(16));
-      const iterations = 100000;
-      const verificationHash = await this.hashPassword(password, newAuthSalt, iterations);
+      const newCredential = await this.createAuthCredential(password);
       
       const secretBuf = new TextEncoder().encode(secretKey);
       const secretHashBuf = await window.crypto.subtle.digest('SHA-256', secretBuf);
@@ -420,11 +767,7 @@ export class VaultService {
 
       await mStore.put({
         id: 'auth_credential',
-        credential: {
-          verificationHash,
-          iterations,
-          salt: btoa(String.fromCharCode(...newAuthSalt))
-        }
+        credential: newCredential
       });
 
       await mStore.put({
@@ -437,11 +780,7 @@ export class VaultService {
       // SQLite'a da yaz (dual write)
       if (this.useSQLite && this.sqliteDb) {
         this.sqliteDb.putMetadata('auth_credential', {
-          credential: {
-            verificationHash,
-            iterations,
-            salt: btoa(String.fromCharCode(...newAuthSalt))
-          }
+          credential: newCredential
         });
         this.sqliteDb.putMetadata('device_config', { deviceSecretHash });
         if (!metadata) {
@@ -571,8 +910,12 @@ export class VaultService {
     localStorage.removeItem('aegis_passkey_id');
     localStorage.removeItem('aegis_passkey_data');
     localStorage.removeItem('aegis_prf_salt');
+    localStorage.removeItem('aegis_passkey_meta');
+    localStorage.removeItem('aegis_passkey_bindings_v1');
     localStorage.removeItem('aegis_vault_profiles');
     localStorage.removeItem('aegis_active_vault');
+    localStorage.removeItem('aegis_totp_vault_mode');
+    localStorage.removeItem('aegis_totp_vault_id');
 
     console.warn("CRITICAL: All vault data has been wiped (Deep Clean).");
   }
@@ -664,17 +1007,36 @@ export class VaultService {
       enc.encode(entry.pass || "")
     );
 
+    const metadataAtRest = await this.buildMetadataAtRest(
+      entry.title || 'Untitled',
+      entry.username || '',
+      entry.website || '',
+      entry.category || 'General',
+      entry.tags || []
+    );
+
     const newEntry: VaultEntry = {
       id: entry.id || Date.now(),
-      title: entry.title || "Untitled",
-      username: entry.username || "",
-      category: entry.category || "General",
-      website: entry.website || "",
+      title: metadataAtRest.title,
+      username: metadataAtRest.username,
+      encrypted_title: (metadataAtRest as any).encrypted_title,
+      title_iv: (metadataAtRest as any).title_iv,
+      encrypted_username: (metadataAtRest as any).encrypted_username,
+      username_iv: (metadataAtRest as any).username_iv,
+      category: metadataAtRest.category,
+      encrypted_category: (metadataAtRest as any).encrypted_category,
+      category_iv: (metadataAtRest as any).category_iv,
+      website: metadataAtRest.website,
+      encrypted_website: (metadataAtRest as any).encrypted_website,
+      website_iv: (metadataAtRest as any).website_iv,
+      tags: metadataAtRest.tags,
+      encrypted_tags: (metadataAtRest as any).encrypted_tags,
+      tags_iv: (metadataAtRest as any).tags_iv,
+      search_index: (metadataAtRest as any).search_index || [],
       encrypted_password: this.bufToHex(new Uint8Array(cipherBuffer)),
       iv: this.bufToHex(iv),
       updated_at: new Date().toISOString(),
       strength: this.calculateStrength(entry.pass || ''),
-      tags: entry.tags || [],
       pwned_count: entry.pwned_count || 0,
     };
 
@@ -717,7 +1079,7 @@ export class VaultService {
     }
 
     if (entry.attachments) {
-      newEntry.attachments = entry.attachments;
+      newEntry.attachments = await this.encryptAttachmentMetadataList(entry.attachments as VaultAttachmentMeta[]);
     }
 
     // Dual-write: SQLite (primary) + IDB (fallback)
@@ -763,13 +1125,31 @@ export class VaultService {
         return e;
     });
 
+    const migratedEntries: VaultEntry[] = [];
+    allEntries = await Promise.all(allEntries.map(async (entry) => {
+      const { uiEntry, storageEntry } = await this.prepareEntryMetadataForUse(entry);
+      if (storageEntry) migratedEntries.push(storageEntry);
+      return uiEntry;
+    }));
+
+    if (migratedEntries.length > 0) {
+      try {
+        for (const migrated of migratedEntries) {
+          if (this.useSQLite && this.sqliteDb) {
+            this.sqliteDb.putPassword(migrated as any);
+          }
+          if (this.opfsMockDb) {
+            await this.opfsMockDb.put('passwords', migrated);
+          }
+        }
+      } catch (err) {
+        console.debug('Metadata migration write skipped:', err);
+      }
+    }
+
     if (searchQuery.trim()) {
       const normalize = (value: string = "") =>
-        value
-          .toLowerCase()
-          .normalize("NFKD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^a-z0-9]/g, "");
+        this.normalizeSearchValue(value).replace(/\s+/g, "");
 
       const queryTokens = searchQuery
         .toLowerCase()
@@ -778,6 +1158,23 @@ export class VaultService {
         .trim()
         .split(/\s+/)
         .filter(Boolean);
+
+      if (this.metadataEncryptionEnabled) {
+        const hashedQueryTokens = await Promise.all(
+          queryTokens
+            .map((token) => normalize(token))
+            .filter(Boolean)
+            .map((token) => this.hashSearchToken(token))
+        );
+
+        if (hashedQueryTokens.length > 0) {
+          allEntries = allEntries.filter((entry) => {
+            const indexValues = Array.isArray(entry.search_index) ? entry.search_index : [];
+            if (indexValues.length === 0) return false;
+            return hashedQueryTokens.every((hashed) => indexValues.includes(hashed));
+          });
+        }
+      }
 
       const isSubsequence = (needle: string, haystack: string) => {
         let i = 0;
@@ -961,7 +1358,7 @@ export class VaultService {
 
         return decrypted;
       } catch (e) {
-        console.error("Decryption failed for entry", entry.id, " - Title:", entry.title);
+        console.error("Decryption failed for entry", entry.id, " - Title:", entry.title || '[redacted]');
         return { ...entry, pass: "••DECRYPT_ERROR••" };
       }
     }));
@@ -994,9 +1391,7 @@ export class VaultService {
     // Yeni MasterKey'i üret (aesKey güncellenir)
     await this.deriveMasterKey(newPassword, secretKey, newMainSaltB64);
 
-    const newAuthSalt = window.crypto.getRandomValues(new Uint8Array(16));
-    const iterations = 100000;
-    const verificationHash = await this.hashPassword(newPassword, newAuthSalt, iterations);
+    const newCredential = await this.createAuthCredential(newPassword);
 
     // 4. Tüm girdileri (parolalar) yeni AES key ile tekrar şifrele
     const updatedEntriesToSave: VaultEntry[] = [];
@@ -1013,6 +1408,14 @@ export class VaultService {
 
       const updatedEntry: VaultEntry = {
         ...entry,
+        ...(await this.buildMetadataAtRest(
+          entry.title || 'Untitled',
+          entry.username || '',
+          entry.website || '',
+          entry.category || 'General',
+          entry.tags || []
+        )),
+        attachments: await this.encryptAttachmentMetadataList(entry.attachments || []),
         encrypted_password: this.bufToHex(new Uint8Array(cipherBuffer)),
         iv: this.bufToHex(iv),
         updated_at: new Date().toISOString()
@@ -1026,7 +1429,7 @@ export class VaultService {
     // SQLite dual-write
     if (this.useSQLite && this.sqliteDb) {
       this.sqliteDb.putMetadata('main_salt', { id: 'main_salt', salt: newMainSaltB64, createdAt: new Date().toISOString(), version: 2 });
-      this.sqliteDb.putMetadata('auth_credential', { id: 'auth_credential', credential: { verificationHash, iterations, salt: btoa(String.fromCharCode(...newAuthSalt)) } });
+      this.sqliteDb.putMetadata('auth_credential', { id: 'auth_credential', credential: newCredential });
       for (const item of updatedEntriesToSave) {
         this.sqliteDb.putPassword(item as any);
       }
@@ -1037,7 +1440,7 @@ export class VaultService {
       const metaStore = txData.objectStore('vault_metadata');
       const passStore = txData.objectStore('passwords');
       await metaStore.put({ id: 'main_salt', salt: newMainSaltB64, createdAt: new Date().toISOString(), version: 2 });
-      await metaStore.put({ id: 'auth_credential', credential: { verificationHash, iterations, salt: btoa(String.fromCharCode(...newAuthSalt)) } });
+      await metaStore.put({ id: 'auth_credential', credential: newCredential });
       for (const item of updatedEntriesToSave) {
         await passStore.put(item);
       }
@@ -1055,6 +1458,7 @@ export class VaultService {
     if (this.aesKey) {
       this.aesKey = null;
     }
+    this.searchIndexHmacKey = null;
 
     // SQLite: flush & close
     if (this.sqliteDb) {
@@ -1112,15 +1516,17 @@ export class VaultService {
 
       const newEntry: VaultEntry = {
         id: newId, 
-        title: entry.title || "Imported Entry",
-        username: entry.username || "",
-        category: entry.category || "General",
-        website: entry.website || "",
+        ...(await this.buildMetadataAtRest(
+          entry.title || 'Imported Entry',
+          entry.username || '',
+          entry.website || '',
+          entry.category || 'General',
+          entry.tags || []
+        )),
         encrypted_password: this.bufToHex(new Uint8Array(cipherBuffer)),
         iv: this.bufToHex(iv),
         updated_at: new Date().toISOString(),
         strength: this.calculateStrength(entry.pass),
-        tags: entry.tags || [],
         pwned_count: entry.pwned_count || 0,
       };
 
@@ -1155,12 +1561,13 @@ export class VaultService {
     );
 
     const attachmentId = crypto.randomUUID();
-    const attachmentMeta = {
+    const attachmentMeta: VaultAttachmentMeta = {
       id: attachmentId,
       name: file.name,
       type: file.type,
       size: file.size
     };
+    const attachmentMetaAtRest = (await this.encryptAttachmentMetadataList([attachmentMeta]))[0];
 
     // Primary write path: SQLite (if enabled)
     if (this.useSQLite && this.sqliteDb) {
@@ -1169,7 +1576,7 @@ export class VaultService {
       const entry = existingEntries.find((e: any) => Number(e.id) === Number(entryId));
       if (entry) {
         const attachments = Array.isArray(entry.attachments) ? entry.attachments : [];
-        attachments.push(attachmentMeta);
+        attachments.push(attachmentMetaAtRest);
         entry.attachments = attachments;
         this.sqliteDb.putPassword(entry);
       }
@@ -1190,7 +1597,7 @@ export class VaultService {
       const entry = await store.get(entryId);
       if (entry) {
         if (!entry.attachments) entry.attachments = [];
-        entry.attachments.push(attachmentMeta);
+        entry.attachments.push(attachmentMetaAtRest);
         await store.put(entry);
       }
       await tx.done;

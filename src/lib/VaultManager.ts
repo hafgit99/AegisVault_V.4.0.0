@@ -81,7 +81,8 @@ export class VaultManager {
   static createProfile(name: string): VaultProfile {
     const profiles = this.getProfiles();
     const colorIdx = profiles.length % DEFAULT_COLORS.length;
-    const id = `vault_${Date.now()}`;
+    const randomPart = Math.random().toString(36).slice(2, 8);
+    const id = `vault_${Date.now()}_${randomPart}`;
     
     const newProfile: VaultProfile = {
       id,

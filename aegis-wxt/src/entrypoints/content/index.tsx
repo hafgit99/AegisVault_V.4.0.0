@@ -4,6 +4,14 @@ import { createShadowRootUi } from 'wxt/client';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 
+const isTurkishLocale = (typeof navigator !== 'undefined' ? navigator.language : 'en').toLowerCase().startsWith('tr');
+const EXT_I18N = {
+  noUsername: isTurkishLocale ? 'Kullanici adi yok' : 'No username',
+  recordsLabel: isTurkishLocale ? 'kayit' : 'record(s)',
+  noRecordForSite: isTurkishLocale ? 'Bu site icin kayit bulunamadi' : 'No records found for this site',
+  filledSuccess: isTurkishLocale ? 'Basariyla dolduruldu' : 'Filled successfully',
+};
+
 // ─── Inline Styles (Shadow DOM içinde Tailwind çalışmaz, tüm stiller inline) ───
 const STYLES = {
   container: {
@@ -218,7 +226,7 @@ const EntryRow = ({ entry, onFill }: { entry: any; onFill: (e: any) => void }) =
       </div>
       <div style={STYLES.entryInfo}>
         <div style={STYLES.entryTitle}>{entry.title}</div>
-        <div style={STYLES.entryUser}>{entry.username || 'Kullanıcı adı yok'}</div>
+        <div style={STYLES.entryUser}>{entry.username || EXT_I18N.noUsername}</div>
       </div>
       <span style={STYLES.fillArrow}>→</span>
     </div>
@@ -265,15 +273,15 @@ const AegisOverlay = () => {
         const status = await browser.runtime.sendMessage({ type: 'GET_VAULT_STATUS' });
         if (!status?.isUnlocked) { hide(); return; }
 
-        const res = await browser.runtime.sendMessage({ type: 'GET_VAULT' });
-        if (!res || res.length === 0) { hide(); return; }
+        const domain = window.location.hostname.replace(/^www\./, '').toLowerCase();
+        if (!domain) { hide(); return; }
 
-        const domain = window.location.hostname.replace(/^www\./, '');
-        let matches = res.filter((p: any) =>
-          p.website && (p.website.includes(domain) || domain.includes(p.website))
-        );
-        if (matches.length === 0) matches = res.slice(0, 3);
-        else matches = matches.slice(0, 3);
+        const requestNonce = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random()}`;
+        const response = await browser.runtime.sendMessage({ type: 'GET_DOMAIN_CREDS', domain, requestNonce });
+        const matches = Array.isArray(response?.data) ? response.data : [];
+        if (!response?.success || matches.length === 0) { hide(); return; }
 
         inputRef.current = target;
         setActiveRect(target.getBoundingClientRect());
@@ -329,7 +337,7 @@ const AegisOverlay = () => {
             </svg>
           </div>
           <span style={STYLES.headerTitle}>Aegis Vault</span>
-          <span style={STYLES.headerSub}>{matchingPasswords.length} kayıt</span>
+          <span style={STYLES.headerSub}>{matchingPasswords.length} {EXT_I18N.recordsLabel}</span>
         </div>
 
         {/* Body */}
@@ -351,12 +359,12 @@ const AegisOverlay = () => {
                 />
               ))
             ) : (
-              <div style={STYLES.emptyText}>Bu site için kayıt bulunamadı</div>
+              <div style={STYLES.emptyText}>{EXT_I18N.noRecordForSite}</div>
             )
           ) : (
             <div style={STYLES.successBox}>
               <span style={{ fontSize: 16 }}>✓</span>
-              <span style={STYLES.successText}>Başarıyla dolduruldu</span>
+              <span style={STYLES.successText}>{EXT_I18N.filledSuccess}</span>
             </div>
           )}
         </div>
@@ -367,7 +375,7 @@ const AegisOverlay = () => {
 
 // ─── Content Script Tanımı ───
 export default defineContentScript({
-  matches: ['https://*.aegisvault.xyz/*', 'http://localhost:5173/*', 'http://127.0.0.1:5173/*'],
+  matches: ['<all_urls>'],
   cssInjectionMode: 'ui',
 
   async main(ctx) {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Wand2, Copy, Check, Settings, ShieldAlert, ShieldCheck, Lock, FileUp, FileDown, Database, AlertTriangle, Eye, EyeOff, Heart } from "lucide-react";
+import { X, Wand2, Copy, Check, Settings, ShieldAlert, ShieldCheck, Lock, FileUp, FileDown, Database, AlertTriangle, Eye, EyeOff, Heart, Fingerprint } from "lucide-react";
 import { GlowCard } from "../ui/GlowCard";
 import { getCategoryIcon } from "../../lib/getCategoryIcon";
 import { useVault } from "../../contexts/VaultContext";
@@ -13,6 +13,9 @@ import { BackupService } from "../../lib/BackupService";
 import { ReAuthModal } from "../ReAuthModal";
 import { WipeConfirmationModal } from "../WipeConfirmationModal";
 import { PasswordGenerator } from "../settings/PasswordGenerator";
+import { VaultManager } from "../../lib/VaultManager";
+import { PasskeyBindingService } from "../../lib/PasskeyBindingService";
+import { TotpVaultPolicy, type TotpVaultMode } from "../../lib/TotpVaultPolicy";
 
 interface SettingsDrawerProps {
   isOpen: boolean;
@@ -40,6 +43,9 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
     loadPasswords,
     autoLockTime,
     setAutoLockTime,
+    hibpEnabled,
+    setHibpEnabled,
+    hibpLastResult,
   } = useVault();
 
   // Generator State
@@ -64,9 +70,24 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
   const [showSecretMenu, setShowSecretMenu] = useState(false);
   const [showWipeModal, setShowWipeModal] = useState(false);
   const [logoClicks, setLogoClicks] = useState(0);
+  const [hasPasskeyBinding, setHasPasskeyBinding] = useState(false);
+  const [totpMode, setTotpMode] = useState<TotpVaultMode>(() => TotpVaultPolicy.getMode());
+  const [totpVaultProfileName, setTotpVaultProfileName] = useState<string>("Aegis 2FA Vault");
 
   // ReAuth State (P1-3)
   const [reAuthAction, setReAuthAction] = useState<{ name: string; action: () => void } | null>(null);
+
+  const activeProfile = VaultManager.getActiveProfile();
+
+  useEffect(() => {
+    const binding = PasskeyBindingService.getBinding(activeProfile?.id || null, activeProfile?.dbName || 'aegis_opfs_vault');
+    setHasPasskeyBinding(Boolean(binding));
+  }, [activeProfile?.id, activeProfile?.dbName]);
+
+  useEffect(() => {
+    const profile = TotpVaultPolicy.getTwoFactorVaultProfile();
+    if (profile?.name) setTotpVaultProfileName(profile.name);
+  }, [totpMode]);
 
   // Action Wrappers for ReAuth (P1-3)
   const requireAuth = (name: string, action: () => void) => {
@@ -238,6 +259,116 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
     });
   };
 
+  const handlePasskeyRecoveryExport = async () => {
+    const recoveryPass = window.prompt(t('passkeyRecoveryPasswordPrompt'));
+    if (!recoveryPass) return;
+
+    try {
+      const encrypted = await PasskeyBindingService.exportRecoveryPackage(
+        activeProfile?.id || null,
+        activeProfile?.dbName || 'aegis_opfs_vault',
+        recoveryPass
+      );
+
+      const blob = new Blob([encrypted], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `aegis_passkey_recovery_${activeProfile?.id || 'default'}.aes`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success(t('passkeyRecoveryExported'));
+    } catch (err: any) {
+      toast.error(t('passkeyRecoveryExportFailed'));
+    }
+  };
+
+  const handlePasskeyRecoveryImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const recoveryPass = window.prompt(t('passkeyRecoveryImportPasswordPrompt'));
+    if (!recoveryPass) {
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      const raw = await file.text();
+      await PasskeyBindingService.importRecoveryPackage(
+        raw,
+        recoveryPass,
+        activeProfile?.id || null,
+        activeProfile?.dbName || 'aegis_opfs_vault'
+      );
+      setHasPasskeyBinding(true);
+      toast.success(t('passkeyRecoveryImported'));
+    } catch (err: any) {
+      toast.error(t('passkeyRecoveryImportFailed'));
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  const handlePasskeyRevokeForProfile = () => {
+    if (!window.confirm(t('passkeyRevokeConfirm'))) return;
+    const revoked = PasskeyBindingService.revokeBinding(activeProfile?.id || null, activeProfile?.dbName || 'aegis_opfs_vault');
+    if (revoked) {
+      setHasPasskeyBinding(false);
+      toast.success(t('passkeyRevoked'));
+    } else {
+      toast.info(t('passkeyNoBindingForProfile'));
+    }
+  };
+
+  const handleStorageAuditCleanup = () => {
+    const keys = Object.keys(localStorage);
+    const keepPrefixes = [
+      'aegis_vault_profiles',
+      'aegis_active_vault',
+      'aegis_passkey_bindings_v1',
+      'aegis_auto_lock_time',
+      'aegis_hibp_enabled',
+      'aegis_totp_vault_mode',
+      'aegis_totp_vault_id',
+      'aegis:view-density',
+      'aegis:theme-mode',
+      'i18nextLng',
+    ];
+    let removed = 0;
+    for (const key of keys) {
+      if (!key.startsWith('aegis_') && !key.startsWith('aegis:')) continue;
+      const shouldKeep = keepPrefixes.some((prefix) => key === prefix || key.startsWith(prefix));
+      if (!shouldKeep) {
+        localStorage.removeItem(key);
+        removed++;
+      }
+    }
+    toast.success(t('storageAuditDone', { count: removed }));
+  };
+
+  const handleTotpModeChange = (mode: TotpVaultMode) => {
+    TotpVaultPolicy.setMode(mode);
+    setTotpMode(mode);
+
+    if (mode === 'separate_2fa_vault') {
+      const profile = TotpVaultPolicy.ensureTwoFactorVaultProfile();
+      setTotpVaultProfileName(profile.name);
+      toast.info(t('totpSeparateModeEnabled', { vault: profile.name }));
+    } else {
+      toast.info(t('totpSameVaultModeEnabled'));
+    }
+  };
+
+  const switchToTwoFactorVault = () => {
+    const profile = TotpVaultPolicy.ensureTwoFactorVaultProfile();
+    VaultManager.setActiveVaultId(profile.id);
+    toast.success(t('totpSwitchedTo2faVault', { vault: profile.name }));
+    window.location.reload();
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -316,6 +447,125 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                   <option value={30}>{t("lockTime30")}</option>
                   <option value={0}>{t("lockTime0")}</option>
                 </select>
+              </div>
+
+              <div className="settings-subpanel bg-white/80 p-5 rounded-2xl border border-white shadow-inner mb-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1 text-[var(--color-deep-navy)]">{t('hibpSettingsTitle')}</h4>
+                    <p className="text-xs opacity-70 leading-relaxed max-w-md">{t('hibpSettingsDesc')}</p>
+                  </div>
+                  <label className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--color-deep-navy)]">
+                    <input
+                      type="checkbox"
+                      checked={hibpEnabled}
+                      onChange={(e) => setHibpEnabled(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-[var(--color-sage-green)] focus:ring-[var(--color-sage-green)]/40"
+                    />
+                    {t('hibpPrivacyToggle')}
+                  </label>
+                </div>
+
+                <div className="mt-2 rounded-xl border border-[var(--color-sage-green)]/20 bg-[var(--color-sage-green)]/5 px-3 py-2 text-[11px] text-[var(--color-deep-navy)]/80">
+                  {t('hibpSettingsExplain')}
+                </div>
+
+                {hibpLastResult === 'unknown' && (
+                  <div className="mt-2 rounded-xl border border-amber-300/40 bg-amber-50/60 px-3 py-2 text-[11px] font-medium text-amber-700">
+                    {t('hibpResultUnknown')}
+                  </div>
+                )}
+              </div>
+
+              <div className="settings-subpanel bg-white/80 p-5 rounded-2xl border border-white shadow-inner mb-4">
+                <h4 className="font-semibold text-sm mb-1 text-[var(--color-deep-navy)]">{t('totpVaultModeTitle')}</h4>
+                <p className="text-xs opacity-70 leading-relaxed mb-3">{t('totpVaultModeDesc')}</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                  <button
+                    onClick={() => handleTotpModeChange('same_vault')}
+                    className={`totp-mode-btn px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${totpMode === 'same_vault' ? 'totp-mode-btn-active' : ''}`}
+                  >
+                    {t('totpModeSameVault')}
+                  </button>
+                  <button
+                    onClick={() => handleTotpModeChange('separate_2fa_vault')}
+                    className={`totp-mode-btn px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${totpMode === 'separate_2fa_vault' ? 'totp-mode-btn-active' : ''}`}
+                  >
+                    {t('totpModeSeparateVault')}
+                  </button>
+                </div>
+
+                {totpMode === 'separate_2fa_vault' && (
+                  <div className="rounded-xl border border-amber-300/40 bg-amber-50/60 px-3 py-2 text-[11px] text-amber-700 mb-2">
+                    {t('totpSeparateVaultTarget', { vault: totpVaultProfileName })}
+                  </div>
+                )}
+
+                {totpMode === 'separate_2fa_vault' && passwords.filter((p) => Boolean(p.totpSecret)).length > 0 && (
+                  <div className="rounded-xl border border-red-300/40 bg-red-50/60 px-3 py-2 text-[11px] text-red-700 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                    <span>{t('totpMigrationWarning', { count: passwords.filter((p) => Boolean(p.totpSecret)).length })}</span>
+                    <button
+                      onClick={switchToTwoFactorVault}
+                      className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-[11px] font-bold hover:bg-red-700"
+                    >
+                      {t('totpSwitchTo2faVaultBtn')}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="settings-subpanel bg-white/80 p-5 rounded-2xl border border-white shadow-inner mb-4">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1 text-[var(--color-deep-navy)] flex items-center gap-2">
+                      <Fingerprint className="w-4 h-4 text-[var(--color-sage-green)]" />
+                      {t('passkeyRecoveryTitle')}
+                    </h4>
+                    <p className="text-xs opacity-70 leading-relaxed max-w-md">{t('passkeyRecoveryDesc')}</p>
+                  </div>
+                  <span className={`passkey-status-chip text-[10px] font-bold px-2 py-1 rounded-full ${hasPasskeyBinding ? 'passkey-status-chip-bound' : 'passkey-status-chip-unbound'}`}>
+                    {hasPasskeyBinding ? t('passkeyBound') : t('passkeyNotBound')}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <button
+                    onClick={() => requireAuth(t('passkeyRecoveryExportBtn'), handlePasskeyRecoveryExport)}
+                    disabled={!hasPasskeyBinding}
+                    className="settings-action-btn settings-action-btn-primary px-3 py-2 rounded-xl text-xs font-semibold disabled:opacity-50"
+                  >
+                    {t('passkeyRecoveryExportBtn')}
+                  </button>
+
+                  <label className="settings-action-btn settings-action-btn-secondary cursor-pointer px-3 py-2 rounded-xl text-xs font-semibold text-center transition-colors">
+                    {t('passkeyRecoveryImportBtn')}
+                    <input type="file" accept=".aes" className="hidden" onChange={handlePasskeyRecoveryImport} />
+                  </label>
+
+                  <button
+                    onClick={() => requireAuth(t('passkeyRevokeButton'), handlePasskeyRevokeForProfile)}
+                    disabled={!hasPasskeyBinding}
+                    className="settings-action-btn settings-action-btn-danger px-3 py-2 rounded-xl text-xs font-semibold disabled:opacity-50"
+                  >
+                    {t('passkeyRevokeButton')}
+                  </button>
+                </div>
+              </div>
+
+              <div className="settings-subpanel bg-white/80 p-5 rounded-2xl border border-white shadow-inner mb-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1 text-[var(--color-deep-navy)]">{t('storageAuditTitle')}</h4>
+                    <p className="text-xs opacity-70 leading-relaxed max-w-md">{t('storageAuditDesc')}</p>
+                  </div>
+                  <button
+                    onClick={handleStorageAuditCleanup}
+                    className="px-3 py-2 rounded-xl border border-[var(--color-sage-green)]/40 text-[var(--color-deep-navy)] text-xs font-semibold hover:bg-[var(--color-sage-green)]/10"
+                  >
+                    {t('storageAuditRun')}
+                  </button>
+                </div>
               </div>
 
               {/* Donation */}
@@ -449,27 +699,27 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
 
               {/* Import Report */}
               {importReport && (
-                <div className="mt-5 p-5 rounded-2xl border border-amber-200/50 bg-amber-50/50 animate-in fade-in zoom-in-95 duration-500 shadow-sm relative overflow-hidden">
+                <div className="import-report-card mt-5 p-5 rounded-2xl border animate-in fade-in zoom-in-95 duration-500 shadow-sm relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
                   <div className="flex items-start gap-4 relative z-10">
-                    <div className="p-2 bg-amber-100 rounded-xl text-amber-600 shrink-0"><AlertTriangle className="w-5 h-5" /></div>
+                    <div className="p-2 bg-amber-500/15 rounded-xl text-amber-500 shrink-0"><AlertTriangle className="w-5 h-5" /></div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-sm text-gray-800">{t("importReportTitle")}</h4>
-                      <p className="text-xs text-gray-500 mt-1 mb-2">{t("importReportDesc")}</p>
+                      <h4 className="font-semibold text-sm text-[var(--color-deep-navy)]">{t("importReportTitle")}</h4>
+                      <p className="text-xs opacity-60 mt-1 mb-2">{t("importReportDesc")}</p>
                       <div className="space-y-2 mt-3 font-[var(--font-geist-mono)] text-xs">
-                        <div className="flex justify-between items-center py-1.5 border-b border-black/5">
-                          <span className="text-gray-600">{t("totalValidEntries")}</span>
+                        <div className="flex justify-between items-center py-1.5 border-b border-[var(--color-deep-navy)]/10">
+                          <span className="opacity-70">{t("totalValidEntries")}</span>
                           <span className="font-bold text-[var(--color-sage-green)]">{importReport.total}</span>
                         </div>
-                        <div className="flex justify-between items-center py-1.5 border-b border-black/5">
-                          <span className="text-gray-600">{t("weakPasswordsDetected")}</span>
-                          <span className={`font-bold ${importReport.weak > 0 ? "text-red-500 cursor-pointer hover:underline" : "text-gray-400"}`} onClick={() => { if (importReport.weak > 0) setShowWeakPasswordsPopup(true); }}>
+                        <div className="flex justify-between items-center py-1.5 border-b border-[var(--color-deep-navy)]/10">
+                          <span className="opacity-70">{t("weakPasswordsDetected")}</span>
+                          <span className={`font-bold ${importReport.weak > 0 ? "text-red-500 cursor-pointer hover:underline" : "opacity-40"}`} onClick={() => { if (importReport.weak > 0) setShowWeakPasswordsPopup(true); }}>
                             {importReport.weak}
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-1.5">
-                          <span className="text-gray-600">{t("missingProperties")}</span>
-                          <span className={`font-bold ${importReport.missingFields > 0 ? "text-amber-500" : "text-gray-400"}`}>{importReport.missingFields}</span>
+                          <span className="opacity-70">{t("missingProperties")}</span>
+                          <span className={`font-bold ${importReport.missingFields > 0 ? "text-amber-500" : "opacity-40"}`}>{importReport.missingFields}</span>
                         </div>
                       </div>
                     </div>

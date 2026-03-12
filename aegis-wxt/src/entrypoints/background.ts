@@ -71,6 +71,17 @@ export default defineBackground({
 
     // Merkezi Hafıza: Sadece SAVE_VAULT ile doldurulur (Oturuma özel)
     const vaultCache: any[] = [];
+    const LEGACY_GET_VAULT_ENABLED = false;
+    const DOMAIN_REQ_MIN_INTERVAL_MS = 350;
+    const NONCE_TTL_MS = 30 * 1000;
+    const DESKTOP_CHALLENGE_TTL_MS = 15 * 1000;
+    const EXTENSION_ID = (
+      ((import.meta as any)?.env?.WXT_AEGIS_EXTENSION_ID as string | undefined) ||
+      browser.runtime.id ||
+      ''
+    ).trim();
+    const recentDomainRequestMap = new Map<string, number>();
+    const requestNonceMap = new Map<string, number>();
 
     // MV3 Dayanıklılık: Kilit durumunu browser.storage.session ile kalıcı yap
     const persistVaultState = async (unlocked: boolean) => {
@@ -95,6 +106,78 @@ export default defineBackground({
     };
     restoreVaultState();
 
+    const hexToUint8 = (hex: string) => {
+      const normalized = (hex || '').trim();
+      if (!normalized || normalized.length % 2 !== 0) return new Uint8Array();
+      const bytes = new Uint8Array(normalized.length / 2);
+      for (let i = 0; i < normalized.length; i += 2) {
+        bytes[i / 2] = parseInt(normalized.substring(i, i + 2), 16);
+      }
+      return bytes;
+    };
+
+    const toHex = (buffer: ArrayBuffer) => {
+      const bytes = new Uint8Array(buffer);
+      return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+    };
+
+    const signDesktopChallenge = async (tokenHex: string, payload: string) => {
+      const keyBytes = hexToUint8(tokenHex);
+      const payloadBytes = new TextEncoder().encode(payload);
+      const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+      const sig = await crypto.subtle.sign('HMAC', key, payloadBytes);
+      return toHex(sig);
+    };
+
+    const getDesktopChallenge = async (host: string) => {
+      if (!EXTENSION_ID) return null;
+      try {
+        const response = await fetch(`http://${host}:23456/api/challenge`, {
+          method: 'GET',
+          mode: 'cors',
+          headers: {
+            'X-Aegis-Client': 'extension',
+            'X-Aegis-Extension-Id': EXTENSION_ID,
+          },
+        });
+        if (!response.ok) return null;
+        const challenge = await response.json();
+        if (!challenge?.nonce || !challenge?.token || !challenge?.expiresAt) return null;
+        if (Number(challenge.expiresAt) - Date.now() <= 0 || Number(challenge.expiresAt) - Date.now() > DESKTOP_CHALLENGE_TTL_MS * 2) {
+          return null;
+        }
+        return challenge;
+      } catch (_e) {
+        return null;
+      }
+    };
+
+    const desktopSignedGet = async (host: string, path: '/api/status' | '/api/vault') => {
+      if (!EXTENSION_ID) return null;
+      const challenge = await getDesktopChallenge(host);
+      if (!challenge) return null;
+
+      const ts = Date.now().toString();
+      const payload = `GET:${path}:${challenge.nonce}:${ts}:${EXTENSION_ID}`;
+      const signature = await signDesktopChallenge(challenge.token, payload);
+
+      try {
+        return await fetch(`http://${host}:23456${path}`, {
+          method: 'GET',
+          mode: 'cors',
+          headers: {
+            'X-Aegis-Client': 'extension',
+            'X-Aegis-Extension-Id': EXTENSION_ID,
+            'X-Aegis-Challenge-Nonce': challenge.nonce,
+            'X-Aegis-Challenge-Ts': ts,
+            'X-Aegis-Challenge-Signature': signature,
+          },
+        });
+      } catch (_e) {
+        return null;
+      }
+    };
+
     /**
      * 🖥️ Desktop Sync (Electron)
      * Masaüstü uygulaması açık ve kilitliyse (port 23456), verileri oradan çek.
@@ -102,19 +185,25 @@ export default defineBackground({
      * MV3 için setInterval yerine alarms kullanıyoruz (Sürekli uyanık kalma garantisi için).
      */
     const pollDesktopVault = async () => {
-      const ports = ['23456'];
       const hosts = ['127.0.0.1', 'localhost'];
 
       for (const host of hosts) {
         try {
-          // Extension service worker fetch'leri origin header taşımaz.
-          // X-Aegis-Client header ile kimliğimizi bildiriyoruz.
-          const aegisHeaders = { 'X-Aegis-Client': 'extension' };
+          console.debug(`[Aegis Vault] 🔍 Desktop poll başlatılıyor: ${host}, EXTENSION_ID: ${EXTENSION_ID.substring(0, 8)}...`);
 
           // 1. Status endpoint — kasa açık mı?
-          const statusRes = await fetch(`http://${host}:23456/api/status`, { headers: aegisHeaders });
-          if (!statusRes.ok) continue;
+          const statusRes = await desktopSignedGet(host, '/api/status');
+          if (!statusRes) {
+            console.debug(`[Aegis Vault] ⚠️ Status isteği null döndü (${host}) — challenge başarısız veya fetch engellendi`);
+            continue;
+          }
+          if (!statusRes.ok) {
+            const errText = await statusRes.text().catch(() => '');
+            console.warn(`[Aegis Vault] ⚠️ Status ${statusRes.status}: ${errText} (${host})`);
+            continue;
+          }
           const status = await statusRes.json();
+          console.debug(`[Aegis Vault] 📊 Status yanıtı (${host}):`, status);
           
           if (!status.isUnlocked) {
             if (isVaultUnlocked) {
@@ -122,12 +211,20 @@ export default defineBackground({
               secureWipeCache();
               clearAllBadges();
             }
-            return; // Bulduk ama kilitli, diğer host'u denemeye gerek yok
+            return;
           }
 
           // 2. Vault verilerini al
-          const vaultRes = await fetch(`http://${host}:23456/api/vault`, { headers: aegisHeaders });
-          if (!vaultRes.ok) continue;
+          const vaultRes = await desktopSignedGet(host, '/api/vault');
+          if (!vaultRes) {
+            console.debug(`[Aegis Vault] ⚠️ Vault isteği null döndü (${host})`);
+            continue;
+          }
+          if (!vaultRes.ok) {
+            const errText = await vaultRes.text().catch(() => '');
+            console.warn(`[Aegis Vault] ⚠️ Vault ${vaultRes.status}: ${errText} (${host})`);
+            continue;
+          }
           const data = await vaultRes.json();
           
           if (Array.isArray(data) && data.length > 0) {
@@ -140,10 +237,11 @@ export default defineBackground({
               console.log(`[Aegis Vault] ✅ Masaüstü (${host}) ile eşitleme başarılı. ${data.length} kayıt.`);
             }
             resetSessionTimeout();
-            return; // Başarılı, döngüden çık
+            return;
+          } else {
+            console.debug(`[Aegis Vault] ℹ️ Vault verisi boş veya geçersiz (${host}), data length: ${Array.isArray(data) ? data.length : 'N/A'}`);
           }
         } catch (e) {
-          // Bu host/port kombinasyonu erişilebilir değil
           console.debug(`[Aegis Vault] 🔍 Desktop sync deneme başarısız (${host}):`, e);
         }
       }
@@ -216,6 +314,38 @@ export default defineBackground({
       }
     };
 
+    const isDomainMatch = (entryWebsite: string, domain: string) => {
+      const normalizedEntry = entryWebsite.toLowerCase().trim();
+      const normalizedDomain = domain.toLowerCase().trim();
+      return normalizedEntry.includes(normalizedDomain) || normalizedDomain.includes(normalizedEntry);
+    };
+
+    const getRequestKey = (sender: any, domain: string) => {
+      const tabId = typeof sender?.tab?.id === 'number' ? sender.tab.id : 'unknown';
+      return `${tabId}:${domain}`;
+    };
+
+    const cleanupNonceMap = (now: number) => {
+      for (const [nonce, ts] of requestNonceMap.entries()) {
+        if (now - ts > NONCE_TTL_MS) {
+          requestNonceMap.delete(nonce);
+        }
+      }
+    };
+
+    const sanitizeVaultEntry = (entry: any) => {
+      if (!entry || typeof entry !== 'object') return null;
+      if (typeof entry.pass !== 'string' || !entry.pass) return null;
+      if (typeof entry.website !== 'string' || !entry.website.trim()) return null;
+
+      return {
+        title: typeof entry.title === 'string' ? entry.title : '',
+        username: typeof entry.username === 'string' ? entry.username : '',
+        pass: entry.pass,
+        website: entry.website,
+      };
+    };
+
     // Badge güncelleyici - SADECE cache'den çalışır
     const updateBadge = async (tabId: number, url?: string) => {
       if (!isVaultUnlocked || vaultCache.length === 0) {
@@ -228,7 +358,7 @@ export default defineBackground({
       if (!domain) return;
 
       try {
-        const matches = vaultCache.filter(p => p.website && (p.website.includes(domain) || domain.includes(p.website)));
+        const matches = vaultCache.filter(p => p.website && isDomainMatch(p.website, domain));
         if (matches.length > 0) {
           browser.action.setBadgeText({ text: matches.length.toString(), tabId });
           browser.action.setBadgeBackgroundColor({ color: '#22c55e', tabId });
@@ -265,7 +395,12 @@ export default defineBackground({
         secureWipeCache();
         
         if (Array.isArray(message.data) && message.data.length > 0) {
-          vaultCache.push(...message.data);
+          const sanitizedEntries = message.data
+            .map((entry: any) => sanitizeVaultEntry(entry))
+            .filter(Boolean)
+            .slice(0, 1000);
+
+          vaultCache.push(...sanitizedEntries);
           isVaultUnlocked = true;
           persistVaultState(true);
           resetSessionTimeout();
@@ -296,8 +431,86 @@ export default defineBackground({
         sendResponse({ success: true, locked: true });
       }
       
-      // ── GET_VAULT: Şifreler isteniyor ──
+      // ── GET_DOMAIN_CREDS: Sadece aktif domain'e uygun kayıtları ver ──
+      else if (message.type === "GET_DOMAIN_CREDS") {
+        const requestedDomain = typeof message.domain === 'string'
+          ? message.domain.toLowerCase().trim()
+          : '';
+        const requestNonce = typeof message.requestNonce === 'string'
+          ? message.requestNonce.trim()
+          : '';
+        const now = Date.now();
+
+        // Sender'ın kim olduğunu belirle:
+        // - Content script → sender.tab.url mevcut (web sayfası domain'i)
+        // - Extension popup → sender.tab YOK, sender.url "chrome-extension://" ile başlar
+        const senderUrl = sender?.tab?.url;
+        const senderDomain = senderUrl ? getDomain(senderUrl) : '';
+        const isFromPopup = !sender?.tab && (
+          (typeof sender?.url === 'string' && (
+            sender.url.startsWith('chrome-extension://') ||
+            sender.url.startsWith('moz-extension://')
+          )) ||
+          (typeof (sender as any)?.origin === 'string' && (
+            (sender as any).origin.startsWith('chrome-extension://') ||
+            (sender as any).origin.startsWith('moz-extension://')
+          ))
+        );
+
+        cleanupNonceMap(now);
+
+        if (!requestedDomain || !requestNonce) {
+          sendResponse({ success: false, data: [] });
+          return true;
+        }
+
+        // Content script'ten gelen isteklerde domain eşleşmesi zorunlu
+        // Popup'tan gelen isteklerde ise sender.tab olmadığı için bu kontrolü atlıyoruz
+        if (!isFromPopup && (!senderDomain || requestedDomain !== senderDomain)) {
+          sendResponse({ success: false, data: [] });
+          return true;
+        }
+
+        if (requestNonceMap.has(requestNonce)) {
+          sendResponse({ success: false, data: [] });
+          return true;
+        }
+
+        const requestKey = getRequestKey(sender, requestedDomain);
+        const lastReqAt = recentDomainRequestMap.get(requestKey) || 0;
+        if (now - lastReqAt < DOMAIN_REQ_MIN_INTERVAL_MS) {
+          sendResponse({ success: true, data: [] });
+          return true;
+        }
+
+        requestNonceMap.set(requestNonce, now);
+        recentDomainRequestMap.set(requestKey, now);
+
+        if (!isVaultUnlocked || vaultCache.length === 0) {
+          sendResponse({ success: true, data: [] });
+          return true;
+        }
+
+        const matches = vaultCache
+          .filter((p) => p.website && isDomainMatch(p.website, requestedDomain))
+          .slice(0, 5)  // Popup'ta daha fazla kayıt göster
+          .map((p) => ({
+            title: p.title,
+            username: p.username,
+            pass: p.pass,
+            website: p.website,
+          }));
+
+        sendResponse({ success: true, data: matches });
+      }
+
+      // ── GET_VAULT: Legacy fallback, mümkünse kullanma ──
       else if (message.type === "GET_VAULT") {
+        if (!LEGACY_GET_VAULT_ENABLED) {
+          sendResponse([]);
+          return true;
+        }
+
         // Kasa açık VE cache dolu → veriyi dön
         if (isVaultUnlocked && vaultCache.length > 0) {
           sendResponse(vaultCache);

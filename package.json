@@ -12,6 +12,7 @@
     "build:extension": "cd aegis-wxt && npm run build",
     "build:electron": "npm run build && electron-builder -w && node scripts/generate-hashes.js",
     "test": "vitest run src",
+    "bench:search-index": "vitest run benchmarks/searchIndex.benchmark.test.ts",
     "start:electron": "electron .",
     "lint": "eslint .",
     "preview": "vite preview"
