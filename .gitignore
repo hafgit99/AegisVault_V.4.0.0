@@ -57,3 +57,7 @@ VISUAL_VIBE_AUDIT.md
 PUBLISHING_GUIDE.md
 CORRUPTION_REPORT.md
 HACKING_ATTEMPT_REPORT.md
+
+# Playwright E2E Test Outputs
+playwright-report/
+test-results/

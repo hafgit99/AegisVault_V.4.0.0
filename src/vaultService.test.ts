@@ -15,10 +15,8 @@ vi.mock('./lib/SQLiteOPFS', async (importOriginal) => {
   };
 });
 
-// Mock TextEncoder / TextDecoder if missing
-import { TextEncoder, TextDecoder } from 'util';
-global.TextEncoder = TextEncoder as any;
-global.TextDecoder = TextDecoder as any;
+// TextEncoder and TextDecoder are available in jsdom environment
+// No need to mock them - they're provided by the test environment
 
 describe('VaultService Security & Cryptography', () => {
   const TEST_PASSWORD = 'strong_password_123';

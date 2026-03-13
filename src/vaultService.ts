@@ -1,6 +1,15 @@
 import { openDB, type IDBPDatabase } from "idb";
 import { argon2id } from 'hash-wasm';
 import { SQLiteOPFS, isOPFSAvailable, clearAllOPFSFiles } from './lib/SQLiteOPFS';
+import { 
+  toBufferSource, 
+  bufferToHex, 
+  hexToBuffer, 
+  isLikelyHex as isLikelyHexUtil,
+  overwriteBuffer,
+  generateRandomBytes 
+} from './lib/crypto-types';
+import { type EncryptionProfile, isFieldEncrypted } from './config/encryption-profiles';
 
 // Represents the SQLite-WASM SQLCipher over OPFS architecture
 // We use IndexedDB to simulate the OPFS persistence layer for this demo.
@@ -89,7 +98,6 @@ export class VaultService {
   private sensitiveMaterial: Uint8Array | null = null;
   private isConnected: boolean = false;
   private activeDbName: string = 'aegis_opfs_vault';
-  private readonly metadataEncryptionEnabled: boolean = (((import.meta as any)?.env?.VITE_AEGIS_METADATA_ENCRYPTION ?? '1') !== '0');
   private searchIndexHmacKey: CryptoKey | null = null;
   private readonly authArgon2Params = {
     iterations: 3,
@@ -97,6 +105,17 @@ export class VaultService {
     parallelism: 1,
     hashLength: 32,
   };
+
+  /** Aktif Metadata Profilini Getirir */
+  private get encryptionProfile(): EncryptionProfile {
+    try {
+      const stored = localStorage.getItem('aegis_encryption_profile');
+      if (stored === 'maximum' || stored === 'balanced' || stored === 'performance') {
+        return stored;
+      }
+    } catch { /* ignore */ }
+    return 'balanced'; // Varsayılan
+  }
 
   /** Aktif vault DB adını değiştir (çoklu vault desteği) */
   setVaultDbName(dbName: string): void {
@@ -106,15 +125,6 @@ export class VaultService {
   /** Aktif vault DB adını al */
   getVaultDbName(): string {
     return this.activeDbName;
-  }
-
-  /**
-   * Determines if a string is likely a hexadecimal encoding.
-   * Used across encryption/decryption to handle Hex vs Base64 formats.
-   */
-  private isLikelyHex(str: string): boolean {
-    if (str.length % 2 !== 0) return false;
-    return /^[0-9a-fA-F]+$/.test(str);
   }
 
   /**
@@ -131,20 +141,6 @@ export class VaultService {
     if (pool === 0) pool = 1;
     const entropy = password.length * Math.log2(pool);
     return Math.min(100, Math.round((entropy / 128) * 100));
-  }
-
-  private bufToHex(buffer: Uint8Array | ArrayBuffer): string {
-    return Array.from(new Uint8Array(buffer))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-  }
-
-  private hexToBuf(hex: string): Uint8Array {
-    const bytes = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < hex.length; i += 2) {
-      bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
-    }
-    return bytes;
   }
 
   private normalizeSearchValue(value: string = ""): string {
@@ -181,7 +177,7 @@ export class VaultService {
     const rawKey = new Uint8Array(this.sensitiveMaterial);
     this.searchIndexHmacKey = await window.crypto.subtle.importKey(
       'raw',
-      rawKey,
+      toBufferSource(rawKey),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['sign']
@@ -194,9 +190,9 @@ export class VaultService {
     const signature = await window.crypto.subtle.sign(
       'HMAC',
       key,
-      new TextEncoder().encode(token)
+      toBufferSource(new TextEncoder().encode(token))
     );
-    return this.bufToHex(new Uint8Array(signature));
+    return bufferToHex(signature);
   }
 
   private async buildSearchIndex(title: string, username: string, website: string, category: string, tags: string[]): Promise<string[]> {
@@ -213,7 +209,8 @@ export class VaultService {
   }
 
   private async encryptAttachmentMetadataList(attachments: VaultAttachmentMeta[]): Promise<VaultAttachmentMeta[]> {
-    if (!this.metadataEncryptionEnabled) return attachments;
+    const profile = this.encryptionProfile;
+    if (!isFieldEncrypted(profile, 'attachments')) return attachments;
     return Promise.all(
       attachments.map(async (item) => {
         const nameEnc = await this.encryptTextField(item.name || '');
@@ -233,9 +230,11 @@ export class VaultService {
   }
 
   private async decryptAttachmentMetadataList(attachments: VaultAttachmentMeta[]): Promise<VaultAttachmentMeta[]> {
-    if (!this.metadataEncryptionEnabled) return attachments;
     return Promise.all(
       attachments.map(async (item) => {
+        // Eğer encrypted_name varsa her halükarda deşifre etmeye çalış (eski kayıt uyumluluğu)
+        if (!item.encrypted_name && !item.encrypted_type) return item;
+
         const decName = await this.decryptTextField(item.encrypted_name, item.name_iv);
         const decType = await this.decryptTextField(item.encrypted_type, item.type_iv);
         return {
@@ -249,32 +248,32 @@ export class VaultService {
 
   private async encryptTextField(value: string): Promise<{ encrypted: string; iv: string }> {
     if (!this.aesKey) throw new Error('Vault key unavailable');
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const iv = generateRandomBytes(12);
     const plainBytes = new TextEncoder().encode(value || '');
     const cipher = await window.crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
+      { name: 'AES-GCM', iv: toBufferSource(iv) },
       this.aesKey,
-      plainBytes
+      toBufferSource(plainBytes)
     );
     return {
-      encrypted: this.bufToHex(new Uint8Array(cipher)),
-      iv: this.bufToHex(iv),
+      encrypted: bufferToHex(cipher),
+      iv: bufferToHex(iv),
     };
   }
 
   private async decryptTextField(encrypted?: string, iv?: string): Promise<string | null> {
     if (!this.aesKey || !encrypted || !iv) return null;
     try {
-      const cipherArray = this.isLikelyHex(encrypted)
-        ? this.hexToBuf(encrypted)
+      const cipherArray = isLikelyHexUtil(encrypted)
+        ? hexToBuffer(encrypted)
         : Uint8Array.from(atob(encrypted), (c) => c.charCodeAt(0));
-      const ivArray = this.isLikelyHex(iv)
-        ? this.hexToBuf(iv)
+      const ivArray = isLikelyHexUtil(iv)
+        ? hexToBuffer(iv)
         : Uint8Array.from(atob(iv), (c) => c.charCodeAt(0));
       const plain = await window.crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: ivArray.buffer as ArrayBuffer },
+        { name: 'AES-GCM', iv: toBufferSource(ivArray) },
         this.aesKey,
-        cipherArray.buffer as ArrayBuffer
+        toBufferSource(cipherArray)
       );
       return new TextDecoder().decode(plain);
     } catch {
@@ -283,63 +282,67 @@ export class VaultService {
   }
 
   private async buildMetadataAtRest(title: string, username: string, website: string, category: string, tags: string[]) {
+    // Arama indeksi her zaman profil fark etmeksizin çalışır (fakat plaintext arama performans profillerinde local js üzerinden daha da hızlı yapılabilir)
     const searchIndex = await this.buildSearchIndex(title, username, website, category, tags);
+    const profile = this.encryptionProfile;
 
-    if (!this.metadataEncryptionEnabled) {
-      return {
-        title: title || 'Untitled',
-        username: username || '',
-        website: website || '',
-        category: category || 'General',
-        tags: tags || [],
-        search_index: searchIndex,
-      };
+    // Şifrelenecek alanları belirle
+    const encTitle = isFieldEncrypted(profile, 'title');
+    const encUsername = isFieldEncrypted(profile, 'username');
+    const encWebsite = isFieldEncrypted(profile, 'website');
+    const encCategory = isFieldEncrypted(profile, 'category');
+    const encTags = isFieldEncrypted(profile, 'tags');
+
+    const result: any = {
+      title: encTitle ? '' : (title || 'Untitled'),
+      username: encUsername ? '' : (username || ''),
+      website: encWebsite ? '' : (website || ''),
+      category: encCategory ? '' : (category || 'General'),
+      tags: encTags ? [] : (tags || []),
+      search_index: searchIndex,
+    };
+
+    if (encTitle) {
+      const res = await this.encryptTextField(title || 'Untitled');
+      result.encrypted_title = res.encrypted;
+      result.title_iv = res.iv;
+    }
+    if (encUsername) {
+      const res = await this.encryptTextField(username || '');
+      result.encrypted_username = res.encrypted;
+      result.username_iv = res.iv;
+    }
+    if (encWebsite) {
+      const res = await this.encryptTextField(website || '');
+      result.encrypted_website = res.encrypted;
+      result.website_iv = res.iv;
+    }
+    if (encCategory) {
+      const res = await this.encryptTextField(category || 'General');
+      result.encrypted_category = res.encrypted;
+      result.category_iv = res.iv;
+    }
+    if (encTags) {
+      const res = await this.encryptTextField(JSON.stringify(tags || []));
+      result.encrypted_tags = res.encrypted;
+      result.tags_iv = res.iv;
     }
 
-    const [titleEnc, usernameEnc, websiteEnc, categoryEnc, tagsEnc] = await Promise.all([
-      this.encryptTextField(title || 'Untitled'),
-      this.encryptTextField(username || ''),
-      this.encryptTextField(website || ''),
-      this.encryptTextField(category || 'General'),
-      this.encryptTextField(JSON.stringify(tags || [])),
-    ]);
-
-    return {
-      title: '',
-      username: '',
-      website: '',
-      category: '',
-      tags: [],
-      search_index: searchIndex,
-      encrypted_title: titleEnc.encrypted,
-      title_iv: titleEnc.iv,
-      encrypted_username: usernameEnc.encrypted,
-      username_iv: usernameEnc.iv,
-      encrypted_website: websiteEnc.encrypted,
-      website_iv: websiteEnc.iv,
-      encrypted_category: categoryEnc.encrypted,
-      category_iv: categoryEnc.iv,
-      encrypted_tags: tagsEnc.encrypted,
-      tags_iv: tagsEnc.iv,
-    };
+    return result;
   }
 
   private async prepareEntryMetadataForUse(entry: VaultEntry): Promise<{ uiEntry: VaultEntry; storageEntry?: VaultEntry }> {
-    if (!this.metadataEncryptionEnabled) {
-      return { uiEntry: entry };
-    }
-
-    const hasEncryptedMetadata = Boolean(
-      entry.encrypted_title && entry.title_iv &&
-      entry.encrypted_username && entry.username_iv &&
-      entry.encrypted_website && entry.website_iv &&
-      entry.encrypted_category && entry.category_iv &&
-      entry.encrypted_tags && entry.tags_iv
-    );
-    const hasSearchIndex = Array.isArray(entry.search_index) && entry.search_index.length > 0;
-
+    // 1. StorageEntry'yi gerekirse onar: HasEncryptedMetadata check
+    // Eğer profil şifreleme gerektiriyorsa ve metadata tamamen plaintext'te ise veya eksikse, atRest'i yeniden hazırla
+    // Şuan, esneklik için, şifreli bir değer varsa deşifre eder (gelen kayıt uyumu için)
     let storageEntry: VaultEntry | undefined;
-    if (!hasEncryptedMetadata || !hasSearchIndex) {
+
+    // Arama indeksi oluşturulmuş mu kontrol et (Geriye Dönük Uyumluluk için)
+    const hasSearchIndex = Array.isArray(entry.search_index) && entry.search_index.length > 0;
+    
+    // UI için her zaman varolan şifreli değerleri çözebiliriz 
+    // Profil degişse bile, sadece database'e YAZARKEN buildMetadataAtRest çağrılacaktır
+    if (!hasSearchIndex) {
       const atRest = await this.buildMetadataAtRest(
         entry.title || 'Untitled',
         entry.username || '',
@@ -347,6 +350,7 @@ export class VaultService {
         entry.category || 'General',
         entry.tags || []
       );
+      // Eksikse, yeni atRest formatında düzeltip saklıyoruz
       storageEntry = {
         ...entry,
         ...atRest,
@@ -379,7 +383,9 @@ export class VaultService {
     const rawAttachments = Array.isArray(source.attachments) ? source.attachments : [];
     const uiAttachments = await this.decryptAttachmentMetadataList(rawAttachments);
 
-    if (this.metadataEncryptionEnabled) {
+    const profile = this.encryptionProfile;
+    // Eğer policy "attachments şifrelenmeli" diyorsa ve şifrelenmemiş objeler varsa re-encrypt et.
+    if (isFieldEncrypted(profile, 'attachments')) {
       const needsAttachmentMigration = rawAttachments.some(
         (item) => (item.name && !item.encrypted_name) || (item.type && !item.encrypted_type)
       );
@@ -410,16 +416,14 @@ export class VaultService {
     const enc = new TextEncoder();
     const keyMaterial = await window.crypto.subtle.importKey(
       "raw",
-      enc.encode(password),
+      toBufferSource(enc.encode(password)),
       "PBKDF2",
       false,
       ["deriveBits"]
     );
     
-    const saltBuf = new ArrayBuffer(salt.byteLength);
-    new Uint8Array(saltBuf).set(salt);
     const hash = await window.crypto.subtle.deriveBits(
-      { name: "PBKDF2", salt: saltBuf, iterations, hash: "SHA-256" },
+      { name: "PBKDF2", salt: toBufferSource(salt), iterations, hash: "SHA-256" },
       keyMaterial,
       256
     );
@@ -646,8 +650,8 @@ export class VaultService {
       // Device Secret Validation
       if (deviceMetadata?.deviceSecretHash) {
         const secretBuf = new TextEncoder().encode(secretKey);
-        const hashBuf = await window.crypto.subtle.digest('SHA-256', secretBuf);
-        const currentHash = this.bufToHex(new Uint8Array(hashBuf));
+        const hashBuf = await window.crypto.subtle.digest('SHA-256', toBufferSource(secretBuf));
+        const currentHash = bufferToHex(hashBuf);
         if (currentHash !== deviceMetadata.deviceSecretHash) {
           throw new Error("Invalid device secret key");
         }
@@ -666,18 +670,18 @@ export class VaultService {
               let cipherArray: Uint8Array;
               let ivArray: Uint8Array;
 
-              if (this.isLikelyHex(entry.encrypted_password) && this.isLikelyHex(entry.iv)) {
-                cipherArray = this.hexToBuf(entry.encrypted_password);
-                ivArray = this.hexToBuf(entry.iv);
+              if (isLikelyHexUtil(entry.encrypted_password) && isLikelyHexUtil(entry.iv)) {
+                cipherArray = hexToBuffer(entry.encrypted_password);
+                ivArray = hexToBuffer(entry.iv);
               } else {
                 cipherArray = Uint8Array.from(atob(entry.encrypted_password), c => c.charCodeAt(0));
                 ivArray = Uint8Array.from(atob(entry.iv), c => c.charCodeAt(0));
               }
 
               await window.crypto.subtle.decrypt(
-                { name: "AES-GCM", iv: ivArray.buffer as ArrayBuffer },
+                { name: "AES-GCM", iv: toBufferSource(ivArray) },
                 key,
-                cipherArray.buffer as ArrayBuffer
+                toBufferSource(cipherArray)
               );
               return true; // Success!
             } catch {
@@ -711,8 +715,8 @@ export class VaultService {
 
         // Verified! Save the hash for future strict checking.
         const secretBuf = new TextEncoder().encode(secretKey);
-        const secretHashBuf = await window.crypto.subtle.digest('SHA-256', secretBuf);
-        const deviceSecretHash = this.bufToHex(new Uint8Array(secretHashBuf));
+        const secretHashBuf = await window.crypto.subtle.digest('SHA-256', toBufferSource(secretBuf));
+        const deviceSecretHash = bufferToHex(secretHashBuf);
 
         const txWrite = this.opfsMockDb.transaction('vault_metadata', 'readwrite');
         await txWrite.objectStore('vault_metadata').put({
@@ -750,8 +754,8 @@ export class VaultService {
       const newCredential = await this.createAuthCredential(password);
       
       const secretBuf = new TextEncoder().encode(secretKey);
-      const secretHashBuf = await window.crypto.subtle.digest('SHA-256', secretBuf);
-      const deviceSecretHash = this.bufToHex(new Uint8Array(secretHashBuf));
+      const secretHashBuf = await window.crypto.subtle.digest('SHA-256', toBufferSource(secretBuf));
+      const deviceSecretHash = bufferToHex(secretHashBuf);
 
       const txWrite = this.opfsMockDb.transaction('vault_metadata', 'readwrite');
       const mStore = txWrite.objectStore('vault_metadata');
@@ -930,18 +934,18 @@ export class VaultService {
 
     const enc = new TextEncoder();
     const payload = JSON.stringify({ duressPin, killPin });
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const iv = generateRandomBytes(12);
 
     const cipherBuffer = await window.crypto.subtle.encrypt(
-      { name: "AES-GCM", iv: iv },
+      { name: "AES-GCM", iv: toBufferSource(iv) },
       this.aesKey,
-      enc.encode(payload)
+      toBufferSource(enc.encode(payload))
     );
 
     const pinData = {
       id: 'security_pins',
-      encrypted_data: this.bufToHex(new Uint8Array(cipherBuffer)),
-      iv: this.bufToHex(iv)
+      encrypted_data: bufferToHex(cipherBuffer),
+      iv: bufferToHex(iv)
     };
 
     if (this.useSQLite && this.sqliteDb) {
@@ -968,13 +972,13 @@ export class VaultService {
         return { duressPin: '', killPin: '' };
       }
 
-      const cipherArray = this.hexToBuf(record.encrypted_data);
-      const ivArray = this.hexToBuf(record.iv);
+      const cipherArray = hexToBuffer(record.encrypted_data);
+      const ivArray = hexToBuffer(record.iv);
 
       const plainBuffer = await window.crypto.subtle.decrypt(
-        { name: "AES-GCM", iv: ivArray.buffer as ArrayBuffer },
+        { name: "AES-GCM", iv: toBufferSource(ivArray) },
         this.aesKey,
-        cipherArray.buffer as ArrayBuffer
+        toBufferSource(cipherArray)
       );
 
       const dec = new TextDecoder();
@@ -999,12 +1003,12 @@ export class VaultService {
     if (!this.aesKey || (!this.opfsMockDb && !this.sqliteDb)) throw new Error("Vault not initialized");
 
     const enc = new TextEncoder();
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const iv = generateRandomBytes(12);
     
     const cipherBuffer = await window.crypto.subtle.encrypt(
-      { name: "AES-GCM", iv: iv },
+      { name: "AES-GCM", iv: toBufferSource(iv) },
       this.aesKey,
-      enc.encode(entry.pass || "")
+      toBufferSource(enc.encode(entry.pass || ""))
     );
 
     const metadataAtRest = await this.buildMetadataAtRest(
@@ -1033,8 +1037,8 @@ export class VaultService {
       encrypted_tags: (metadataAtRest as any).encrypted_tags,
       tags_iv: (metadataAtRest as any).tags_iv,
       search_index: (metadataAtRest as any).search_index || [],
-      encrypted_password: this.bufToHex(new Uint8Array(cipherBuffer)),
-      iv: this.bufToHex(iv),
+      encrypted_password: bufferToHex(cipherBuffer),
+      iv: bufferToHex(iv),
       updated_at: new Date().toISOString(),
       strength: this.calculateStrength(entry.pass || ''),
       pwned_count: entry.pwned_count || 0,
@@ -1042,14 +1046,14 @@ export class VaultService {
 
     // 🔐 TOTP Secret şifreleme (varsa)
     if (entry.totpSecret) {
-      const totpIv = window.crypto.getRandomValues(new Uint8Array(12));
+      const totpIv = generateRandomBytes(12);
       const totpCipher = await window.crypto.subtle.encrypt(
-        { name: "AES-GCM", iv: totpIv },
+        { name: "AES-GCM", iv: toBufferSource(totpIv) },
         this.aesKey,
-        enc.encode(entry.totpSecret)
+        toBufferSource(enc.encode(entry.totpSecret))
       );
-      newEntry.totp_secret = this.bufToHex(new Uint8Array(totpCipher));
-      newEntry.totp_iv = this.bufToHex(totpIv);
+      newEntry.totp_secret = bufferToHex(totpCipher);
+      newEntry.totp_iv = bufferToHex(totpIv);
       newEntry.totp_issuer = entry.totp_issuer || '';
       newEntry.totp_algorithm = entry.totp_algorithm || 'SHA-1';
       newEntry.totp_digits = entry.totp_digits || 6;
@@ -1065,14 +1069,14 @@ export class VaultService {
 
     // 🔐 Secure Notes şifreleme (varsa)
     if (entry.notes && entry.notes.trim()) {
-      const notesIv = window.crypto.getRandomValues(new Uint8Array(12));
+      const notesIv = generateRandomBytes(12);
       const notesCipher = await window.crypto.subtle.encrypt(
-        { name: "AES-GCM", iv: notesIv },
+        { name: "AES-GCM", iv: toBufferSource(notesIv) },
         this.aesKey,
-        enc.encode(entry.notes)
+        toBufferSource(enc.encode(entry.notes))
       );
-      newEntry.encrypted_notes = this.bufToHex(new Uint8Array(notesCipher));
-      newEntry.notes_iv = this.bufToHex(notesIv);
+      newEntry.encrypted_notes = bufferToHex(notesCipher);
+      newEntry.notes_iv = bufferToHex(notesIv);
     } else if (entry.encrypted_notes) {
       newEntry.encrypted_notes = entry.encrypted_notes;
       newEntry.notes_iv = entry.notes_iv;
@@ -1159,7 +1163,7 @@ export class VaultService {
         .split(/\s+/)
         .filter(Boolean);
 
-      if (this.metadataEncryptionEnabled) {
+      if (this.encryptionProfile === 'maximum') {
         const hashedQueryTokens = await Promise.all(
           queryTokens
             .map((token) => normalize(token))
@@ -1306,9 +1310,9 @@ export class VaultService {
 
         try {
            // First Try: Handle Native Hex Data (from latest version)
-           if (this.isLikelyHex(entry.encrypted_password) && this.isLikelyHex(entry.iv)) {
-             cipherArray = this.hexToBuf(entry.encrypted_password);
-             ivArray = this.hexToBuf(entry.iv);
+           if (isLikelyHexUtil(entry.encrypted_password) && isLikelyHexUtil(entry.iv)) {
+             cipherArray = hexToBuffer(entry.encrypted_password);
+             ivArray = hexToBuffer(entry.iv);
            } else {
              // Fallback to legacy Base64 decode
              cipherArray = Uint8Array.from(atob(entry.encrypted_password), c => c.charCodeAt(0));
@@ -1321,9 +1325,9 @@ export class VaultService {
         }
 
         const plainBuffer = await window.crypto.subtle.decrypt(
-          { name: "AES-GCM", iv: ivArray.buffer as ArrayBuffer },
+          { name: "AES-GCM", iv: toBufferSource(ivArray) },
           this.aesKey!,
-          cipherArray.buffer as ArrayBuffer
+          toBufferSource(cipherArray)
         );
 
         const decrypted: VaultEntry = { ...entry, pass: dec.decode(plainBuffer) };
@@ -1331,12 +1335,12 @@ export class VaultService {
         // 🔓 TOTP Secret deşifreleme
         if (entry.totp_secret && entry.totp_iv) {
           try {
-            const totpCipher = this.isLikelyHex(entry.totp_secret) ? this.hexToBuf(entry.totp_secret) : Uint8Array.from(atob(entry.totp_secret), c => c.charCodeAt(0));
-            const totpIv = this.isLikelyHex(entry.totp_iv) ? this.hexToBuf(entry.totp_iv) : Uint8Array.from(atob(entry.totp_iv), c => c.charCodeAt(0));
+            const totpCipher = isLikelyHexUtil(entry.totp_secret) ? hexToBuffer(entry.totp_secret) : Uint8Array.from(atob(entry.totp_secret), c => c.charCodeAt(0));
+            const totpIv = isLikelyHexUtil(entry.totp_iv) ? hexToBuffer(entry.totp_iv) : Uint8Array.from(atob(entry.totp_iv), c => c.charCodeAt(0));
             const totpPlain = await window.crypto.subtle.decrypt(
-              { name: "AES-GCM", iv: totpIv.buffer as ArrayBuffer },
+              { name: "AES-GCM", iv: toBufferSource(totpIv) },
               this.aesKey!,
-              totpCipher.buffer as ArrayBuffer
+              toBufferSource(totpCipher)
             );
             decrypted.totpSecret = dec.decode(totpPlain);
           } catch { decrypted.totpSecret = undefined; }
@@ -1345,12 +1349,12 @@ export class VaultService {
         // 🔓 Secure Notes deşifreleme
         if (entry.encrypted_notes && entry.notes_iv) {
           try {
-            const notesCipher = this.isLikelyHex(entry.encrypted_notes) ? this.hexToBuf(entry.encrypted_notes) : Uint8Array.from(atob(entry.encrypted_notes), c => c.charCodeAt(0));
-            const notesIv = this.isLikelyHex(entry.notes_iv) ? this.hexToBuf(entry.notes_iv) : Uint8Array.from(atob(entry.notes_iv), c => c.charCodeAt(0));
+            const notesCipher = isLikelyHexUtil(entry.encrypted_notes) ? hexToBuffer(entry.encrypted_notes) : Uint8Array.from(atob(entry.encrypted_notes), c => c.charCodeAt(0));
+            const notesIv = isLikelyHexUtil(entry.notes_iv) ? hexToBuffer(entry.notes_iv) : Uint8Array.from(atob(entry.notes_iv), c => c.charCodeAt(0));
             const notesPlain = await window.crypto.subtle.decrypt(
-              { name: "AES-GCM", iv: notesIv.buffer as ArrayBuffer },
+              { name: "AES-GCM", iv: toBufferSource(notesIv) },
               this.aesKey!,
-              notesCipher.buffer as ArrayBuffer
+              toBufferSource(notesCipher)
             );
             decrypted.notes = dec.decode(notesPlain);
           } catch { decrypted.notes = undefined; }
@@ -1399,11 +1403,11 @@ export class VaultService {
       if (!entry.pass) continue;
       
       const enc = new TextEncoder();
-      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const iv = generateRandomBytes(12);
       const cipherBuffer = await window.crypto.subtle.encrypt(
-        { name: "AES-GCM", iv: iv },
+        { name: "AES-GCM", iv: toBufferSource(iv) },
         this.aesKey!, // Yeni anahtarımız
-        enc.encode(entry.pass)
+        toBufferSource(enc.encode(entry.pass))
       );
 
       const updatedEntry: VaultEntry = {
@@ -1416,8 +1420,8 @@ export class VaultService {
           entry.tags || []
         )),
         attachments: await this.encryptAttachmentMetadataList(entry.attachments || []),
-        encrypted_password: this.bufToHex(new Uint8Array(cipherBuffer)),
-        iv: this.bufToHex(iv),
+        encrypted_password: bufferToHex(cipherBuffer),
+        iv: bufferToHex(iv),
         updated_at: new Date().toISOString()
       };
       // pass silinmeli çünkü raw şifre
@@ -1491,7 +1495,7 @@ export class VaultService {
 
     let weak = 0;
     let missingFields = 0;
-    let weakIds: number[] = [];
+    const weakIds: number[] = [];
     
     const tx = this.opfsMockDb!.transaction('passwords', 'readwrite');
     const store = tx.objectStore('passwords');
@@ -1507,11 +1511,11 @@ export class VaultService {
       if (!entry.pass) continue; 
 
       const enc = new TextEncoder();
-      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const iv = generateRandomBytes(12);
       const cipherBuffer = await window.crypto.subtle.encrypt(
-        { name: "AES-GCM", iv: iv },
+        { name: "AES-GCM", iv: toBufferSource(iv) },
         this.aesKey,
-        enc.encode(entry.pass)
+        toBufferSource(enc.encode(entry.pass))
       );
 
       const newEntry: VaultEntry = {
@@ -1523,8 +1527,8 @@ export class VaultService {
           entry.category || 'General',
           entry.tags || []
         )),
-        encrypted_password: this.bufToHex(new Uint8Array(cipherBuffer)),
-        iv: this.bufToHex(iv),
+        encrypted_password: bufferToHex(cipherBuffer),
+        iv: bufferToHex(iv),
         updated_at: new Date().toISOString(),
         strength: this.calculateStrength(entry.pass),
         pwned_count: entry.pwned_count || 0,
@@ -1552,12 +1556,12 @@ export class VaultService {
     if (file.size > 50 * 1024 * 1024) throw new Error("File exceeds 50MB limit");
 
     const fileBuffer = await file.arrayBuffer();
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const iv = generateRandomBytes(12);
 
     const cipherBuffer = await window.crypto.subtle.encrypt(
-      { name: "AES-GCM", iv: iv },
+      { name: "AES-GCM", iv: toBufferSource(iv) },
       this.aesKey,
-      fileBuffer
+      toBufferSource(fileBuffer)
     );
 
     const attachmentId = crypto.randomUUID();
@@ -1627,9 +1631,9 @@ export class VaultService {
     if (!record) throw new Error("Attachment not found");
 
     const plainBuffer = await window.crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: record.iv },
+      { name: "AES-GCM", iv: toBufferSource(record.iv) },
       this.aesKey,
-      record.encrypted_data
+      toBufferSource(record.encrypted_data)
     );
 
     // We don't have the mime type in this record directly, but it can be found in the password entry.

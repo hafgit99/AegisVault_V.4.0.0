@@ -1,4 +1,6 @@
 // Helper to convert base64 to Uint8Array and vice-versa
+import { toBufferSource } from './crypto-types';
+
 export const bufferToBase64url = (buffer: ArrayBuffer): string => {
   const bytes = new Uint8Array(buffer);
   let str = '';
@@ -25,7 +27,7 @@ export const base64urlToBuffer = (base64url: string): ArrayBuffer => {
 export const encryptWithPRF = async (prfKeyBuffer: ArrayBuffer, plaintext: string): Promise<string> => {
     const key = await window.crypto.subtle.importKey(
         "raw",
-        prfKeyBuffer,
+        toBufferSource(new Uint8Array(prfKeyBuffer)),
         { name: "AES-GCM", length: 256 },
         false,
         ["encrypt"]
@@ -34,9 +36,9 @@ export const encryptWithPRF = async (prfKeyBuffer: ArrayBuffer, plaintext: strin
     const encodedPlaintext = new TextEncoder().encode(plaintext);
     
     const ciphertext = await window.crypto.subtle.encrypt(
-        { name: "AES-GCM", iv: iv },
+        { name: "AES-GCM", iv: toBufferSource(iv) },
         key,
-        encodedPlaintext
+        toBufferSource(encodedPlaintext)
     );
     
     // Concat IV + Ciphertext and save as Base64url
@@ -44,13 +46,13 @@ export const encryptWithPRF = async (prfKeyBuffer: ArrayBuffer, plaintext: strin
     combined.set(iv, 0);
     combined.set(new Uint8Array(ciphertext), iv.length);
     
-    return bufferToBase64url(combined.buffer instanceof ArrayBuffer ? combined.buffer : new Uint8Array(combined).buffer);
+    return bufferToBase64url(toBufferSource(combined) as ArrayBuffer);
 };
 
 export const decryptWithPRF = async (prfKeyBuffer: ArrayBuffer, encryptedDataB64: string): Promise<string> => {
     const key = await window.crypto.subtle.importKey(
         "raw",
-        prfKeyBuffer,
+        toBufferSource(new Uint8Array(prfKeyBuffer)),
         { name: "AES-GCM", length: 256 },
         false,
         ["decrypt"]
@@ -61,9 +63,9 @@ export const decryptWithPRF = async (prfKeyBuffer: ArrayBuffer, encryptedDataB64
     const ciphertext = combined.slice(12);
     
     const decrypted = await window.crypto.subtle.decrypt(
-        { name: "AES-GCM", iv: iv },
+        { name: "AES-GCM", iv: toBufferSource(iv) },
         key,
-        ciphertext.buffer instanceof ArrayBuffer ? ciphertext.buffer : new Uint8Array(ciphertext).buffer
+        toBufferSource(ciphertext)
     );
     
     return new TextDecoder().decode(decrypted);

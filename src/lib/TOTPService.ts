@@ -34,6 +34,8 @@ function base32Decode(input: string): Uint8Array {
 }
 
 // ─── HMAC-based OTP (HOTP — RFC 4226) ───
+import { toBufferSource } from './crypto-types';
+
 async function hmacSha(
   algorithm: "SHA-1" | "SHA-256" | "SHA-512",
   key: Uint8Array,
@@ -41,12 +43,12 @@ async function hmacSha(
 ): Promise<Uint8Array> {
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
-    key.buffer as ArrayBuffer,
+    toBufferSource(key),
     { name: "HMAC", hash: { name: algorithm } },
     false,
     ["sign"]
   );
-  const sig = await crypto.subtle.sign("HMAC", cryptoKey, message.buffer as ArrayBuffer);
+  const sig = await crypto.subtle.sign("HMAC", cryptoKey, toBufferSource(message));
   return new Uint8Array(sig);
 }
 

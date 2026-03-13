@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useMemo, useCallback, u
 import { vaultService, type VaultEntry } from "../vaultService";
 import { useClipboard } from "../hooks/useClipboard";
 import { extensionBridge } from "../lib/ExtensionBridge";
-import { HIBPService } from "../lib/HIBPService";
+import { breachChecker } from "../lib/breach-check";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import DOMPurify from "dompurify";
@@ -399,32 +399,43 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
 
   // ─── Güvenlik (Watchtower) ───
   const watchtower = useMemo<WatchtowerData>(() => {
-    const weak = passwords.filter(p => !p.pass || p.pass.length < 8).length;
+    let weakCount = 0;
+    let reusedCount = 0;
+    let oldCount = 0;
+    let pwnedCount = 0;
 
-    const reusedPasswords = new Set<string>();
-    const seen = new Set<string>();
+    const seenPasswords = new Set<string>();
+    const reusedSet = new Set<string>();
+
     passwords.forEach(p => {
       if (p.pass) {
-        if (seen.has(p.pass)) reusedPasswords.add(p.pass);
-        else seen.add(p.pass);
+        if (seenPasswords.has(p.pass)) reusedSet.add(p.pass);
+        else seenPasswords.add(p.pass);
       }
     });
-    const reused = passwords.filter(p => p.pass && reusedPasswords.has(p.pass)).length;
 
     const oneYearMs = 1000 * 60 * 60 * 24 * 365;
-    const old = passwords.filter(
-      p => p.updated_at && Date.now() - new Date(p.updated_at).getTime() > oneYearMs
-    ).length;
+    let totalScore = 0;
 
-    const pwned = passwords.filter(p => (p.pwned_count || 0) > 0).length;
+    passwords.forEach(p => {
+      let pwdScore = 100;
 
-    const totalIssues = weak + reused * 0.5 + old * 0.2 + pwned * 2;
-    const score =
-      passwords.length > 0
-        ? Math.max(0, Math.round(((passwords.length - totalIssues) / passwords.length) * 100))
-        : 100;
+      const isWeak = !p.pass || p.pass.length < 8;
+      const isReused = p.pass && reusedSet.has(p.pass);
+      const isOld = p.updated_at && Date.now() - new Date(p.updated_at).getTime() > oneYearMs;
+      const isPwned = (p.pwned_count || 0) > 0;
 
-    return { weak, reused, old, pwned, score };
+      if (isPwned) { pwnedCount++; pwdScore -= 50; }
+      if (isWeak) { weakCount++; pwdScore -= 30; }
+      if (isReused) { reusedCount++; pwdScore -= 20; }
+      if (isOld) { oldCount++; pwdScore -= 10; }
+
+      totalScore += Math.max(0, pwdScore);
+    });
+
+    const score = passwords.length > 0 ? Math.round(totalScore / passwords.length) : 100;
+
+    return { weak: weakCount, reused: reusedCount, old: oldCount, pwned: pwnedCount, score };
   }, [passwords]);
 
   const handleScanPwned = useCallback(async () => {
@@ -442,7 +453,7 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
     let scanned = 0;
     for (const p of passwords) {
       if (p.pass) {
-        const pwnedCount = await HIBPService.checkPassword(p.pass);
+        const pwnedCount = await breachChecker.checkPassword(p.pass);
         if (pwnedCount === null) {
           hadUnknown = true;
         } else if (pwnedCount > 0 && p.pwned_count !== pwnedCount) {

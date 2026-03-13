@@ -1,52 +1,104 @@
-# Aegis Vault - Security Policy
+# 🔐 Aegis Vault — Security Policy
 
-## Security Model and Threat Mitigation
-Aegis Vault is designed as a Zero-Knowledge architecture. All sensitive data is encrypted client-side using `AES-GCM` with a 256-bit key derived via `Argon2id`.
-Your Master Password NEVER leaves your local device.
+## Security Model
 
-### Security Hardening (v4.0.0+)
+Aegis Vault is a **Zero-Knowledge** password manager. All sensitive data is encrypted client-side:
 
-#### P0 Critical Fixes Applied
-- ✅ **Dev Mode Origin Bypass Closed**: Development mode no longer allows wildcard (`*`) CORS origins. All origins must be explicitly allowlisted.
-- ✅ **CSP Hardened**: Removed `'unsafe-eval'` and `'unsafe-inline'` from script-src. Only `'wasm-unsafe-eval'` is permitted for WebAssembly.
-- ✅ **Extension Allowlist Hardening**: Extension bridge now uses static allowlist for ID validation, preventing race condition attacks during initial connection.
+- **Key Derivation:** `Argon2id` (64 MB memory, 3 iterations)
+- **Encryption:** `AES-256-GCM`
+- **Extension Bridge:** `HMAC-SHA256` challenge-response
+- **Biometrics:** `WebAuthn PRF` (device-bound, no server contact)
 
-#### P1 High Priority Fixes Applied
-- ✅ **Origin Validation Tests**: Added comprehensive test coverage for origin validation in `ExtensionSecurity.test.ts`.
-- ✅ **CSP Tests**: Automated tests verify CSP string does not contain dangerous directives.
-- ✅ **Extension ID Format Validation**: Null, empty, and non-string extension IDs are now rejected.
+Your **Master Password NEVER leaves your device.**
 
-### In Scope
-- Vulnerabilities allowing extraction or bypassing of the Master Password.
-- Replay attacks on the WXT Extension Bridge.
-- Electron IPC isolation bypasses.
-- Unauthorized token extraction or usage.
-- Data leakage to non-whitelisted origins.
-- CORS bypass vulnerabilities.
-- Content Security Policy violations.
+---
 
-### Out of Scope
-- Denial of Service (DoS) attacks on the user's personal device.
-- Malware on the victim's device that acts as a keylogger or memory dumper.
-- Social engineering (phishing a user's master password).
+## Security Hardening (v4.0.0)
+
+### ✅ P0 Critical Fixes Applied
+- **Dev Mode Origin Bypass Closed** — No wildcard (`*`) CORS origins in any mode.
+- **CSP Hardened** — Removed `'unsafe-eval'` and `'unsafe-inline'`. Only `'wasm-unsafe-eval'` for WebAssembly.
+- **Extension Allowlist Hardening** — Static allowlist for extension ID validation; race condition attacks blocked.
+- **IPC Sender Validation** — Electron IPC messages validated against `mainWindow.webContents.mainFrame`.
+
+### ✅ P1 High Priority Fixes Applied
+- **Comprehensive Test Coverage** — Origin validation, CSP headers, extension ID format.
+- **Extension ID Format Validation** — Null, empty, and non-string extension IDs rejected.
+- **TypeScript Strict Types** — `Uint8Array` ↔ `BufferSource` conversions hardened.
+
+---
+
+## Scope
+
+### In-Scope
+| Component | Description |
+|-----------|-------------|
+| `src/vaultService.ts` | AES-256-GCM encryption, Argon2id KDF |
+| `src/lib/webAuthn.ts` | WebAuthn / Passkey PRF extension |
+| `src/lib/ExtensionBridge.ts` | HMAC challenge-response bridge |
+| `electron-main.cjs` | Electron IPC hardening |
+| `src/components/VaultLogin.tsx` | Authentication UI |
+| `aegis-wxt/` | Browser extension (WXT + MV3) |
+
+### Out-of-Scope
+- Denial of Service (DoS) attacks on personal devices
+- Malware/keyloggers on the victim's device
+- Social engineering / phishing
+- Third-party dependency vulnerabilities (report upstream)
+
+---
 
 ## Reporting a Vulnerability
 
-Please do not open a public issue if the flaw concerns a sensitive data breach vector.
-Instead, email the maintainers directly at security@aegisvault.xyz with:
-1. Steps to reproduce the vulnerability.
-2. The version of Aegis Vault affected.
-3. Proof-of-Concept code (if any).
+> ⚠️ **Do NOT open a public GitHub issue for security vulnerabilities.**
 
-We will try to respond within 48 hours and work on a patch immediately. Your report will be kept strictly confidential until the fix is deployed.
+Please email us directly:
+
+**📧 admin@aegisvault.xyz**
+
+Include:
+1. Detailed steps to reproduce
+2. Affected version of Aegis Vault
+3. Proof-of-Concept code (if applicable)
+4. Estimated severity (Critical / High / Medium / Low)
+
+We will acknowledge receipt **within 48 hours** and aim to deploy a fix **within 10 days** for critical issues.
+
+---
 
 ## Disclosure Policy
 
-- We will acknowledge receipt of your vulnerability report within 48 hours.
-- We aim to deploy an update within 10 days for critical issues (P0).
-- Public disclosure will only occur after the fix has been verified and distributed.
+| Phase | Timeline |
+|-------|----------|
+| Acknowledgment | Within 48 hours |
+| Triage & Assessment | Within 5 business days |
+| Patch Development | Within 10 days (P0 Critical) |
+| Public Disclosure | After fix is verified and distributed |
+
+We follow **responsible disclosure**. Your report will remain strictly confidential until a patch is available.
+
+---
 
 ## Security Practices
-- Dependencies are scanned automatically using GitHub actions.
-- Any change affecting encryption or communication requires manual security review.
-- Encrypted export (`.aes`) is the default mechanism. Plaintext is heavily discouraged.
+
+- 🔍 Dependencies scanned via GitHub Actions (Dependabot enabled)
+- 🛡️ Any change affecting encryption or IPC requires manual security review
+- 📜 Encrypted export (`.aes`) is the default; plaintext export is heavily discouraged
+- 🧪 E2E security tests run on every PR (`npm run test:e2e`)
+
+---
+
+## Acknowledgments
+
+We are grateful to the security researchers who have responsibly disclosed vulnerabilities:
+
+> *This section will be updated as reports are received and verified.*
+
+---
+
+## Contact
+
+- **Security:** admin@aegisvault.xyz
+- **GitHub:** https://github.com/hafgit99/AegisVault_V.4.0.0
+- **Security Policy:** https://github.com/hafgit99/AegisVault_V.4.0.0/blob/main/SECURITY.md
+- **security.txt:** https://aegisvault.xyz/.well-known/security.txt

@@ -1,4 +1,5 @@
 import { argon2id } from 'hash-wasm';
+import { toBufferSource } from './crypto-types';
 
 export interface BackupFormat {
   version: string;
@@ -25,7 +26,7 @@ export class BackupService {
 
     return window.crypto.subtle.importKey(
       "raw",
-      derivedBits as unknown as BufferSource,
+      toBufferSource(derivedBits),
       { name: "AES-GCM", length: 256 },
       false,
       ["encrypt", "decrypt"]
@@ -51,9 +52,9 @@ export class BackupService {
     const payloadBuffer = enc.encode(JSON.stringify(data));
     
     const cipherBuffer = await window.crypto.subtle.encrypt(
-      { name: "AES-GCM", iv },
+      { name: "AES-GCM", iv: toBufferSource(iv) },
       key,
-      payloadBuffer
+      toBufferSource(payloadBuffer)
     );
 
     const backup: BackupFormat = {
@@ -87,9 +88,9 @@ export class BackupService {
 
     try {
       const plainBuffer = await window.crypto.subtle.decrypt(
-        { name: "AES-GCM", iv },
+        { name: "AES-GCM", iv: toBufferSource(iv) },
         key,
-        cipherText
+        toBufferSource(cipherText)
       );
       
       const dec = new TextDecoder();

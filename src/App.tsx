@@ -5,10 +5,18 @@ import { Dashboard } from "./components/Dashboard";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { extensionBridge } from "./lib/ExtensionBridge";
+import { useAutoLock } from "./config/security-settings";
 
 function App() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [secretKeyStr, setSecretKeyStr] = useState("");
+
+  // Kullanıcı hareketsiz kaldığında kilitle
+  useAutoLock(() => {
+    setIsUnlocked(false);
+    setSecretKeyStr(""); // Hafızadan sil
+    // vaultService.lock() // vaultService backend logic'inde gerekiyorsa (zaten dashboard unmount olunca cache düşer)
+  }, isUnlocked);
 
   useEffect(() => {
     if (isUnlocked) {

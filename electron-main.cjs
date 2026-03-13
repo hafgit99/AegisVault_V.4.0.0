@@ -6,6 +6,7 @@ const crypto = require('crypto');
 // 🔒 GÜVENLİK: Kasa verileri bellekte tutulur, sıkı erişim kontrolü
 // ─────────────────────────────────────────────────────────────────
 let vaultCache = [];
+let mainWindow = null; // IPC validation için global referans
 
 // ─────────────────────────────────────────────────────────────────
 // 📡 Yerel HTTP Sync Server (Extension İletişimi)
@@ -315,8 +316,14 @@ syncServer.listen(23456, '127.0.0.1', () => {
 // ─────────────────────────────────────────────────────────────────
 // 📨 IPC Event Handlers (Renderer ↔ Main)
 // ─────────────────────────────────────────────────────────────────
-ipcMain.on('sync-vault', (_event, passwords) => {
-  // Girdi validasyonu: Sadece beklenen yapıda veri kabul et
+ipcMain.on('sync-vault', (event, passwords) => {
+  // 1. Sender validation (origin kontrolü)
+  if (!mainWindow || event.senderFrame !== mainWindow.webContents.mainFrame) {
+    console.warn('[IPC] Unauthorized IPC sender for sync-vault');
+    return;
+  }
+  
+  // 2. Girdi validasyonu: Sadece beklenen yapıda veri kabul et
   if (!Array.isArray(passwords)) return;
   vaultCache = passwords.map(p => ({
     title: String(p.title || ''),
@@ -326,7 +333,13 @@ ipcMain.on('sync-vault', (_event, passwords) => {
   }));
 });
 
-ipcMain.on('lock-vault', () => {
+ipcMain.on('lock-vault', (event) => {
+  // 1. Sender validation
+  if (!mainWindow || event.senderFrame !== mainWindow.webContents.mainFrame) {
+    console.warn('[IPC] Unauthorized IPC sender for lock-vault');
+    return;
+  }
+
   // 🔒 Kasa kilitlendiğinde önbelleği temizle
   vaultCache = [];
 });
@@ -335,7 +348,7 @@ ipcMain.on('lock-vault', () => {
 // 🪟 Ana Pencere Oluşturma
 // ─────────────────────────────────────────────────────────────────
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
@@ -350,10 +363,14 @@ function createWindow() {
   });
 
   // Dist klasöründen yükle
-  win.loadFile(path.join(__dirname, 'dist', 'index.html'));
+  mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
   
   // Menü çubuğunu gizle
-  win.setMenuBarVisibility(false);
+  mainWindow.setMenuBarVisibility(false);
+  
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────
