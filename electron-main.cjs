@@ -34,14 +34,9 @@ if (ALLOWLIST_EXTENSION_IDS.length === 0) {
   ALLOWLIST_EXTENSION_IDS.push(...DEFAULT_ALLOWLIST_EXTENSION_IDS);
 }
 
-// Production exe'ye kurulu extension ID'si farklı olabilir.
-// Strict allowlist yerine extension ID formatını doğrula + challenge imzasına güven.
-// Env'de özel ID tanımlıysa sadece onlara izin ver (güvenli mod).
-// Tanımlı değilse geçerli formattaki tüm extension ID'lere izin ver (uyumlu mod).
-const STRICT_ALLOWLIST_MODE = !!(
-  process.env.AEGIS_EXTENSION_ALLOWLIST ||
-  process.env.AEGIS_EXTENSION_ID
-);
+// Varsayılan davranış: STRICT allowlist zorunlu.
+// Geriye dönük uyumluluk gerektiğinde AEGIS_STRICT_ALLOWLIST_MODE=0 verilerek gevşetilebilir.
+const STRICT_ALLOWLIST_MODE = (process.env.AEGIS_STRICT_ALLOWLIST_MODE || '1') !== '0';
 
 function isValidExtensionIdFormat(id) {
   // Chrome extension ID: 32 karakter lowercase a-p
@@ -90,12 +85,12 @@ function isOriginAllowed(origin) {
 
 function isAllowlistedExtensionId(extensionId) {
   if (typeof extensionId !== 'string' || !extensionId) return false;
-  // Strict mod (env'de ID tanımlı): sadece allowlist'tekilere izin ver
+  // Strict mod: sadece allowlist'tekilere izin ver
   if (STRICT_ALLOWLIST_MODE) {
     return ALLOWLIST_EXTENSION_IDS.includes(extensionId);
   }
-  // Uyumlu mod (env yok): allowlist'te varsa doğrudan kabul et,
-  // yoksa geçerli extension ID formatını kontrol et (challenge imzası zaten doğrulanacak)
+  // Uyumlu mod (opsiyonel): allowlist'te varsa doğrudan kabul et,
+  // yoksa geçerli extension ID formatını kontrol et.
   return ALLOWLIST_EXTENSION_IDS.includes(extensionId) || isValidExtensionIdFormat(extensionId);
 }
 

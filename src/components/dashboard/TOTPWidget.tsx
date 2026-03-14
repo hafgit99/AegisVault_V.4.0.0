@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Copy, Check, ShieldCheck, Clock } from "lucide-react";
+import { Copy, Check, ShieldCheck } from "lucide-react";
 import { generateTOTP, getRemainingSeconds, type TOTPParams } from "../../lib/TOTPService";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
@@ -29,26 +29,27 @@ export function TOTPWidget({
   const [copied, setCopied] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const params: TOTPParams = {
-    secret: totpSecret,
-    issuer,
-    account: "",
-    algorithm,
-    digits,
-    period,
-  };
-
   const refreshCode = useCallback(async () => {
     try {
+      const params: TOTPParams = {
+        secret: totpSecret,
+        issuer,
+        account: "",
+        algorithm,
+        digits,
+        period,
+      };
       const newCode = await generateTOTP(params);
       setCode(newCode);
     } catch {
       setCode("ERROR");
     }
-  }, [totpSecret, algorithm, digits, period]);
+  }, [totpSecret, issuer, algorithm, digits, period]);
 
   useEffect(() => {
-    refreshCode();
+    const firstTick = window.setTimeout(() => {
+      void refreshCode();
+    }, 0);
 
     intervalRef.current = setInterval(() => {
       const rem = getRemainingSeconds(period);
@@ -56,11 +57,12 @@ export function TOTPWidget({
 
       // Yeni periyotta kodu yenile
       if (rem === period || rem === period - 1) {
-        refreshCode();
+        void refreshCode();
       }
     }, 1000);
 
     return () => {
+      window.clearTimeout(firstTick);
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [refreshCode, period]);

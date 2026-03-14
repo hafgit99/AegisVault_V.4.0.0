@@ -49,6 +49,7 @@ We believe in "Security through Transparency." Our architecture is fully documen
 | :--- | :--- | :--- |
 | **Security Whitepaper** | [Read EN](guvenlik/SECURITY_WHITEPAPER_EN.md) | [Oku TR](guvenlik/SECURITY_WHITEPAPER.md) |
 | **Threat Model** | [View EN](guvenlik/THREAT_MODEL_EN.md) | [Görüntüle TR](guvenlik/THREAT_MODEL.md) |
+| **Security Analysis** | - | [Analiz TR](guvenlik/AEGIS_DERIN_GUVENLIK_VE_RAKIP_ANALIZ_RAPORU.md) |
 | **Security Disclosure** | [Policy](guvenlik/SECURITY_DISCLOSURE_EN.md) | [Politika](guvenlik/SECURITY_DISCLOSURE.md) |
 | **Hardening Plan** | [Plan](guvenlik/HARDENING_PLAN.md) | - |
 | **Security Roadmap** | [Roadmap](guvenlik/SECURITY_ROADMAP.md) | - |

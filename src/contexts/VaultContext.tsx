@@ -253,7 +253,11 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
   //   3. Electron API (masaüstü uygulaması)
   // Bu sayede kasa açık olduğunda extension her zaman senkronize olur.
   useEffect(() => {
-    const syncToExtension = async () => {
+    // Güvenlik sertleştirme: extension'a toplu plaintext sync kapatıldı.
+    // Extension veri çekimini challenge + domain-scoped akış üzerinden yapar.
+
+    // Electron API (masaüstü uygulaması) sync devam eder.
+    const syncToElectron = async () => {
       if (passwords.length === 0) return;
       const payload = passwords
         .filter((p) => Boolean(p.pass && p.website && p.website.trim()))
@@ -263,36 +267,8 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
           pass: p.pass,
           website: p.website,
         }));
-
       if (payload.length === 0) return;
 
-      // Yöntem 1: Nonce ile güvenli postMessage (content script üzerinden)
-      if (currentExtensionNonce) {
-        window.postMessage(
-          { type: "AEGIS_SYNC_VAULT", payload, nonce: currentExtensionNonce },
-          window.location.origin
-        );
-        // Tek kullanımlık — yeni nonce gelene kadar bekletir
-        currentExtensionNonce = null;
-      }
-
-      // Yöntem 2: chrome.runtime.sendMessage direkt (nonce olmasa da çalışır)
-      // Bu, Extension chrome.externally_connectable veya content script olmadan da sync sağlar
-      try {
-        const cr = (window as any).chrome?.runtime;
-        if (cr && typeof cr.sendMessage === 'function') {
-          const extId =
-            (import.meta as any)?.env?.VITE_AEGIS_EXTENSION_ID as string | undefined;
-          if (extId) {
-            cr.sendMessage(extId, { type: 'SAVE_VAULT', data: payload }, () => {
-              // Hata olursa gözardı et (extension kurulu olmayabilir)
-              void (window as any).chrome?.runtime?.lastError;
-            });
-          }
-        }
-      } catch (_e) { /* extension yok veya izin yok */ }
-
-      // Yöntem 3: Electron API (masaüstü uygulaması)
       try {
         const electronApi = (window as any).aegisElectron;
         if (electronApi?.syncVault) {
@@ -301,7 +277,7 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
       } catch (_e) {}
     };
 
-    syncToExtension();
+    syncToElectron();
   }, [passwords]);
 
   // ─── Toggles ───

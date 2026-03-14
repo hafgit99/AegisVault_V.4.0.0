@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeAll } from 'vitest';
 import { BackupService } from '../BackupService';
 
 // Polyfill window.crypto for Vitest Node environment

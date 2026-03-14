@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Wand2, Copy, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
@@ -8,7 +8,6 @@ export function PasswordGenerator({ isOpen }: { isOpen: boolean }) {
   const [genLength, setGenLength] = useState(18);
   const [genNumbers, setGenNumbers] = useState(true);
   const [genSymbols, setGenSymbols] = useState(true);
-  const [genEntropy, setGenEntropy] = useState(0);
   const [standalonePassword, setStandalonePassword] = useState("");
   const [isStandaloneCopied, setIsStandaloneCopied] = useState(false);
 
@@ -19,22 +18,27 @@ export function PasswordGenerator({ isOpen }: { isOpen: boolean }) {
     return Math.round(len * Math.log2(pool));
   };
 
-  useEffect(() => {
-    setGenEntropy(calculateEntropy(genLength, genNumbers, genSymbols));
-  }, [genLength, genNumbers, genSymbols]);
+  const genEntropy = useMemo(
+    () => calculateEntropy(genLength, genNumbers, genSymbols),
+    [genLength, genNumbers, genSymbols]
+  );
 
-  const handleGenerateStandalone = () => {
+  const handleGenerateStandalone = useCallback(() => {
     let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     if (genNumbers) chars += "0123456789";
     if (genSymbols) chars += "!@#$%^&*()_+=-~[]{}|;:,.<>?";
     const arr = new Uint32Array(genLength);
     window.crypto.getRandomValues(arr);
     setStandalonePassword(Array.from(arr).map((n) => chars[n % chars.length]).join(""));
-  };
+  }, [genLength, genNumbers, genSymbols]);
 
   useEffect(() => {
-    if (isOpen) handleGenerateStandalone();
-  }, [isOpen]);
+    if (!isOpen) return;
+    const timer = window.setTimeout(() => {
+      handleGenerateStandalone();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [isOpen, handleGenerateStandalone]);
 
   const copyStandalonePassword = () => {
     navigator.clipboard.writeText(standalonePassword);

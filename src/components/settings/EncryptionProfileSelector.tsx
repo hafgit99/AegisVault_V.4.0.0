@@ -1,17 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { EncryptionProfile } from '../../config/encryption-profiles';
 
 export const EncryptionProfileSelector: React.FC = () => {
-  const [profile, setProfile] = useState<EncryptionProfile>('balanced');
+  const [profile, setProfile] = useState<EncryptionProfile>(() => {
+    const stored = localStorage.getItem('aegis_encryption_profile') as EncryptionProfile | null;
+    return stored ?? 'balanced';
+  });
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    // Profil localStorage'da tutuluyor, her vaultService init edildiğinde ya da istek yapıldığında okunabilir.
-    const stored = localStorage.getItem('aegis_encryption_profile') as EncryptionProfile;
-    if (stored) {
-      setProfile(stored);
-    }
-  }, []);
 
   const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newProfile = e.target.value as EncryptionProfile;

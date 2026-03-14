@@ -73,6 +73,13 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
   const [hasPasskeyBinding, setHasPasskeyBinding] = useState(false);
   const [totpMode, setTotpMode] = useState<TotpVaultMode>(() => TotpVaultPolicy.getMode());
   const [totpVaultProfileName, setTotpVaultProfileName] = useState<string>("Aegis 2FA Vault");
+  const [allowPlaintextExport, setAllowPlaintextExport] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('aegis_allow_plaintext_export') === '1';
+    } catch {
+      return false;
+    }
+  });
 
   // ReAuth State (P1-3)
   const [reAuthAction, setReAuthAction] = useState<{ name: string; action: () => void } | null>(null);
@@ -144,6 +151,10 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
 
   const handleExport = (format: "vault" | "csv" | "json") => {
     if (format !== "vault") {
+      if (!allowPlaintextExport) {
+        toast.error(t('plainExportDisabled', 'Plaintext export is disabled by policy. Enable it first from security settings.'));
+        return;
+      }
       if (!window.confirm("UYARI: Düz metin (Plaintext) dışa aktarım, şifrelerinizin savunmasız bir biçimde kaydedilmesine neden olur. Devam etmek istediğinize emin misiniz?")) {
         return;
       }
@@ -568,6 +579,32 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                 </div>
               </div>
 
+              <div className="settings-subpanel bg-white/80 p-5 rounded-2xl border border-white shadow-inner mb-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1 text-[var(--color-deep-navy)]">{t('plainExportPolicyTitle', 'Plaintext Export Policy')}</h4>
+                    <p className="text-xs opacity-70 leading-relaxed max-w-md">
+                      {t('plainExportPolicyDesc', 'CSV/JSON exports are disabled by default for security. Enable only for temporary migration use.')}
+                    </p>
+                  </div>
+                  <label className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--color-deep-navy)]">
+                    <input
+                      type="checkbox"
+                      checked={allowPlaintextExport}
+                      onChange={(e) => {
+                        const next = e.target.checked;
+                        setAllowPlaintextExport(next);
+                        try {
+                          localStorage.setItem('aegis_allow_plaintext_export', next ? '1' : '0');
+                        } catch {}
+                      }}
+                      className="h-4 w-4 rounded border-gray-300 text-[var(--color-sage-green)] focus:ring-[var(--color-sage-green)]/40"
+                    />
+                    {t('plainExportPolicyToggle', 'Allow CSV/JSON export')}
+                  </label>
+                </div>
+              </div>
+
               {/* Donation */}
               <div className="mt-4 p-6 bg-gradient-to-br from-[var(--color-sage-green)]/10 to-transparent rounded-3xl border border-[var(--color-sage-green)]/30 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
                 <div className="flex items-center gap-4">
@@ -629,10 +666,10 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                       <FileDown className="w-4 h-4" /> {t("exportVaultBtn")}
                     </button>
                     <div className="grid grid-cols-2 gap-2">
-                      <button onClick={() => handleExport("csv")} className="settings-plain-btn w-full justify-center flex items-center gap-2 py-2 rounded-xl bg-white/60 border border-black/10 text-[var(--color-deep-navy)] text-xs font-semibold hover:bg-white transition-all active:scale-95 shadow-sm">
+                      <button disabled={!allowPlaintextExport} onClick={() => handleExport("csv")} className="settings-plain-btn w-full justify-center flex items-center gap-2 py-2 rounded-xl bg-white/60 border border-black/10 text-[var(--color-deep-navy)] text-xs font-semibold hover:bg-white transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
                         {t("exportCsvBtn")}
                       </button>
-                      <button onClick={() => handleExport("json")} className="settings-plain-btn w-full justify-center flex items-center gap-2 py-2 rounded-xl bg-white/60 border border-black/10 text-[var(--color-deep-navy)] text-xs font-semibold hover:bg-white transition-all active:scale-95 shadow-sm">
+                      <button disabled={!allowPlaintextExport} onClick={() => handleExport("json")} className="settings-plain-btn w-full justify-center flex items-center gap-2 py-2 rounded-xl bg-white/60 border border-black/10 text-[var(--color-deep-navy)] text-xs font-semibold hover:bg-white transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
                         {t("exportJsonBtn")}
                       </button>
                     </div>

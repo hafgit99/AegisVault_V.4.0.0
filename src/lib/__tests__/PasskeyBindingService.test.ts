@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PasskeyBindingService } from '../PasskeyBindingService';
 import { BackupService } from '../BackupService';
 

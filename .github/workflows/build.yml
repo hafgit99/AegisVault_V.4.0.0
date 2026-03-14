@@ -32,6 +32,12 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Security Quality Gate (Lint + Unit + E2E)
+        run: |
+          npm run lint
+          npm run test
+          npm run test:e2e
+
       - name: Build Application
         run: npm run build
 

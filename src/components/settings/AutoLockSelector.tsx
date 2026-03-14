@@ -1,13 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { IDLE_TIMEOUT_OPTIONS, getIdleTimeout, setIdleTimeout } from '../../config/security-settings';
 
 export const AutoLockSelector: React.FC = () => {
-  const [timeoutSec, setTimeoutSec] = useState<number>(300);
+  const [timeoutSec, setTimeoutSec] = useState<number>(() => getIdleTimeout());
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    setTimeoutSec(getIdleTimeout());
-  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = parseInt(e.target.value, 10);

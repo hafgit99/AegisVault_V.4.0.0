@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Camera, X, ScanLine } from "lucide-react";
+import { Camera, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-// @ts-ignore
 import jsQR from "jsqr";
 
 interface QRScannerProps {
@@ -21,6 +20,7 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
   const animFrameRef = useRef<number>(0);
   const [error, setError] = useState<string>("");
   const [isScanning, setIsScanning] = useState(false);
+  const scanFrameRef = useRef<() => void>(() => {});
 
   const stopCamera = useCallback(() => {
     if (animFrameRef.current) {
@@ -37,7 +37,7 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
-      animFrameRef.current = requestAnimationFrame(scanFrame);
+      animFrameRef.current = requestAnimationFrame(() => scanFrameRef.current());
       return;
     }
 
@@ -59,8 +59,12 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
       return;
     }
 
-    animFrameRef.current = requestAnimationFrame(scanFrame);
+    animFrameRef.current = requestAnimationFrame(() => scanFrameRef.current());
   }, [onScan, stopCamera]);
+
+  useEffect(() => {
+    scanFrameRef.current = scanFrame;
+  }, [scanFrame]);
 
   const startCamera = useCallback(async () => {
     try {
@@ -76,21 +80,29 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
         // Tarama döngüsünü başlat
         animFrameRef.current = requestAnimationFrame(scanFrame);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setIsScanning(false);
-      if (err.name === "NotAllowedError") {
+      const errorName = err instanceof Error ? err.name : "";
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+
+      if (errorName === "NotAllowedError") {
         setError(t("cameraPermissionDenied", "Camera permission denied. Please allow camera access."));
-      } else if (err.name === "NotFoundError") {
+      } else if (errorName === "NotFoundError") {
         setError(t("noCameraFound", "No camera found on this device."));
       } else {
-        setError(t("cameraError", "Camera error: ") + err.message);
+        setError(t("cameraError", "Camera error: ") + errorMessage);
       }
     }
   }, [scanFrame, t]);
 
   useEffect(() => {
-    startCamera();
-    return () => stopCamera();
+    const timer = window.setTimeout(() => {
+      void startCamera();
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+      stopCamera();
+    };
   }, [startCamera, stopCamera]);
 
   return (

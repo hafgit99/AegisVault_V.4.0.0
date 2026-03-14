@@ -1,4 +1,4 @@
-import { Copy, Check, Eye, EyeOff, Paperclip, DownloadCloud, Trash2, FileUp, Edit2, Tag, Wand2, X, FileText } from "lucide-react";
+import { Copy, Check, Eye, EyeOff, Paperclip, DownloadCloud, Trash2, FileUp, Edit2, Tag, X, FileText } from "lucide-react";
 import { TOTPWidget } from "./TOTPWidget";
 import { getCategoryIcon } from "../../lib/getCategoryIcon";
 import { useVault } from "../../contexts/VaultContext";
@@ -43,7 +43,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       toast.error(t("decryptFailed"));
     }
@@ -52,7 +52,6 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
   const isVulnerable =
     !p.pass ||
     p.pass.length < 8 ||
-    (p.updated_at && Date.now() - new Date(p.updated_at).getTime() > 1000 * 60 * 60 * 24 * 365) ||
     (p.pwned_count || 0) > 0;
 
   const compact = viewDensity === "compact";

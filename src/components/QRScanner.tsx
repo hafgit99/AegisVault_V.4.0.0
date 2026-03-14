@@ -1,22 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useQRScanner } from '../hooks/useQRSync';
 import { ProgressRing } from './ProgressRing';
 import { Camera, CheckCircle2 } from 'lucide-react';
 
 export const QRScanner = ({ onScanSuccess, onCancel }: { onScanSuccess: (data: string) => void, onCancel: () => void }) => {
   const { videoRef, startScanning, stopScanning, isScanning, progress, receivedChunks, totalChunks, error } = useQRScanner(onScanSuccess);
-  const [completed, setCompleted] = useState(false);
+  const completed = progress === 100;
 
   useEffect(() => {
     startScanning();
     return () => stopScanning();
-  }, []);
-
-  useEffect(() => {
-    if (progress === 100) {
-        setCompleted(true);
-    }
-  }, [progress]);
+  }, [startScanning, stopScanning]);
 
   return (
     <div className="qr-scanner-surface flex flex-col items-center justify-center space-y-6 p-8 bg-gradient-to-br from-[var(--color-cloud-dancer)] to-white rounded-3xl border border-black/5 shadow-inner relative min-h-[400px]">

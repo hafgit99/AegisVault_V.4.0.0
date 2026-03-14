@@ -79,6 +79,29 @@ class ExtensionBridge {
     return valid;
   }
 
+  private normalizeDomain(input: string): string {
+    try {
+      const parsed = input.includes('://') ? new URL(input) : new URL(`https://${input}`);
+      return parsed.hostname.toLowerCase().replace(/^www\./, '').trim();
+    } catch {
+      return (input || '').toLowerCase().replace(/^www\./, '').trim();
+    }
+  }
+
+  private toRegistrableDomain(hostname: string): string {
+    const parts = (hostname || '').split('.').filter(Boolean);
+    if (parts.length <= 2) return hostname;
+    return `${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
+  }
+
+  private isExactDomainMatch(entryWebsite: string, requestedDomain: string): boolean {
+    const entryHost = this.normalizeDomain(entryWebsite);
+    const reqHost = this.normalizeDomain(requestedDomain);
+    if (!entryHost || !reqHost) return false;
+    if (entryHost === reqHost) return true;
+    return this.toRegistrableDomain(entryHost) === this.toRegistrableDomain(reqHost);
+  }
+
   private messageListener = async (event: MessageEvent) => {
     // 🔒 Güvenlik: Sadece aynı origin veya doğrulanmış extension origin'den gelen mesajları kabul et
     if (event.origin !== window.location.origin && !event.origin.startsWith('chrome-extension://')) {
@@ -166,15 +189,21 @@ class ExtensionBridge {
 
                try {
                  const creds = await vaultService.getPasswords();
-                 // Belirli siteye göre filtrele, eğer istenmişse
-                 const filteredCreds = msg.domain 
-                   ? creds.filter(c => c.website.includes(msg.domain)) 
-                   : creds;
+                 const filteredCreds = msg.domain
+                   ? creds.filter((c) => this.isExactDomainMatch(c.website || '', msg.domain))
+                   : [];
 
-                 // Sadece seçilen veriyi (credential listesini) gönder
+                 // Domain exact + tek kayıt + minimum alan
+                 const selected = filteredCreds.slice(0, 1).map((c) => ({
+                   title: c.title,
+                   username: c.username,
+                   pass: c.pass,
+                   website: c.website,
+                 }));
+
                  port.postMessage({ 
                    type: "DECRYPTED_CREDS_RESPONSE", 
-                   data: filteredCreds 
+                   data: selected 
                  });
                  console.log("[PWA Bridge] Kasa açık, veriler eklentiye iletildi.");
                } catch (err) {

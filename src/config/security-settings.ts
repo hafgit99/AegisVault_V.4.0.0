@@ -31,14 +31,13 @@ export function setIdleTimeout(seconds: number) {
  * @param isUnlocked Whether the vault is currently unlocked
  */
 export function useAutoLock(onLock: () => void, isUnlocked: boolean) {
-  const [idleTimeout, setLocalIdleTimeout] = useState(getIdleTimeout());
-  const [lastActivityTime, setLastActivityTime] = useState(Date.now());
+  const [setVersion, setSetVersion] = useState(0);
 
   // Listen to cross-tab settings updates
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'aegis_idle_timeout' && e.newValue !== null) {
-        setLocalIdleTimeout(parseInt(e.newValue, 10));
+        setSetVersion((v) => v + 1);
       }
     };
     window.addEventListener('storage', onStorage);
@@ -52,7 +51,11 @@ export function useAutoLock(onLock: () => void, isUnlocked: boolean) {
   useEffect(() => {
     if (!isUnlocked) return;
 
-    const userActivity = () => setLastActivityTime(Date.now());
+    let lastActivityTime = Date.now();
+
+    const userActivity = () => {
+      lastActivityTime = Date.now();
+    };
 
     // Monitör user activity (fare ve klavye)
     window.addEventListener('click', userActivity);
@@ -77,5 +80,5 @@ export function useAutoLock(onLock: () => void, isUnlocked: boolean) {
       window.removeEventListener('mousemove', userActivity);
       window.removeEventListener('touchstart', userActivity);
     };
-  }, [isUnlocked, lastActivityTime]); // update on lastActivityTime change isn't strictly necessary for interval inside, but for correctness
+  }, [isUnlocked, onLock, setVersion]);
 }

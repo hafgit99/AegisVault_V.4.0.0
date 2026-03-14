@@ -1,7 +1,6 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 describe('Extension Bridge Security (P0-2)', () => {
   let messageEvents: MessageEvent[] = [];
