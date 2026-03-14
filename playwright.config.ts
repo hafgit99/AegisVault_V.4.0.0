@@ -41,9 +41,6 @@ export default defineConfig({
     // Navigation timeout
     navigationTimeout: 15000,
     actionTimeout: 10000,
-
-    // Clipboard permission (copy-to-clipboard testleri için)
-    permissions: ['clipboard-read', 'clipboard-write'],
   },
 
   // Web Server - Vite dev server
@@ -72,6 +69,8 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
+        // Clipboard permission (copy-to-clipboard testleri için)
+        permissions: ['clipboard-read', 'clipboard-write'],
         // Dev tools access
         launchOptions: {
           args: [
