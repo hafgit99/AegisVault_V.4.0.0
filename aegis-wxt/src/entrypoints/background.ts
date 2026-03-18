@@ -116,7 +116,7 @@ export default defineBackground({
     const LEGACY_GET_VAULT_ENABLED = false;
     const DOMAIN_REQ_MIN_INTERVAL_MS = 350;
     const NONCE_TTL_MS = 30 * 1000;
-    const DESKTOP_CHALLENGE_TTL_MS = 15 * 1000;
+    const DESKTOP_CHALLENGE_TTL_MS = 60 * 1000;
     const EXTENSION_ID = (
       env.WXT_AEGIS_EXTENSION_ID ||
       browser.runtime.id ||
