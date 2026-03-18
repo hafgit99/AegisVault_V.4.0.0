@@ -137,9 +137,9 @@ export function overwriteBuffer(buffer: Uint8Array): void {
  * ```
  */
 export function bufferToHex(buffer: Uint8Array | ArrayBuffer): string {
-  const bytes = buffer instanceof ArrayBuffer
-    ? new Uint8Array(buffer)
-    : buffer;
+  const bytes = ArrayBuffer.isView(buffer)
+    ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+    : new Uint8Array(buffer);
 
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, '0'))

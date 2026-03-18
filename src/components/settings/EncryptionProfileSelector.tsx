@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { EncryptionProfile } from '../../config/encryption-profiles';
+import { SecureAppSettings } from '../../lib/SecureAppSettings';
 
 export const EncryptionProfileSelector: React.FC = () => {
   const [profile, setProfile] = useState<EncryptionProfile>(() => {
-    const stored = localStorage.getItem('aegis_encryption_profile') as EncryptionProfile | null;
-    return stored ?? 'balanced';
+    return SecureAppSettings.getEncryptionProfile();
   });
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    void SecureAppSettings.initialize().then(() => {
+      setProfile(SecureAppSettings.getEncryptionProfile());
+    });
+  }, []);
 
   const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newProfile = e.target.value as EncryptionProfile;
@@ -14,7 +20,7 @@ export const EncryptionProfileSelector: React.FC = () => {
     setSaving(true);
     
     // Değişikliği kaydet
-    localStorage.setItem('aegis_encryption_profile', newProfile);
+    SecureAppSettings.setEncryptionProfile(newProfile);
     
     // NOT: Gerçek bir uygulamada varolan kayıtları yeni profile göre tekrar şifrelemek (migration) gerekir.
     // Şimdilik sadece yeni eklenen/güncellenen kayıtlara etki edecektir.

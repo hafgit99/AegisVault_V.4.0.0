@@ -10,7 +10,7 @@ import {
   generateRandomBytes 
 } from './lib/crypto-types';
 import { type EncryptionProfile, isFieldEncrypted } from './config/encryption-profiles';
-
+import { SecureAppSettings } from './lib/SecureAppSettings';
 // Represents the SQLite-WASM SQLCipher over OPFS architecture
 // We use IndexedDB to simulate the OPFS persistence layer for this demo.
 export interface VaultMetadata {
@@ -106,13 +106,9 @@ export class VaultService {
     hashLength: 32,
   };
 
-  /** Aktif Metadata Profilini Getirir */
   private get encryptionProfile(): EncryptionProfile {
     try {
-      const stored = localStorage.getItem('aegis_encryption_profile');
-      if (stored === 'maximum' || stored === 'balanced' || stored === 'performance') {
-        return stored;
-      }
+      return SecureAppSettings.getEncryptionProfile();
     } catch { /* ignore */ }
     return 'balanced'; // Varsayılan
   }
@@ -262,7 +258,9 @@ export class VaultService {
   }
 
   private async decryptTextField(encrypted?: string, iv?: string): Promise<string | null> {
-    if (!this.aesKey || !encrypted || !iv) return null;
+    if (!this.aesKey || !encrypted || !iv) {
+      return null;
+    }
     try {
       const cipherArray = isLikelyHexUtil(encrypted)
         ? hexToBuffer(encrypted)
@@ -276,7 +274,8 @@ export class VaultService {
         toBufferSource(cipherArray)
       );
       return new TextDecoder().decode(plain);
-    } catch {
+    } catch (error) {
+      console.error('DECRYPTION REAL ERROR:', error);
       return null;
     }
   }

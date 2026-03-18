@@ -1,14 +1,27 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef, type ReactNode } from "react";
 import { vaultService, type VaultEntry } from "../vaultService";
 import { useClipboard } from "../hooks/useClipboard";
 import { extensionBridge } from "../lib/ExtensionBridge";
 import { breachChecker } from "../lib/breach-check";
+import { SecureAppSettings } from "../lib/SecureAppSettings";
+import { SecurityModePolicy } from "../lib/SecurityModePolicy";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import DOMPurify from "dompurify";
+import type { SecurityModeProfile } from "../lib/SecureAppSettings";
 
 // Güvenli eklenti haberleşmesi için oturum nonce'u (P0-2)
 let currentExtensionNonce: string | null = null;
+
+const getSafePostMessageTarget = () => {
+  if (typeof window === "undefined") return "*";
+  const origin = window.location.origin;
+  if (!origin || origin === "null" || origin.startsWith("file:")) {
+    return "*";
+  }
+  return origin;
+};
 
 if (typeof window !== "undefined") {
   window.addEventListener("message", (event) => {
@@ -84,12 +97,42 @@ export interface VaultContextType {
   // Oturum
   autoLockTime: number;
   setAutoLockTime: (t: number) => void;
+  securityModeProfile: SecurityModeProfile;
   handleLock: () => void;
   secretKey?: string;
 
   // Yardımcı
   getCategoryIcon: (cat: string) => React.ReactNode;
 }
+
+type DomainCredential = Pick<VaultEntry, "title" | "username" | "pass" | "website">;
+
+type ElectronVaultState = {
+  unlocked: boolean;
+  entryCount: number;
+};
+
+type ElectronBridgeApi = {
+  syncVaultState?: (state: ElectronVaultState) => void;
+  setDomainCredentialProvider?: (provider: ((domain: string) => DomainCredential[]) | null) => void;
+  lockVault?: () => void;
+};
+
+type RuntimeApi = {
+  sendMessage?: (extensionId: string, message: { type: string }, callback?: () => void) => void;
+  lastError?: unknown;
+};
+
+type WindowWithAegisElectron = Window & typeof globalThis & {
+  aegisElectron?: ElectronBridgeApi;
+  chrome?: {
+    runtime?: RuntimeApi;
+  };
+};
+
+type ImportMetaEnvWithExtensionId = ImportMetaEnv & {
+  VITE_AEGIS_EXTENSION_ID?: string;
+};
 
 const VaultContext = createContext<VaultContextType | null>(null);
 
@@ -111,6 +154,16 @@ interface VaultProviderProps {
 
 export function VaultProvider({ children, onLock, secretKey }: VaultProviderProps) {
   const { t } = useTranslation();
+  const getElectronApi = useCallback(
+    (): ElectronBridgeApi | undefined => (window as WindowWithAegisElectron).aegisElectron,
+    []
+  );
+  const getRuntimeApi = useCallback(
+    (): RuntimeApi | undefined => (window as WindowWithAegisElectron).chrome?.runtime,
+    []
+  );
+  const getErrorMessage = (error: unknown) =>
+    error instanceof Error ? error.message : String(error);
 
   // Core State
   const [passwords, setPasswords] = useState<VaultEntry[]>([]);
@@ -119,12 +172,7 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [searchScope, setSearchScope] = useState<"all" | "title" | "username" | "tags">("all");
   const [viewDensity, setViewDensity] = useState<"comfortable" | "compact">(() => {
-    try {
-      const saved = localStorage.getItem("aegis:view-density");
-      return saved === "compact" ? "compact" : "comfortable";
-    } catch {
-      return "comfortable";
-    }
+    return SecureAppSettings.getViewDensity();
   });
   const [sortOption, setSortOption] = useState<"updated_desc" | "updated_asc" | "title_asc" | "title_desc">("updated_desc");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -142,32 +190,41 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
   const [isPwnedScanning, setIsPwnedScanning] = useState(false);
   const [pwnedScanProgress, setPwnedScanProgress] = useState(0);
   const [hibpEnabled, setHibpEnabledState] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('aegis_hibp_enabled') === '1';
-    } catch {
-      return false;
-    }
+    return SecureAppSettings.getHibpEnabled();
   });
   const [hibpLastResult, setHibpLastResult] = useState<'idle' | 'ok' | 'unknown'>('idle');
+  const [securityModeProfile, setSecurityModeProfile] = useState<SecurityModeProfile>(() => {
+    return SecureAppSettings.getSecurityModeProfile();
+  });
 
   // Auto-Lock (Persist in localStorage)
-  const [autoLockTime, setAutoLockTime] = useState<number>(() => {
-    const saved = localStorage.getItem('aegis_auto_lock_time');
-    return saved ? parseInt(saved, 10) : 2;
+  const [autoLockTime, setAutoLockTimeState] = useState<number>(() => {
+    return SecurityModePolicy.enforceAutoLock(SecureAppSettings.getAutoLockTime(), SecureAppSettings.getSecurityModeProfile());
   });
 
   useEffect(() => {
-    localStorage.setItem('aegis_auto_lock_time', autoLockTime.toString());
+    SecureAppSettings.setAutoLockTime(autoLockTime);
   }, [autoLockTime]);
 
   const setHibpEnabled = useCallback((enabled: boolean) => {
-    setHibpEnabledState(enabled);
-    try {
-      localStorage.setItem('aegis_hibp_enabled', enabled ? '1' : '0');
-    } catch {
-      // ignore storage errors
+    if (enabled && !SecurityModePolicy.isHibpAllowed(securityModeProfile)) {
+      toast.info(t('securityModeHibpBlocked'));
+      setHibpEnabledState(false);
+      SecureAppSettings.setHibpEnabled(false);
+      return;
     }
-  }, []);
+    setHibpEnabledState(enabled);
+    SecureAppSettings.setHibpEnabled(enabled);
+  }, [securityModeProfile, t]);
+
+  const setAutoLockTime = useCallback((value: number) => {
+    const enforced = SecurityModePolicy.enforceAutoLock(value, securityModeProfile);
+    if (enforced !== value) {
+      toast.info(t('securityModeAutoLockAdjusted', { minutes: enforced }));
+    }
+    setAutoLockTimeState(enforced);
+    SecureAppSettings.setAutoLockTime(enforced);
+  }, [securityModeProfile, t]);
 
   // Ref for handleLock (avoids stale closure in auto-lock timer)
   const handleLockRef = useRef<() => void>(() => {});
@@ -179,12 +236,36 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
   }, [searchQuery]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem("aegis:view-density", viewDensity);
-    } catch {
-      // ignore storage errors
-    }
+    SecureAppSettings.setViewDensity(viewDensity);
   }, [viewDensity]);
+
+  useEffect(() => {
+    void SecureAppSettings.initialize().then(() => {
+      const profile = SecureAppSettings.getSecurityModeProfile();
+      setSecurityModeProfile(profile);
+      
+      const savedDensity = SecureAppSettings.getViewDensity();
+      setViewDensity(savedDensity);
+
+      const hibpAllowed = SecurityModePolicy.isHibpAllowed(profile);
+      const hibpCurrentState = SecureAppSettings.getHibpEnabled();
+      
+      if (!hibpAllowed && hibpCurrentState) {
+        SecureAppSettings.setHibpEnabled(false);
+        setHibpEnabledState(false);
+      } else {
+        setHibpEnabledState(hibpCurrentState);
+      }
+
+      const currentAutoLock = SecureAppSettings.getAutoLockTime();
+      const enforcedAutoLock = SecurityModePolicy.enforceAutoLock(currentAutoLock, profile);
+      
+      if (enforcedAutoLock !== currentAutoLock) {
+        SecureAppSettings.setAutoLockTime(enforcedAutoLock);
+      }
+      setAutoLockTimeState(enforcedAutoLock);
+    });
+  }, []);
 
   // ─── Veri Yükleme ───
   const loadPasswords = useCallback(() => {
@@ -256,29 +337,63 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
     // Güvenlik sertleştirme: extension'a toplu plaintext sync kapatıldı.
     // Extension veri çekimini challenge + domain-scoped akış üzerinden yapar.
 
-    // Electron API (masaüstü uygulaması) sync devam eder.
-    const syncToElectron = async () => {
-      if (passwords.length === 0) return;
-      const payload = passwords
-        .filter((p) => Boolean(p.pass && p.website && p.website.trim()))
+    const normalizeDomain = (input: string) => {
+      try {
+        const parsed = input.includes('://') ? new URL(input) : new URL(`https://${input}`);
+        return parsed.hostname.toLowerCase().replace(/^www\./, '');
+      } catch {
+        return (input || '').toLowerCase().replace(/^www\./, '').trim();
+      }
+    };
+
+    const isDomainMatch = (entryWebsite: string, requestedDomain: string) => {
+      const entryDomain = normalizeDomain(entryWebsite);
+      const wanted = normalizeDomain(requestedDomain);
+      if (!entryDomain || !wanted) return false;
+      return entryDomain === wanted || entryDomain.endsWith(`.${wanted}`) || wanted.endsWith(`.${entryDomain}`);
+    };
+
+    const getMatchesForDomain = (domain: string) => {
+      const normalizedDomain = normalizeDomain(domain);
+      if (!normalizedDomain) return [];
+
+      return passwords
+        .filter((p) => p.pass && p.website && isDomainMatch(p.website, normalizedDomain))
+        .slice(0, 5)
         .map((p) => ({
           title: p.title,
           username: p.username,
           pass: p.pass,
           website: p.website,
         }));
-      if (payload.length === 0) return;
-
-      try {
-        const electronApi = (window as any).aegisElectron;
-        if (electronApi?.syncVault) {
-          electronApi.syncVault(payload);
-        }
-      } catch (_e) {}
     };
 
-    syncToElectron();
-  }, [passwords]);
+    try {
+      const electronApi = getElectronApi();
+      if (electronApi?.syncVaultState) {
+        electronApi.syncVaultState({
+          unlocked: true,
+          entryCount: passwords.filter((p) => Boolean(p.pass && p.website && p.website.trim())).length,
+        });
+      }
+      if (electronApi?.setDomainCredentialProvider) {
+        electronApi.setDomainCredentialProvider((domain: string) => getMatchesForDomain(domain));
+      }
+    } catch {
+      // Electron bridge bu ortamda mevcut olmayabilir
+    }
+
+    return () => {
+      try {
+        const electronApi = getElectronApi();
+        if (electronApi?.setDomainCredentialProvider) {
+          electronApi.setDomainCredentialProvider(null);
+        }
+      } catch {
+        // cleanup hatasi ana akis icin kritik degil
+      }
+    };
+  }, [getElectronApi, passwords]);
 
   // ─── Toggles ───
   const toggleVisibility = useCallback((id: number) => {
@@ -313,8 +428,8 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
       for (const file of attachments) {
         try {
           await vaultService.addAttachment(newId as number, file);
-        } catch (err: any) {
-          toast.error(`Failed to attach ${file.name}: ${err.message}`);
+        } catch (error: unknown) {
+          toast.error(`Failed to attach ${file.name}: ${getErrorMessage(error)}`);
         }
       }
     }
@@ -328,9 +443,9 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
       await vaultService.moveToTrash(id);
       toast.success(t("itemMovedToTrash"));
       loadPasswords();
-    } catch (err: any) {
-      console.error('[VaultContext] moveToTrash FAILED:', err);
-      toast.error(`Trash failed: ${err.message}`);
+    } catch (error: unknown) {
+      console.error('[VaultContext] moveToTrash FAILED:', error);
+      toast.error(`Trash failed: ${getErrorMessage(error)}`);
     }
   }, [loadPasswords, t]);
 
@@ -339,9 +454,9 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
       await vaultService.restoreFromTrash(id);
       toast.success(t("itemRestored"));
       loadPasswords();
-    } catch (err: any) {
-      console.error('[VaultContext] restoreFromTrash FAILED:', err);
-      toast.error(`Restore failed: ${err.message}`);
+    } catch (error: unknown) {
+      console.error('[VaultContext] restoreFromTrash FAILED:', error);
+      toast.error(`Restore failed: ${getErrorMessage(error)}`);
     }
   }, [loadPasswords, t]);
 
@@ -350,9 +465,9 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
       await vaultService.emptyTrash();
       toast.success(t("trashEmptied"));
       loadPasswords();
-    } catch (err: any) {
-      console.error('[VaultContext] emptyTrash FAILED:', err);
-      toast.error(`Empty trash failed: ${err.message}`);
+    } catch (error: unknown) {
+      console.error('[VaultContext] emptyTrash FAILED:', error);
+      toast.error(`Empty trash failed: ${getErrorMessage(error)}`);
     }
   }, [loadPasswords, t]);
 
@@ -473,31 +588,41 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
     setVisiblePasswords(new Set());
 
     if (currentExtensionNonce) {
-      window.postMessage({ type: "AEGIS_LOCK_VAULT", nonce: currentExtensionNonce }, window.location.origin);
+      window.postMessage({ type: "AEGIS_LOCK_VAULT", nonce: currentExtensionNonce }, getSafePostMessageTarget());
       currentExtensionNonce = null;
     }
 
     // Direkt background'a da kilit mesajı gönder
     try {
-      const cr = (window as any).chrome?.runtime;
-      if (cr && typeof cr.sendMessage === 'function') {
+      const runtimeApi = getRuntimeApi();
+      if (runtimeApi && typeof runtimeApi.sendMessage === 'function') {
         const extId =
-          (import.meta as any)?.env?.VITE_AEGIS_EXTENSION_ID as string | undefined;
+          (import.meta.env as ImportMetaEnvWithExtensionId).VITE_AEGIS_EXTENSION_ID;
         if (extId) {
-          cr.sendMessage(extId, { type: 'LOCK_VAULT' }, () => {
-            void (window as any).chrome?.runtime?.lastError;
+          runtimeApi.sendMessage(extId, { type: 'LOCK_VAULT' }, () => {
+            void runtimeApi.lastError;
           });
         }
       }
-    } catch (_e) {}
+    } catch {
+      // Chrome runtime her ortamda mevcut olmayabilir
+    }
 
     try {
-      const electronApi = (window as any).aegisElectron;
+      const electronApi = getElectronApi();
+      if (electronApi?.syncVaultState) {
+        electronApi.syncVaultState({ unlocked: false, entryCount: 0 });
+      }
+      if (electronApi?.setDomainCredentialProvider) {
+        electronApi.setDomainCredentialProvider(null);
+      }
       if (electronApi?.lockVault) electronApi.lockVault();
-    } catch (e) {}
+    } catch {
+      // Electron bridge bu ortamda mevcut olmayabilir
+    }
 
     onLock();
-  }, [onLock]);
+  }, [getElectronApi, getRuntimeApi, onLock]);
 
   // Ref güncelle — auto-lock timer için
   useEffect(() => {
@@ -550,6 +675,7 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
     saveSecretSettings,
     autoLockTime,
     setAutoLockTime,
+    securityModeProfile,
     handleLock,
     secretKey,
     getCategoryIcon,

@@ -7,7 +7,7 @@ vi.mock('sql.js', () => ({
   default: vi.fn().mockRejectedValue(new Error('sql.js not available in test'))
 }));
 vi.mock('./lib/SQLiteOPFS', async (importOriginal) => {
-  const actual = await importOriginal<any>();
+  const actual = await importOriginal<typeof import('./lib/SQLiteOPFS')>();
   return {
     ...actual,
     isOPFSAvailable: () => false,
@@ -18,9 +18,55 @@ vi.mock('./lib/SQLiteOPFS', async (importOriginal) => {
 // No need to mock them - they're provided by the test environment
 
 describe('VaultService Security & Cryptography', () => {
+  type VaultSaltRecord = {
+    salt: string;
+    version: number;
+  };
+
+  type AuthCredentialRecord = {
+    credential: {
+      verificationHash: string;
+      scheme?: string;
+      salt?: string;
+      argon2?: unknown;
+    };
+  };
+
+  type AttachmentCipherRecord = {
+    encrypted_name?: string;
+    encrypted_type?: string;
+  };
+
+  type RawPasswordRecord = {
+    encrypted_password?: string;
+    encrypted_title?: string;
+    encrypted_username?: string;
+    encrypted_website?: string;
+    encrypted_category?: string;
+    encrypted_tags?: string;
+    search_index: string[];
+    attachments?: AttachmentCipherRecord[];
+    title?: string;
+    username?: string;
+    website?: string;
+    category?: string;
+    tags?: string[];
+    title_iv?: string;
+    username_iv?: string;
+    website_iv?: string;
+    category_iv?: string;
+    tags_iv?: string;
+  };
+
   const TEST_PASSWORD = 'strong_password_123';
   const SEC_KEY = 'device_secret_xyz';
   let dbNameCounter = 0;
+
+  const getRequestResult = <T>(request: IDBRequest<T>) =>
+    new Promise<T>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
 
   const deriveLegacyPBKDF2Hash = async (password: string, saltB64: string, iterations: number) => {
     const salt = Uint8Array.from(atob(saltB64), (c) => c.charCodeAt(0));
@@ -48,23 +94,14 @@ describe('VaultService Security & Cryptography', () => {
 
     // IndexedDB'den metadata'yı kontrol et
     const request = indexedDB.open(dbName, 3);
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
+    const db = await getRequestResult(request);
 
     const tx = db.transaction('vault_metadata', 'readonly');
     const store = tx.objectStore('vault_metadata');
     
-    const mainSaltData = await new Promise<any>((resolve) => {
-      const getReq = store.get('main_salt');
-      getReq.onsuccess = () => resolve(getReq.result);
-    });
+    const mainSaltData = await getRequestResult<VaultSaltRecord>(store.get('main_salt'));
     
-    const authCredData = await new Promise<any>((resolve) => {
-      const getReq = store.get('auth_credential');
-      getReq.onsuccess = () => resolve(getReq.result);
-    });
+    const authCredData = await getRequestResult<AuthCredentialRecord>(store.get('auth_credential'));
 
     expect(mainSaltData).toBeDefined();
     expect(mainSaltData.salt).toBeTypeOf('string');
@@ -85,7 +122,7 @@ describe('VaultService Security & Cryptography', () => {
     
     // Yapay olarak eski sistemdeki gibi "sadece passwords store'u var, metadata yok" yaratıyoruz
     const request = indexedDB.open(dbName, 1);
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    const db = await new Promise<IDBDatabase>((resolve) => {
       request.onupgradeneeded = () => {
         const store = request.result.createObjectStore('passwords', { keyPath: 'id', autoIncrement: true });
         store.put({ id: 999, title: "Test Legacy", pass: "something_encrypted" }); // Simulate old data
@@ -103,15 +140,10 @@ describe('VaultService Security & Cryptography', () => {
 
     // Kontrol: Metadata 2. versiyona taşınmış ve main_salt olarak eski statik kilit dinamik kayda geçmiş mi?
     const checkReq = indexedDB.open(dbName, 3);
-    const checkDb = await new Promise<IDBDatabase>((resolve) => {
-      checkReq.onsuccess = () => resolve(checkReq.result);
-    });
+    const checkDb = await getRequestResult(checkReq);
     
     const checkTx = checkDb.transaction('vault_metadata', 'readonly');
-    const mainSaltData = await new Promise<any>((resolve) => {
-      const getReq = checkTx.objectStore('vault_metadata').get('main_salt');
-      getReq.onsuccess = () => resolve(getReq.result);
-    });
+    const mainSaltData = await getRequestResult<VaultSaltRecord>(checkTx.objectStore('vault_metadata').get('main_salt'));
 
     // It should have migrated the old string "aegis-premium-salt-v4" into a base64 encoded string format
     const oldSaltBytes = new TextEncoder().encode("aegis-premium-salt-v4");
@@ -132,15 +164,9 @@ describe('VaultService Security & Cryptography', () => {
 
     // Önceki Metadata Salt'ını al
     const request1 = indexedDB.open(dbName, 3);
-    const db1 = await new Promise<IDBDatabase>((resolve) => { request1.onsuccess = () => resolve(request1.result); });
-    const oldMainSaltData = await new Promise<any>((resolve) => {
-      const getReq = db1.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('main_salt');
-      getReq.onsuccess = () => resolve(getReq.result);
-    });
-    const oldAuthData = await new Promise<any>((resolve) => {
-      const getReq = db1.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('auth_credential');
-      getReq.onsuccess = () => resolve(getReq.result);
-    });
+    const db1 = await getRequestResult(request1);
+    const oldMainSaltData = await getRequestResult<VaultSaltRecord>(db1.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('main_salt'));
+    const oldAuthData = await getRequestResult<AuthCredentialRecord>(db1.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('auth_credential'));
     db1.close();
 
     // 2. Parolayı değiştir
@@ -149,16 +175,10 @@ describe('VaultService Security & Cryptography', () => {
 
     // 3. Yeni Metadata'yı kontrol et
     const request2 = indexedDB.open(dbName, 3);
-    const db2 = await new Promise<IDBDatabase>((resolve) => { request2.onsuccess = () => resolve(request2.result); });
+    const db2 = await getRequestResult(request2);
     
-    const newMainSaltData = await new Promise<any>((resolve) => {
-      const getReq = db2.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('main_salt');
-      getReq.onsuccess = () => resolve(getReq.result);
-    });
-    const newAuthData = await new Promise<any>((resolve) => {
-      const getReq = db2.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('auth_credential');
-      getReq.onsuccess = () => resolve(getReq.result);
-    });
+    const newMainSaltData = await getRequestResult<VaultSaltRecord>(db2.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('main_salt'));
+    const newAuthData = await getRequestResult<AuthCredentialRecord>(db2.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('auth_credential'));
     db2.close();
 
     // Kıyas: Yeni Tuz eskisi ile EŞİT OLMAMALIDIR!
@@ -182,13 +202,8 @@ describe('VaultService Security & Cryptography', () => {
     }
     // Encrypted payload kontrolünü doğrudan at-rest kayıttan yap
     const reqRaw = indexedDB.open(dbName, 3);
-    const dbRaw = await new Promise<IDBDatabase>((resolve) => {
-      reqRaw.onsuccess = () => resolve(reqRaw.result);
-    });
-    const rawGithub = await new Promise<any>((resolve) => {
-      const getReq = dbRaw.transaction('passwords', 'readonly').objectStore('passwords').get(addedEntryId);
-      getReq.onsuccess = () => resolve(getReq.result);
-    });
+    const dbRaw = await getRequestResult(reqRaw);
+    const rawGithub = await getRequestResult<RawPasswordRecord>(dbRaw.transaction('passwords', 'readonly').objectStore('passwords').get(addedEntryId));
     expect(rawGithub).toBeDefined();
     expect(rawGithub?.encrypted_password).toBeTypeOf('string');
     dbRaw.close();
@@ -213,15 +228,9 @@ describe('VaultService Security & Cryptography', () => {
     await vaultService.addAttachment(Number(entryId), attachmentFile);
 
     const req = indexedDB.open(dbName, 3);
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
+    const db = await getRequestResult(req);
 
-    const stored = await new Promise<any>((resolve) => {
-      const getReq = db.transaction('passwords', 'readonly').objectStore('passwords').get(entryId);
-      getReq.onsuccess = () => resolve(getReq.result);
-    });
+    const stored = await getRequestResult<RawPasswordRecord>(db.transaction('passwords', 'readonly').objectStore('passwords').get(entryId));
 
     expect(stored).toBeDefined();
     expect(stored.encrypted_title).toBeTypeOf('string');
@@ -269,17 +278,11 @@ describe('VaultService Security & Cryptography', () => {
     });
 
     const req1 = indexedDB.open(dbName, 3);
-    const db1 = await new Promise<IDBDatabase>((resolve, reject) => {
-      req1.onsuccess = () => resolve(req1.result);
-      req1.onerror = () => reject(req1.error);
-    });
+    const db1 = await getRequestResult(req1);
 
     const tx1 = db1.transaction('passwords', 'readwrite');
     const store1 = tx1.objectStore('passwords');
-    const existing = await new Promise<any>((resolve) => {
-      const getReq = store1.get(entryId);
-      getReq.onsuccess = () => resolve(getReq.result);
-    });
+    const existing = await getRequestResult<RawPasswordRecord>(store1.get(entryId));
 
     existing.title = 'Legacy Migrating Entry';
     existing.username = 'legacy.user';
@@ -319,15 +322,9 @@ describe('VaultService Security & Cryptography', () => {
     if (migratedUiEntry?.category) expect(migratedUiEntry.category).toBe('Finance');
 
     const req2 = indexedDB.open(dbName, 3);
-    const db2 = await new Promise<IDBDatabase>((resolve, reject) => {
-      req2.onsuccess = () => resolve(req2.result);
-      req2.onerror = () => reject(req2.error);
-    });
+    const db2 = await getRequestResult(req2);
 
-    const migratedRaw = await new Promise<any>((resolve) => {
-      const getReq = db2.transaction('passwords', 'readonly').objectStore('passwords').get(entryId);
-      getReq.onsuccess = () => resolve(getReq.result);
-    });
+    const migratedRaw = await getRequestResult<RawPasswordRecord>(db2.transaction('passwords', 'readonly').objectStore('passwords').get(entryId));
 
     expect(migratedRaw.encrypted_title).toBeTypeOf('string');
     expect(migratedRaw.encrypted_category).toBeTypeOf('string');
@@ -388,14 +385,8 @@ describe('VaultService Security & Cryptography', () => {
     await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, false);
 
     const req2 = indexedDB.open(dbName, 3);
-    const db2 = await new Promise<IDBDatabase>((resolve, reject) => {
-      req2.onsuccess = () => resolve(req2.result);
-      req2.onerror = () => reject(req2.error);
-    });
-    const migratedAuth = await new Promise<any>((resolve) => {
-      const getReq = db2.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('auth_credential');
-      getReq.onsuccess = () => resolve(getReq.result);
-    });
+    const db2 = await getRequestResult(req2);
+    const migratedAuth = await getRequestResult<AuthCredentialRecord>(db2.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('auth_credential'));
 
     expect(migratedAuth.credential.scheme).toBe('argon2id-v1');
     expect(migratedAuth.credential.argon2).toBeDefined();

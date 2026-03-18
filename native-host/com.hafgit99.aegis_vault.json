@@ -1,0 +1,11 @@
+﻿{
+  "name": "com.hafgit99.aegis_vault",
+  "description": "Aegis Vault native messaging bridge",
+  "path": "C:\\Users\\hrn21\\OneDrive\\Desktop\\aegis-4.0\\build\\native-host\\aegis-native-host-launcher.cmd",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://iockeheicjcnfoegjjboooljndjcafae/",
+    "chrome-extension://gddgomiecgnihlljfkogfjgakedoielk/",
+    "chrome-extension://kjbdjkfijeflhhbnkjgkmccljifidpcc/"
+  ]
+}

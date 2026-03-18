@@ -1,6 +1,42 @@
 // Helper to convert base64 to Uint8Array and vice-versa
 import { toBufferSource } from './crypto-types';
 
+type PrfExtensionResult = {
+  enabled?: boolean;
+  results?: {
+    first?: BufferSource;
+  };
+};
+
+type PublicKeyCredentialWithExtensions = PublicKeyCredential & {
+  getClientExtensionResults: () => AuthenticationExtensionsClientOutputs & {
+    prf?: PrfExtensionResult;
+  };
+};
+
+type CreationOptionsWithPrf = PublicKeyCredentialCreationOptions & {
+  extensions: AuthenticationExtensionsClientInputs & {
+    prf: {
+      eval: {
+        first: Uint8Array;
+      };
+    };
+  };
+};
+
+type RequestOptionsWithPrf = PublicKeyCredentialRequestOptions & {
+  extensions: AuthenticationExtensionsClientInputs & {
+    prf: {
+      eval: {
+        first: BufferSource;
+      };
+    };
+  };
+};
+
+const toArrayBuffer = (value: BufferSource): ArrayBuffer =>
+  value instanceof ArrayBuffer ? value : value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
+
 export const bufferToBase64url = (buffer: ArrayBuffer): string => {
   const bytes = new Uint8Array(buffer);
   let str = '';
@@ -80,7 +116,7 @@ export const registerPasskeyWithPRF = async (): Promise<{id: string, salt: strin
   const userId = window.crypto.getRandomValues(new Uint8Array(16));
   const prfSalt = window.crypto.getRandomValues(new Uint8Array(32));
   
-  const publicKey: PublicKeyCredentialCreationOptions & any = {
+  const publicKey: CreationOptionsWithPrf = {
     challenge,
     rp: { name: "Aegis Vault Local" },
     user: { id: userId, name: "vault_user", displayName: "Aegis Vault Owner" },
@@ -101,7 +137,7 @@ export const registerPasskeyWithPRF = async (): Promise<{id: string, salt: strin
   };
 
   try {
-    const credential = await navigator.credentials.create({ publicKey }) as any;
+    const credential = await navigator.credentials.create({ publicKey }) as PublicKeyCredentialWithExtensions | null;
     if (credential) {
       const extensionResults = credential.getClientExtensionResults();
       if (extensionResults.prf && extensionResults.prf.enabled) {
@@ -110,8 +146,8 @@ export const registerPasskeyWithPRF = async (): Promise<{id: string, salt: strin
          if (extensionResults.prf.results && extensionResults.prf.results.first) {
             return {
                id: credential.id,
-                salt: bufferToBase64url(prfSalt instanceof ArrayBuffer ? prfSalt : (prfSalt as Uint8Array).buffer instanceof ArrayBuffer ? (prfSalt as Uint8Array).buffer as ArrayBuffer : new Uint8Array(prfSalt as any).buffer as ArrayBuffer),
-               prfKey: extensionResults.prf.results.first
+                salt: bufferToBase64url(prfSalt.buffer),
+               prfKey: toArrayBuffer(extensionResults.prf.results.first)
             };
          } else {
             // Re-authenticate immediately to fetch the PRF key
@@ -119,8 +155,8 @@ export const registerPasskeyWithPRF = async (): Promise<{id: string, salt: strin
          }
       }
     }
-  } catch (err: any) {
-    console.error("Passkey PRF registration failed:", err);
+  } catch (error) {
+    console.error("Passkey PRF registration failed:", error);
   }
   return null;
 };
@@ -140,7 +176,7 @@ export const authenticatePasskeyWithPRF = async (credentialId: string, saltB64: 
     }
   ];
 
-  const publicKey: PublicKeyCredentialRequestOptions & any = {
+  const publicKey: RequestOptionsWithPrf = {
     challenge,
     allowCredentials,
     userVerification: "required",
@@ -155,15 +191,15 @@ export const authenticatePasskeyWithPRF = async (credentialId: string, saltB64: 
   };
 
   try {
-    const assertion = await navigator.credentials.get({ publicKey }) as any;
+    const assertion = await navigator.credentials.get({ publicKey }) as PublicKeyCredentialWithExtensions | null;
     if (assertion) {
       const extensionResults = assertion.getClientExtensionResults();
       if (extensionResults.prf && extensionResults.prf.results && extensionResults.prf.results.first) {
-         return extensionResults.prf.results.first;
+         return toArrayBuffer(extensionResults.prf.results.first);
       }
     }
-  } catch (err: any) {
-    console.error("Passkey PRF authentication failed:", err);
+  } catch (error) {
+    console.error("Passkey PRF authentication failed:", error);
   }
   return null;
 };

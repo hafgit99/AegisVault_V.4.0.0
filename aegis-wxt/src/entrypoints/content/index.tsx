@@ -1,15 +1,40 @@
+/* eslint-disable react-refresh/only-export-components */
 import { defineContentScript } from 'wxt/sandbox';
 import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/client';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 
-const isTurkishLocale = (typeof navigator !== 'undefined' ? navigator.language : 'en').toLowerCase().startsWith('tr');
-const EXT_I18N = {
-  noUsername: isTurkishLocale ? 'Kullanici adi yok' : 'No username',
-  recordsLabel: isTurkishLocale ? 'kayit' : 'record(s)',
-  noRecordForSite: isTurkishLocale ? 'Bu site icin kayit bulunamadi' : 'No records found for this site',
-  filledSuccess: isTurkishLocale ? 'Basariyla dolduruldu' : 'Filled successfully',
+type ContentI18n = {
+  noUsername: string;
+  recordsLabel: string;
+  noRecordForSite: string;
+  filledSuccess: string;
+};
+
+const normalizeUiLanguage = (value: unknown) =>
+  typeof value === 'string' && value.toLowerCase().startsWith('tr') ? 'tr' : 'en';
+
+const buildContentI18n = (language: 'tr' | 'en'): ContentI18n => ({
+  noUsername: language === 'tr' ? 'Kullanici adi yok' : 'No username',
+  recordsLabel: language === 'tr' ? 'kayit' : 'record(s)',
+  noRecordForSite: language === 'tr' ? 'Bu site icin kayit bulunamadi' : 'No records found for this site',
+  filledSuccess: language === 'tr' ? 'Basariyla dolduruldu' : 'Filled successfully',
+});
+
+let extensionLanguage: 'tr' | 'en' = normalizeUiLanguage(typeof navigator !== 'undefined' ? navigator.language : 'en');
+let EXT_I18N = buildContentI18n(extensionLanguage);
+
+type CredentialMatch = {
+  title?: string;
+  username?: string;
+  pass?: string;
+  website?: string;
+};
+
+const syncLanguageState = (language: unknown) => {
+  extensionLanguage = normalizeUiLanguage(language);
+  EXT_I18N = buildContentI18n(extensionLanguage);
 };
 
 // ─── Inline Styles (Shadow DOM içinde Tailwind çalışmaz, tüm stiller inline) ───
@@ -92,7 +117,7 @@ const STYLES = {
     border: hovered ? '1px solid rgba(114,136,111,0.25)' : '1px solid rgba(114,136,111,0.08)',
     transform: hovered ? 'translateX(2px)' : 'none',
   }),
-  avatar: (letter: string) => ({
+  avatar: () => ({
     width: 32,
     height: 32,
     borderRadius: 8,
@@ -182,7 +207,7 @@ function triggerFill(el: HTMLInputElement, value: string) {
   el.dispatchEvent(new Event('blur',   { bubbles: true }));
 }
 
-function fillInputs(inputEl: HTMLInputElement, entry: any) {
+function fillInputs(inputEl: HTMLInputElement, entry: CredentialMatch) {
   const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input'))
     .filter(i => i.offsetParent !== null); // sadece görünür input'lar
   const idx = inputs.indexOf(inputEl);
@@ -211,7 +236,7 @@ function fillInputs(inputEl: HTMLInputElement, entry: any) {
 }
 
 // ─── Entry Row Component ───
-const EntryRow = ({ entry, onFill }: { entry: any; onFill: (e: any) => void }) => {
+const EntryRow = ({ entry, onFill }: { entry: CredentialMatch; onFill: () => void }) => {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -221,7 +246,7 @@ const EntryRow = ({ entry, onFill }: { entry: any; onFill: (e: any) => void }) =
       onMouseDown={(e) => e.preventDefault()} // focus kaybını engelle
       onClick={onFill}
     >
-      <div style={STYLES.avatar(entry.title?.charAt(0)?.toUpperCase() || '?')}>
+      <div style={STYLES.avatar()}>
         {entry.title?.charAt(0)?.toUpperCase() || '?'}
       </div>
       <div style={STYLES.entryInfo}>
@@ -238,7 +263,7 @@ const AegisOverlay = () => {
   const [activeRect, setActiveRect] = useState<DOMRect | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [filled, setFilled] = useState(false);
-  const [matchingPasswords, setMatchingPasswords] = useState<any[]>([]);
+  const [matchingPasswords, setMatchingPasswords] = useState<CredentialMatch[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -280,7 +305,7 @@ const AegisOverlay = () => {
           ? crypto.randomUUID()
           : `${Date.now()}-${Math.random()}`;
         const response = await browser.runtime.sendMessage({ type: 'GET_DOMAIN_CREDS', domain, requestNonce });
-        const matches = Array.isArray(response?.data) ? response.data : [];
+        const matches = Array.isArray(response?.data) ? response.data as CredentialMatch[] : [];
         if (!response?.success || matches.length === 0) { hide(); return; }
 
         inputRef.current = target;
@@ -392,6 +417,13 @@ export default defineContentScript({
 
     let sessionNonce = crypto.randomUUID();
 
+    try {
+      const languageResponse = await browser.runtime.sendMessage({ type: 'GET_UI_LANGUAGE' });
+      syncLanguageState(languageResponse?.language);
+    } catch {
+      syncLanguageState(typeof navigator !== 'undefined' ? navigator.language : 'en');
+    }
+
     window.addEventListener('message', (event) => {
       if (event.source !== window || !event.data) return;
       if (!TRUSTED_ORIGINS.includes(event.origin) && !event.origin.startsWith('chrome-extension://')) return;
@@ -415,10 +447,27 @@ export default defineContentScript({
         window.postMessage({ type: 'AEGIS_NONCE_UPDATE', nonce: sessionNonce }, event.origin);
         browser.runtime.sendMessage({ type: 'LOCK_VAULT' }).catch(() => {});
       }
+
+      if (event.data.type === 'AEGIS_UI_LANGUAGE') {
+        const normalizedLanguage = normalizeUiLanguage(event.data.language);
+        syncLanguageState(normalizedLanguage);
+        browser.runtime.sendMessage({ type: 'SET_UI_LANGUAGE', language: normalizedLanguage }).catch(() => {});
+      }
     });
 
     const currentOrigin = window.location.origin;
     if (TRUSTED_ORIGINS.includes(currentOrigin)) {
+      try {
+        const pageLanguage =
+          window.localStorage.getItem('aegis_language_i18n') ||
+          window.localStorage.getItem('i18nextLng') ||
+          '';
+        const normalizedLanguage = normalizeUiLanguage(pageLanguage);
+        syncLanguageState(normalizedLanguage);
+        await browser.runtime.sendMessage({ type: 'SET_UI_LANGUAGE', language: normalizedLanguage });
+      } catch {
+        // localStorage veya background bridge her ortamda erisilebilir olmayabilir
+      }
       // Aegis web app sayfalarında sadece güvenli mesaj köprüsü çalışsın.
       // Autofill overlay'i form inputlarını engellememesi için mount etmiyoruz.
       window.postMessage({ type: 'AEGIS_EXTENSION_READY', nonce: sessionNonce }, currentOrigin);

@@ -8,6 +8,8 @@
  * a local OPFS SQLite instance.
  */
 
+import { SecureAppSettings } from './SecureAppSettings';
+
 interface BreachDatabase {
   hashes: Map<string, number>; // Local Cache: hash -> breach count
   lastUpdated: number;
@@ -33,13 +35,11 @@ export class OfflineBreachChecker {
     // 2. Index into local SQLite
     // Şimdilik LocalStorage cache kullanarak basic offline simülasyonu yapıyoruz.
     try {
-      const cached = localStorage.getItem('aegis_hibp_cache');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed.hashes) {
-          this.db.hashes = new Map(Object.entries(parsed.hashes));
-          this.db.lastUpdated = parsed.lastUpdated || Date.now();
-        }
+      await SecureAppSettings.initialize();
+      const cached = SecureAppSettings.getHibpCache();
+      if (cached?.hashes) {
+        this.db.hashes = new Map(Object.entries(cached.hashes));
+        this.db.lastUpdated = cached.lastUpdated || Date.now();
       }
     } catch {
       console.warn('[HIBP] Failed to load local cache');
@@ -56,7 +56,7 @@ export class OfflineBreachChecker {
         hashes: Object.fromEntries(this.db.hashes),
         lastUpdated: this.db.lastUpdated
       };
-      localStorage.setItem('aegis_hibp_cache', JSON.stringify(data));
+      SecureAppSettings.setHibpCache(data);
     } catch { /* ignore quota limitations */ }
   }
 

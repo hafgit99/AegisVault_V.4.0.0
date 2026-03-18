@@ -1,5 +1,10 @@
+type SQLiteDatabaseHandle = {
+  exec: (sql: string) => void;
+  close: () => void;
+};
+
 export class SQLiteService {
-  private db: any = null;
+  private db: SQLiteDatabaseHandle | null = null;
   private isConnected: boolean = false;
 
   async init(masterKey: string): Promise<void> {
@@ -47,8 +52,8 @@ export class SQLiteService {
       this.isConnected = true;
       console.log("[Aegis WXT] SQLCipher engine successfully unlocked and connected via " + vfsName);
 
-    } catch (e) {
-      console.error("[Aegis WXT] Failed to open/unlock SQLite engine: ", e);
+    } catch (error) {
+      console.error("[Aegis WXT] Failed to open/unlock SQLite engine: ", error);
       throw new Error("INVALID_KEY_OR_DB_ERROR");
     }
   }
@@ -60,7 +65,7 @@ export class SQLiteService {
         return true;
       }
       return false;
-    } catch (e) {
+    } catch {
       return false;
     }
   }

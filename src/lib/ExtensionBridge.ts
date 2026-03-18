@@ -1,5 +1,50 @@
 import { vaultService } from "../vaultService";
 
+type ImportMetaEnvWithExtensionIds = ImportMetaEnv & {
+  VITE_AEGIS_ALLOWED_EXTENSION_IDS?: string;
+  VITE_AEGIS_EXTENSION_ID?: string;
+};
+
+type ExtensionBridgeMessage =
+  | { type: "SYNC_TOKEN"; token: string | null }
+  | { type: "ERROR"; error: string }
+  | { type: "CHALLENGE_RESPONSE"; nonce: string; expiresAt: number }
+  | {
+      type: "DECRYPTED_CREDS_RESPONSE";
+      data: Array<{ title: string; username: string; pass: string; website: string }>;
+    }
+  | { type: "VAULT_LOCKED" };
+
+type ExtensionPortRequest = {
+  type?: string;
+  token?: string | null;
+  nonce?: string;
+  ts?: number | string;
+  signature?: string;
+  domain?: string;
+};
+
+type ExtensionPort = {
+  postMessage: (message: ExtensionBridgeMessage) => void;
+  disconnect: () => void;
+  onMessage: {
+    addListener: (listener: (message: ExtensionPortRequest) => void | Promise<void>) => void;
+  };
+  onDisconnect: {
+    addListener: (listener: () => void) => void;
+  };
+};
+
+type ChromeRuntimeWithConnect = {
+  connect: (extensionId: string, options: { name: string }) => ExtensionPort;
+};
+
+type WindowWithChromeRuntime = Window & typeof globalThis & {
+  chrome?: {
+    runtime?: ChromeRuntimeWithConnect;
+  };
+};
+
 // 🔒 SECURITY HARDENED: Allowlist tabanlı extension ID doğrulama
 // Race condition saldırılarını önlemek için sabit allowlist kullanılır
 const DEFAULT_ALLOWED_EXTENSION_IDS = [
@@ -7,8 +52,8 @@ const DEFAULT_ALLOWED_EXTENSION_IDS = [
   'kjbdjkfijeflhhbnkjgkmccljifidpcc',
 ];
 
-const envAllowedIdsRaw = ((import.meta as any)?.env?.VITE_AEGIS_ALLOWED_EXTENSION_IDS as string | undefined) ||
-  ((import.meta as any)?.env?.VITE_AEGIS_EXTENSION_ID as string | undefined) ||
+const envAllowedIdsRaw = (import.meta.env as ImportMetaEnvWithExtensionIds).VITE_AEGIS_ALLOWED_EXTENSION_IDS ||
+  (import.meta.env as ImportMetaEnvWithExtensionIds).VITE_AEGIS_EXTENSION_ID ||
   '';
 
 const ALLOWED_EXTENSION_IDS = envAllowedIdsRaw
@@ -23,10 +68,14 @@ if (ALLOWED_EXTENSION_IDS.length === 0) {
 class ExtensionBridge {
   private sessionToken: string | null = null;
   private isListening: boolean = false;
-  private activePort: any = null; // Aktif eklenti port referansı
-  private trustedExtensionId: string | null = null; // 🔒 İlk bağlantıda kaydedilen güvenilir eklenti ID'si
+  private activePort: ExtensionPort | null = null; // Aktif eklenti port referansi
+  private trustedExtensionId: string | null = null; // Trusted extension ID
   private readonly challengeTtlMs = 20_000;
   private challengeNonceMap: Map<string, number> = new Map();
+
+  private getRuntime() {
+    return (window as WindowWithChromeRuntime).chrome?.runtime;
+  }
 
   private toHex(buffer: ArrayBuffer): string {
     const bytes = new Uint8Array(buffer);
@@ -137,9 +186,10 @@ class ExtensionBridge {
        console.log(`[PWA Bridge] ✅ Allowlist extension tespit edildi, bağlantı hazırlanıyor: ${incomingExtensionId.substring(0, 8)}...`);
        
        // Eklentiye güvenli port açalım
-       if ((window as any).chrome && (window as any).chrome.runtime) {
+       const runtime = this.getRuntime();
+       if (runtime) {
          try {
-           const port = (window as any).chrome.runtime.connect(incomingExtensionId, { name: "aegis-pwa-vault-port" });
+           const port = runtime.connect(incomingExtensionId, { name: "aegis-pwa-vault-port" });
            this.activePort = port;
            this.trustedExtensionId = incomingExtensionId; // İlk başarılı bağlantıda ID'yi kaydet
            
@@ -149,7 +199,7 @@ class ExtensionBridge {
            // handshake token paylaşımı
            port.postMessage({ type: "SYNC_TOKEN", token: this.sessionToken });
 
-           port.onMessage.addListener(async (msg: any) => {
+           port.onMessage.addListener(async (msg: ExtensionPortRequest) => {
              // Sadece Token yetkilendirmesi başarılı olan mesajları işle
               if (msg.token !== this.sessionToken) {
                 console.warn("[PWA Bridge] Yetkisiz eklenti isteği reddedildi (Token Uyumsuz).");
@@ -175,7 +225,7 @@ class ExtensionBridge {
                 const signature = typeof msg.signature === 'string' ? msg.signature : '';
                 const domain = typeof msg.domain === 'string' ? msg.domain : '';
 
-                const isSigned = await this.verifySignedRequest(msg.type, domain, nonce, ts, signature);
+               const isSigned = await this.verifySignedRequest(msg.type, domain, nonce, ts, signature);
                 if (!isSigned) {
                   port.postMessage({ type: "ERROR", error: "INVALID_CHALLENGE_SIGNATURE" });
                   return;
@@ -189,16 +239,16 @@ class ExtensionBridge {
 
                try {
                  const creds = await vaultService.getPasswords();
-                 const filteredCreds = msg.domain
-                   ? creds.filter((c) => this.isExactDomainMatch(c.website || '', msg.domain))
+                 const filteredCreds = domain
+                   ? creds.filter((c) => this.isExactDomainMatch(c.website || '', domain))
                    : [];
 
                  // Domain exact + tek kayıt + minimum alan
                  const selected = filteredCreds.slice(0, 1).map((c) => ({
                    title: c.title,
                    username: c.username,
-                   pass: c.pass,
-                   website: c.website,
+                   pass: c.pass || '',
+                   website: c.website || '',
                  }));
 
                  port.postMessage({ 
@@ -206,7 +256,7 @@ class ExtensionBridge {
                    data: selected 
                  });
                  console.log("[PWA Bridge] Kasa açık, veriler eklentiye iletildi.");
-               } catch (err) {
+               } catch {
                  port.postMessage({ type: "ERROR", error: "INTERNAL_ERROR" });
                }
              }
@@ -218,8 +268,8 @@ class ExtensionBridge {
               this.activePort = null;
               this.challengeNonceMap.clear();
             });
-         } catch(e) {
-           console.error("[PWA Bridge] Eklentiyle runtime (externally_connectable) üzerinden bağlantı kurulamadı.", e);
+         } catch (error) {
+           console.error("[PWA Bridge] Eklentiyle runtime (externally_connectable) üzerinden bağlantı kurulamadı.", error);
          }
        }
     }
@@ -242,7 +292,7 @@ class ExtensionBridge {
         // Eklentiye kasa kilitlendi bilgisini gönder
         this.activePort.postMessage({ type: "VAULT_LOCKED" });
         this.activePort.disconnect();
-      } catch (e) {
+      } catch {
         // Port zaten kapanmış olabilir
       }
       this.activePort = null;

@@ -7,7 +7,7 @@ vi.mock('sql.js', () => ({
 }));
 
 vi.mock('../src/lib/SQLiteOPFS', async (importOriginal) => {
-  const actual = await importOriginal<any>();
+  const actual = await importOriginal<typeof import('../src/lib/SQLiteOPFS')>();
   return {
     ...actual,
     isOPFSAvailable: () => false,

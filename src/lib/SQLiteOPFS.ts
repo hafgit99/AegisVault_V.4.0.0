@@ -10,11 +10,24 @@
  * Uygulama düzeyinde AES-GCM şifreleme korunur — SQLite yalnızca
  * şifrelenmiş alanları depolar, hiçbir plaintext diske yazılmaz.
  */
-// @ts-ignore — sql.js has no type declarations
+import type { VaultEntry } from "../vaultService";
+// @ts-expect-error sql.js type surface is incomplete in this setup
 import initSqlJs, { type Database } from "sql.js";
 
 // sql.js WASM dosyasını Vite asset olarak yükle
 import sqlWasmUrl from "sql.js/dist/sql-wasm.wasm?url";
+
+type SQLitePasswordRow = Partial<VaultEntry> & Record<string, unknown> & {
+  tags?: unknown;
+  attachments?: unknown;
+  search_index?: unknown;
+  deleted_at?: string;
+  deletedAt?: string;
+  iv?: Uint8Array | ArrayLike<number>;
+  encrypted_data?: Uint8Array | ArrayLike<number>;
+  id?: string;
+};
+type SQLiteColumnInfoRow = [number, string, string, number, unknown, number];
 
 // ─────────────────────────────────────────────────────────────────
 // OPFS Yardımcıları
@@ -43,7 +56,7 @@ async function writeOPFSFile(filename: string, data: Uint8Array): Promise<void> 
   const root = await navigator.storage.getDirectory();
   const fileHandle = await root.getFileHandle(filename, { create: true });
   const writable = await fileHandle.createWritable();
-  await writable.write(data as any);
+  await writable.write(new Blob([Uint8Array.from(data)]));
   await writable.close();
 }
 
@@ -62,15 +75,15 @@ export async function clearAllOPFSFiles(): Promise<void> {
   if (!isOPFSAvailable()) return;
   try {
     const root = await navigator.storage.getDirectory();
-    // @ts-ignore — handles is an async iterator in modern browsers
+    // @ts-expect-error entries async iterator is not modeled on all TS lib versions
     for await (const [name] of root.entries()) {
       if (name.endsWith(".sqlite")) {
         await root.removeEntry(name);
         console.log(`[OPFS] Silindi: ${name}`);
       }
     }
-  } catch (err) {
-    console.warn("[OPFS] Toplu silme hatası:", err);
+  } catch (error) {
+    console.warn("[OPFS] Toplu silme hatası:", error);
   }
 }
 
@@ -167,7 +180,9 @@ export class SQLiteOPFS {
 
     // Eski veritabanları için eksik sütunları ekle (şema migrasyonu)
     const tableInfo = this.db.exec("PRAGMA table_info(passwords)");
-    const existingCols = tableInfo.length > 0 ? tableInfo[0].values.map((r: any) => r[1] as string) : [];
+    const existingCols = tableInfo.length > 0
+      ? (tableInfo[0].values as SQLiteColumnInfoRow[]).map((row) => row[1])
+      : [];
     const requiredCols: [string, string][] = [
       ['encrypted_title', 'TEXT'],
       ['title_iv', 'TEXT'],
@@ -236,14 +251,14 @@ export class SQLiteOPFS {
   // ─── Passwords CRUD ───
 
   /** SQL değer formatla (sql.js db.run param binding çalışmadığı için inline kullanıyoruz) */
-  private sqlVal(v: any): string {
+  private sqlVal(v: unknown): string {
     if (v === null || v === undefined) return 'NULL';
     if (typeof v === 'number') return String(v);
     // String: tek tırnak escape
     return `'${String(v).replace(/'/g, "''")}'`;
   }
 
-  putPassword(entry: Record<string, any>): void {
+  putPassword(entry: VaultEntry | SQLitePasswordRow): void {
     if (!this.db) throw new Error("Database not open");
 
     const tags = JSON.stringify(entry.tags || []);
@@ -251,21 +266,21 @@ export class SQLiteOPFS {
 
      const sql = `INSERT OR REPLACE INTO passwords 
        (id, title, encrypted_title, title_iv, username, encrypted_username, username_iv, encrypted_password, iv, category, encrypted_category, category_iv, website, encrypted_website, website_iv, encrypted_tags, tags_iv, search_index, updated_at, strength, tags, pwned_count, attachments, deleted_at, totp_secret, totp_iv, totp_issuer, totp_algorithm, totp_digits, totp_period, encrypted_notes, notes_iv)
-       VALUES (${this.sqlVal(entry.id)}, ${this.sqlVal(entry.title || "Untitled")}, ${this.sqlVal(entry.encrypted_title || null)}, ${this.sqlVal(entry.title_iv || null)}, ${this.sqlVal(entry.username || "")}, ${this.sqlVal(entry.encrypted_username || null)}, ${this.sqlVal(entry.username_iv || null)}, ${this.sqlVal(entry.encrypted_password || null)}, ${this.sqlVal(entry.iv || null)}, ${this.sqlVal(entry.category || "General")}, ${this.sqlVal(entry.encrypted_category || null)}, ${this.sqlVal(entry.category_iv || null)}, ${this.sqlVal(entry.website || "")}, ${this.sqlVal(entry.encrypted_website || null)}, ${this.sqlVal(entry.website_iv || null)}, ${this.sqlVal(entry.encrypted_tags || null)}, ${this.sqlVal(entry.tags_iv || null)}, ${this.sqlVal(JSON.stringify(entry.search_index || []))}, ${this.sqlVal(entry.updated_at || new Date().toISOString())}, ${this.sqlVal(entry.strength || 0)}, ${this.sqlVal(tags)}, ${this.sqlVal(entry.pwned_count || 0)}, ${this.sqlVal(attachments)}, ${this.sqlVal(entry.deletedAt || entry.deleted_at || null)}, ${this.sqlVal(entry.totp_secret || null)}, ${this.sqlVal(entry.totp_iv || null)}, ${this.sqlVal(entry.totp_issuer || null)}, ${this.sqlVal(entry.totp_algorithm || null)}, ${this.sqlVal(entry.totp_digits || null)}, ${this.sqlVal(entry.totp_period || null)}, ${this.sqlVal(entry.encrypted_notes || null)}, ${this.sqlVal(entry.notes_iv || null)})`;
+       VALUES (${this.sqlVal(entry.id)}, ${this.sqlVal(entry.title || "Untitled")}, ${this.sqlVal(entry.encrypted_title || null)}, ${this.sqlVal(entry.title_iv || null)}, ${this.sqlVal(entry.username || "")}, ${this.sqlVal(entry.encrypted_username || null)}, ${this.sqlVal(entry.username_iv || null)}, ${this.sqlVal(entry.encrypted_password || null)}, ${this.sqlVal(entry.iv || null)}, ${this.sqlVal(entry.category || "General")}, ${this.sqlVal(entry.encrypted_category || null)}, ${this.sqlVal(entry.category_iv || null)}, ${this.sqlVal(entry.website || "")}, ${this.sqlVal(entry.encrypted_website || null)}, ${this.sqlVal(entry.website_iv || null)}, ${this.sqlVal(entry.encrypted_tags || null)}, ${this.sqlVal(entry.tags_iv || null)}, ${this.sqlVal(JSON.stringify(entry.search_index || []))}, ${this.sqlVal(entry.updated_at || new Date().toISOString())}, ${this.sqlVal(entry.strength || 0)}, ${this.sqlVal(tags)}, ${this.sqlVal(entry.pwned_count || 0)}, ${this.sqlVal(attachments)}, ${this.sqlVal(entry.deletedAt || ((entry as SQLitePasswordRow).deleted_at ?? null))}, ${this.sqlVal(entry.totp_secret || null)}, ${this.sqlVal(entry.totp_iv || null)}, ${this.sqlVal(entry.totp_issuer || null)}, ${this.sqlVal(entry.totp_algorithm || null)}, ${this.sqlVal(entry.totp_digits || null)}, ${this.sqlVal(entry.totp_period || null)}, ${this.sqlVal(entry.encrypted_notes || null)}, ${this.sqlVal(entry.notes_iv || null)})`;
     this.db.run(sql);
     this.schedulePersist();
   }
 
-  getAllPasswords(): Record<string, any>[] {
+  getAllPasswords(): SQLitePasswordRow[] {
     if (!this.db) return [];
     const stmt = this.db.prepare("SELECT * FROM passwords");
-    const results: Record<string, any>[] = [];
+    const results: SQLitePasswordRow[] = [];
     while (stmt.step()) {
-      const row = stmt.getAsObject() as any;
+      const row = stmt.getAsObject() as SQLitePasswordRow;
       // JSON alanlarını parse et
-      try { row.tags = JSON.parse(row.tags || "[]"); } catch { row.tags = []; }
-      try { row.attachments = JSON.parse(row.attachments || "[]"); } catch { row.attachments = []; }
-      try { row.search_index = JSON.parse(row.search_index || "[]"); } catch { row.search_index = []; }
+      try { row.tags = JSON.parse(String(row.tags || "[]")); } catch { row.tags = []; }
+      try { row.attachments = JSON.parse(String(row.attachments || "[]")); } catch { row.attachments = []; }
+      try { row.search_index = JSON.parse(String(row.search_index || "[]")); } catch { row.search_index = []; }
       // deleted_at → deletedAt dönüşümü (IDB uyumluluğu)
       if (row.deleted_at) row.deletedAt = row.deleted_at;
       results.push(row);
@@ -280,12 +295,14 @@ export class SQLiteOPFS {
     this.schedulePersist();
   }
 
-  updatePasswordField(id: number, field: string, value: any): void {
+  updatePasswordField(id: number, field: string, value: unknown): void {
     if (!this.db) throw new Error("Database not open");
     
     // Check if the column exists — old OPFS files may lack newer columns
     const tableInfo = this.db.exec("PRAGMA table_info(passwords)");
-    const columns = tableInfo.length > 0 ? tableInfo[0].values.map((row: any) => row[1]) : [];
+    const columns = tableInfo.length > 0
+      ? (tableInfo[0].values as SQLiteColumnInfoRow[]).map((row) => row[1])
+      : [];
     
     if (!columns.includes(field)) {
       console.warn(`[SQLiteOPFS] Migration: Adding missing column "${field}" to passwords table`);
@@ -309,7 +326,7 @@ export class SQLiteOPFS {
 
   // ─── Metadata CRUD ───
 
-  putMetadata(id: string, data: any): void {
+  putMetadata<T>(id: string, data: T): void {
     if (!this.db) throw new Error("Database not open");
     this.db.run(
       `INSERT OR REPLACE INTO vault_metadata (id, data) VALUES (${this.sqlVal(id)}, ${this.sqlVal(JSON.stringify(data))})`
@@ -323,16 +340,16 @@ export class SQLiteOPFS {
     this.schedulePersist();
   }
 
-  getMetadata(id: string): any | null {
+  getMetadata<T = Record<string, unknown>>(id: string): T | null {
     if (!this.db) return null;
     const sql = `SELECT data FROM vault_metadata WHERE id = ${this.sqlVal(id)}`;
     const resultArr = this.db.exec(sql);
     if (resultArr.length > 0 && resultArr[0].values.length > 0) {
       try {
         const val = resultArr[0].values[0][0];
-        return val ? JSON.parse(val as string) : null;
-      } catch (err) {
-        console.error("[SQLiteOPFS] Metadata parse error:", err);
+        return val ? JSON.parse(val as string) as T : null;
+      } catch (error) {
+        console.error("[SQLiteOPFS] Metadata parse error:", error);
         return null;
       }
     }
@@ -348,7 +365,7 @@ export class SQLiteOPFS {
     const stmt = this.db.prepare(
       "INSERT OR REPLACE INTO attachments (id, entry_id, iv, encrypted_data) VALUES (?, ?, ?, ?)"
     );
-    stmt.run([id, entryId, iv as any, new Uint8Array(encryptedData) as any]);
+    stmt.run([id, entryId, iv, new Uint8Array(encryptedData)]);
     stmt.free();
     this.schedulePersist();
   }
@@ -357,12 +374,12 @@ export class SQLiteOPFS {
     if (!this.db) return null;
     const stmt = this.db.prepare("SELECT iv, encrypted_data FROM attachments WHERE id = ?");
     stmt.bind([id]);
-    let result: any = null;
+    let result: { iv: Uint8Array; encrypted_data: Uint8Array } | null = null;
     if (stmt.step()) {
-      const row = stmt.getAsObject() as any;
+      const row = stmt.getAsObject() as SQLitePasswordRow;
       result = {
-        iv: new Uint8Array(row.iv),
-        encrypted_data: new Uint8Array(row.encrypted_data),
+        iv: new Uint8Array(row.iv as ArrayLike<number>),
+        encrypted_data: new Uint8Array(row.encrypted_data as ArrayLike<number>),
       };
     }
     stmt.free();

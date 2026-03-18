@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { vaultService } from "../vaultService";
-import { Shield, Lock, Download, KeyRound, ChevronRight, FileDown, Fingerprint, Globe, Eye, EyeOff, Plus, Trash2, ChevronDown } from "lucide-react";
+import { Shield, Lock, KeyRound, ChevronRight, FileDown, Fingerprint, Globe, Eye, EyeOff, Plus, Trash2, ChevronDown } from "lucide-react";
 import { authenticatePasskeyWithPRF, registerPasskeyWithPRF, encryptWithPRF, decryptWithPRF } from '../lib/webAuthn';
 import { toast } from 'react-toastify';
 import jsPDF from "jspdf";
@@ -8,8 +8,24 @@ import { useTranslation } from 'react-i18next';
 import { VaultManager, type VaultProfile } from '../lib/VaultManager';
 import { WipeConfirmationModal } from './WipeConfirmationModal';
 import { PasskeyBindingService } from '../lib/PasskeyBindingService';
+import { SecureAppSettings } from '../lib/SecureAppSettings';
 
 const PASSKEY_ROTATION_DAYS = 90;
+
+type WindowWithElectronLanguageBridge = Window & typeof globalThis & {
+  aegisElectron?: {
+    setUiLanguage?: (language: string) => Promise<unknown>;
+  };
+};
+
+const getSafePostMessageTarget = () => {
+  if (typeof window === 'undefined') return '*';
+  const origin = window.location.origin;
+  if (!origin || origin === 'null' || origin.startsWith('file:')) {
+    return '*';
+  }
+  return origin;
+};
 
 export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void }) {
   const { t, i18n } = useTranslation();
@@ -31,24 +47,27 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
   const [newVaultName, setNewVaultName] = useState("");
   const [showNewVaultInput, setShowNewVaultInput] = useState(false);
   const [showWipeModal, setShowWipeModal] = useState(false);
+  const syncLanguageToDesktop = (language: string) => {
+    void (window as WindowWithElectronLanguageBridge).aegisElectron?.setUiLanguage?.(language);
+  };
 
-  const getCurrentProfileForPasskey = () => {
+  const getCurrentProfileForPasskey = useCallback(() => {
     const profile = activeProfile || VaultManager.getActiveProfile();
     return {
       profileId: profile?.id || null,
       dbName: profile?.dbName || 'aegis_opfs_vault',
     };
-  };
+  }, [activeProfile]);
 
-  const clearPasskeyEnrollment = (notifyKey?: string) => {
+  const clearPasskeyEnrollment = useCallback((notifyKey?: string) => {
     const { profileId, dbName } = getCurrentProfileForPasskey();
     PasskeyBindingService.revokeBinding(profileId, dbName);
     setHasPasskey(false);
     setPasskeyNeedsRotation(false);
     if (notifyKey) toast.info(t(notifyKey));
-  };
+  }, [getCurrentProfileForPasskey, t]);
 
-  const refreshPasskeyState = () => {
+  const refreshPasskeyState = useCallback(() => {
     const { profileId, dbName } = getCurrentProfileForPasskey();
     const binding = PasskeyBindingService.getBinding(profileId, dbName);
     setHasPasskey(Boolean(binding));
@@ -63,26 +82,41 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
     } else {
       setPasskeyNeedsRotation(false);
     }
-  };
+  }, [getCurrentProfileForPasskey]);
 
+  // 1. Initial Mount: Initialize settings and load profiles
   useEffect(() => {
-    refreshPasskeyState();
+    void (async () => {
+      await SecureAppSettings.initialize();
+      await PasskeyBindingService.initialize();
+      refreshPasskeyState();
+    })();
 
-    // Vault profillerini yükle
-    const profiles = VaultManager.getProfiles();
-    setVaultProfiles(profiles);
-    setActiveProfile(VaultManager.getActiveProfile());
+    const initialProfiles = VaultManager.getProfiles();
+    setVaultProfiles(initialProfiles);
+    
+    const initialActive = VaultManager.getActiveProfile();
+    setActiveProfile(initialActive);
 
-    // Lock ekranında da son tema tercihini uygula
+    // Apply theme
     try {
-      const savedTheme = localStorage.getItem("aegis:theme-mode");
+      const savedTheme = SecureAppSettings.getThemeMode();
       if (savedTheme === "dark" || savedTheme === "light") {
         document.documentElement.setAttribute("data-theme", savedTheme);
       }
-    } catch {
-      // ignore storage errors
-    }
-  }, []);
+    } catch { /* ignore */ }
+  }, []); // Run only once on mount
+
+  // 2. Refresh passkey state when active profile changes
+  useEffect(() => {
+    refreshPasskeyState();
+  }, [activeProfile, refreshPasskeyState]);
+
+  useEffect(() => {
+    const activeLanguage = i18n.language.startsWith('tr') ? 'tr' : 'en';
+    syncLanguageToDesktop(activeLanguage);
+    window.postMessage({ type: 'AEGIS_UI_LANGUAGE', language: activeLanguage }, getSafePostMessageTarget());
+  }, [i18n.language]);
 
   const handleCreateVault = () => {
     if (!newVaultName.trim()) return;
@@ -199,14 +233,14 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
       clearInterval(interval);
       setProgress(100);
       setTimeout(() => onUnlock(activeSecret), 600);
-    } catch (err: any) {
-      console.error(err);
+    } catch (error: unknown) {
+      console.error(error);
       clearInterval(interval);
       setIsDecrypting(false);
       setProgress(0);
       setIsError(true);
       
-      const errMsg = err.message || "";
+      const errMsg = error instanceof Error ? error.message : "";
       if (errMsg === "NO_VAULT_FOUND") {
         toast.warning(t('noVaultFound', "No vault found. Please use 'Initialize' to create a new one."));
         setIsSetupMode(true);
@@ -235,9 +269,19 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
     if (hasPasskey) {
       // Authentication Flow
       const { profileId, dbName } = getCurrentProfileForPasskey();
+      await PasskeyBindingService.initialize();
       const binding = PasskeyBindingService.getBinding(profileId, dbName);
       if (!binding) {
         clearPasskeyEnrollment('passkeyBindingInvalid');
+        return;
+      }
+      const policyViolations = PasskeyBindingService.getPolicyViolations(binding);
+      if (policyViolations.includes('PASSKEY_REVOKED')) {
+        clearPasskeyEnrollment('passkeyRevokedPolicyBlocked');
+        return;
+      }
+      if (policyViolations.includes('PASSKEY_RECOVERY_EXPORT_REQUIRED')) {
+        toast.warning(t('passkeyRecoveryExportRequired'));
         return;
       }
 
@@ -318,6 +362,13 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
         if (passkeyRes) {
           const currentProfile = activeProfile || VaultManager.getActiveProfile();
           const currentDbName = currentProfile?.dbName || 'aegis_opfs_vault';
+          await PasskeyBindingService.initialize();
+          const existingBinding = PasskeyBindingService.getBinding(currentProfile?.id || null, currentDbName);
+          const existingViolations = PasskeyBindingService.getPolicyViolations(existingBinding);
+          if (existingViolations.includes('PASSKEY_RECOVERY_EXPORT_REQUIRED')) {
+            toast.warning(t('passkeyRecoveryExportRequired'));
+            return;
+          }
           const payload = JSON.stringify({
             password,
             secretKey: currentSecret,
@@ -357,18 +408,25 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
     toast.success(t('passkeyRevoked'));
   };
 
+  const handleLanguageToggle = () => {
+    const nextLanguage = i18n.language.startsWith('en') ? 'tr' : 'en';
+    i18n.changeLanguage(nextLanguage);
+    syncLanguageToDesktop(nextLanguage);
+    window.postMessage({ type: 'AEGIS_UI_LANGUAGE', language: nextLanguage }, getSafePostMessageTarget());
+  };
+
   return (
     <div className="vault-login-root relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-cloud-dancer)]">
       {/* Language Toggle */}
       <div className="absolute top-4 right-4 z-50">
-        <button 
-          type="button"
-          onClick={() => i18n.changeLanguage(i18n.language.startsWith('en') ? 'tr' : 'en')}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/40 border border-[var(--color-sage-green)]/20 hover:bg-white/80 transition-all text-xs font-bold shadow-sm backdrop-blur-md text-[var(--color-deep-navy)]"
-        >
-          <Globe className="w-3.5 h-3.5" />
-          {i18n.language.startsWith('en') ? 'EN' : 'TR'}
-        </button>
+          <button 
+            type="button"
+            onClick={handleLanguageToggle}
+            className="vault-login-control flex items-center gap-2 px-3 py-1.5 rounded-full transition-all text-xs font-bold shadow-sm backdrop-blur-md"
+          >
+            <Globe className="w-3.5 h-3.5" />
+            {i18n.language.startsWith('en') ? 'EN' : 'TR'}
+          </button>
       </div>
       {/* Aurora Background Effect */}
       <div className="absolute inset-0 z-0">
@@ -378,7 +436,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
 
       <div className={`vault-login-surface relative z-10 w-full max-w-md p-8 glass-card transition-all duration-300 ${isError ? 'animate-shake border-red-500/40 shadow-[0_0_40px_rgba(239,68,68,0.15)] bg-red-50/20' : ''}`}>
         <div className="flex flex-col items-center text-center">
-          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/60 shadow-inner p-1">
+          <div className="vault-login-logo-container mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-inner p-1">
             <img src="./icon.png" alt="Aegis Logo" className="w-full h-full object-contain drop-shadow-md" />
           </div>
           <h1 className="mb-2 text-3xl font-semibold tracking-tight text-[var(--color-deep-navy)]">{isSetupMode ? t('setupVault') : t('premiumVault')}</h1>
@@ -392,7 +450,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
               <button
                 type="button"
                 onClick={() => setShowVaultSelector(!showVaultSelector)}
-                className="vault-login-field w-full flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/50 border border-white/30 hover:bg-white/70 transition-all text-left group"
+                className="vault-login-field w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all text-left"
                 aria-expanded={showVaultSelector}
                 aria-haspopup="listbox"
               >
@@ -402,7 +460,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
               </button>
 
               {showVaultSelector && (
-                <div className="vault-login-dropdown absolute top-full left-0 right-0 mt-1 bg-white/90 backdrop-blur-xl border border-white/40 rounded-xl shadow-xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150" role="listbox">
+                <div className="vault-login-dropdown absolute top-full left-0 right-0 mt-1 rounded-xl shadow-xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150" role="listbox">
                   {vaultProfiles.map(profile => (
                     <div
                       key={profile.id}
@@ -431,7 +489,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
 
                   {/* New Vault */}
                   {showNewVaultInput ? (
-                    <div className="flex items-center gap-2 px-4 py-2.5 border-t border-gray-100">
+                    <div className="flex items-center gap-2 px-4 py-2.5 border-t vault-login-dropdown-divider">
                       <input
                         autoFocus
                         type="text"
@@ -447,7 +505,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
                     <button
                       type="button"
                       onClick={() => setShowNewVaultInput(true)}
-                      className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-bold text-[var(--color-sage-green)] hover:bg-[var(--color-sage-green)]/5 transition-colors border-t border-gray-100"
+                      className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-bold text-[var(--color-sage-green)] hover:bg-[var(--color-sage-green)]/5 transition-colors border-t vault-login-dropdown-divider"
                     >
                       <Plus className="w-3.5 h-3.5" /> {t("createNewVault", "Create New Vault")}
                     </button>
@@ -457,18 +515,18 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
             </div>
           )}
 
-          <div className="vault-login-tabs flex bg-white/40 p-1 rounded-xl w-full mb-2">
+          <div className="vault-login-tabs flex p-1 rounded-xl w-full mb-2">
             <button
               type="button"
               onClick={() => {setIsSetupMode(false); setShowSetupSecret(false); setSecretKey("");}}
-              className={`login-tab-btn flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${!isSetupMode ? 'vault-login-tab-active text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60 hover:bg-white/50'}`}
+              className={`login-tab-btn flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${!isSetupMode ? 'vault-login-tab-active text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60'}`}
             >
               {t('unlock')}
             </button>
             <button
               type="button"
               onClick={() => {setIsSetupMode(true); setPassword(""); setSecretKey(""); setShowSetupSecret(false);}}
-              className={`login-tab-btn flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${isSetupMode ? 'vault-login-tab-active text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60 hover:bg-white/50'}`}
+              className={`login-tab-btn flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${isSetupMode ? 'vault-login-tab-active text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60'}`}
             >
               {t('initialize')}
             </button>
@@ -488,7 +546,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
                   if (isError) setIsError(false);
                 }}
                 disabled={isDecrypting}
-                className={`vault-login-input w-full rounded-xl bg-white/50 py-3.5 pl-11 pr-12 text-sm font-medium outline-none border shadow-inner transition-all disabled:opacity-50 ${isError ? 'border-red-500/50 focus:border-red-500/80 bg-red-50/50 text-red-900' : 'border-white/20 focus:bg-white/80 focus:ring-2 focus:ring-[var(--color-sage-green)]/40'}`}
+                className={`vault-login-input w-full rounded-xl py-3.5 pl-11 pr-12 text-sm font-medium outline-none border shadow-inner transition-all disabled:opacity-50 ${isError ? 'border-red-500/50 focus:border-red-500/80 bg-red-50/20 text-red-900' : ''}`}
               />
               <button
                 type="button"
@@ -513,20 +571,20 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
                   if (isError) setIsError(false);
                 }}
                 disabled={isDecrypting}
-                className={`vault-login-input w-full rounded-xl bg-white/50 py-3.5 pl-11 pr-4 text-sm font-medium outline-none border shadow-inner transition-all disabled:opacity-50 pass-font ${isError ? 'border-red-500/50 focus:border-red-500/80 bg-red-50/50 text-red-900' : 'border-white/20 focus:bg-white/80 focus:ring-2 focus:ring-[var(--color-sage-green)]/40'}`}
+                className={`vault-login-input w-full rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium outline-none border shadow-inner transition-all disabled:opacity-50 pass-font ${isError ? 'border-red-500/50 focus:border-red-500/80 bg-red-50/20 text-red-900' : ''}`}
               />
             </div>
           )}
 
           {isSetupMode && showSetupSecret && !isDecrypting && (
             <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="vault-secret-panel bg-[var(--color-sage-green)]/10 border border-[var(--color-sage-green)]/30 rounded-xl p-4 flex flex-col items-center text-center">
+                <div className="vault-secret-panel rounded-xl p-4 flex flex-col items-center text-center">
                  <Shield className="w-8 h-8 text-[var(--color-sage-green)] mb-2" />
                  <h3 className="font-semibold text-sm mb-1 text-[var(--color-deep-navy)]">{t('twoSecretConcept')}</h3>
                  <p className="text-xs opacity-70 mb-3 px-2">
                    {t('twoSecretDesc')}
                  </p>
-                 <div className="vault-secret-box w-full bg-white/50 rounded-lg p-3 border border-white/40 shadow-inner break-all pass-font text-sm font-bold opacity-80 select-all tracking-wider text-[var(--color-deep-navy)]">
+                 <div className="vault-secret-box w-full rounded-lg p-3 shadow-inner break-all pass-font text-sm font-bold opacity-80 select-all tracking-wider">
                    {secretKey}
                  </div>
                </div>
@@ -534,7 +592,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
                 <button
                   type="button"
                   onClick={handleDownloadKit}
-                  className="vault-login-download-btn flex items-center justify-center gap-2 w-full rounded-xl bg-white/80 py-3.5 text-sm font-semibold tracking-wide text-[var(--color-deep-navy)] shadow-sm transition-all hover:bg-white active:scale-95 border border-[var(--color-sage-green)]/20 hover:border-[var(--color-sage-green)]/50"
+                  className="vault-login-download-btn flex items-center justify-center gap-2 w-full rounded-xl py-3.5 text-sm font-semibold tracking-wide shadow-sm transition-all active:scale-95"
                 >
                  <FileDown className="w-4 h-4 text-[var(--color-sage-green)]" />
                  {t('downloadKit')}
@@ -600,7 +658,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
               <button
                 type="button"
                 onClick={handlePasskeyAction}
-                className="vault-login-passkey relative mt-2 flex w-full items-center justify-center gap-3 rounded-xl py-3.5 text-sm font-semibold tracking-wide text-[var(--color-deep-navy)] transition-all bg-white/40 backdrop-blur-[20px] shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 hover:bg-white/60 hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] active:scale-95 group overflow-hidden"
+                className="vault-login-passkey relative mt-2 flex w-full items-center justify-center gap-3 rounded-xl py-3.5 text-sm font-semibold tracking-wide transition-all shadow-sm active:scale-95 group overflow-hidden"
               >
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none" />
                 <Fingerprint className="w-5 h-5 text-[var(--color-sage-green)] group-hover:scale-110 transition-transform" />

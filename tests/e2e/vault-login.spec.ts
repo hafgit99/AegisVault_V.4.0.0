@@ -121,7 +121,7 @@ test.describe('Vault Authentication', () => {
     await submitBtn.click();
 
     // Hata durumu: kırmızı border VEYA toast mesajı VEYA error div görünmeli
-    const errorState = page
+    const _errorState = page
       .locator('.animate-shake, .border-red-500, [class*="error"], .bg-red-500')
       .first();
     

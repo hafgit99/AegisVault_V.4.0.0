@@ -90,7 +90,7 @@ export function TOTPWidget({
     <div
       className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-300 ${
         isLow
-          ? "bg-red-500/10 border border-red-500/30 animate-pulse"
+          ? "totp-status-alert animate-pulse"
           : "bg-[var(--color-sage-green)]/10 border border-[var(--color-sage-green)]/30"
       }`}
     >
@@ -140,7 +140,7 @@ export function TOTPWidget({
         className={`ml-auto p-2 rounded-lg transition-all ${
           copied
             ? "bg-[var(--color-sage-green)] text-white scale-110"
-            : "bg-white/60 hover:bg-white hover:shadow-sm text-[var(--color-deep-navy)]/60"
+            : "totp-btn-secondary"
         }`}
         title={t("copyTOTP")}
       >

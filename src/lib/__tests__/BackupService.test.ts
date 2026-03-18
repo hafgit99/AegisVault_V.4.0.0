@@ -1,17 +1,24 @@
 import { BackupService } from '../BackupService';
 
 // Polyfill window.crypto for Vitest Node environment
+type TestWindow = Window &
+  typeof globalThis & {
+    crypto?: Crypto;
+    btoa?: (input: string) => string;
+    atob?: (input: string) => string;
+  };
+
 if (typeof window === 'undefined') {
-  global.window = {} as any;
+  global.window = {} as TestWindow;
 }
 if (!window.crypto) {
-  window.crypto = crypto as any;
+  (window as TestWindow).crypto = crypto;
 }
 if (!window.btoa) {
-  window.btoa = (str) => Buffer.from(str, 'binary').toString('base64');
+  (window as TestWindow).btoa = (str) => Buffer.from(str, 'binary').toString('base64');
 }
 if (!window.atob) {
-  window.atob = (str) => Buffer.from(str, 'base64').toString('binary');
+  (window as TestWindow).atob = (str) => Buffer.from(str, 'base64').toString('binary');
 }
 
 describe('BackupService (Security P1-1)', () => {

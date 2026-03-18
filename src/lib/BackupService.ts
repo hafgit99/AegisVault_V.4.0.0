@@ -42,7 +42,7 @@ export class BackupService {
     return btoa(binary);
   }
 
-  static async encryptBackup(data: any[], password: string): Promise<string> {
+  static async encryptBackup<T>(data: T[], password: string): Promise<string> {
     const salt = window.crypto.getRandomValues(new Uint8Array(16));
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     
@@ -68,7 +68,7 @@ export class BackupService {
     return JSON.stringify(backup, null, 2);
   }
 
-  static async decryptBackup(backupContent: string, password: string): Promise<any[]> {
+  static async decryptBackup<T>(backupContent: string, password: string): Promise<T[]> {
     let backup: BackupFormat;
     try {
       backup = JSON.parse(backupContent);
@@ -94,8 +94,8 @@ export class BackupService {
       );
       
       const dec = new TextDecoder();
-      return JSON.parse(dec.decode(plainBuffer));
-    } catch (err) {
+      return JSON.parse(dec.decode(plainBuffer)) as T[];
+    } catch {
       throw new Error("DECRYPTION_FAILED");
     }
   }

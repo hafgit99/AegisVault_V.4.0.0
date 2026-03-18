@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { BrowserQRCodeReader } from '@zxing/browser';
+import { BrowserQRCodeReader, type IScannerControls } from '@zxing/browser';
 
 // Format: aegis:session_id:current_index:total_chunks:data
 const CHUNK_PREFIX = 'aegis:';
@@ -26,7 +26,7 @@ export function useQRScanner(onComplete: (data: string) => void) {
   const [isScanning, setIsScanning] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
-  const controlsRef = useRef<any>(null);
+  const controlsRef = useRef<IScannerControls | null>(null);
   
   // State for chunk collection
   const chunksMap = useRef<Map<number, string>>(new Map());
@@ -59,7 +59,7 @@ export function useQRScanner(onComplete: (data: string) => void) {
           }
         }
       );
-    } catch (err: any) {
+    } catch {
       setError("Kamera erişimi reddedildi veya bulunamadı.");
       setIsScanning(false);
     }

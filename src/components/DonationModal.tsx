@@ -44,7 +44,7 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        className="donation-surface relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-[2.5rem] bg-[var(--color-cloud-dancer)] border border-white/20 shadow-2xl flex flex-col md:flex-row"
+        className="donation-surface relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-[2.5rem] border border-white/20 shadow-2xl flex flex-col md:flex-row"
       >
         {/* Left Side: Info */}
         <div className="w-full md:w-2/5 p-8 md:p-12 bg-gradient-to-br from-[var(--color-sage-green)] to-[#6b8268] text-white flex flex-col justify-between relative overflow-hidden">
@@ -68,7 +68,7 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         </div>
 
         {/* Right Side: Crypto Grid */}
-        <div className="donation-right-panel flex-1 p-8 md:p-10 overflow-y-auto custom-scrollbar bg-white/30 backdrop-blur-sm">
+        <div className="donation-right-panel flex-1 p-8 md:p-10 overflow-y-auto custom-scrollbar backdrop-blur-sm">
           <div className="flex justify-between items-center mb-8">
             <h3 className="text-xl font-bold text-[var(--color-deep-navy)]">{t('donateBtn')}</h3>
             <button onClick={onClose} className="p-2 rounded-full hover:bg-black/5 text-gray-500 transition-colors">
@@ -78,7 +78,7 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {cryptoAddresses.map((crypto, index) => (
-              <div key={crypto.symbol} className="donation-card group p-4 rounded-2xl bg-white border border-black/5 shadow-sm hover:shadow-md transition-all">
+              <div key={crypto.symbol} className="donation-card group p-4 rounded-2xl border shadow-sm hover:shadow-md transition-all">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div 
@@ -100,7 +100,7 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                   </button>
                 </div>
 
-                <div className="donation-address font-mono text-[10px] bg-black/5 p-2 rounded-lg break-all text-[var(--color-deep-navy)]/70 mb-3 opacity-100 transition-opacity">
+                <div className="donation-address font-mono text-[10px] p-2 rounded-lg break-all text-[var(--color-deep-navy)]/70 mb-3 opacity-100 transition-opacity">
                   {crypto.address}
                 </div>
 
@@ -139,7 +139,7 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
               <h4 className="text-3xl font-bold text-[var(--color-deep-navy)] mb-2">{cryptoAddresses[activeQr].name}</h4>
               <p className="opacity-50 text-sm mb-10 max-w-sm">{t('qrScanSupport')}</p>
 
-              <div className="p-6 bg-white border border-black/5 rounded-[2.5rem] shadow-2xl mb-10">
+              <div className="p-6 donation-card rounded-[2.5rem] shadow-2xl mb-10">
                 <QRCodeSVG value={cryptoAddresses[activeQr].address} size={220} level="H" />
               </div>
 

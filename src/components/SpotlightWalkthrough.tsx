@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Sparkles, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { SecureAppSettings } from '../lib/SecureAppSettings';
 
 export function SpotlightWalkthrough() {
   const [isOpen, setIsOpen] = useState(false);
@@ -7,15 +8,16 @@ export function SpotlightWalkthrough() {
 
   // Sadece ilk defa giren kullanıcıya göster (ya da demo amaçlı hep göster)
   useEffect(() => {
-    const hasSeenTour = localStorage.getItem('aegis_seen_tour');
-    if (!hasSeenTour) {
-      setTimeout(() => setIsOpen(true), 1500);
-    }
+    void SecureAppSettings.initialize().then(() => {
+      if (!SecureAppSettings.getHasSeenTour()) {
+        setTimeout(() => setIsOpen(true), 1500);
+      }
+    });
   }, []);
 
   const closeTour = () => {
     setIsOpen(false);
-    localStorage.setItem('aegis_seen_tour', 'true');
+    SecureAppSettings.setHasSeenTour(true);
   };
 
   const steps = [

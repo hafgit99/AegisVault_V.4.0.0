@@ -1,236 +1,513 @@
 # Aegis Vault Security Whitepaper
 
-Version: 1.0 (Draft)
-Date: 2026-03-12
+## 14. 17 Mart 2026 Secure Storage Guncellemesi
+
+Bu whitepaper'in onceki versiyonlarinda "yardimci hassas veriler icin ilave secure storage iyilestirmeleri" acik bir gelisim alani olarak not edilmisti. Son guncelleme ile bu alan buyuk olcude daraltilmistir.
+
+Merkezi ve IndexedDB tabanli secure settings modeli artik su veri siniflarini kapsamaktadir:
+
+- passkey binding, revoke listesi, policy ve event log
+- plaintext export policy
+- HIBP state ve local cache
+- auto-lock ve idle-timeout
+- view density
+- theme mode
+- onboarding/tour state
+- encryption profile preference
+- TOTP vault policy
+- QR sync consumed package ledger
+- vault profile listesi ve aktif vault secimi
+
+Bu degisiklik, uygulama tarafinda daginik `localStorage` kullanimlarini azaltmis ve istemci tarafli ayar/meta veri depolamasini daha denetlenebilir tek bir modele toplamIstir.
+
+### Guncel yorum
+
+Bu belge acisindan son durum:
+
+- secure storage gecisi: ileri seviyede
+- residual risk: azalmis ancak tamamen sifirlanmamis
+- kalan fark: yayin guveni, bagimsiz audit ve operasyonel kanit zinciri
+
+Dolayisiyla Aegis Vault'un bugunku sinifi:
+
+- teknik olarak guclu
+- mimari olarak olgunlasan
+- operasyonel olarak pre-audit
+
+bir guvenlik urunu olarak degerlendirilmelidir.
+
+## 15. Kurumsal Sert Mod Profilleri
+
+Son guncelleme ile Aegis istemci tarafinda merkezi politika profilleri destekler hale gelmistir. Bu profiller:
+
+- `standard`
+- `strict`
+- `maximum`
+
+olarak tanimlanir ve tekil ayar ogeleri yerine davranis siniflarini zorlar.
+
+Bu katman su alanlarda enforcement uygular:
+
+- plaintext CSV/JSON export izni
+- QR sync kullanilabilirligi
+- HIBP ag taramasi
+- auto-lock ust siniri
+
+Bu degisiklikle guvenlik tercihleri "kullanici isterse acar" modelinden cikmis, "urunun belirli bir guven profiline gore calismasi" modeline yaklasmistir.
+
+### 15.1 Guvenlik faydasi
+
+- riskli plaintext disa aktarma akislarini profille kapatabilme
+- QR sync gibi fiziksel transfer yuzeylerini yuksek guven modunda kapatabilme
+- HIBP ag baglantisini maksimum gizlilik modunda devre disi birakabilme
+- uzun oturumlarin otomatik kilit ile sinirlandirilmasi
+
+### 15.2 Operasyonel fayda
+
+- daha ongorulebilir son kullanici davranisi
+- audit oncesi daha net guvenlik profili tanimlama
+- ileride cihaz/tenant bazli yonetimli policy bundle tasima zemini
+
+## 17. Release Guven Zinciri
+
+Son guncelleme ile yayin artefact'lari icin hash tabanli minimum dogrulamanin ustune cikilmistir.
+
+Yeni zincir su halkalardan olusur:
+
+- `SHA-256` artifact hash dosyalari
+- release SBOM
+- release provenance bildirimi
+- release manifest
+- release trust-chain verification raporu
+
+Manifest imzasi build ortaminda opsiyonel anahtar ile desteklenir. Yani gelistirme ve yerel build ortaminda zincir unsigned calisabilir; uretim CI ortami ise ozel anahtar/certificate ile bu halkayi zorunlu hale getirebilir.
+
+Son guncelleme ile bu zorunluluk GitHub Actions release job'ina da baglanmistir:
+
+- `AEGIS_REQUIRE_SIGNED_RELEASE=1`
+- `AEGIS_RELEASE_SIGNING_PRIVATE_KEY`
+- `AEGIS_RELEASE_SIGNING_PUBLIC_KEY`
+
+CI ortami bu anahtar cifti olmadan release asamasina gecmez.
+
+### 17.1 Guvenlik faydasi
+
+- yayin dosyalarinin icerik dogrulamasi
+- build kaynagi ve artefact iliskisinin kayda alinmasi
+- tedarik zinciri (supply-chain) riskine karsi daha profesyonel bir dagitim modeli
+- kullaniciya ve denetciye daha acik yayin kaniti
+
+### 17.2 Kalan fark
+
+Tam "signed release" seviyesi icin su adim hala gereklidir:
+
+- ozel signing key veya kod imzalama sertifikasinin CI ortaminda zorunlu kullanimi
+- release manifest imzasinin her yayin icin dogrulanmasi
+- tercihen harici artifact attestation/provenance entegrasyonu
+
+## 16. Paketli Electron Fail-Safe ve Self-Diagnostic Katmani
+
+Son guncelleme ile packaged Electron calisma modeline operasyonel dayanıklilik katmani eklenmistir.
+
+Kapsanan senaryolar:
+
+- renderer `did-fail-load`
+- `render-process-gone`
+- pencere `unresponsive`
+- renderer fatal error / unhandled rejection
+- kok DOM mount noktasi bulunamama durumu
+
+Saglanan davranis:
+
+- beyaz ekran yerine cift dilli recovery/diagnostic ekranina dusus
+- startup ozeti, son olaylar ve temel kontrollerin gorunur olmasi
+- preload uzerinden `reload` ve `quit` aksiyonlari
+
+Bu katman dogrudan kriptografik bir kontrol degildir; ancak yuksek guven beklenen bir parola yoneticisinde operasyonel guvenilirlik ve tani kabiliyeti acisindan onemli bir savunma katmanidir.
+
+## 16. Import/Export Motoru ve Regresyon Seti
+
+Son guncelleme ile veri tasima katmani da sertlestirilmistir.
+
+Import tarafinda:
+
+- dayanikli CSV ayraci ve quoted field isleme
+- cok satirli alan destegi
+- Bitwarden ve 1Password format tespiti
+- JSON `items`, `entries` ve `login` varyantlarini esleme
+- atlanan satir, eksik kritik alan, zayif sifre ve olasi yinelenen kayit raporu
+
+eklenmistir.
+
+Export tarafinda:
+
+- CSV kacis kurallari tek bir servis altinda standartlastirilmis
+- JSON export semasi tek yerden uretilir hale getirilmis
+- UI katmani ham string birlestirme yerine servis tabanli export kullanir hale gelmistir
+
+Regresyon modeli:
+
+- import regression unit testleri
+- export escaping unit testleri
+- kalite kapisina bagli `test:import-export-regression` komutu
+- vendor fixture paketi: Bitwarden CSV/JSON, 1Password CSV, KeePassXC CSV, Proton Pass CSV
+
+Bu alan kriptografik olarak birincil risk sinifi degildir; ancak veri butunlugu, kullanici guveni ve migration emniyeti acisindan yuksek operasyonel oneme sahiptir.
+
+## 17. CI Quality Gate Sertlestirmesi
+
+Son guncelleme ile CI katmani yalnizca test calistiran bir boru hatti olmaktan cikarilmis, rapor ve artifact butunlugunu da zorunlu kilan bir denetim modeline alinmistir.
+
+Yeni guvenceler:
+
+- import/export regresyon seti quality gate'e dahil edildi
+- Chrome ve Firefox extension buildleri quality asamasinda uretilir hale geldi
+- native host manifest uretimi ve dogrulamasi quality asamasina eklendi
+- `ci:report` artik iki dilli quality summary uretir
+- `ci:enforce:quality` unit, import/export, security regression, e2e, extension build ve native host artifact varligini zorunlu kilir
+- `ci:enforce:release` release smoke ve artifact butunlugunu zorunlu kilir
+- workflow concurrency ile stale kosular iptal edilir
+
+Bu katman, audit yerine gecmez; ancak operasyonel guven ve surekli dogrulama disiplinini belirgin sekilde artirir.
+
+## 18. QR Sync Audit ve Revoke Gecmisi
+
+QR sync mekanizmasi artik sadece sifreli paket ve transfer kodundan ibaret degildir. Son guncelleme ile su operasyonel guven katmanlari eklenmistir:
+
+- aktif transfer ledgeri
+- transfer olusturma / tuketme / iptal / reddetme olaylari
+- receiver session olayi kaydi
+- manuel transfer iptali
+- iptal edilen sessionId icin import reddi
+
+Bu modelin kazanci:
+
+- kullanici ve denetci hangi transferin ne zaman uretildigini gorebilir
+- riskli veya yanlis paylasilmis bir transfer importtan once iptal edilebilir
+- "bir kez olusturulduktan sonra sadece sure dolmasi beklenir" modeli yerine yonetilebilir bir transfer yasam dongusu saglanir
+
+Bu alan, QR sync guven modelini sadece kriptografik degil, denetlenebilir ve geri alinabilir hale getirir.
+
+Version: 1.1
+Date: 2026-03-15
 Status: Public Technical Whitepaper (Pre-Audit)
 
-## 1) Executive Summary
+## 1. Executive Summary
 
-Aegis Vault, offline-first ve local-zero-knowledge prensibiyle tasarlanmis bir sifre yonetimi platformudur.
-Urun; web app (PWA), desktop runtime (Electron) ve browser extension bilesenlerinden olusan hibrit bir mimari kullanir.
+Aegis Vault, offline-first ve local-zero-knowledge prensibiyle tasarlanmis bir sifre yonetimi platformudur. Urun; PWA, Electron desktop runtime, native host ve browser extension bilesenlerinden olusan hibrit bir mimari kullanir.
 
 Bu whitepaper'in amaci:
 
-- Guvenlik mimarisini teknik ve denetlenebilir sekilde belgelemek
-- Tehdit modelini acikca tanimlamak
-- Uygulanan kontrolleri ve kalan riskleri netlestirmek
-- Harici audit surecine giris icin teknik zemin olusturmak
+- guvenlik mimarisini profesyonel ve denetlenebilir sekilde tanimlamak
+- trust boundary'leri acikca gostermek
+- desktop-extension-native host veri akislarini belgelemek
+- QR sync guven modelini resmilestirmek
+- kabul edilen ve kapatilan riskleri ayirmak
 
-Bu dokuman "pre-audit" asamasindadir. Harici audit tamamlandiginda bulgular ve remediation notlari yeni surumde yayinlanacaktir.
-
-## 2) Tasarim Prensipleri
+## 2. Tasarim Prensipleri
 
 ### 2.1 Offline-First
 
 Vault verisi varsayilan olarak kullanicinin cihazinda kalir. Cloud bagimliligi zorunlu degildir.
 
-### 2.2 Zero-Knowledge Yerel Model
+### 2.2 Local Zero-Knowledge
 
-Sifreli veri cozumleme anahtari kullanicinin cihazinda turetilir. Uygulama disi hizmetlere plaintext vault aktarimi tasarim hedefi degildir.
+Anahtar turetme ve plaintext cozumleme cihaz tarafinda yapilir. Plaintext vault'un uzak servislere aktarimi tasarim hedefi degildir.
 
 ### 2.3 Defense-in-Depth
 
-Tek bir kontrol yerine cok katmanli guvenlik uygulanir:
+Tek bir kontrole bagli kalinmaz:
 
-- KDF + simetrik sifreleme
-- Oturum kilitleme ve bellek temizligi
-- Bridge kimlik dogrulama sertlestirmeleri
-- Metadata sifreleme + private search index
-- Policy tabanli veri akis kisitlari (domain-scoped, profile-scoped)
+- Argon2id
+- AES-GCM
+- metadata encryption
+- native host HMAC dogrulamasi
+- domain-scoped veri akisi
+- pairing governance
+- QR transfer sifrelemesi
 
-### 2.4 Principle of Least Data
+### 2.4 Least Data / Least Privilege
 
-Ozellikle extension ve bridge tarafinda sadece gerekli minimum veri tasinmasi hedeflenir.
+Ozellikle extension ve desktop bridge tarafinda sadece gerekli minimum veri tasinmasi hedeflenir.
 
-## 3) Sistem Mimarisi
+## 3. Resmi Mimari Ozeti
 
 ### 3.1 Bilesenler
 
-- PWA UI + Vault Service (`src/vaultService.ts`)
-- Electron Main + preload + loopback sync server (`electron-main.cjs`)
-- Browser Extension background/content/popup (`aegis-wxt/src/entrypoints/*`)
-- Local storage katmanlari: IndexedDB + SQLite/OPFS
+- PWA UI
+- Vault Service / kriptografi mantigi
+- Electron main + preload
+- Native messaging host
+- Browser extension background / popup / content
+- IndexedDB / SQLite OPFS
+- QR sync export/import akisi
 
-### 3.2 Guven Sinirlari
+### 3.2 Trust Boundary Diyagrami
 
-1. Kullanici UI alani
-2. Vault sifreleme/sifre cozme alani
-3. Extension bridge alani
-4. Desktop loopback bridge alani
-5. Diskte at-rest depolama alani
+```text
+[User]
+  |
+  v
+[PWA UI]
+  | TB1
+  v
+[Vault Service / Crypto]
+  | TB2
+  v
+[Encrypted Storage]
 
-Her sinir bir saldiri yuzeyi olarak ele alinmistir ve ayrik kontrollerle sertlestirilmistir.
+[Extension]
+  | TB3
+  v
+[Native Host]
+  | TB4
+  v
+[Electron Main]
+  | TB5
+  v
+[Renderer domain credential provider]
+```
 
-## 4) Tehdit Modeli (Ozet)
+### 3.3 Desktop-Extension-Native Host Veri Akisi
 
-### 4.1 Korunan Varliklar
+```text
+Extension popup/content
+  -> background
+  -> native messaging
+  -> native host
+  -> HMAC-authenticated local IPC
+  -> Electron main
+  -> renderer domain credential request
+  -> Electron main
+  -> native host
+  -> extension background
+  -> popup/content
+```
 
-- Master credential dogrulama verisi
-- Vault entry plaintext alanlari (pass, notes, totp)
-- Metadata (title, username, website, category, tags, attachment meta)
-- Passkey baglama verisi
+Guvenlik kurallari:
 
-### 4.2 Varsayilan Tehdit Aktorleri
+- extension, desktop'a tam vault degil baglamsal talep gonderir
+- native host ile Electron arasi trafik HMAC proof ile korunur
+- Electron main process full plaintext vault cache tutmaz
+- pairing iliskisi artik cihaz izi ve kullanim izi ile kayit altina alinir
 
-- Cihaza erisen dusuk yetkili lokal prosesler
-- Kotu amacli browser extension/sekme icerigi
-- Yanlis origin/yanlis kimlik ile bridge erisim denemeleri
-- Storage dump alan saldirgan (at-rest okuma)
+## 4. Kriptografi Mimarisi
 
-### 4.3 Out-of-Scope (Bu Surum)
+### 4.1 Anahtar Turetme
 
-- Root/kernel-level tam sistem kompromizasyonu
-- Fiziksel donanim saldirilari (cold-boot, DMA vb.)
-- Kullanici tarafinda guvensiz endpoint davranislari (keylogger vb.)
+- master key derivation: Argon2id
+- auth verifier modeli: `argon2id-v1`
+- legacy PBKDF2 kayitlari acilis sirasinda migrate edilir
 
-## 5) Kriptografi Mimarisi
+### 4.2 Veri Sifreleme
 
-### 5.1 Anahtar Turetme
+- AES-GCM authenticated encryption
+- vault entry plaintext
+- notes
+- TOTP secret
+- attachment payload
 
-- Vault key derivation: Argon2id
-- Auth verifier modeli: `argon2id-v1` (legacy PBKDF2 -> otomatik migration)
+### 4.3 Metadata Sifreleme
 
-### 5.2 Veri Sifreleme
-
-- Simetrik sifreleme: AES-GCM
-- TOTP secret, secure notes ve attachment payload sifreli saklanir
-
-### 5.3 Metadata Sifreleme
-
-At-rest metadata plaintext yuzeyi azaltilmistir.
-Sifrelenen alanlar:
+At-rest plaintext yuzeyi azaltmak icin su alanlar sifrelenir:
 
 - title
 - username
 - website
 - category
 - tags
-- attachment metadata (name/type)
+- attachment metadata
 
-### 5.4 Private Search Index
+### 4.4 Private Search Index
 
-Arama performansi icin plaintext index yerine HMAC tabanli blind `search_index` modeli uygulanir.
+Arama ihtiyaci plaintext index yerine HMAC tabanli blind search index ile desteklenir.
 
-- Tokenlar normalize edilir
-- Token hashleri HMAC ile uretilir
-- Sorgu sirasi hash karsilastirma ile filtreleme yapilir
+## 5. Kimlik Dogrulama ve Oturum Guvenligi
 
-Bu model, metadata arama ihtiyacini korurken at-rest plaintext sizintisini azaltir.
+### 5.1 Master Credential
 
-## 6) Kimlik Dogrulama ve Oturum Guvenligi
+- kullanici master password ile kasa acar
+- verifier plaintext olarak saklanmaz
+- migration ile eski dogrulama modeli daha guclu profile cekilir
 
-### 6.1 Auth Credential Migration
+### 5.2 Passkey / Recovery
 
-Legacy PBKDF2 dogrulama kayitlari acilis sirasinda Argon2id modeline tasinir.
+- profile-scoped binding store
+- recovery export/import paketi
+- revoke ve yeniden baglama akislari
 
-### 6.2 Passkey / PRF
+## 6. Desktop-Extension Pairing Guven Modeli
 
-Passkey akisi profile-scoped olacak sekilde sertlestirilmistir:
+Bu alan urunun en kritik modernlesme basligidir.
 
-- Profil bazli binding store (`aegis_passkey_bindings_v1`)
-- Profile/db context dogrulamasi
-- Recovery export/import paketi (sifreli)
-- Revocation (profil bazli)
-- Rotation uyari modeli (yas bazli)
+### 6.1 Onceki Problem
 
-## 7) Bridge ve Extension Guvenligi
+Eski modelde desktop-extension guven bagini daha zayif bir yerel kanal temsil ediyordu. Bu, yerel kotu niyetli surec senaryolarinda yeterince guclu bir guven koku olusturmuyordu.
 
-### 7.1 PWA <-> Extension
+### 6.2 Bugunku Model
 
-- Challenge-response + HMAC imzali istek kontrati
-- Nonce/TTL kontrolleri
-- Session token bagli dogrulama
+Bugunki modelde:
 
-### 7.2 Extension <-> Electron Loopback
+- native messaging tercihli tasiyici
+- local IPC HMAC proof
+- per-extension pairing secret
+- allowlist
+- kullanici onayli pairing
+- cihaz parmak izi
+- installId
+- son kullanim zamani
+- son onay zamani
+- pairing history
+- riskli yeniden eslestirme uyarilari
 
-- Challenge endpoint (`/api/challenge`)
-- HMAC-SHA256 imzali istek dogrulama
-- Extension ID allowlist
-- Replay korumasi (tek kullanim nonce + TTL)
+bulunur.
 
-### 7.3 Veri Akis Kisitlari
+### 6.3 Pairing Karar Kaydi
 
-- Domain-scoped credential modeli
-- Legacy full-vault endpoint devre disi varsayimi
-- Domain disi fallback credential gosterimi kaldirildi
+Bir pairing kaydi artik sadece secret degildir. Su alanlari da tasir:
 
-## 8) TOTP Guvenlik Profili
+- `deviceFingerprint`
+- `installId`
+- `clientLabel`
+- `lastUsedAt`
+- `lastApprovedAt`
+- `currentRiskFlags`
+- `pairingHistory`
 
-TOTP saklama stratejisi policy tabanlidir:
+Bu, pairing modelini “teknik gizli anahtar” seviyesinden “yonetilebilir guven iliskisi” seviyesine tasir.
 
-- `same_vault`
-- `separate_2fa_vault`
+## 7. QR Sync Guven Modeli
 
-Ayrik mod aktifken ana kasada TOTP yazimi engellenir. Kullanici migration uyari ve yonlendirme aksiyonlari ile 2FA profiline gecirilir.
+### 7.1 Hedef
 
-## 9) Privacy ve Watchtower/HIBP
+Cihazlar arasi offline veri tasimayi plaintext JSON yerine kontrollu ve sifreli hale getirmek.
 
-- HIBP taramasi opt-in modele alinmistir
-- Network/API sorunlarinda sonuc "unknown" olarak islenir (false-safe varsayimi yerine)
-- Kullaniciya durum bildirimi UI seviyesinde verilir
+### 7.2 Veri Akisi
 
-## 10) Storage Hijyeni ve Wipe
+```text
+Selected entries
+  -> QRSyncService.createPackage
+  -> encrypted QR package
+  -> scan on target device
+  -> QRSyncService.parsePackage
+  -> import to vault
+```
 
-- localStorage audit/cleanup aksiyonu mevcuttur
-- Deep wipe akisi passkey/totp policy artefactlarini da temizler
+### 7.3 Uygulanan Kontroller
 
-## 11) Test Stratejisi
+- sifreli QR paket formati
+- transfer code
+- package expiry
+- one-time-use kaydi
+- opsiyonel ECDH receiver binding
 
-Uygulanan guvenlik degisiklikleri test regresyonlariyla desteklenir:
+### 7.4 Residual Risk
 
-- Extension security unit testleri
-- Vault cryptography/regression testleri
-- Metadata encryption + lazy migration testleri
-- Auth credential migration testleri
-- Search index benchmark suiti (`npm run bench:search-index`)
+- transfer code ayni anda aciga cikarsa operasyonel risk olusur
+- shoulder surfing veya ekran kaydi bu modelin disinda kabul edilen kullanici/endpoint riskidir
 
-## 12) Bilinen Riskler ve Limitler
+## 8. Yerel Kotu Niyetli Surec Senaryolari
 
-Bu surumde halen acik gelisim alanlari:
+### 8.1 Senaryo A: Pairing taklidi
 
-- TOTP migration wizard (tam otomasyon) heniz tamamlanmadi
-- Formal threat model dokumani (diagram + trust boundary matrix) ayri artefact olarak finalize edilmedi
-- Harici audit raporu henuz yok
-- Disclosure policy taslagi ayrica yayinlanacak
+Saldirgan, ayni cihazda calisan bir proses olarak desktop bridge'i kandirmaya calisir.
 
-## 13) Responsible Disclosure (Taslak)
+Bugunku savunmalar:
 
-Guvenlik acigi bildirimleri icin koordineli aciklama prensibi benimsenir:
+- native host kayit zinciri
+- HMAC proof
+- allowlist
+- riskli yeniden eslestirme tespiti
+- kullanici onayi
 
-- Ilk temas: private kanal
-- Triaging + yeniden uretim dogrulamasi
-- Severity siniflandirmasi
-- Duzeltme + yayin plani
-- Gerektiginde CVE/credit notu
+### 8.2 Senaryo B: Full vault replication
 
-Detayli politika bu whitepaper'a bagli ayri bir `SECURITY_DISCLOSURE.md` dokumani olarak yayinlanacaktir.
+Saldirgan, desktop ana surecinden tum plaintext kasayi cekmeye calisir.
 
-## 14) Harici Audit Hazirlik Kapsami
+Bugunku savunmalar:
 
-Audit kapsaminda hedeflenen alanlar:
+- full vault main-process replication kaldirildi
+- domain-scoped veri modeli
+- kisa omurlu renderer talebi
 
-- Kriptografi implementasyonu
-- Bridge/extension saldiri yuzeyi
-- Storage ve migration guvenligi
-- Electron security posture
-- Secret handling ve memory lifecycle
+### 8.3 Senaryo C: QR payload gozlemi
 
-Audit oncesi checklist:
+Saldirgan QR payload'i veya transfer code'u ayni fiziksel ortamda gozlemlemeye calisir.
 
-- Scope freeze
-- Reproducible test matrix
-- Security test evidence bundle
-- Known-issue register
+Bugunku savunmalar:
 
-## 15) Sonuc
+- sifreli paket
+- sure sonu
+- tek kullanim
+- opsiyonel receiver binding
 
-Aegis Vault, offline-first ve local-zero-knowledge hedefini modern bir guvenlik mimarisiyle birlestirmeyi amaclar.
-Bu whitepaper; mevcut kontrolleri, kalan riskleri ve audit yol haritasini teknik olarak belgeleyen temel referans dokumandir.
+## 9. Kapatilan, Azaltilan ve Kabul Edilen Riskler
 
-Bir sonraki surumde bu dokuman;
+### 9.1 Kapatilan Riskler
 
-- harici audit bulgulari,
-- remediation metrikleri,
-- ve formal threat model ekleri
+- QR sync plaintext JSON aktarimi
+- full-vault plaintext replication
+- native host icinde loopback bagimliligi
 
-ile guncellenecektir.
+### 9.2 Buyuk Olcude Azaltilan Riskler
+
+- local malicious process impersonation
+- desktop-extension eslestirmesinin sessizce yenilenmesi
+- baglamsiz veri akisiyla gereksiz credential yayilimi
+
+### 9.3 Bilincli Kabul Edilen Riskler
+
+- root/kernel seviyesinde cihaz kompromizasyonu
+- keylogger ve ekran kaydedici malware
+- zayif kullanici parolasi secimi
+- fiziksel omuz ustu gozlem
+
+## 10. Test ve Surekli Dogrulama
+
+Guvenlik mimarisi yalnizca belge ile degil surekli kanitla desteklenir:
+
+- unit CI raporu
+- security regression raporu
+- Playwright E2E raporu
+- native host bridge entegrasyon testi
+- QR sync regresyon testi
+- release smoke kontrolu
+- CI artifact summary
+
+Bu alan, urunun audit hazirliginda en hizli olgunlasan bolumlerden biridir.
+
+## 11. Bilinen Limitler
+
+- harici bagimsiz audit henuz tamamlanmadi
+- pairing modeli guclense de daha ileri platform-bound kimlik modeli icin yol vardir
+- yardimci hassas veri depolamada ilave secure storage iyilestirmeleri mumkundur
+
+## 12. Audit Hazirlik Konumu
+
+Aegis Vault bugun:
+
+- erken prototip degil
+- guclu pre-audit urun
+- ciddi rakip adayi
+
+olarak degerlendirilmelidir.
+
+Ancak 1Password, Bitwarden, KeePassXC ve Proton Pass ile ayni denetim ve operasyonel guven seviyesine tam yerlesebilmesi icin:
+
+- bagimsiz audit
+- daha da guclu pairing kaniti
+- surekli yesil test kaniti
+
+gereklidir.
+
+## 13. Sonuc
+
+Bu whitepaper, Aegis Vault'un guvenlik mimarisini artik yalnizca “hangi algoritmalar kullaniliyor” seviyesinde degil, “hangi sinirlar korunuyor, hangi veri nasil hareket ediyor ve hangi risk neden kabul edildi” seviyesinde belgelemektedir.
+
+Bir sonraki surumde bu belgeye:
+
+- audit bulgulari
+- remediation matrix
+- versioned risk register
+
+eklenecektir.

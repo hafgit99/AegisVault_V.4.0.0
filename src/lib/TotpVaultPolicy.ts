@@ -1,23 +1,20 @@
 import { VaultManager, type VaultProfile } from './VaultManager';
+import { SecureAppSettings } from './SecureAppSettings';
 
 export type TotpVaultMode = 'same_vault' | 'separate_2fa_vault';
-
-const TOTP_MODE_KEY = 'aegis_totp_vault_mode';
-const TOTP_VAULT_ID_KEY = 'aegis_totp_vault_id';
 const TOTP_VAULT_DEFAULT_NAME = 'Aegis 2FA Vault';
 
 export class TotpVaultPolicy {
   static getMode(): TotpVaultMode {
-    const saved = localStorage.getItem(TOTP_MODE_KEY);
-    return saved === 'separate_2fa_vault' ? 'separate_2fa_vault' : 'same_vault';
+    return SecureAppSettings.getTotpVaultMode();
   }
 
   static setMode(mode: TotpVaultMode): void {
-    localStorage.setItem(TOTP_MODE_KEY, mode);
+    SecureAppSettings.setTotpVaultMode(mode);
   }
 
   static getTwoFactorVaultId(): string | null {
-    return localStorage.getItem(TOTP_VAULT_ID_KEY);
+    return SecureAppSettings.getTotpVaultId();
   }
 
   static getTwoFactorVaultProfile(): VaultProfile | null {
@@ -32,12 +29,12 @@ export class TotpVaultPolicy {
 
     const existingByName = VaultManager.getProfiles().find((p) => p.name === TOTP_VAULT_DEFAULT_NAME);
     if (existingByName) {
-      localStorage.setItem(TOTP_VAULT_ID_KEY, existingByName.id);
+      SecureAppSettings.setTotpVaultId(existingByName.id);
       return existingByName;
     }
 
     const created = VaultManager.createProfile(TOTP_VAULT_DEFAULT_NAME);
-    localStorage.setItem(TOTP_VAULT_ID_KEY, created.id);
+    SecureAppSettings.setTotpVaultId(created.id);
     return created;
   }
 

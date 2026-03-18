@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 import { TotpVaultPolicy } from '../TotpVaultPolicy';
 import { VaultManager } from '../VaultManager';
+import { SecureAppSettings } from '../SecureAppSettings';
 
 describe('TotpVaultPolicy', () => {
   beforeEach(() => {
     localStorage.clear();
+    SecureAppSettings.resetForTests();
+    VaultManager.resetForTests();
     VaultManager.getProfiles();
   });
 

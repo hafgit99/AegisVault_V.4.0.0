@@ -7,21 +7,54 @@
  */
 const { contextBridge, ipcRenderer } = require('electron');
 
+let domainCredentialProvider = null;
+
+ipcRenderer.on('aegis-domain-credentials-request', async (_event, payload) => {
+  const requestId = typeof payload?.requestId === 'string' ? payload.requestId : '';
+  const domain = typeof payload?.domain === 'string' ? payload.domain : '';
+
+  if (!requestId) return;
+
+  try {
+    const rawResult = domainCredentialProvider ? await domainCredentialProvider(domain) : [];
+    const sanitized = Array.isArray(rawResult)
+      ? rawResult.slice(0, 5).map((item) => ({
+          title: String(item?.title || ''),
+          username: String(item?.username || ''),
+          pass: String(item?.pass || ''),
+          website: String(item?.website || ''),
+        }))
+      : [];
+
+    ipcRenderer.send('aegis-domain-credentials-response', {
+      requestId,
+      data: sanitized,
+    });
+  } catch {
+    ipcRenderer.send('aegis-domain-credentials-response', {
+      requestId,
+      data: [],
+    });
+  }
+});
+
 contextBridge.exposeInMainWorld('aegisElectron', {
   /**
-   * Kasa verilerini Electron ana sürecine gönderir (Extension sync için).
-   * @param {Array} passwords - Şifresi çözülmüş kasa verileri
+   * Electron ana sürecine yalnızca kasa durumunu gönderir.
    */
-  syncVault: (passwords) => {
-    // Sadece beklenen veri yapısını kabul et — Girdi validasyonu
-    if (!Array.isArray(passwords)) return;
-    const sanitized = passwords.map(p => ({
-      title: String(p.title || ''),
-      username: String(p.username || ''),
-      pass: String(p.pass || ''),
-      website: String(p.website || '')
-    }));
-    ipcRenderer.send('sync-vault', sanitized);
+  syncVaultState: (state) => {
+    const sanitizedState = {
+      unlocked: Boolean(state?.unlocked),
+      entryCount: Number.isFinite(Number(state?.entryCount)) ? Number(state.entryCount) : 0,
+    };
+    ipcRenderer.send('sync-vault-state', sanitizedState);
+  },
+
+  /**
+   * Main process ihtiyaç duyduğunda domain bazlı credential üreticisini çağırır.
+   */
+  setDomainCredentialProvider: (provider) => {
+    domainCredentialProvider = typeof provider === 'function' ? provider : null;
   },
 
   /**
@@ -30,6 +63,22 @@ contextBridge.exposeInMainWorld('aegisElectron', {
   lockVault: () => {
     ipcRenderer.send('lock-vault');
   },
+
+  listExtensionPairings: () => ipcRenderer.invoke('list-extension-pairings'),
+
+  removeExtensionPairing: (extensionId) =>
+    ipcRenderer.invoke('remove-extension-pairing', String(extensionId || '')),
+
+  setUiLanguage: (language) =>
+    ipcRenderer.invoke('set-ui-language', typeof language === 'string' ? language : 'en'),
+
+  getUiLanguage: () => ipcRenderer.invoke('get-ui-language'),
+
+  getStartupDiagnostics: () => ipcRenderer.invoke('get-startup-diagnostics'),
+
+  reloadApp: () => ipcRenderer.invoke('reload-app'),
+
+  quitApp: () => ipcRenderer.invoke('quit-app'),
 
   /**
    * Electron ortamında çalışıp çalışmadığını belirtir.

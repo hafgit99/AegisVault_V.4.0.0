@@ -6,7 +6,7 @@ describe('Extension Bridge Security (P0-2)', () => {
   let messageEvents: MessageEvent[] = [];
 
   // Simulate window message environment
-  const mockPostMessage = vi.fn((message, targetOrigin) => {
+  const mockPostMessage = vi.fn((message: unknown, targetOrigin: string | WindowPostMessageOptions | undefined) => {
     // Collect intercepted messages locally to verify logic
     messageEvents.push({ data: message, origin: targetOrigin } as MessageEvent);
   });
@@ -15,7 +15,7 @@ describe('Extension Bridge Security (P0-2)', () => {
     vi.clearAllMocks();
     messageEvents = [];
     if (typeof global.window !== 'undefined') {
-      global.window.postMessage = mockPostMessage as any;
+      global.window.postMessage = mockPostMessage as Window['postMessage'];
     }
   });
 
@@ -96,7 +96,7 @@ describe('Extension Bridge Allowlist Hardening (P1-1)', () => {
   });
 
   it('validates extension ID format (must be string)', () => {
-    const invalidId = 12345 as any;
+    const invalidId: unknown = 12345;
     const isValid = typeof invalidId === 'string';
 
     expect(isValid).toBe(false); // Non-string ID should be rejected
@@ -112,7 +112,7 @@ describe('Electron Sync Server Origin Validation (P0-1)', () => {
     'kjbdjkfijeflhhbnkjgkmccljifidpcc'
   ];
 
-  function isOriginAllowed(origin: string): boolean {
+  function isOriginAllowed(origin: string | null): boolean {
     if (!origin) return false;
 
     // Yerel Dashboard (PWA) originleri
@@ -157,7 +157,7 @@ describe('Electron Sync Server Origin Validation (P0-1)', () => {
   });
 
   it('rejects null origin', () => {
-    expect(isOriginAllowed(null as any)).toBe(false);
+    expect(isOriginAllowed(null)).toBe(false);
   });
 
   it('rejects empty origin', () => {

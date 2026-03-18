@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { SecureAppSettings } from '../lib/SecureAppSettings';
 
 export const IDLE_TIMEOUT_OPTIONS = [
   { label: 'Never ♾️', value: 0 },
@@ -12,17 +13,11 @@ export const IDLE_TIMEOUT_OPTIONS = [
 
 // Helper to interact with settings
 export function getIdleTimeout(): number {
-  try {
-    const val = localStorage.getItem('aegis_idle_timeout');
-    if (val !== null) {
-      return parseInt(val, 10);
-    }
-  } catch { /* ignore */ }
-  return 300; // default 5 min
+  return SecureAppSettings.getIdleTimeout();
 }
 
 export function setIdleTimeout(seconds: number) {
-  localStorage.setItem('aegis_idle_timeout', seconds.toString());
+  SecureAppSettings.setIdleTimeout(seconds);
 }
 
 /**
@@ -35,13 +30,18 @@ export function useAutoLock(onLock: () => void, isUnlocked: boolean) {
 
   // Listen to cross-tab settings updates
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'aegis_idle_timeout' && e.newValue !== null) {
+    void SecureAppSettings.initialize().then(() => {
+      setSetVersion((v) => v + 1);
+    });
+
+    const onSettingChanged = (event: Event) => {
+      const customEvent = event as CustomEvent<{ key?: string }>;
+      if (customEvent.detail?.key === 'idleTimeout') {
         setSetVersion((v) => v + 1);
       }
     };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    window.addEventListener('aegis-secure-setting-changed', onSettingChanged as EventListener);
+    return () => window.removeEventListener('aegis-secure-setting-changed', onSettingChanged as EventListener);
   }, []);
 
   // Sync internal state with external calls if necessary (though React's render cycle will handle component-level updates if we listen manually, but let's keep it simple)

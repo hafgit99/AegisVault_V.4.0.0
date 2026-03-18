@@ -73,8 +73,9 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
       for (const attachmentId of removedAttachmentIds) {
         try {
           await vaultService.deleteAttachment(newEntry.id as number, attachmentId);
-        } catch (err: any) {
-          toast.error(err?.message || t("deleteAttachmentFailed", "Failed to delete attachment"));
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : t("deleteAttachmentFailed", "Failed to delete attachment");
+          toast.error(message || t("deleteAttachmentFailed", "Failed to delete attachment"));
         }
       }
     }
@@ -103,11 +104,11 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
     <>
     <form
       onSubmit={handleSubmit}
-      className="entry-form-surface flex flex-col gap-4 p-5 rounded-2xl bg-white/70 border border-[var(--color-sage-green)]/30 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300"
+      className="entry-form-surface flex flex-col gap-4 p-5 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-4 duration-300"
     >
       <div className="flex justify-between items-center mb-1">
         <h3 className="font-semibold text-[var(--color-deep-navy)]">{t("createZeroKnowledgeEntry")}</h3>
-        <button type="button" onClick={onClose} className="p-1 rounded-md hover:bg-black/5 text-gray-500">
+        <button type="button" onClick={onClose} className="p-1 rounded-md entry-action-btn-muted">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -129,12 +130,12 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
           }
           value={newEntry.title}
           onChange={(e) => setNewEntry({ ...newEntry, title: e.target.value })}
-          className="entry-field col-span-1 rounded-lg bg-white/50 py-2.5 px-3 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner"
+          className="entry-field col-span-1 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
         />
         <select
           value={newEntry.category}
           onChange={(e) => setNewEntry({ ...newEntry, category: e.target.value })}
-          className="entry-field col-span-1 rounded-lg bg-white/50 py-2.5 px-3 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner"
+          className="entry-field col-span-1 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
         >
           <option value="General">{t("general")}</option>
           <option value="Cards">{t("cards")}</option>
@@ -157,7 +158,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
             }
             value={newEntry.username}
             onChange={(e) => setNewEntry({ ...newEntry, username: e.target.value })}
-            className="entry-field col-span-2 rounded-lg bg-white/50 py-2.5 px-3 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner"
+            className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
           />
         )}
 
@@ -175,7 +176,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
             }
             value={newEntry.website || ""}
             onChange={(e) => setNewEntry({ ...newEntry, website: e.target.value })}
-            className="entry-field col-span-2 rounded-lg bg-white/50 py-2.5 px-3 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner"
+            className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
           />
         )}
 
@@ -186,7 +187,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
               placeholder={t("placeholderNotePass")}
               value={newEntry.pass}
               onChange={(e) => setNewEntry({ ...newEntry, pass: e.target.value })}
-              className="entry-field w-full rounded-lg bg-white/50 py-2.5 px-3 h-32 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner resize-none overflow-y-auto"
+              className="entry-field w-full rounded-lg py-2.5 px-3 h-32 text-sm font-medium outline-none resize-none overflow-y-auto"
             />
           ) : (
             <input
@@ -203,7 +204,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
               }
               value={newEntry.pass}
               onChange={(e) => setNewEntry({ ...newEntry, pass: e.target.value })}
-              className="entry-field w-full rounded-lg bg-white/50 py-2.5 pl-3 pr-20 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 focus:ring-2 focus:ring-[var(--color-sage-green)]/20 shadow-inner pass-font"
+              className="entry-field w-full rounded-lg py-2.5 pl-3 pr-20 text-sm font-medium outline-none pass-font"
             />
           )}
 
@@ -212,7 +213,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
               <button
                 type="button"
                 onClick={generateSecurePassword}
-                className="p-1.5 rounded-md text-[var(--color-deep-navy)]/40 hover:text-[var(--color-sage-green)] hover:bg-white/80 transition-colors"
+                className="p-1.5 rounded-md entry-action-btn-muted transition-colors"
                 title={t("generateSecurePasswordBtn")}
               >
                 <Wand2 className="w-4 h-4" />
@@ -220,7 +221,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="p-1.5 rounded-md text-[var(--color-deep-navy)]/40 hover:text-[var(--color-sage-green)] hover:bg-white/80 transition-colors"
+                className="p-1.5 rounded-md entry-action-btn-muted transition-colors"
                 title={showPassword ? t("hidePassword") : t("showPassword")}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -245,14 +246,14 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                 setTagInput("");
               }
             }}
-            className="entry-field rounded-lg bg-white/50 py-2.5 px-3 text-sm font-medium outline-none border border-white/50 focus:border-[var(--color-sage-green)]/50 shadow-inner"
+            className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
           />
           {newEntry.tags && newEntry.tags.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-1">
               {newEntry.tags.map((tg) => (
                 <span
                   key={tg}
-                  className="bg-[var(--color-sage-green)]/10 border border-[var(--color-sage-green)]/30 text-[var(--color-sage-green)] px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1"
+                  className="entry-tag-chip px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1"
                 >
                   <Tag className="w-3 h-3" /> {tg}
                   <button
@@ -284,7 +285,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                 <KeyRound className="w-3.5 h-3.5" /> {t("addTOTP", "Add 2FA (TOTP)")}
               </button>
             ) : (
-              <div className="entry-totp-box bg-blue-50/50 border border-blue-200/30 rounded-xl p-3 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="entry-totp-box rounded-xl p-3 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] uppercase font-bold tracking-widest text-blue-600 flex items-center gap-1">
                     <KeyRound className="w-3 h-3" /> {t("totpSetup", "TOTP Setup")}
@@ -296,7 +297,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                       setTotpInput("");
                       setNewEntry(prev => ({ ...prev, totpSecret: "", totp_issuer: "", totp_algorithm: undefined, totp_digits: undefined, totp_period: undefined }));
                     }}
-                    className="p-1 rounded-md hover:bg-black/5 text-gray-400 hover:text-red-500"
+                    className="p-1 rounded-md entry-action-btn-muted"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -336,12 +337,12 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                         }));
                       }
                     }}
-                    className="entry-field flex-1 rounded-lg bg-white/70 py-2 px-3 text-sm font-mono outline-none border border-blue-200/50 focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20 shadow-inner"
+                    className="entry-field flex-1 rounded-lg py-2 px-3 text-sm font-mono outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowQRScanner(true)}
-                    className="px-3 py-2 rounded-lg bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)] hover:bg-[var(--color-sage-green)]/20 transition-all border border-[var(--color-sage-green)]/20 flex items-center gap-1.5 text-xs font-bold"
+                    className="px-3 py-2 rounded-lg totp-btn-secondary transition-all border border-[var(--color-sage-green)]/20 flex items-center gap-1.5 text-xs font-bold"
                     title={t("scanQR", "Scan QR Code")}
                   >
                     <Camera className="w-3.5 h-3.5" />
@@ -372,7 +373,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
               placeholder={t("secureNotesPlaceholder", "Add encrypted notes (optional)...")}
               value={newEntry.notes || ""}
               onChange={(e) => setNewEntry({ ...newEntry, notes: e.target.value })}
-              className="entry-field w-full rounded-lg bg-white/50 py-2.5 px-3 h-20 text-sm font-medium outline-none border border-white/50 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/20 shadow-inner resize-none overflow-y-auto"
+              className="entry-field w-full rounded-lg py-2.5 px-3 h-20 text-sm font-medium outline-none resize-none overflow-y-auto"
             />
           </div>
         )}
@@ -384,19 +385,19 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
               <input type="file" id="aegis-file-upload" multiple className="hidden" onChange={handleFileSelect} />
               <label
                 htmlFor="aegis-file-upload"
-                className="cursor-pointer text-xs flex items-center gap-1.5 px-3 py-1.5 bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)] hover:bg-[var(--color-sage-green)]/20 transition-all font-bold rounded-lg border border-[var(--color-sage-green)]/30"
+                className="cursor-pointer text-xs flex items-center gap-1.5 px-3 py-1.5 totp-btn-secondary transition-all font-bold rounded-lg border border-[var(--color-sage-green)]/30"
               >
                 <Paperclip className="w-3.5 h-3.5" /> {t("uploadAttachment")}
               </label>
             </div>
             {newAttachments.length > 0 && (
-              <div className="flex flex-col gap-1.5 mt-2 p-2 bg-yellow-50/50 rounded-lg border border-yellow-500/20 shadow-inner">
+              <div className="flex flex-col gap-1.5 mt-2 p-2 entry-notes-box rounded-lg shadow-inner">
                 <div className="text-[10px] uppercase font-bold text-yellow-600 tracking-wider flex items-center gap-1">
                   <Lock className="w-3 h-3" /> {t("encryptedQueue")}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {newAttachments.map((file, i) => (
-                    <div key={i} className="text-xs flex items-center gap-2 bg-white px-2 py-1 rounded shadow-sm border border-black/5">
+                    <div key={i} className="text-xs flex items-center gap-2 entry-attachment-item px-2 py-1 rounded shadow-sm">
                       <FileUp className="w-3 h-3 text-blue-500" />
                       <span className="font-medium text-gray-700 max-w-[120px] truncate">{file.name}</span>
                       <span className="text-gray-400 text-[10px]">{(file.size / (1024 * 1024)).toFixed(1)}MB</span>
@@ -414,13 +415,13 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
             )}
 
             {visibleExistingAttachments.length > 0 && (
-              <div className="flex flex-col gap-1.5 mt-2 p-2 bg-[var(--color-sage-green)]/5 rounded-lg border border-[var(--color-sage-green)]/20 shadow-inner">
+              <div className="flex flex-col gap-1.5 mt-2 p-2 entry-notes-box rounded-lg shadow-inner">
                 <div className="text-[10px] uppercase font-bold text-[var(--color-sage-green)] tracking-wider flex items-center gap-1">
                   <Paperclip className="w-3 h-3" /> {t("existingAttachments", "Existing Attachments")}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {visibleExistingAttachments.map((att) => (
-                    <div key={att.id} className="text-xs flex items-center gap-2 bg-white px-2 py-1 rounded shadow-sm border border-black/5">
+                    <div key={att.id} className="text-xs flex items-center gap-2 entry-attachment-item px-2 py-1 rounded shadow-sm">
                       <FileUp className="w-3 h-3 text-[var(--color-sage-green)]" />
                       <span className="font-medium text-gray-700 max-w-[120px] truncate">{att.name}</span>
                       <span className="text-gray-400 text-[10px]">{(att.size / (1024 * 1024)).toFixed(1)}MB</span>

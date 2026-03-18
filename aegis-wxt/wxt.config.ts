@@ -1,4 +1,15 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { defineConfig } from 'wxt';
+import dotenv from 'dotenv';
+
+// .env dosyasını yükle
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+
+const chromiumDevKeyPath = path.resolve(__dirname, 'dev', 'chromium-extension-key.txt');
+const chromiumDevKey = fs.existsSync(chromiumDevKeyPath)
+  ? fs.readFileSync(chromiumDevKeyPath, 'utf8').trim()
+  : '';
 
 export default defineConfig({
   srcDir: 'src',
@@ -8,7 +19,7 @@ export default defineConfig({
   manifest: (env) => ({
     name: "Aegis Vault",
     description: "Secure, zero-knowledge password manager and 2FA authenticator extension. Autofill passwords, sync securely across devices with end-to-end encryption in 2026.",
-    version: env.browser === 'firefox' ? "4.0.6" : "4.0.5",
+    version: env.browser === 'firefox' ? "4.0.7" : "4.0.5",
     
     icons: {
       "16": "icon-16.png",
@@ -33,7 +44,8 @@ export default defineConfig({
       "activeTab",
       "contextMenus",
       "alarms",
-      "scripting"
+      "scripting",
+      ...(env.browser === 'safari' ? [] : ["nativeMessaging"])
     ],
     host_permissions: [
       "<all_urls>"
@@ -61,7 +73,9 @@ export default defineConfig({
           }
         }
       }
-    } : {})
+    } : {
+      ...(chromiumDevKey ? { key: chromiumDevKey } : {})
+    })
   }),
   
   // WXT-Module for Safari Xcode Converter

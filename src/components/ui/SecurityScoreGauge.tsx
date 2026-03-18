@@ -13,7 +13,7 @@ export function SecurityScoreGauge({ score, onClick }: { score: number; onClick:
       aria-label={`Security score: ${score}`}
     >
       <svg className="w-full h-full -rotate-90 transform">
-        <circle cx="48" cy="48" r="45" fill="transparent" stroke="currentColor" strokeWidth="6" className="text-black/5" />
+        <circle cx="48" cy="48" r="45" fill="transparent" stroke="currentColor" strokeWidth="6" className="entry-divider" />
         <circle
           cx="48"
           cy="48"

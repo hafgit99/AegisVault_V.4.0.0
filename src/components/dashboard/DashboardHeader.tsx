@@ -1,7 +1,23 @@
+import { useEffect } from "react";
 import { Search, LogOut, Settings, Globe, Heart, Clock, Rows3, Rows2, Moon, Sun } from "lucide-react";
 import { SecurityScoreGauge } from "../ui/SecurityScoreGauge";
 import { useVault } from "../../contexts/VaultContext";
 import { useTranslation } from "react-i18next";
+
+type WindowWithElectronLanguageBridge = Window & typeof globalThis & {
+  aegisElectron?: {
+    setUiLanguage?: (language: string) => Promise<unknown>;
+  };
+};
+
+const getSafePostMessageTarget = () => {
+  if (typeof window === "undefined") return "*";
+  const origin = window.location.origin;
+  if (!origin || origin === "null" || origin.startsWith("file:")) {
+    return "*";
+  }
+  return origin;
+};
 
 interface DashboardHeaderProps {
   onSettingsOpen: () => void;
@@ -27,19 +43,35 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick, t
     timeLeft,
     timeoutSeconds,
   } = useVault();
+  const syncLanguageToDesktop = (language: string) => {
+    void (window as WindowWithElectronLanguageBridge).aegisElectron?.setUiLanguage?.(language);
+  };
+
+  const handleLanguageToggle = () => {
+    const nextLanguage = i18n.language.startsWith("en") ? "tr" : "en";
+    i18n.changeLanguage(nextLanguage);
+    syncLanguageToDesktop(nextLanguage);
+    window.postMessage({ type: "AEGIS_UI_LANGUAGE", language: nextLanguage }, getSafePostMessageTarget());
+  };
+
+  useEffect(() => {
+    const activeLanguage = i18n.language.startsWith("tr") ? "tr" : "en";
+    syncLanguageToDesktop(activeLanguage);
+    window.postMessage({ type: "AEGIS_UI_LANGUAGE", language: activeLanguage }, getSafePostMessageTarget());
+  }, [i18n.language]);
 
   return (
     <>
       {/* Clipboard Timeline Progress Tracker */}
       {timeLeft > 0 && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-white/70 backdrop-[10px] -webkit-backdrop-filter:blur(10px) border border-[var(--color-sage-green)]/30 px-5 py-2.5 rounded-full flex flex-col gap-1 z-50 shadow-lg animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 clipboard-monitor box-shadow rounded-full flex flex-col gap-1 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="flex items-center gap-2">
             <Clock className="w-3 h-3 text-[var(--color-sage-green)] animate-pulse" />
             <span className="text-[10px] uppercase tracking-widest font-bold text-[var(--color-deep-navy)]">
               {t("sanitizingClipboard")} {timeLeft}s
             </span>
           </div>
-          <div className="w-40 h-1 bg-black/5 rounded-full overflow-hidden">
+          <div className="w-40 h-1 entry-divider rounded-full overflow-hidden">
             <div
               className="h-full bg-[var(--color-sage-green)] transition-all duration-1000 ease-linear rounded-full"
               style={{ width: `${(timeLeft / timeoutSeconds) * 100}%` }}
@@ -70,8 +102,8 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick, t
         <div className="flex items-center gap-3 flex-wrap justify-end">
           <button
             type="button"
-            onClick={() => i18n.changeLanguage(i18n.language.startsWith("en") ? "tr" : "en")}
-            className="toolbar-control flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/40 border border-[var(--color-sage-green)]/20 hover:bg-white/80 transition-all text-xs font-bold shadow-sm backdrop-blur-md text-[var(--color-deep-navy)]"
+            onClick={handleLanguageToggle}
+            className="toolbar-control flex items-center gap-2 px-3 py-1.5 rounded-full transition-all text-xs font-bold shadow-sm"
             aria-label="Change language"
           >
             <Globe className="w-3.5 h-3.5" />
@@ -79,7 +111,7 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick, t
           </button>
           <button
             onClick={onDonationOpen}
-            className="toolbar-control p-2.5 rounded-full bg-white/40 border border-white/20 hover:bg-white/80 transition-all text-red-500 shadow-sm group relative"
+            className="toolbar-control p-2.5 rounded-full transition-all shadow-sm group relative"
             title={t("donateBtn")}
             aria-label="Donate"
           >
@@ -91,7 +123,7 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick, t
           </button>
           <button
             onClick={onSettingsOpen}
-            className="toolbar-control p-2.5 rounded-full bg-white/40 border border-white/20 hover:bg-white/80 transition-all text-[var(--color-sage-green)] shadow-sm"
+            className="toolbar-control p-2.5 rounded-full transition-all shadow-sm"
             aria-label="Settings"
           >
             <Settings className="w-5 h-5" />
@@ -99,7 +131,7 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick, t
           <button
             type="button"
             onClick={onThemeToggle}
-            className="toolbar-control flex items-center gap-2 px-3 py-2 rounded-full bg-white/40 border border-white/20 hover:bg-white/80 transition-all text-xs md:text-sm font-semibold text-[var(--color-deep-navy)] shadow-sm"
+            className="toolbar-control flex items-center gap-2 px-3 py-2 rounded-full transition-all text-xs md:text-sm font-semibold shadow-sm"
             aria-label={t("toggleTheme", "Toggle theme")}
             title={themeMode === "dark" ? t("switchToLight", "Switch to light mode") : t("switchToDark", "Switch to dark mode")}
           >
@@ -113,10 +145,10 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick, t
               placeholder={t("searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="toolbar-control pl-10 pr-4 py-2 w-48 md:w-64 text-sm bg-white/40 border border-white/20 rounded-full shadow-sm outline-none focus:bg-white/80 focus:ring-2 focus:ring-[var(--color-sage-green)]/40 transition-all font-medium"
+              className="toolbar-control pl-10 pr-4 py-2 w-48 md:w-64 text-sm rounded-full shadow-sm outline-none transition-all font-medium"
             />
           </div>
-          <div className="toolbar-chip-group flex items-center gap-1.5 bg-white/30 border border-white/20 rounded-full px-1.5 py-1">
+          <div className="toolbar-chip-group flex items-center gap-1.5 rounded-full px-1.5 py-1">
             <button
               type="button"
               onClick={() => setSearchScope("all")}
@@ -165,7 +197,7 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick, t
           <select
             value={sortOption}
             onChange={(e) => setSortOption(e.target.value as "updated_desc" | "updated_asc" | "title_asc" | "title_desc")}
-            className="toolbar-control px-3 py-2 rounded-full bg-white/40 border border-white/20 hover:bg-white/80 text-xs md:text-sm font-semibold text-[var(--color-deep-navy)] shadow-sm outline-none focus:ring-2 focus:ring-[var(--color-sage-green)]/40"
+            className="toolbar-control px-3 py-2 rounded-full transition-all text-xs md:text-sm font-semibold shadow-sm outline-none"
             aria-label={t("sortBy", "Sort by")}
           >
             <option value="updated_desc">{t("sortUpdatedDesc", "Date (Newest)")}</option>
@@ -176,7 +208,7 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick, t
           <button
             type="button"
             onClick={() => setViewDensity(viewDensity === "comfortable" ? "compact" : "comfortable")}
-            className="toolbar-control px-3 py-2 rounded-full bg-white/40 border border-white/20 hover:bg-white/80 text-xs md:text-sm font-semibold text-[var(--color-deep-navy)] shadow-sm outline-none focus:ring-2 focus:ring-[var(--color-sage-green)]/40 flex items-center gap-1.5"
+            className="toolbar-control px-3 py-2 rounded-full transition-all text-xs md:text-sm font-semibold shadow-sm outline-none flex items-center gap-1.5"
             title={t("viewDensityToggle", "Toggle card density")}
           >
             {viewDensity === "comfortable" ? <Rows3 className="w-4 h-4" /> : <Rows2 className="w-4 h-4" />}

@@ -1,8 +1,9 @@
 import { useState, useEffect, lazy, Suspense } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { vaultService, type VaultEntry } from "../vaultService";
+import type { VaultEntry } from "../vaultService";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
+import { SecureAppSettings } from "../lib/SecureAppSettings";
 
 // Context
 import { VaultProvider, useVault } from "../contexts/VaultContext";
@@ -33,7 +34,6 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
     visibleCount,
     setVisibleCount,
     handleEmptyTrash,
-    loadPasswords,
   } = useVault();
 
   // UI State (yalnızca bu bileşene ait)
@@ -42,25 +42,35 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
   const [showSettings, setShowSettings] = useState(false);
   const [showDonation, setShowDonation] = useState(false);
   const [showEmergencyKit, setShowEmergencyKit] = useState(false);
-  const [logoClicks, setLogoClicks] = useState(0);
+  const [, setLogoClicks] = useState(0);
   const [themeMode, setThemeMode] = useState<"light" | "dark">(() => {
-    try {
-      const saved = localStorage.getItem("aegis:theme-mode");
-      if (saved === "light" || saved === "dark") return saved;
-      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    } catch {
-      return "light";
-    }
+    const saved = SecureAppSettings.getThemeMode();
+    if (saved === "light" || saved === "dark") return saved;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", themeMode);
+    SecureAppSettings.setThemeMode(themeMode);
+    
+    // Sync theme with extension if possible
     try {
-      localStorage.setItem("aegis:theme-mode", themeMode);
+      if (typeof window !== 'undefined' && (window as any).browser?.runtime?.sendMessage) {
+        (window as any).browser.runtime.sendMessage({ type: "SET_THEME", theme: themeMode }).catch(() => {});
+      } else if (typeof window !== 'undefined' && (window as any).chrome?.runtime?.sendMessage) {
+        (window as any).chrome.runtime.sendMessage({ type: "SET_THEME", theme: themeMode }).catch(() => {});
+      }
     } catch {
-      // ignore storage errors
+      // ignore
     }
   }, [themeMode]);
+
+  useEffect(() => {
+    void SecureAppSettings.initialize().then(() => {
+      const storedTheme = SecureAppSettings.getThemeMode();
+      setThemeMode(storedTheme === "light" || storedTheme === "dark" ? storedTheme : "light");
+    });
+  }, []);
 
   const handleLogoClick = () => {
     setLogoClicks((prev) => {
@@ -149,7 +159,7 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
         headStyles: { fillColor: primaryColor, textColor: "#FFFFFF", fontStyle: "bold", halign: "left" },
         alternateRowStyles: { fillColor: "#F3F4F6" },
         columnStyles: { 0: { cellWidth: 30 }, 1: { fontStyle: "bold", cellWidth: 100 }, 2: { cellWidth: 130 }, 3: { font: "courier" } },
-        didDrawPage: function (data: any) {
+        didDrawPage: function (data: { settings: { margin: { left: number } } }) {
           const str = "Page " + doc.getCurrentPageInfo().pageNumber;
           doc.setFontSize(8);
           doc.text(str, data.settings.margin.left, doc.internal.pageSize.getHeight() - 20);

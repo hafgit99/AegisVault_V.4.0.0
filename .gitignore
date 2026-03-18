@@ -57,7 +57,22 @@ VISUAL_VIBE_AUDIT.md
 PUBLISHING_GUIDE.md
 CORRUPTION_REPORT.md
 HACKING_ATTEMPT_REPORT.md
+guvenlik/*_RAPORU_TR.md
+guvenlik/*_RAPOR_EKI_TR.md
+guvenlik/*_ANALIZ_RAPORU.md
+guvenlik/COMPETITOR_POSITIONING_ANALYSIS.md
+guvenlik/EXTERNAL_AUDIT_PREP.md
+guvenlik/SECURITY_AUDIT_READINESS_*.md
 
 # Playwright E2E Test Outputs
 playwright-report/
 test-results/
+test-*.txt
+test-output.json
+errors.txt
+tsc_errors.txt
+vitest.log
+coverage/
+ci-artifacts/
+[Cc]lean-output.json
+debug-out.txt

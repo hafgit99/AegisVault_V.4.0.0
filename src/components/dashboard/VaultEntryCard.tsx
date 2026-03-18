@@ -57,9 +57,9 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
   const compact = viewDensity === "compact";
 
   return (
-    <article className={`vault-entry-card grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] ${compact ? "gap-3 p-4" : "gap-4 p-5 md:p-6"} rounded-[1.25rem] bg-white/55 border border-white/35 hover:bg-white/85 hover:shadow-md transition-all relative group/item`}>
+    <article className={`vault-entry-card grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] ${compact ? "gap-3 p-4" : "gap-4 p-5 md:p-6"} rounded-[1.25rem] transition-all relative group/item`}>
       <div className="flex items-start gap-5 relative z-10 min-w-0">
-        <div className={`vault-entry-icon ${compact ? "w-12 h-12" : "w-14 h-14 md:w-16 md:h-16"} shrink-0 rounded-[1.25rem] bg-white flex items-center justify-center shadow-sm`}>
+        <div className={`vault-entry-icon ${compact ? "w-12 h-12" : "w-14 h-14 md:w-16 md:h-16"} shrink-0 rounded-[1.25rem] flex items-center justify-center shadow-sm`}>
           <div className={compact ? "scale-100" : "scale-110 md:scale-125"}>{getCategoryIcon(p.category)}</div>
         </div>
         <div className="flex-1 min-w-0 flex flex-col gap-3">
@@ -85,12 +85,12 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                 </span>
               )}
             </p>
-            <span className="hidden md:block w-1.5 h-1.5 rounded-full bg-black/20 shrink-0" />
+            <span className="hidden md:block w-1.5 h-1.5 rounded-full entry-divider shrink-0" />
             <div className="flex items-center gap-2">
               <span
                 className={`pass-font ${compact ? "text-xs" : "text-sm"} rounded-md select-all transition-all duration-300 ${
                   visiblePasswords.has(p.id)
-                    ? "password-reveal-chip bg-[rgba(255,255,255,0.6)] backdrop-blur-[20px] px-2 py-1 border border-white/50 text-[var(--color-deep-navy)]"
+                    ? "password-reveal-chip backdrop-blur-[20px] px-2 py-1"
                     : "tracking-[0.25em] opacity-40 select-none mt-1"
                 }`}
               >
@@ -98,7 +98,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
               </span>
               <button
                 onClick={() => toggleVisibility(p.id)}
-                className="p-1.5 rounded-md hover:bg-black/5 text-[var(--color-deep-navy)]/40 hover:text-[var(--color-sage-green)] transition-all"
+                className="p-1.5 rounded-md entry-action-btn-muted transition-all"
                 title={visiblePasswords.has(p.id) ? "Hide Password" : "Show liquid password"}
               >
                 {visiblePasswords.has(p.id) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -140,7 +140,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
 
             {/* Secure Notes Preview */}
             {p.notes && p.category !== "Notes" && (
-              <div className="flex items-start gap-1.5 bg-amber-50/50 border border-amber-200/30 px-2.5 py-1.5 rounded-lg">
+              <div className="vault-entry-notes-box flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg">
                 <FileText className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
                 <p className="text-[11px] text-[var(--color-deep-navy)]/70 line-clamp-2 leading-relaxed">
                   {p.notes.length > 120 ? p.notes.slice(0, 120) + "..." : p.notes}
@@ -155,7 +155,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
       <div className="flex items-stretch xl:items-start justify-end relative z-10 shrink-0 xl:min-w-[238px]">
         <div className="flex flex-col-reverse xl:flex-col justify-between gap-3 w-full xl:w-auto">
         <div className="hidden lg:flex items-center justify-end gap-3 xl:min-h-7">
-          <div className="w-24 h-2 bg-black/5 rounded-full overflow-hidden">
+          <div className="w-24 h-2 entry-divider rounded-full overflow-hidden">
             <div 
               className="h-full" 
               style={{ 
@@ -168,7 +168,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             className="text-[11px] uppercase font-bold opacity-80"
             style={{ color: (p.strength || 0) > 80 ? 'var(--color-sage-green)' : (p.strength || 0) > 40 ? '#f59e0b' : '#ef4444' }}
           >
-            {(p.strength || 0) > 80 ? t("strong") : (p.strength || 0) > 40 ? t("average", "ORANGE") : t("weak", "ZAYIF")}
+            {(p.strength || 0) > 80 ? t("strong") : (p.strength || 0) > 40 ? t("average") : t("weak")}
           </span>
         </div>
 
@@ -187,7 +187,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             )}
             <button
               onClick={() => onEdit({ ...p, pass: p.pass || "" })}
-              className="vault-action-btn p-3 rounded-xl bg-white/60 hover:bg-white hover:shadow-md transition-all flex items-center justify-center text-[var(--color-deep-navy)]/70 hover:text-[var(--color-sage-green)]"
+              className="vault-action-btn p-3 rounded-xl transition-all flex items-center justify-center"
               title={t("editEntry", "Edit")}
             >
               <Edit2 className="w-5 h-5" />
@@ -197,8 +197,8 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                 onClick={() => handleCopyItem(p.id, p.pass || "")}
                 className={`relative z-10 p-3 rounded-xl transition-all flex items-center justify-center ${
                   isCopied
-                    ? "bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)] shadow-[0_0_15px_rgba(135,159,132,0.4)] scale-110"
-                    : "vault-action-btn bg-white/60 hover:bg-white hover:shadow-md"
+                    ? "bg-[var(--color-sage-green)] text-[var(--color-deep-navy)] shadow-[0_0_15px_rgba(135,159,132,0.4)] scale-110"
+                    : "vault-action-btn hover:shadow-md"
                 }`}
               >
                 {isCopied ? (
@@ -246,7 +246,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             ) : (
               <button
                 onClick={() => handleDeleteEntry(p.id)}
-                className="vault-action-btn p-3 rounded-xl bg-white/60 hover:bg-red-500/10 hover:text-red-500 transition-all flex items-center justify-center text-[var(--color-deep-navy)]/70"
+                className="vault-action-btn p-3 rounded-xl hover:bg-red-500/10 hover:text-red-500 transition-all flex items-center justify-center"
                 title={t("moveToTrash")}
               >
                 <Trash2 className="w-5 h-5" />

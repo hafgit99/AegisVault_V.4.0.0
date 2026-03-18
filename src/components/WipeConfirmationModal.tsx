@@ -31,7 +31,7 @@ export function WipeConfirmationModal({ onConfirm, onCancel }: WipeConfirmationM
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300" role="dialog" aria-modal="true" aria-labelledby="wipe-modal-title">
       <div className="absolute inset-0 bg-red-900/60 backdrop-blur-sm" onClick={onCancel} aria-hidden="true" />
-      <GlowCard className="wipe-modal-surface bg-[rgba(255,255,255,0.95)] max-w-md w-full backdrop-blur-[40px] border border-red-500/40 rounded-[2rem] p-6 relative z-10 shadow-2xl animate-in zoom-in-95 duration-300 slide-in-from-bottom-5">
+      <GlowCard className="wipe-modal-surface max-w-md w-full border border-red-500/40 rounded-[2rem] p-6 relative z-10 shadow-2xl animate-in zoom-in-95 duration-300 slide-in-from-bottom-5">
         <button onClick={onCancel} className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 text-gray-500 transition-colors" aria-label={t("close", "Close")}>
           <X className="w-4 h-4" />
         </button>
@@ -41,12 +41,12 @@ export function WipeConfirmationModal({ onConfirm, onCancel }: WipeConfirmationM
             <AlertTriangle className="w-8 h-8 flex-shrink-0" />
           </div>
           <h2 id="wipe-modal-title" className="text-2xl font-black text-red-600 tracking-tight uppercase mb-2">Critical Warning</h2>
-          <p className="text-sm font-medium text-gray-700 leading-relaxed px-4">
+          <p className="text-sm font-medium wipe-modal-text leading-relaxed px-4">
              You are about to irreversibly delete <span className="font-bold text-red-600">every single password, note, and setting</span> in your active vault.
           </p>
         </div>
 
-        <div className="bg-red-50 p-4 rounded-xl border border-red-100 flex gap-3 text-red-800 text-xs mb-6 shadow-sm">
+        <div className="wipe-modal-warning-box p-4 rounded-xl border flex gap-3 text-xs mb-6 shadow-sm">
           <Trash2 className="w-4 h-4 shrink-0 mt-0.5 opacity-70" />
           <ul className="list-disc list-inside opacity-90 space-y-1">
             <li>All saved accounts & TOTP secrets</li>
@@ -57,8 +57,8 @@ export function WipeConfirmationModal({ onConfirm, onCancel }: WipeConfirmationM
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <label htmlFor="wipePhraseInput" className="text-xs font-bold text-gray-600 uppercase tracking-widest text-center">
-            Type <span className="text-red-600 bg-red-100 px-2 py-0.5 rounded select-all font-mono">{requiredPhrase}</span> to confirm
+          <label htmlFor="wipePhraseInput" className="text-xs font-bold wipe-modal-label uppercase tracking-widest text-center">
+            Type <span className="text-red-600 bg-red-100 dark:bg-red-900/40 px-2 py-0.5 rounded select-all font-mono">{requiredPhrase}</span> to confirm
           </label>
           <input
             id="wipePhraseInput"
@@ -67,7 +67,7 @@ export function WipeConfirmationModal({ onConfirm, onCancel }: WipeConfirmationM
             placeholder={requiredPhrase}
             value={typedPhrase}
             onChange={(e) => setTypedPhrase(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-red-200 bg-white shadow-inner focus:outline-none focus:ring-2 focus:ring-red-400/40 text-center font-bold text-red-600 tracking-wide uppercase transition-all"
+            className="w-full px-4 py-3 rounded-xl border outline-none wipe-modal-input shadow-inner focus:ring-2 focus:ring-red-400/40 text-center font-bold text-red-600 tracking-wide uppercase transition-all"
           />
           <button
             type="submit"
