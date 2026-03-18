@@ -6,7 +6,6 @@ import {
   bufferToHex, 
   hexToBuffer, 
   isLikelyHex as isLikelyHexUtil,
-  overwriteBuffer,
   generateRandomBytes 
 } from './lib/crypto-types';
 import { type EncryptionProfile, isFieldEncrypted } from './config/encryption-profiles';
@@ -292,7 +291,7 @@ export class VaultService {
     const encCategory = isFieldEncrypted(profile, 'category');
     const encTags = isFieldEncrypted(profile, 'tags');
 
-    const result: any = {
+    const result: Record<string, unknown> = {
       title: encTitle ? '' : (title || 'Untitled'),
       username: encUsername ? '' : (username || ''),
       website: encWebsite ? '' : (website || ''),
@@ -477,7 +476,7 @@ export class VaultService {
   // P1-3 Kritik aksiyonlarda re-auth
   async verifyCurrentPassword(password: string): Promise<boolean> {
     if (!this.opfsMockDb && !this.sqliteDb) return false;
-    let authMetadata: any = null;
+    let authMetadata: Record<string, unknown> | null = null;
     if (this.useSQLite && this.sqliteDb) {
       const sqlAuth = this.sqliteDb.getMetadata('auth_credential');
       if (sqlAuth && sqlAuth.credential) authMetadata = sqlAuth;
@@ -659,9 +658,9 @@ export class VaultService {
         // We MUST verify if the derived key actually works by trying to decrypt entries.
         // We use the raw entries store for a faster check.
         const allEntries = await this.opfsMockDb.getAll('passwords');
-        const dec = new TextDecoder();
+        const allEntries = await this.opfsMockDb.getAll('passwords');
         
-        const tryDecrypt = async (key: CryptoKey, entries: any[]) => {
+        const tryDecrypt = async (key: CryptoKey, entries: Record<string, unknown>[]) => {
 
           for (const entry of entries) {
             if (!entry.encrypted_password || !entry.iv) continue;
@@ -696,7 +695,7 @@ export class VaultService {
         // we try the old 'secret-128' default once.
         if (!verified) {
            const legacySecret = "secret-128";
-           const legacySaltB64 = await this.deriveMasterKey(password, legacySecret, currentSaltB64);
+           const _legacySaltB64 = await this.deriveMasterKey(password, legacySecret, currentSaltB64);
            verified = await tryDecrypt(this.aesKey!, allEntries);
            
            if (verified) {
@@ -827,6 +826,7 @@ export class VaultService {
           // 1. Parolaları migrate et
           const allIdbEntries: VaultEntry[] = await this.opfsMockDb.getAll('passwords');
           for (const entry of allIdbEntries) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             this.sqliteDb.putPassword(entry as any);
           }
           
@@ -961,7 +961,7 @@ export class VaultService {
     if (!this.aesKey || (!this.opfsMockDb && !this.sqliteDb)) return { duressPin: '', killPin: '' };
 
     try {
-      let record: any = null;
+      let record: Record<string, unknown> | null = null;
       if (this.useSQLite && this.sqliteDb) {
         record = this.sqliteDb.getMetadata('security_pins');
       } else if (this.opfsMockDb) {
@@ -1010,7 +1010,15 @@ export class VaultService {
       toBufferSource(enc.encode(entry.pass || ""))
     );
 
-    const metadataAtRest = await this.buildMetadataAtRest(
+    const {
+      title, username, category, website, tags,
+      encrypted_title, title_iv,
+      encrypted_username, username_iv,
+      encrypted_category, category_iv,
+      encrypted_website, website_iv,
+      encrypted_tags, tags_iv,
+      search_index
+    } = await this.buildMetadataAtRest(
       entry.title || 'Untitled',
       entry.username || '',
       entry.website || '',
@@ -1020,22 +1028,22 @@ export class VaultService {
 
     const newEntry: VaultEntry = {
       id: entry.id || Date.now(),
-      title: metadataAtRest.title,
-      username: metadataAtRest.username,
-      encrypted_title: (metadataAtRest as any).encrypted_title,
-      title_iv: (metadataAtRest as any).title_iv,
-      encrypted_username: (metadataAtRest as any).encrypted_username,
-      username_iv: (metadataAtRest as any).username_iv,
-      category: metadataAtRest.category,
-      encrypted_category: (metadataAtRest as any).encrypted_category,
-      category_iv: (metadataAtRest as any).category_iv,
-      website: metadataAtRest.website,
-      encrypted_website: (metadataAtRest as any).encrypted_website,
-      website_iv: (metadataAtRest as any).website_iv,
-      tags: metadataAtRest.tags,
-      encrypted_tags: (metadataAtRest as any).encrypted_tags,
-      tags_iv: (metadataAtRest as any).tags_iv,
-      search_index: (metadataAtRest as any).search_index || [],
+      title: title,
+      username: username,
+      encrypted_title: encrypted_title,
+      title_iv: title_iv,
+      encrypted_username: encrypted_username,
+      username_iv: username_iv,
+      category: category,
+      encrypted_category: encrypted_category,
+      category_iv: category_iv,
+      website: website,
+      encrypted_website: encrypted_website,
+      website_iv: website_iv,
+      tags: tags,
+      encrypted_tags: encrypted_tags,
+      tags_iv: tags_iv,
+      search_index: search_index || [],
       encrypted_password: bufferToHex(cipherBuffer),
       iv: bufferToHex(iv),
       updated_at: new Date().toISOString(),
@@ -1087,6 +1095,7 @@ export class VaultService {
 
     // Dual-write: SQLite (primary) + IDB (fallback)
     if (this.useSQLite && this.sqliteDb) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       this.sqliteDb.putPassword(newEntry as any);
     }
     if (this.opfsMockDb) {
@@ -1139,6 +1148,7 @@ export class VaultService {
       try {
         for (const migrated of migratedEntries) {
           if (this.useSQLite && this.sqliteDb) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             this.sqliteDb.putPassword(migrated as any);
           }
           if (this.opfsMockDb) {
@@ -1360,7 +1370,7 @@ export class VaultService {
         }
 
         return decrypted;
-      } catch (e) {
+      } catch {
         console.error("Decryption failed for entry", entry.id, " - Title:", entry.title || '[redacted]');
         return { ...entry, pass: "••DECRYPT_ERROR••" };
       }
@@ -1409,15 +1419,31 @@ export class VaultService {
         toBufferSource(enc.encode(entry.pass))
       );
 
+      const {
+        title, username, category, website, tags,
+        encrypted_title, title_iv,
+        encrypted_username, username_iv,
+        encrypted_category, category_iv,
+        encrypted_website, website_iv,
+        encrypted_tags, tags_iv,
+        search_index
+      } = await this.buildMetadataAtRest(
+        entry.title || 'Untitled',
+        entry.username || '',
+        entry.website || '',
+        entry.category || 'General',
+        entry.tags || []
+      );
+
       const updatedEntry: VaultEntry = {
         ...entry,
-        ...(await this.buildMetadataAtRest(
-          entry.title || 'Untitled',
-          entry.username || '',
-          entry.website || '',
-          entry.category || 'General',
-          entry.tags || []
-        )),
+        title, username, category, website, tags,
+        encrypted_title, title_iv,
+        encrypted_username, username_iv,
+        encrypted_category, category_iv,
+        encrypted_website, website_iv,
+        encrypted_tags, tags_iv,
+        search_index,
         attachments: await this.encryptAttachmentMetadataList(entry.attachments || []),
         encrypted_password: bufferToHex(cipherBuffer),
         iv: bufferToHex(iv),
@@ -1434,6 +1460,7 @@ export class VaultService {
       this.sqliteDb.putMetadata('main_salt', { id: 'main_salt', salt: newMainSaltB64, createdAt: new Date().toISOString(), version: 2 });
       this.sqliteDb.putMetadata('auth_credential', { id: 'auth_credential', credential: newCredential });
       for (const item of updatedEntriesToSave) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.sqliteDb.putPassword(item as any);
       }
       await this.sqliteDb.flushToOPFS();
@@ -1517,15 +1544,31 @@ export class VaultService {
         toBufferSource(enc.encode(entry.pass))
       );
 
+      const {
+        title, username, category, website, tags,
+        encrypted_title, title_iv,
+        encrypted_username, username_iv,
+        encrypted_category, category_iv,
+        encrypted_website, website_iv,
+        encrypted_tags, tags_iv,
+        search_index
+      } = await this.buildMetadataAtRest(
+        entry.title || 'Imported Entry',
+        entry.username || '',
+        entry.website || '',
+        entry.category || 'General',
+        entry.tags || []
+      );
+
       const newEntry: VaultEntry = {
         id: newId, 
-        ...(await this.buildMetadataAtRest(
-          entry.title || 'Imported Entry',
-          entry.username || '',
-          entry.website || '',
-          entry.category || 'General',
-          entry.tags || []
-        )),
+        title, username, category, website, tags,
+        encrypted_title, title_iv,
+        encrypted_username, username_iv,
+        encrypted_category, category_iv,
+        encrypted_website, website_iv,
+        encrypted_tags, tags_iv,
+        search_index,
         encrypted_password: bufferToHex(cipherBuffer),
         iv: bufferToHex(iv),
         updated_at: new Date().toISOString(),
@@ -1576,7 +1619,7 @@ export class VaultService {
     if (this.useSQLite && this.sqliteDb) {
       this.sqliteDb.putAttachment(attachmentId, entryId, iv, cipherBuffer);
       const existingEntries = this.sqliteDb.getAllPasswords();
-      const entry = existingEntries.find((e: any) => Number(e.id) === Number(entryId));
+      const entry = existingEntries.find((e: Record<string, unknown>) => Number(e.id) === Number(entryId));
       if (entry) {
         const attachments = Array.isArray(entry.attachments) ? entry.attachments : [];
         attachments.push(attachmentMetaAtRest);
@@ -1612,7 +1655,7 @@ export class VaultService {
   async getDecryptedAttachment(attachmentId: string): Promise<Blob> {
     if (!this.aesKey || (!this.opfsMockDb && !this.sqliteDb)) throw new Error("Vault not initialized");
 
-    let record: any = null;
+    let record: Record<string, unknown> | null = null;
 
     // Primary read path: SQLite
     if (this.useSQLite && this.sqliteDb) {
@@ -1647,9 +1690,9 @@ export class VaultService {
     if (this.useSQLite && this.sqliteDb) {
       this.sqliteDb.deleteAttachment(attachmentId);
       const existingEntries = this.sqliteDb.getAllPasswords();
-      const entry = existingEntries.find((e: any) => Number(e.id) === Number(entryId));
+      const entry = existingEntries.find((e: Record<string, unknown>) => Number(e.id) === Number(entryId));
       if (entry && Array.isArray(entry.attachments)) {
-        entry.attachments = entry.attachments.filter((a: any) => a.id !== attachmentId);
+        entry.attachments = entry.attachments.filter((a: Record<string, unknown>) => a.id !== attachmentId);
         this.sqliteDb.putPassword(entry);
       }
       await this.sqliteDb.flushToOPFS();
@@ -1663,7 +1706,7 @@ export class VaultService {
       const store = tx.objectStore('passwords');
       const entry = await store.get(entryId);
       if (entry && entry.attachments) {
-        entry.attachments = entry.attachments.filter((a: any) => a.id !== attachmentId);
+        entry.attachments = entry.attachments.filter((a: Record<string, unknown>) => a.id !== attachmentId);
         await store.put(entry);
       }
       await tx.done;

@@ -126,7 +126,7 @@ export default defineBackground({
       env.WXT_AEGIS_DESKTOP_PAIRING_SECRET ||
       ''
     ).trim();
-    const DESKTOP_SYNC_ENABLED = (
+    const _DESKTOP_SYNC_ENABLED = (
       env.WXT_AEGIS_ENABLE_DESKTOP_SYNC ||
       '0'
     ) === '1';

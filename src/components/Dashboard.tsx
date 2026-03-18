@@ -55,10 +55,14 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
     
     // Sync theme with extension if possible
     try {
-      if (typeof window !== 'undefined' && (window as any).browser?.runtime?.sendMessage) {
-        (window as any).browser.runtime.sendMessage({ type: "SET_THEME", theme: themeMode }).catch(() => {});
-      } else if (typeof window !== 'undefined' && (window as any).chrome?.runtime?.sendMessage) {
-        (window as any).chrome.runtime.sendMessage({ type: "SET_THEME", theme: themeMode }).catch(() => {});
+      const globalNav = window as unknown as { 
+        browser?: { runtime?: { sendMessage: (m: unknown) => Promise<void> } }; 
+        chrome?: { runtime?: { sendMessage: (m: unknown) => Promise<void> } }; 
+      };
+      if (typeof window !== 'undefined' && globalNav.browser?.runtime?.sendMessage) {
+        globalNav.browser.runtime.sendMessage({ type: "SET_THEME", theme: themeMode }).catch(() => {});
+      } else if (typeof window !== 'undefined' && globalNav.chrome?.runtime?.sendMessage) {
+        globalNav.chrome.runtime.sendMessage({ type: "SET_THEME", theme: themeMode }).catch(() => {});
       }
     } catch {
       // ignore
