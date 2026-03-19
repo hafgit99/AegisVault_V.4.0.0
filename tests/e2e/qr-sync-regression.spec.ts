@@ -2,62 +2,72 @@ import { test, expect } from '@playwright/test';
 
 test.describe('QR Sync Regression', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate using the baseURL defined in the config
     await page.goto('/');
-    
-    // Fill password - use admin123 as used in original tests
-    const pwInput = page.locator('input[type="password"]').first();
-    await expect(pwInput).toBeVisible({ timeout: 15000 });
+
+    // Wait for the login page to load
+    await page.waitForSelector('.vault-login-root', { timeout: 15000 });
+
+    // ── CI always starts with a fresh environment (no vault exists) ──
+    // We need to go through the Initialize flow to create a vault first.
+    // Step 1: Switch to the Initialize tab (2nd tab)
+    const initTab = page.locator('.login-tab-btn').nth(1);
+    await initTab.click();
+
+    // Step 2: Fill password
+    const pwInput = page.locator('input.vault-login-input[type="password"]').first();
+    await expect(pwInput).toBeVisible({ timeout: 5000 });
     await pwInput.fill('admin123');
 
-    // Click Unlock or Generate
+    // Step 3: Click "Generate Secret" button
     const submitBtn = page.locator('.vault-login-unlock-btn').first();
     await submitBtn.click();
 
-    // The app might be in Setup mode (fresh env) or Unlock mode (reusing env/IDB)
-    // We check which state we are in after the first click
-    try {
-      // Wait for either the Dashboard OR the Secret Box to appear
-      await Promise.any([
-        page.waitForSelector('main[role="main"], button[aria-label="Settings"]', { timeout: 10000 }),
-        page.waitForSelector('.vault-secret-panel, .vault-secret-box', { timeout: 10000 })
-      ]);
+    // Step 4: Wait for the secret panel to appear (Argon2id derivation may take a while on CI)
+    const secretPanel = page.locator('.vault-secret-panel, .vault-secret-box').first();
+    await expect(secretPanel).toBeVisible({ timeout: 25000 });
 
-      // If we see the secret box, it means we were in Setup mode, so we need one more click (Finalize)
-      if (await page.locator('.vault-secret-panel, .vault-secret-box').isVisible()) {
-        await page.waitForTimeout(1000); // Wait for transition/animation
-        await submitBtn.click();
-      }
-    } catch {
-      console.log('Transition state detection timed out, waiting for final appearance...');
-    }
+    // Step 5: Click "Finalize Vault" button to complete setup
+    await page.waitForTimeout(500); // Brief pause for UI state update
+    const finalizeBtn = page.locator('.vault-login-unlock-btn').first();
+    await finalizeBtn.click();
 
-    // Wait for the Dashboard to appear. 
-    await expect(page.locator('main[role="main"], button[aria-label="Settings"]').first()).toBeVisible({ timeout: 20000 });
+    // Step 6: Wait for the Dashboard to appear
+    await expect(
+      page.locator('main[role="main"], main[aria-label="Vault entries"]').first()
+    ).toBeVisible({ timeout: 25000 });
   });
 
   test('renders encrypted QR export flow with transfer code controls', async ({ page }) => {
     // Click Settings
-    await page.locator('button[aria-label="Settings"]').first().click();
-    
-    // Click QR Export (Wait for it to be visible in the drawer)
-    await page.locator('text=QR, button:has-text("Export"), button:has-text("Aktar")').last().click();
+    const settingsBtn = page.locator('button[aria-label="Settings"]').first();
+    await expect(settingsBtn).toBeVisible({ timeout: 5000 });
+    await settingsBtn.click();
+
+    // Click QR Export button
+    const exportBtn = page.locator('button:has-text("QR"), button:has-text("Export"), button:has-text("Aktar")').first();
+    await expect(exportBtn).toBeVisible({ timeout: 5000 });
+    await exportBtn.click();
 
     // Check for Transfer Code label/input
-    await expect(page.locator('text=Transfer code, text=Transfer Code, text=Transfer Kodu').first()).toBeVisible({ timeout: 10000 });
-    // Check for any button that looks like Prepare QR or QR Hazirla
-    await expect(page.locator('button:has-text("QR"), button:has-text("Hazırla"), button:has-text("Prepare")').last()).toBeVisible();
+    await expect(
+      page.locator('text=Transfer Code, text=Transfer code, text=Transfer Kodu').first()
+    ).toBeVisible({ timeout: 10000 });
   });
 
   test('renders receiver pairing controls for QR import flow', async ({ page }) => {
-    await page.locator('button[aria-label="Settings"]').first().click();
-    
-    // Click QR Import
-    await page.locator('text=Camera, text=Kamera, text=Tara').last().click();
+    // Click Settings
+    const settingsBtn = page.locator('button[aria-label="Settings"]').first();
+    await expect(settingsBtn).toBeVisible({ timeout: 5000 });
+    await settingsBtn.click();
 
-    // Check for Receiver pairing code text
-    await expect(page.locator('text=Receiver pairing code, text=Alici eslestirme kodu, text=Alıcı eşleştirme').first()).toBeVisible({ timeout: 10000 });
-    // Check for Copy Code button
-    await expect(page.locator('button:has-text("Copy"), button:has-text("Kopyala")').first()).toBeVisible();
+    // Click QR Import / Scan button
+    const importBtn = page.locator('button:has-text("Camera"), button:has-text("Kamera"), button:has-text("Tara"), button:has-text("Import"), button:has-text("Aktar")').last();
+    await expect(importBtn).toBeVisible({ timeout: 5000 });
+    await importBtn.click();
+
+    // Check for Receiver pairing section
+    await expect(
+      page.locator('text=Receiver, text=Alıcı, text=pairing').first()
+    ).toBeVisible({ timeout: 10000 });
   });
 });

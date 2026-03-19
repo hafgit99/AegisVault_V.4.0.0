@@ -683,13 +683,17 @@ export default defineBackground({
       // Loopback HTTP'nden pairing secret'i iste
       let extensionId = EXTENSION_ID;
 
-      // Dev modda extension ID boş olabilir, o zaman varsayılan dev ID kullan
+      // Ensure we have an ID
       if (!extensionId || extensionId.length === 0) {
-        extensionId = 'iockeheicjcnfoegjjboooljndjcafae'; // Dev extension ID
-        console.warn('[Aegis Vault] 🔄 EXTENSION_ID boş, dev ID kullanılıyor: ' + extensionId);
+        extensionId = browser?.runtime?.id || '';
+      }
+      
+      if (!extensionId) {
+        console.error('[Aegis Vault] ❌ EXTENSION_ID bulunamadı. Fallback pairing iptal edildi.');
+        return { ok: false, error: 'EXTENSION_ID_MISSING' };
       }
 
-      console.log(`[Aegis Vault] 🔄 Fallback pairing başladı (ID: ${extensionId.substring(0, 8)}...)`);
+      console.log(`[Aegis Vault] 🔄 Fallback pairing başlatılıyor (Aktif ID: ${extensionId.substring(0, 8)}...)`);
 
       const hosts = ['127.0.0.1', 'localhost'];
       for (const host of hosts) {
@@ -810,7 +814,10 @@ export default defineBackground({
       if (!isLoopbackSyncActive() || !activePairingSecret || !EXTENSION_ID) return null;
       try {
         const pairing = await signPairingPayload('GET', '/api/challenge');
-        if (!pairing) return null;
+        if (!pairing) {
+          console.debug(`[Aegis Vault] ❌ getDesktopChallenge no pairing`);
+          return null;
+        }
         const response = await fetch(`http://${host}:23456/api/challenge`, {
           method: 'GET',
           mode: 'cors',
@@ -821,14 +828,23 @@ export default defineBackground({
             'X-Aegis-Pairing-Proof': pairing.proof,
           },
         });
-        if (!response.ok) return null;
+        if (!response.ok) {
+          const t = await response.text();
+          console.debug(`[Aegis Vault] ❌ getDesktopChallenge !ok: ${response.status} => ${t}`);
+          return null;
+        }
         const challenge = await response.json();
-        if (!challenge?.nonce || !challenge?.token || !challenge?.expiresAt) return null;
+        if (!challenge?.nonce || !challenge?.token || !challenge?.expiresAt) {
+          console.debug(`[Aegis Vault] ❌ getDesktopChallenge missing fields:`, challenge);
+          return null;
+        }
         if (Number(challenge.expiresAt) - Date.now() <= 0 || Number(challenge.expiresAt) - Date.now() > DESKTOP_CHALLENGE_TTL_MS * 2) {
+          console.debug(`[Aegis Vault] ❌ getDesktopChallenge TTL issue: expiresAt=${challenge.expiresAt}, diff=${Number(challenge.expiresAt) - Date.now()}`);
           return null;
         }
         return challenge;
-      } catch {
+      } catch (err) {
+        console.debug(`[Aegis Vault] ❌ getDesktopChallenge fetch err:`, err);
         return null;
       }
     };
@@ -854,7 +870,7 @@ export default defineBackground({
         const url = path === '/api/domain-credentials'
           ? `http://${host}:23456${path}?domain=${encodeURIComponent(normalizedDomain)}`
           : `http://${host}:23456${path}`;
-        return await fetch(url, {
+        const finalResponse = await fetch(url, {
           method: 'GET',
           mode: 'cors',
           headers: {
@@ -868,7 +884,13 @@ export default defineBackground({
             'X-Aegis-Challenge-Signature': signature,
           },
         });
-      } catch {
+        if (!finalResponse.ok) {
+           const dbgTxt = await finalResponse.text();
+           console.debug(`[Aegis Vault] ❌ desktopSignedGet path=${path} !ok: ${finalResponse.status} => ${dbgTxt}`);
+        }
+        return finalResponse;
+      } catch (err) {
+        console.debug(`[Aegis Vault] ❌ desktopSignedGet fetch err for path=${path}:`, err);
         return null;
       }
     };
