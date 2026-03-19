@@ -86,7 +86,7 @@ const summary = {
   releaseVerification: releaseVerificationReport,
   extensionBuilds: {
     chrome: fileStatus(path.join(extensionDir, "chrome-mv3", "manifest.json")),
-    firefox: fileStatus(path.join(extensionDir, "firefox-mv2", "manifest.json")),
+    firefox: fileStatus(path.join(extensionDir, "firefox-mv3", "manifest.json")),
   },
   nativeHost: {
     chromiumManifest: fileStatus(path.join(nativeHostDir, "com.aegisvault.desktop.json")),
@@ -123,7 +123,7 @@ const lines = [
   "",
   "## Extension Builds / Eklenti Buildleri",
   `Chrome MV3: ${summary.extensionBuilds.chrome.exists ? "OK" : "MISSING"}`,
-  `Firefox MV2: ${summary.extensionBuilds.firefox.exists ? "OK" : "MISSING"}`,
+  `Firefox MV3: ${summary.extensionBuilds.firefox.exists ? "OK" : "MISSING"}`,
   "",
   "## Native Host / Yerel Host",
   `Chromium manifest: ${summary.nativeHost.chromiumManifest.exists ? "OK" : "MISSING"}`,
