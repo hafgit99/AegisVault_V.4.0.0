@@ -123,6 +123,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: Aegis-Vault-quality-reports
+          path: .
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
