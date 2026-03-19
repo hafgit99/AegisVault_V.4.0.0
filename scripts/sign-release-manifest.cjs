@@ -69,12 +69,10 @@ function main() {
   }
 
   if (signingKey) {
-    const signer = crypto.createSign("SHA256");
-    signer.update(payload);
-    signer.end();
+    const signature = crypto.sign(null, Buffer.from(payload), signingKey);
     manifest.signature = {
-      algorithm: "RSA-SHA256",
-      value: signer.sign(signingKey, "base64"),
+      algorithm: "Ed25519",
+      value: signature.toString("base64"),
       publicKeyFingerprint: publicKey ? fingerprintPublicKey(publicKey) : null,
       signed: true,
     };

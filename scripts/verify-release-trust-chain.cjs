@@ -19,11 +19,9 @@ function sha256(filePath) {
 
 function verifySignature(payload, signature, publicKey) {
   try {
-    const verifier = crypto.createVerify("SHA256");
-    verifier.update(payload);
-    verifier.end();
-    return verifier.verify(publicKey, signature, "base64");
-  } catch {
+    return crypto.verify(null, Buffer.from(payload), publicKey, Buffer.from(signature, "base64"));
+  } catch (e) {
+    console.error("[release:verify] signature verification error:", e.message);
     return false;
   }
 }
