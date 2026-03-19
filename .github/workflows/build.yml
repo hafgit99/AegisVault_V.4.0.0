@@ -93,6 +93,7 @@ jobs:
           path: |
             ci-artifacts/**
             test-results/**
+            vitest-results/**
             playwright-report/**
             aegis-wxt/dist/**
             build/native-host/**

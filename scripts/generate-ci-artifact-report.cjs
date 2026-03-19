@@ -4,6 +4,7 @@ const path = require("path");
 const repoRoot = process.cwd();
 const reportDir = path.join(repoRoot, "ci-artifacts");
 const testResultsDir = path.join(repoRoot, "test-results");
+const vitestResultsDir = path.join(repoRoot, "vitest-results");
 const extensionDir = path.join(repoRoot, "aegis-wxt", "dist");
 const nativeHostDir = path.join(repoRoot, "build", "native-host");
 
@@ -69,9 +70,16 @@ function fileStatus(filePath) {
   };
 }
 
-const unitReport = summarizeVitest(readJsonIfExists(path.join(testResultsDir, "vitest-results.json")));
-const importExportReport = summarizeVitest(readJsonIfExists(path.join(testResultsDir, "import-export-regression.json")));
-const securityReport = summarizeVitest(readJsonIfExists(path.join(testResultsDir, "security-regression.json")));
+if (fs.existsSync(vitestResultsDir)) {
+  console.log(`[ci-report] vitest-results directory exists: ${vitestResultsDir}`);
+  console.log(`[ci-report] contents:`, fs.readdirSync(vitestResultsDir));
+} else {
+  console.log(`[ci-report] vitest-results directory MISSING: ${vitestResultsDir}`);
+}
+
+const unitReport = summarizeVitest(readJsonIfExists(path.join(vitestResultsDir, "vitest-results.json")));
+const importExportReport = summarizeVitest(readJsonIfExists(path.join(vitestResultsDir, "import-export-regression.json")));
+const securityReport = summarizeVitest(readJsonIfExists(path.join(vitestResultsDir, "security-regression.json")));
 const e2eReport = summarizePlaywright(readJsonIfExists(path.join(testResultsDir, "results.json")));
 const releaseReport = readJsonIfExists(path.join(reportDir, "release-smoke.json"));
 const releaseVerificationReport = readJsonIfExists(path.join(reportDir, "release-verification.json"));
