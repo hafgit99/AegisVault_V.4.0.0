@@ -95,11 +95,11 @@ function isOriginAllowed(origin) {
     return true;
   }
 
-  // Extension Allowlist Check — DEV modda bile allowlist dışına izin YOK
+  // Extension Allowlist Check
   if (origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://')) {
     const id = origin.split('://')[1].split('/')[0];
-    // Dev modda sadece allowlist veya DEV_ALLOWED_ORIGINS'den gelen istekler
-    if (ALLOWLIST_EXTENSION_IDS.includes(id)) {
+    // Dev modda sadece allowlist veya geçerli extension ID'ler (uyumlu mod)
+    if (isAllowlistedExtensionId(id)) {
       return true;
     }
     // Dev modda unknown extension ID'yi logla ama reddet
