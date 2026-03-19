@@ -485,7 +485,7 @@ export class VaultService {
       authMetadata = await this.opfsMockDb.get('vault_metadata', 'auth_credential');
     }
     if (!authMetadata || !authMetadata.credential) return false;
-    return this.verifyPassword(password, authMetadata.credential);
+    return this.verifyPassword(password, authMetadata.credential as StoredCredential);
   }
 
   // Derives Web Crypto AES-GCM Key from Password & Device Secret (Zero Knowledge) via Argon2id
@@ -658,7 +658,6 @@ export class VaultService {
         // We MUST verify if the derived key actually works by trying to decrypt entries.
         // We use the raw entries store for a faster check.
         const allEntries = await this.opfsMockDb.getAll('passwords');
-        const allEntries = await this.opfsMockDb.getAll('passwords');
         
         const tryDecrypt = async (key: CryptoKey, entries: Record<string, unknown>[]) => {
 
@@ -668,12 +667,12 @@ export class VaultService {
               let cipherArray: Uint8Array;
               let ivArray: Uint8Array;
 
-              if (isLikelyHexUtil(entry.encrypted_password) && isLikelyHexUtil(entry.iv)) {
-                cipherArray = hexToBuffer(entry.encrypted_password);
-                ivArray = hexToBuffer(entry.iv);
+              if (isLikelyHexUtil(entry.encrypted_password as string) && isLikelyHexUtil(entry.iv as string)) {
+                cipherArray = hexToBuffer(entry.encrypted_password as string);
+                ivArray = hexToBuffer(entry.iv as string);
               } else {
-                cipherArray = Uint8Array.from(atob(entry.encrypted_password), c => c.charCodeAt(0));
-                ivArray = Uint8Array.from(atob(entry.iv), c => c.charCodeAt(0));
+                cipherArray = Uint8Array.from(atob(entry.encrypted_password as string), c => c.charCodeAt(0));
+                ivArray = Uint8Array.from(atob(entry.iv as string), c => c.charCodeAt(0));
               }
 
               await window.crypto.subtle.decrypt(
@@ -971,8 +970,8 @@ export class VaultService {
         return { duressPin: '', killPin: '' };
       }
 
-      const cipherArray = hexToBuffer(record.encrypted_data);
-      const ivArray = hexToBuffer(record.iv);
+      const cipherArray = hexToBuffer(record.encrypted_data as string);
+      const ivArray = hexToBuffer(record.iv as string);
 
       const plainBuffer = await window.crypto.subtle.decrypt(
         { name: "AES-GCM", iv: toBufferSource(ivArray) },
@@ -1028,22 +1027,22 @@ export class VaultService {
 
     const newEntry: VaultEntry = {
       id: entry.id || Date.now(),
-      title: title,
-      username: username,
-      encrypted_title: encrypted_title,
-      title_iv: title_iv,
-      encrypted_username: encrypted_username,
-      username_iv: username_iv,
-      category: category,
-      encrypted_category: encrypted_category,
-      category_iv: category_iv,
-      website: website,
-      encrypted_website: encrypted_website,
-      website_iv: website_iv,
-      tags: tags,
-      encrypted_tags: encrypted_tags,
-      tags_iv: tags_iv,
-      search_index: search_index || [],
+      title: title as string,
+      username: username as string,
+      encrypted_title: encrypted_title as string | undefined,
+      title_iv: title_iv as string | undefined,
+      encrypted_username: encrypted_username as string | undefined,
+      username_iv: username_iv as string | undefined,
+      category: category as string,
+      encrypted_category: encrypted_category as string | undefined,
+      category_iv: category_iv as string | undefined,
+      website: website as string,
+      encrypted_website: encrypted_website as string | undefined,
+      website_iv: website_iv as string | undefined,
+      tags: tags as string[] | undefined,
+      encrypted_tags: encrypted_tags as string | undefined,
+      tags_iv: tags_iv as string | undefined,
+      search_index: (search_index as string[]) || [],
       encrypted_password: bufferToHex(cipherBuffer),
       iv: bufferToHex(iv),
       updated_at: new Date().toISOString(),
@@ -1437,13 +1436,22 @@ export class VaultService {
 
       const updatedEntry: VaultEntry = {
         ...entry,
-        title, username, category, website, tags,
-        encrypted_title, title_iv,
-        encrypted_username, username_iv,
-        encrypted_category, category_iv,
-        encrypted_website, website_iv,
-        encrypted_tags, tags_iv,
-        search_index,
+        title: title as string, 
+        username: username as string, 
+        category: category as string, 
+        website: website as string, 
+        tags: tags as string[] | undefined,
+        encrypted_title: encrypted_title as string | undefined, 
+        title_iv: title_iv as string | undefined,
+        encrypted_username: encrypted_username as string | undefined, 
+        username_iv: username_iv as string | undefined,
+        encrypted_category: encrypted_category as string | undefined, 
+        category_iv: category_iv as string | undefined,
+        encrypted_website: encrypted_website as string | undefined, 
+        website_iv: website_iv as string | undefined,
+        encrypted_tags: encrypted_tags as string | undefined, 
+        tags_iv: tags_iv as string | undefined,
+        search_index: search_index as string[] | undefined,
         attachments: await this.encryptAttachmentMetadataList(entry.attachments || []),
         encrypted_password: bufferToHex(cipherBuffer),
         iv: bufferToHex(iv),
@@ -1562,13 +1570,22 @@ export class VaultService {
 
       const newEntry: VaultEntry = {
         id: newId, 
-        title, username, category, website, tags,
-        encrypted_title, title_iv,
-        encrypted_username, username_iv,
-        encrypted_category, category_iv,
-        encrypted_website, website_iv,
-        encrypted_tags, tags_iv,
-        search_index,
+        title: title as string, 
+        username: username as string, 
+        category: category as string, 
+        website: website as string, 
+        tags: tags as string[] | undefined,
+        encrypted_title: encrypted_title as string | undefined, 
+        title_iv: title_iv as string | undefined,
+        encrypted_username: encrypted_username as string | undefined, 
+        username_iv: username_iv as string | undefined,
+        encrypted_category: encrypted_category as string | undefined, 
+        category_iv: category_iv as string | undefined,
+        encrypted_website: encrypted_website as string | undefined, 
+        website_iv: website_iv as string | undefined,
+        encrypted_tags: encrypted_tags as string | undefined, 
+        tags_iv: tags_iv as string | undefined,
+        search_index: search_index as string[] | undefined,
         encrypted_password: bufferToHex(cipherBuffer),
         iv: bufferToHex(iv),
         updated_at: new Date().toISOString(),
@@ -1673,9 +1690,9 @@ export class VaultService {
     if (!record) throw new Error("Attachment not found");
 
     const plainBuffer = await window.crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: toBufferSource(record.iv) },
+      { name: "AES-GCM", iv: toBufferSource(hexToBuffer(record.iv as string)) },
       this.aesKey,
-      toBufferSource(record.encrypted_data)
+      toBufferSource(hexToBuffer(record.encrypted_data as string))
     );
 
     // We don't have the mime type in this record directly, but it can be found in the password entry.
@@ -1692,7 +1709,7 @@ export class VaultService {
       const existingEntries = this.sqliteDb.getAllPasswords();
       const entry = existingEntries.find((e: Record<string, unknown>) => Number(e.id) === Number(entryId));
       if (entry && Array.isArray(entry.attachments)) {
-        entry.attachments = entry.attachments.filter((a: Record<string, unknown>) => a.id !== attachmentId);
+        entry.attachments = entry.attachments.filter((a: any) => a.id !== attachmentId);
         this.sqliteDb.putPassword(entry);
       }
       await this.sqliteDb.flushToOPFS();
@@ -1706,7 +1723,7 @@ export class VaultService {
       const store = tx.objectStore('passwords');
       const entry = await store.get(entryId);
       if (entry && entry.attachments) {
-        entry.attachments = entry.attachments.filter((a: Record<string, unknown>) => a.id !== attachmentId);
+        entry.attachments = entry.attachments.filter((a: any) => a.id !== attachmentId);
         await store.put(entry);
       }
       await tx.done;
