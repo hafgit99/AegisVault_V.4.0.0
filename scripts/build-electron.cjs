@@ -96,7 +96,7 @@ async function main() {
   }
 
   run(resolveCommand('npm'), ['run', 'build']);
-  run(resolveCommand('electron-builder'), [buildFlag, '--config', 'electron-builder.config.cjs'], {
+  run(resolveCommand('electron-builder'), [buildFlag, '--config', 'electron-builder.config.cjs', '--publish', 'never'], {
     AEGIS_ELECTRON_OUTPUT_DIR: effectiveOutputDir,
   });
 
