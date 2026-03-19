@@ -1709,7 +1709,7 @@ export class VaultService {
       const existingEntries = this.sqliteDb.getAllPasswords();
       const entry = existingEntries.find((e: Record<string, unknown>) => Number(e.id) === Number(entryId));
       if (entry && Array.isArray(entry.attachments)) {
-        entry.attachments = entry.attachments.filter((a: any) => a.id !== attachmentId);
+        entry.attachments = entry.attachments.filter((a: VaultAttachmentMeta) => a.id !== attachmentId);
         this.sqliteDb.putPassword(entry);
       }
       await this.sqliteDb.flushToOPFS();
@@ -1723,7 +1723,7 @@ export class VaultService {
       const store = tx.objectStore('passwords');
       const entry = await store.get(entryId);
       if (entry && entry.attachments) {
-        entry.attachments = entry.attachments.filter((a: any) => a.id !== attachmentId);
+        entry.attachments = entry.attachments.filter((a: VaultAttachmentMeta) => a.id !== attachmentId);
         await store.put(entry);
       }
       await tx.done;
