@@ -88,8 +88,15 @@ async function main() {
     console.log(`[build:electron] OneDrive workspace detected. Using local build output: ${effectiveOutputDir}`);
   }
 
+  let buildFlag = '-w';
+  if (process.platform === 'linux') {
+    buildFlag = '-l';
+  } else if (process.platform === 'darwin') {
+    buildFlag = '-m';
+  }
+
   run(resolveCommand('npm'), ['run', 'build']);
-  run(resolveCommand('electron-builder'), ['-w', '--config', 'electron-builder.config.cjs'], {
+  run(resolveCommand('electron-builder'), [buildFlag, '--config', 'electron-builder.config.cjs'], {
     AEGIS_ELECTRON_OUTPUT_DIR: effectiveOutputDir,
   });
 
