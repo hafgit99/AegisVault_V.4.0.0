@@ -28,7 +28,7 @@ test.describe('QR Sync Regression', () => {
         await page.waitForTimeout(1000); // Wait for transition/animation
         await submitBtn.click();
       }
-    } catch (e) {
+    } catch {
       console.log('Transition state detection timed out, waiting for final appearance...');
     }
 
