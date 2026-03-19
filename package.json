@@ -34,6 +34,7 @@
     "release:sign-manifest": "node scripts/sign-release-manifest.cjs",
     "release:verify": "node scripts/verify-release-trust-chain.cjs",
     "release:trust-chain": "npm run release:sbom && npm run release:provenance && npm run release:sign-manifest && npm run release:verify",
+    "release:generate-keys": "node scripts/generate-signing-keys.cjs",
     "ci:report": "node scripts/generate-ci-artifact-report.cjs",
     "ci:enforce:quality": "node scripts/enforce-ci-quality.cjs quality",
     "ci:enforce:release": "node scripts/enforce-ci-quality.cjs release",
