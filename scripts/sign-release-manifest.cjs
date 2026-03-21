@@ -16,6 +16,10 @@ function readUtf8(filePath) {
   return fs.readFileSync(filePath, "utf8");
 }
 
+function sha256(filePath) {
+  return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+}
+
 function parseHashes() {
   if (!fs.existsSync(releaseDir)) return [];
   return fs.readdirSync(releaseDir)
@@ -45,8 +49,18 @@ function buildManifest() {
     subject: JSON.parse(readUtf8(path.join(repoRoot, "package.json"))).version,
     artifacts,
     attachments: {
-      sbom: fs.existsSync(sbomPath) ? path.basename(sbomPath) : null,
-      provenance: fs.existsSync(provenancePath) ? path.basename(provenancePath) : null,
+      sbom: fs.existsSync(sbomPath)
+        ? {
+            file: path.basename(sbomPath),
+            sha256: sha256(sbomPath),
+          }
+        : null,
+      provenance: fs.existsSync(provenancePath)
+        ? {
+            file: path.basename(provenancePath),
+            sha256: sha256(provenancePath),
+          }
+        : null,
     },
     signature: null,
   };

@@ -54,5 +54,11 @@ const launcherContent = fs.readFileSync(launcherPath, 'utf8');
 if (!launcherContent.includes('aegis-native-host.cjs')) {
   fail('Launcher does not reference aegis-native-host.cjs');
 }
+if (!launcherContent.includes('AEGIS_EXTENSION_ALLOWLIST=')) {
+  fail('Launcher does not inject AEGIS_EXTENSION_ALLOWLIST');
+}
+if (!launcherContent.includes('AEGIS_STRICT_ALLOWLIST_MODE=1')) {
+  fail('Launcher does not enforce strict allowlist mode');
+}
 
 console.log('Native host manifests verified successfully.');

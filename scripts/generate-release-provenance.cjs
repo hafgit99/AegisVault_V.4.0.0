@@ -7,6 +7,10 @@ const releaseDir = path.join(repoRoot, "release");
 const outputPath = path.join(releaseDir, "aegis-release-provenance.json");
 const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
 
+function sha256(filePath) {
+  return require("node:crypto").createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+}
+
 function listArtifacts() {
   if (!fs.existsSync(releaseDir)) return [];
   return fs.readdirSync(releaseDir)
@@ -18,6 +22,7 @@ function listArtifacts() {
       return {
         file,
         sizeBytes: stat.size,
+        sha256: sha256(fullPath),
       };
     });
 }

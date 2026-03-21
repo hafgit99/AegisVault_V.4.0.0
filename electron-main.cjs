@@ -43,7 +43,15 @@ const DEFAULT_ALLOWLIST_EXTENSION_IDS = [
   'iockeheicjcnfoegjjboooljndjcafae',
   'gddgomiecgnihlljfkogfjgakedoielk',
   'kjbdjkfijeflhhbnkjgkmccljifidpcc',
+  'aegisvault@example.com',
 ];
+const chromiumDevExtensionIdPath = path.join(__dirname, 'aegis-wxt', 'dev', 'chromium-extension-id.txt');
+if (fs.existsSync(chromiumDevExtensionIdPath)) {
+  const devExtensionId = fs.readFileSync(chromiumDevExtensionIdPath, 'utf8').trim();
+  if (devExtensionId && !DEFAULT_ALLOWLIST_EXTENSION_IDS.includes(devExtensionId)) {
+    DEFAULT_ALLOWLIST_EXTENSION_IDS.push(devExtensionId);
+  }
+}
 
 // Eğer env değişkeni ile özel ID listesi verilmişse onu kullan
 const ALLOWLIST_EXTENSION_IDS = (
@@ -62,8 +70,8 @@ if (ALLOWLIST_EXTENSION_IDS.length === 0) {
 
 // Varsayılan davranış: STRICT allowlist zorunlu.
 // Geriye dönük uyumluluk gerektiğinde AEGIS_STRICT_ALLOWLIST_MODE=0 verilerek gevşetilebilir.
-const STRICT_ALLOWLIST_MODE = (process.env.AEGIS_STRICT_ALLOWLIST_MODE || '0') !== '0';
-const LOOPBACK_SYNC_ENABLED = (process.env.AEGIS_ENABLE_LOOPBACK_SYNC || '1') === '1';
+const STRICT_ALLOWLIST_MODE = (process.env.AEGIS_STRICT_ALLOWLIST_MODE || '1') !== '0';
+const LOOPBACK_SYNC_ENABLED = (process.env.AEGIS_ENABLE_LOOPBACK_SYNC || (app.isPackaged ? '0' : '1')) === '1';
 const PAIRING_SECRET = (process.env.AEGIS_EXTENSION_PAIRING_SECRET || '').trim();
 const PAIRING_TTL_MS = 10000;
 
@@ -339,6 +347,20 @@ function getStartupDiagnostics() {
         label: 'desktop bridge identity',
         status: desktopBridgeIdentity?.keyId ? 'ok' : 'warn',
         detail: desktopBridgeIdentity?.keyId || 'NOT_INITIALIZED',
+      },
+      {
+        key: 'loopback-sync',
+        label: 'loopback sync',
+        status: LOOPBACK_SYNC_ENABLED ? (isLoopbackSyncReady() ? 'warn' : 'warn') : 'ok',
+        detail: LOOPBACK_SYNC_ENABLED
+          ? (isLoopbackSyncReady() ? 'ENABLED_EXPLICITLY' : 'ENABLED_BUT_NOT_READY')
+          : 'DISABLED_BY_DEFAULT',
+      },
+      {
+        key: 'strict-allowlist',
+        label: 'strict extension allowlist',
+        status: STRICT_ALLOWLIST_MODE ? 'ok' : 'warn',
+        detail: STRICT_ALLOWLIST_MODE ? 'ENFORCED' : 'COMPATIBILITY_MODE',
       },
     ],
     recentEvents: [...startupDiagnosticEvents],
@@ -998,29 +1020,33 @@ function registerNativeHostWindows() {
   }
 
   try {
-    const nativeHostDir = path.resolve(process.cwd(), 'build', 'native-host');
-    const scriptPath = path.resolve(process.cwd(), 'scripts', 'aegis-native-host.cjs');
+    const nativeHostDir = path.join(app.getPath('userData'), 'native-host');
+    const hostScriptPath = app.isPackaged
+      ? path.join(process.resourcesPath, 'native-host', 'aegis-native-host.ps1')
+      : path.join(__dirname, 'scripts', 'aegis-native-host.ps1');
 
-    // Eğer packaged app ise farklı yol kullan
-    if (!fs.existsSync(nativeHostDir)) {
-      const appDir = path.join(app.getAppPath(), '..', '..', 'build', 'native-host');
-      if (!fs.existsSync(appDir)) {
-        console.warn('[Aegis Auto-Register] Native host directory not found');
-        return;
-      }
+    if (!fs.existsSync(hostScriptPath)) {
+      console.warn('[Aegis Auto-Register] Native host script not found:', hostScriptPath);
+      return;
     }
 
-    // Node.js yolunu bul
-    const nodePath = process.execPath.includes('electron')
-      ? (fs.existsSync('C:\\Program Files\\nodejs\\node.exe')
-          ? 'C:\\Program Files\\nodejs\\node.exe'
-          : 'node')
-      : process.execPath;
+    fs.mkdirSync(nativeHostDir, { recursive: true });
+
+    const combinedAllowlist = [...new Set([
+      ...ALLOWLIST_EXTENSION_IDS,
+      'aegisvault@example.com',
+    ])];
+    const allowedExtensionIdsJson = JSON.stringify(combinedAllowlist);
 
     // 1. Launcher CMD dosyasını dinamik olarak oluştur
     const launcherPath = path.join(nativeHostDir, 'aegis-native-host-launcher.cmd');
-    const launcherContent = `@echo off\r\n"${nodePath}" "${scriptPath}"\r\n`;
-    fs.writeFileSync(launcherPath, launcherContent, 'utf8');
+    const launcherContent = [
+      '@echo off',
+      'setlocal',
+      `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "${hostScriptPath}" -AllowedExtensionIdsJson "${allowedExtensionIdsJson.replace(/"/g, '\\"')}"`,
+      '',
+    ].join('\r\n');
+    fs.writeFileSync(launcherPath, launcherContent, 'ascii');
 
     // 2. Chrome/Edge manifest dosyasını dinamik olarak oluştur
     const hostName = 'com.aegisvault.desktop';
@@ -1030,11 +1056,7 @@ function registerNativeHostWindows() {
       description: 'Aegis Vault native messaging bridge',
       path: launcherPath,
       type: 'stdio',
-      allowed_origins: [
-        'chrome-extension://iockeheicjcnfoegjjboooljndjcafae/',
-        'chrome-extension://gddgomiecgnihlljfkogfjgakedoielk/',
-        'chrome-extension://kjbdjkfijeflhhbnkjgkmccljifidpcc/',
-      ],
+      allowed_origins: ALLOWLIST_EXTENSION_IDS.map((id) => `chrome-extension://${id}/`),
     };
     fs.writeFileSync(manifestPath, JSON.stringify(chromeManifest, null, 2), 'utf8');
 
@@ -1084,6 +1106,7 @@ function registerNativeHostWindows() {
         stdio: 'pipe'
       });
       console.log('[Aegis Auto-Register] Native host registry entries updated');
+      console.log(`[Aegis Auto-Register] Native host launcher: ${launcherPath}`);
     } catch (execErr) {
       console.warn('[Aegis Auto-Register] PowerShell execution warning:', execErr.message.substring(0, 100));
     }
@@ -1790,14 +1813,18 @@ const syncServer = http.createServer(async (req, res) => {
   }
 });
 
-// Sadece loopback'e bağlan (dış ağ erişimini engelle)
-syncServer.listen(23456, '127.0.0.1', () => {
-  if (!isLoopbackSyncReady()) {
-    console.warn('[Aegis] Loopback sync devre dışı. Etkinleştirmek için AEGIS_ENABLE_LOOPBACK_SYNC=1 ve güçlü bir AEGIS_EXTENSION_PAIRING_SECRET ayarlayın.');
-  } else {
-    console.log('[Aegis] Güvenli yerel sync server: 127.0.0.1:23456');
-  }
-});
+if (LOOPBACK_SYNC_ENABLED) {
+  // Sadece loopback'e bağlan (dış ağ erişimini engelle)
+  syncServer.listen(23456, '127.0.0.1', () => {
+    if (!isLoopbackSyncReady()) {
+      console.warn('[Aegis] Loopback sync explicitly enabled but not ready. Configure a strong AEGIS_EXTENSION_PAIRING_SECRET.');
+    } else {
+      console.log('[Aegis] Güvenli yerel sync server: 127.0.0.1:23456');
+    }
+  });
+} else {
+  console.log('[Aegis] Loopback sync disabled by default. Native host is the preferred bridge.');
+}
 
 // ─────────────────────────────────────────────────────────────────
 // 📨 IPC Event Handlers (Renderer ↔ Main)
@@ -2032,6 +2059,9 @@ app.whenReady().then(() => {
   recordStartupDiagnosticEvent('info', 'APP_READY', 'Electron app ready');
   loadPersistentPairings();
   loadUiPreferences();
+  if (!LOOPBACK_SYNC_ENABLED) {
+    recordStartupDiagnosticEvent('info', 'LOOPBACK_DISABLED', 'Loopback sync disabled by default');
+  }
   
   // 🖥️ Auto-register native host and initialize pairing secret
   registerNativeHostWindows();
@@ -2048,7 +2078,7 @@ app.whenReady().then(() => {
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
           "font-src 'self' https://fonts.gstatic.com; " +
           "img-src 'self' data: blob:; " +
-          "connect-src 'self' https://api.pwnedpasswords.com http://127.0.0.1:23456; " +
+          `connect-src 'self' https://api.pwnedpasswords.com${LOOPBACK_SYNC_ENABLED ? " http://127.0.0.1:23456" : ""}; ` +
           "worker-src 'self' blob:; " +
           "object-src 'none'; " +
           "base-uri 'self'"

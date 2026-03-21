@@ -30,6 +30,7 @@ const firefoxExtensionIds = (
   .split(',')
   .map((id) => id.trim())
   .filter(Boolean);
+const combinedAllowlist = [...new Set([...extensionIds, ...firefoxExtensionIds])];
 
 const scriptPath = path.resolve(process.cwd(), 'scripts', 'aegis-native-host.cjs');
 const outputDir = path.resolve(process.cwd(), 'build', 'native-host');
@@ -54,7 +55,7 @@ const chromiumManifest = {
 const chromiumWrapper = path.resolve(outputDir, 'aegis-native-host-launcher.cmd');
 fs.writeFileSync(
   chromiumWrapper,
-  `@echo off\r\n"${process.execPath}" "${scriptPath}"\r\n`,
+  `@echo off\r\nsetlocal\r\nset "AEGIS_EXTENSION_ALLOWLIST=${combinedAllowlist.join(',')}"\r\nset "AEGIS_STRICT_ALLOWLIST_MODE=1"\r\n"${process.execPath}" "${scriptPath}"\r\n`,
   'utf8'
 );
 chromiumManifest.path = chromiumWrapper;

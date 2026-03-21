@@ -1,8 +1,35 @@
 param(
-  [string]$PipeName = "aegis-vault-native-v1"
+  [string]$PipeName = "aegis-vault-native-v1",
+  [string]$AllowedExtensionIdsJson = "[]"
 )
 
 $ErrorActionPreference = "Stop"
+
+$AllowedExtensionIds = @()
+try {
+  $parsedAllowedIds = $AllowedExtensionIdsJson | ConvertFrom-Json
+  if ($parsedAllowedIds -is [System.Array]) {
+    $AllowedExtensionIds = @($parsedAllowedIds | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { [string]$_ })
+  }
+} catch {
+  $AllowedExtensionIds = @()
+}
+
+function Test-AllowlistedExtensionId {
+  param(
+    [string]$ExtensionId
+  )
+
+  if ([string]::IsNullOrWhiteSpace($ExtensionId)) {
+    return $false
+  }
+
+  if ($AllowedExtensionIds.Count -eq 0) {
+    return $false
+  }
+
+  return $AllowedExtensionIds -contains $ExtensionId
+}
 $PairingSecret = [string]$env:AEGIS_EXTENSION_PAIRING_SECRET
 
 function Convert-ToHex {
@@ -161,7 +188,7 @@ while ($true) {
     $extensionId = [string]($message.extensionId)
     $runtimePairingSecret = [string]$message.pairingSecret
 
-    if ([string]::IsNullOrWhiteSpace($extensionId)) {
+    if (-not (Test-AllowlistedExtensionId -ExtensionId $extensionId)) {
       Write-NativeMessage -OutputStream $stdout -Message @{ ok = $false; error = "FORBIDDEN_EXTENSION_ID" }
       continue
     }

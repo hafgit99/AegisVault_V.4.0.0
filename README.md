@@ -1,198 +1,189 @@
-# 🛡️ Aegis Vault V.4.0.0 (Hardened Release)
+# Aegis Vault
 
-![Aegis Vault Banner](https://raw.githubusercontent.com/hafgit99/AegisVault_V.4.0.0/main/public/icon.png)
+Offline-first, zero-knowledge password manager and 2FA authenticator with Electron desktop, React web app, and cross-browser extension support.
 
-> **The Ultimate Secure Vault for Your Digital Life.**
-> Experience professional-grade security with a premium aesthetic and a hardened cross-platform bridge. Built for users who demand zero-knowledge privacy without compromising on design.
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Desktop](https://img.shields.io/badge/Desktop-Electron-47848f?logo=electron)
+![Frontend](https://img.shields.io/badge/Frontend-React%2019-61dafb?logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript)
+![Extension](https://img.shields.io/badge/Extension-WXT-0f172a)
+![Security](https://img.shields.io/badge/Security-Zero--Knowledge-0f766e)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-4.0.0--Hardened-blue.svg)](https://github.com/hafgit99/AegisVault_V.4.0.0)
-[![Security](https://img.shields.io/badge/Security-Hardened-red.svg)](guvenlik/SECURITY_WHITEPAPER_EN.md)
-[![React](https://img.shields.io/badge/React-19-61dafb.svg?logo=react)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6.svg?logo=typescript)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-7-646cff.svg?logo=vite)](https://vitejs.dev/)
-[![Electron](https://img.shields.io/badge/Electron-40-47848f.svg?logo=electron)](https://www.electronjs.org/)
+## Overview
 
----
+Aegis Vault is a privacy-focused credential vault built around a simple principle: sensitive data should stay on the user's device and be encrypted before it is ever stored.
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/hafgit99/AegisVault_V.4.0.0/main/public/AegisVault_V4.0.0.png" alt="Aegis Vault V4.0.0 Infographic" width="100%">
-</p>
+The project currently includes:
 
----
+- A web and desktop vault UI
+- A browser extension for autofill and desktop pairing
+- Offline QR-based encrypted migration flows
+- Native messaging and local desktop bridge support
+- Hardened release verification and CI quality gates
 
-## 🌟 Overview
+## Core Capabilities
 
-**Aegis Vault** is a high-security, multi-platform vault application designed to protect your sensitive information—from passwords to private documents. Built with a focus on **Visual Excellence** and **Unbreakable Security**, Aegis Vault offers a seamless experience across Web, Desktop (Windows), and Browser Extensions (Chrome/Edge/Firefox).
+- Zero-knowledge local vault model
+- Argon2id-based key derivation and AES-256-GCM encryption
+- Secure metadata-at-rest handling and private search indexing
+- Browser extension pairing with native messaging support
+- QR sync with audit and revoke history
+- Import and export flows with vendor fixture regression coverage
+- Multi-vault and dedicated 2FA vault policies
+- Desktop fail-safe and startup diagnostics
+- Security mode profiles for stricter local policy enforcement
 
-The V.4.0.0 "Hardened" release introduces a completely redesigned communication bridge, military-grade key derivation parameters, and native browser integration.
+## Architecture
 
-## ✨ Key Features
+### Apps
 
--   **🔒 Local Zero-Knowledge Architecture**: Encryption and decryption happen strictly on your device. Your Master Password never touches a server.
--   **🌉 Zero-Trust Communication Bridge**: Secure communication between Extension and Desktop via HMAC-SHA256 signed requests, cryptographic nonces, and **Native Messaging**.
--   **🛡️ Biometric PRF Unlock**: Zero-knowledge biometric authentication using WebAuthn PRF extension (Windows Hello / Mac TouchID).
--   **🏗️ Advanced KDF (Argon2id)**: Protects against brute-force attacks using memory-hard Argon2id (64MB / 3 iterations / 4 parallelism).
--   **🔐 AES-256-GCM Encryption**: Authenticated encryption for all vault entries, ensuring both confidentiality and data integrity.
--   **🔄 Cross-Platform Sync**: Reliable synchronization between the PWA, Windows Desktop App, and Browser Extensions.
--   **🎨 Premium UI/UX**: Stunning interface featuring Glassmorphism, Framer Motion, and a curated professional color palette with full Dark Mode support.
--   **📊 QR Data Migration**: Fully offline device-to-device synchronization via encrypted QR data packets.
+- `src/`: main React application and desktop-facing vault UI
+- `electron-main.cjs`: Electron main process, diagnostics, native bridge, local desktop services
+- `aegis-wxt/`: Chrome / Edge / Firefox extension built with WXT
 
----
+### Security-Critical Areas
 
-## 🛡️ Security & Transparency
+- `src/vaultService.ts`: vault cryptography, migration and metadata handling
+- `src/lib/SQLiteOPFS.ts`: encrypted local persistence layer
+- `src/lib/SecureAppSettings.ts`: hardened local security settings state
+- `scripts/`: native host, release verification, CI enforcement, signing helpers
 
-We believe in "Security through Transparency." Our architecture is fully documented and built upon open cryptographic standards.
+## Security Posture
 
-| Document | English (EN) | Türkçe (TR) |
-| :--- | :--- | :--- |
-| **Security Whitepaper** | [Read EN](guvenlik/SECURITY_WHITEPAPER_EN.md) | [Oku TR](guvenlik/SECURITY_WHITEPAPER.md) |
-| **Threat Model** | [View EN](guvenlik/THREAT_MODEL_EN.md) | [Görüntüle TR](guvenlik/THREAT_MODEL.md) |
-| **Security Disclosure** | [Policy](guvenlik/SECURITY_DISCLOSURE_EN.md) | [Politika](guvenlik/SECURITY_DISCLOSURE.md) |
-| **Hardening Plan** | [Plan](guvenlik/HARDENING_PLAN.md) | - |
-| **Security Roadmap** | [Roadmap](guvenlik/SECURITY_ROADMAP.md) | - |
+Aegis Vault is designed as an offline-first, local-first system:
 
-> [!IMPORTANT]
-> Aegis Vault is currently in **Public Technical Draft (Pre-Audit)** status. While the core cryptography is robust, we recommend reviewing our [Whitepaper](guvenlik/SECURITY_WHITEPAPER_EN.md) for full implementation details.
+- Master secrets stay on device
+- Encryption/decryption happens client-side
+- Native bridge requests are scoped and authenticated
+- Desktop-extension pairing is allowlist-aware and fail-closed
+- Release trust chain includes verification-oriented metadata and CI enforcement
 
----
+Current status: pre-audit, security-hardened technical draft.
 
-## 🛠️ Technology Stack
+For detailed security documentation:
 
-| Layer | Technologies |
-| :--- | :--- |
-| **Frontend** | React 19, TypeScript, Vite, Framer Motion, Tailwind CSS 4 |
-| **Desktop** | Electron 40, Electron Builder (Hardened IPC & Local Sync Server) |
-| **Extension** | WXT Framework (Manifest V3, Cross-Browser Support) |
-| **Cryptography** | Argon2id, AES-GCM (Browser Crypto API / SubtleCrypto) |
-| **Storage** | IndexedDB (idb), WA-SQLite with OPFS persistence |
+- [Security Policy](SECURITY.md)
+- [Security Whitepaper EN](guvenlik/SECURITY_WHITEPAPER_EN.md)
+- [Security Whitepaper TR](guvenlik/SECURITY_WHITEPAPER.md)
+- [Threat Model EN](guvenlik/THREAT_MODEL_EN.md)
+- [Threat Model TR](guvenlik/THREAT_MODEL.md)
 
----
+## Tech Stack
 
-## 🚀 Getting Started
+- React 19
+- TypeScript
+- Vite
+- Electron
+- WXT
+- Web Crypto API
+- Argon2id
+- AES-256-GCM
+- WA-SQLite / OPFS / IndexedDB
 
-### Prerequisites
+## Development
 
--   **Node.js** (Latest LTS)
--   **npm** (comes with Node.js)
+### Requirements
 
-### Installation
+- Node.js LTS
+- npm
 
-1.  **Clone the Repository**
-    ```bash
-    git clone https://github.com/hafgit99/AegisVault_V.4.0.0.git
-    cd AegisVault_V.4.0.0
-    ```
+### Install
 
-2.  **Install Dependencies**
-    ```bash
-    npm install
-    ```
+```bash
+npm install
+npm --prefix aegis-wxt install
+```
 
-3.  **Run Development Tools**
-    - **PWA / Web**: `npm run dev`
-    - **Desktop**: `npm run dev:electron` (requires separate terminal)
-    - **Extension**: `cd aegis-wxt && npm run dev`
+### Run
 
-### Building for Production
+Web UI:
 
--   **Web App**: `npm run build`
--   **Desktop App (Windows)**: `npm run build:electron`
--   -   **Browser Extension**: `cd aegis-wxt && npm run build` (Outputs to `dist/`)
+```bash
+npm run dev
+```
 
-### Hardened Desktop Sync
+Desktop:
 
-Desktop-to-extension loopback sync is now disabled unless you explicitly opt in and configure a shared pairing secret on both sides.
+```bash
+npm run dev:electron
+```
 
-- Desktop app env vars:
-  - `AEGIS_ENABLE_LOOPBACK_SYNC=1`
-  - `AEGIS_EXTENSION_PAIRING_SECRET=<32+ chars>`
-- Extension build env vars:
-  - `WXT_AEGIS_ENABLE_DESKTOP_SYNC=1`
-  - `WXT_AEGIS_DESKTOP_PAIRING_SECRET=<same secret>`
+Extension:
 
-Without this pairing secret, the extension will not request desktop challenges over `127.0.0.1`.
+```bash
+npm --prefix aegis-wxt run dev
+```
 
-The hardened bridge no longer performs full-vault loopback replication. The extension polls only vault status and requests credentials on demand for the active domain.
-Electron main now keeps only vault state metadata for this bridge and asks the renderer for short-lived domain-scoped credentials when needed.
+Firefox extension dev:
 
-### Native Messaging Foundation
+```bash
+npm --prefix aegis-wxt run dev:firefox
+```
 
-The extension now includes a native messaging transport layer that can be enabled as the preferred desktop bridge when a registered native host is available. The native host no longer depends on loopback HTTP internally; it talks to Electron over a direct local IPC channel.
+## Build
 
-- Extension build env vars:
-  - `WXT_AEGIS_ENABLE_NATIVE_MESSAGING=1`
-  - `WXT_AEGIS_NATIVE_HOST_NAME=com.aegisvault.desktop`
-  - `WXT_AEGIS_ENABLE_LOOPBACK_FALLBACK=1` only for explicit recovery/dev fallback
-  - `WXT_AEGIS_DESKTOP_PAIRING_SECRET=<optional build-time fallback>`
+Desktop app:
 
-Current state:
+```bash
+npm run build:electron
+```
 
-- Native messaging is implemented as the preferred transport on the extension side
-- The native host now talks to Electron over a direct local IPC bridge
-- The local IPC bridge now also requires HMAC proof validation with the shared pairing secret
-- Loopback fallback is no longer automatic when native messaging is enabled
-- The extension can now keep a runtime pairing secret in browser storage instead of relying only on build-time env configuration
-- A user-approved native pairing flow foundation now exists for storing and rotating desktop bridge secrets per extension
-- The popup now exposes a real pair/unpair desktop bridge flow for end users
-- The desktop app settings screen now lists paired extensions and lets you revoke them directly
-- Windows production flow now registers the native host for Chrome, Edge, and Firefox
-- CI now verifies generated native host manifests before publishing artifacts
+Chromium extension:
 
-Repository foundation:
+```bash
+npm --prefix aegis-wxt run build
+```
 
-- Native host bridge script: `scripts/aegis-native-host.cjs`
-- Manifest generator: `npm run build:native-host-manifest`
-- Manifest verifier: `npm run verify:native-host-manifest`
+Firefox extension:
 
-Example setup flow:
+```bash
+npm --prefix aegis-wxt run build:firefox
+```
 
-1. For production, set `AEGIS_EXTENSION_ALLOWLIST` or `AEGIS_EXTENSION_ID`
-2. Set `AEGIS_EXTENSION_PAIRING_SECRET`
-3. Run `npm run build:native-host-manifest`
-4. Register the generated manifest from `build/native-host/` with the browser
-   Windows quick path:
-   `npm run register:native-host`
-5. Optionally verify the generated artifacts:
-   `npm run verify:native-host-manifest`
-6. Build the extension with `WXT_AEGIS_ENABLE_NATIVE_MESSAGING=1`
+## Quality
 
-Development note:
+Type checking:
 
-- Chromium development builds now use a stable manifest key from `aegis-wxt/dev/chromium-extension-key.txt`
-- The matching default dev extension ID is `iockeheicjcnfoegjjboooljndjcafae`
-- `npm run build:native-host-manifest` automatically includes that dev ID in `allowed_origins`
-- This avoids the common `wxt dev` pairing failure where the unpacked extension ID changes and the desktop app never receives the request
+```bash
+npx tsc -p tsconfig.app.json --noEmit
+```
 
-Windows cleanup:
+Lint:
 
-- `npm run unregister:native-host`
+```bash
+npm run lint
+```
 
-Production note:
+Unit tests:
 
-- Windows NSIS installer now bundles the native host PowerShell bridge
-- Installation runs native host registration automatically
-- Uninstall removes the Chrome/Edge/Firefox native host registry keys automatically
+```bash
+npm test
+```
 
----
+Coverage:
 
-## 🤝 Support & Donation
+```bash
+npm run test:coverage
+```
 
-If you find Aegis Vault useful, consider supporting the project. **Donations are accepted exclusively within the application** via the secure Donation Modal.
+## Repository Notes
 
-- **GitHub**: Star the project on [GitHub](https://github.com/hafgit99/AegisVault_V.4.0.0)
-- **Contribution**: PRs are welcome! Check our [Hardening Plan](guvenlik/HARDENING_PLAN.md) for open tasks.
+- Security and audit working notes under `guvenlik/` are maintained separately from the public project overview.
+- Generated release artifacts, local reports, logs, and native-host build outputs should not be committed.
+- Release announcement text and distribution-facing release notes are intentionally not maintained in this README.
 
----
+## Contributing
 
-## ⚖️ License
+Issues and pull requests are welcome, especially in these areas:
 
-Distributed under the MIT License. See `LICENSE` for more information.
+- cryptographic review
+- secure storage hardening
+- cross-browser extension compatibility
+- automated test coverage
+- accessibility and UX polish
 
-Copyright © 2026 Aegis Vault.
+If you are reporting a security issue, please use the process described in [SECURITY.md](SECURITY.md).
 
----
+## License
 
-<p align="center">
-  MADE BY <a href="https://github.com/hafgit99"><b>HAFGIT99</b></a> WITH ❤️
-</p>
+MIT. See [LICENSE](LICENSE).

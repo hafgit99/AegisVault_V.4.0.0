@@ -72,6 +72,12 @@ if (mode === "release") {
   } else if (!summary.releaseVerification.ok) {
     errors.push("RELEASE_VERIFICATION_FAILED");
   }
+
+  if (!summary.platformSigning) {
+    errors.push("PLATFORM_SIGNING_REPORT_MISSING");
+  } else if (!summary.platformSigning.ok) {
+    errors.push("PLATFORM_SIGNING_FAILED");
+  }
 }
 
 const payload = {

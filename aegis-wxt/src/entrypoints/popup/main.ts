@@ -156,6 +156,7 @@ const formatBridgeError = (code: string) => {
         FORBIDDEN_EXTENSION_ID: popupLanguage === 'tr' ? 'Bu eklenti kimligi masaustu tarafinda izinli degil.' : 'This extension ID is not allowlisted on desktop.',
         PAIRING_REJECTED: popupLanguage === 'tr' ? 'Eslestirme istegi masaustunde reddedildi.' : 'Pairing request was rejected on desktop.',
         NATIVE_HOST_UNAVAILABLE: popupLanguage === 'tr' ? 'Native host kullanilamiyor veya kayitli degil.' : 'Native host is unavailable or not registered.',
+        LOOPBACK_FALLBACK_UNAVAILABLE: popupLanguage === 'tr' ? 'Native host kullanilamiyor ve loopback fallback devre disi. Masaustu uygulamayi yeniden baslatip eslestirmeyi tekrar deneyin.' : 'Native host is unavailable and loopback fallback is disabled. Restart the desktop app and try pairing again.',
         INVALID_PAIRING_SECRET: popupLanguage === 'tr' ? 'Olusturulan eslestirme sirri gecersiz.' : 'Generated pairing secret is invalid.',
         NATIVE_BRIDGE_TIMEOUT: popupLanguage === 'tr' ? 'Masaustu koprusu zaman asimina ugradi.' : 'Desktop bridge timed out.',
         NATIVE_BRIDGE_EOF: popupLanguage === 'tr' ? 'Masaustu koprusu beklenmedik sekilde kapandi.' : 'Desktop bridge closed unexpectedly.',

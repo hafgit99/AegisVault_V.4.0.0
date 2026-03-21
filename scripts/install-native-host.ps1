@@ -1,6 +1,6 @@
 ﻿param(
   [string]$InstallDir,
-  [string]$HostName = "com.hafgit99.aegis_vault",
+  [string]$HostName = "com.aegisvault.desktop",
   [string[]]$ExtensionIds = @(
     "iockeheicjcnfoegjjboooljndjcafae",
     "gddgomiecgnihlljfkogfjgakedoielk",
@@ -24,26 +24,34 @@ $launcherPath = Join-Path $nativeHostDir "aegis-native-host-launcher.cmd"
 $hostScriptPath = Join-Path $InstallDir "resources\native-host\aegis-native-host.ps1"
 $manifestPath = Join-Path $nativeHostDir "$HostName.json"
 $firefoxManifestPath = Join-Path $nativeHostDir "$HostName.firefox.json"
+$combinedAllowedExtensionIds = @($ExtensionIds + $FirefoxExtensionIds | Select-Object -Unique)
+$combinedAllowedExtensionIdsJson = $combinedAllowedExtensionIds | ConvertTo-Json -Compress
+
+$launcherContent = @"
+@echo off
+setlocal
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "$hostScriptPath" -AllowedExtensionIdsJson "$combinedAllowedExtensionIdsJson"
+"@
+
+Set-Content -Path $launcherPath -Value $launcherContent -Encoding ASCII
 
 $manifest = @{
   name = $HostName
   description = "Aegis Vault native messaging bridge"
-  path = "powershell.exe"
+  path = $launcherPath
   type = "stdio"
   allowed_origins = @($ExtensionIds | ForEach-Object { "chrome-extension://$_/" })
 }
-$manifest['args'] = @("-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", $hostScriptPath)
 
 $manifest | ConvertTo-Json -Depth 5 | Set-Content -Path $manifestPath -Encoding UTF8
 
 $firefoxManifest = @{
   name = $HostName
   description = "Aegis Vault native messaging bridge"
-  path = "powershell.exe"
+  path = $launcherPath
   type = "stdio"
   allowed_extensions = @($FirefoxExtensionIds)
 }
-$firefoxManifest['args'] = @("-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", $hostScriptPath)
 
 $firefoxManifest | ConvertTo-Json -Depth 5 | Set-Content -Path $firefoxManifestPath -Encoding UTF8
 
@@ -61,5 +69,6 @@ New-Item -Path $firefoxKey -Force | Out-Null
 Set-ItemProperty -Path $firefoxKey -Name "(default)" -Value $firefoxManifestPath
 
 Write-Host "Installed native host (Direct Powershell method):"
+Write-Host "  Launcher: $launcherPath"
 Write-Host "  Chromium manifest: $manifestPath"
 Write-Host "  Firefox manifest: $firefoxManifestPath"

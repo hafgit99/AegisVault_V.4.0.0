@@ -27,7 +27,7 @@ function normalizeDomain(input) {
 
 function isAllowlistedExtensionId(extensionId) {
   if (typeof extensionId !== 'string' || !extensionId) return false;
-  if (ALLOWLIST_EXTENSION_IDS.length === 0) return true;
+  if (ALLOWLIST_EXTENSION_IDS.length === 0) return false;
   return ALLOWLIST_EXTENSION_IDS.includes(extensionId);
 }
 

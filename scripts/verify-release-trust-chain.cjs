@@ -26,6 +26,23 @@ function verifySignature(payload, signature, publicKey) {
   }
 }
 
+function normalizeAttachment(attachment, fallbackPath) {
+  if (!attachment) return null;
+  if (typeof attachment === "string") {
+    return {
+      file: path.basename(attachment),
+      sha256: fs.existsSync(fallbackPath) ? sha256(fallbackPath) : null,
+    };
+  }
+  if (typeof attachment === "object" && typeof attachment.file === "string") {
+    return {
+      file: attachment.file,
+      sha256: typeof attachment.sha256 === "string" ? attachment.sha256 : null,
+    };
+  }
+  return null;
+}
+
 function main() {
   const manifestPath = path.join(releaseDir, "aegis-release-manifest.json");
   const sbomPath = path.join(releaseDir, "aegis-release-sbom.json");
@@ -41,6 +58,8 @@ function main() {
 
   if (errors.length === 0) {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    const sbomAttachment = normalizeAttachment(manifest.attachments?.sbom, sbomPath);
+    const provenanceAttachment = normalizeAttachment(manifest.attachments?.provenance, provenancePath);
     artifactResults = (manifest.artifacts || []).map((artifact) => {
       const artifactPath = path.join(releaseDir, artifact.file);
       const exists = fs.existsSync(artifactPath);
@@ -54,6 +73,29 @@ function main() {
         hashMatches,
       };
     });
+    const attachmentResults = [
+      { key: "sbom", attachment: sbomAttachment, fullPath: sbomPath },
+      { key: "provenance", attachment: provenanceAttachment, fullPath: provenancePath },
+    ].map(({ key, attachment, fullPath }) => {
+      const exists = Boolean(attachment?.file) && fs.existsSync(fullPath);
+      const actualHash = exists ? sha256(fullPath) : null;
+      const hashMatches = Boolean(exists && attachment?.sha256 && actualHash === attachment.sha256);
+      if (!attachment?.file) errors.push(`RELEASE_${key.toUpperCase()}_ATTACHMENT_MISSING`);
+      if (attachment?.file && !exists) errors.push(`RELEASE_${key.toUpperCase()}_FILE_MISSING`);
+      if (exists && !attachment?.sha256) errors.push(`RELEASE_${key.toUpperCase()}_HASH_MISSING`);
+      if (exists && attachment?.sha256 && !hashMatches) errors.push(`RELEASE_${key.toUpperCase()}_HASH_MISMATCH`);
+      return {
+        key,
+        file: attachment?.file || null,
+        exists,
+        hashMatches,
+      };
+    });
+
+    const provenance = JSON.parse(fs.readFileSync(provenancePath, "utf8"));
+    if (String(provenance?.subject?.version || "") !== String(manifest.subject || "")) {
+      errors.push("RELEASE_PROVENANCE_SUBJECT_MISMATCH");
+    }
 
     const signature = manifest.signature || {};
     const payload = JSON.stringify({ ...manifest, signature: null });
@@ -75,6 +117,8 @@ function main() {
       signatureStatus = "unsigned";
       errors.push("RELEASE_SIGNATURE_REQUIRED");
     }
+
+    artifactResults = [...artifactResults, ...attachmentResults];
   }
 
   const report = {

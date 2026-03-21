@@ -14,8 +14,9 @@ vitest.log
 node_modules
 dist
 dist-ssr
-build
 release
+build/native-host/
+native-host/
 *.exe
 *.msi
 *.dmg
@@ -69,6 +70,9 @@ playwright-report/
 test-results/
 test-*.txt
 test-output.json
+test_out.json
+plain-error.log
+error.log
 errors.txt
 tsc_errors.txt
 vitest.log

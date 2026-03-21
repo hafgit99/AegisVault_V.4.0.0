@@ -107,8 +107,14 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       AEGIS_REQUIRE_SIGNED_RELEASE: "1"
+      AEGIS_REQUIRE_PLATFORM_SIGNING: "1"
       AEGIS_RELEASE_SIGNING_PRIVATE_KEY: ${{ secrets.AEGIS_RELEASE_SIGNING_PRIVATE_KEY }}
       AEGIS_RELEASE_SIGNING_PUBLIC_KEY: ${{ secrets.AEGIS_RELEASE_SIGNING_PUBLIC_KEY }}
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
     strategy:
       fail-fast: false
@@ -140,6 +146,9 @@ jobs:
       - name: Validate Release Signing Environment
         run: npm run release:validate-signing-env
 
+      - name: Validate Platform Signing Environment
+        run: npm run release:validate-platform-signing-env
+
       - name: Build Application
         run: npm run build
 
@@ -160,6 +169,9 @@ jobs:
 
       - name: Build Electron App
         run: npm run build:electron
+
+      - name: Verify Platform Signing
+        run: npm run release:verify-platform-signing
 
       - name: Release Smoke Test
         run: npm run release:smoke

@@ -17,6 +17,14 @@ function readJsonIfExists(filePath) {
   }
 }
 
+function readFirstJson(paths) {
+  for (const filePath of paths) {
+    const parsed = readJsonIfExists(filePath);
+    if (parsed) return parsed;
+  }
+  return null;
+}
+
 function summarizeVitest(report) {
   if (!report) return null;
   const testResults = Array.isArray(report.testResults) ? report.testResults : [];
@@ -77,12 +85,22 @@ if (fs.existsSync(vitestResultsDir)) {
   console.log(`[ci-report] vitest-results directory MISSING: ${vitestResultsDir}`);
 }
 
-const unitReport = summarizeVitest(readJsonIfExists(path.join(vitestResultsDir, "vitest-results.json")));
-const importExportReport = summarizeVitest(readJsonIfExists(path.join(vitestResultsDir, "import-export-regression.json")));
-const securityReport = summarizeVitest(readJsonIfExists(path.join(vitestResultsDir, "security-regression.json")));
+const unitReport = summarizeVitest(readFirstJson([
+  path.join(testResultsDir, "vitest-results.json"),
+  path.join(vitestResultsDir, "vitest-results.json"),
+]));
+const importExportReport = summarizeVitest(readFirstJson([
+  path.join(testResultsDir, "import-export-regression.json"),
+  path.join(vitestResultsDir, "import-export-regression.json"),
+]));
+const securityReport = summarizeVitest(readFirstJson([
+  path.join(testResultsDir, "security-regression.json"),
+  path.join(vitestResultsDir, "security-regression.json"),
+]));
 const e2eReport = summarizePlaywright(readJsonIfExists(path.join(testResultsDir, "results.json")));
 const releaseReport = readJsonIfExists(path.join(reportDir, "release-smoke.json"));
 const releaseVerificationReport = readJsonIfExists(path.join(reportDir, "release-verification.json"));
+const platformSigningReport = readJsonIfExists(path.join(reportDir, "platform-signing-verification.json"));
 
 const summary = {
   generatedAt: new Date().toISOString(),
@@ -92,6 +110,7 @@ const summary = {
   e2e: e2eReport,
   releaseSmoke: releaseReport,
   releaseVerification: releaseVerificationReport,
+  platformSigning: platformSigningReport,
   extensionBuilds: {
     chrome: fileStatus(path.join(extensionDir, "chrome-mv3", "manifest.json")),
     firefox: fileStatus(path.join(extensionDir, "firefox-mv3", "manifest.json")),
@@ -147,6 +166,11 @@ const lines = [
   releaseVerificationReport
     ? `OK: ${releaseVerificationReport.ok}, Signature / Imza: ${releaseVerificationReport.signatureStatus || "unknown"}`
     : "No release verification report found / Release dogrulama raporu bulunamadi.",
+  "",
+  "## Platform Signing / Platform Imzalari",
+  platformSigningReport
+    ? `OK: ${platformSigningReport.ok}, Mode / Mod: ${platformSigningReport.mode || "unknown"}`
+    : "No platform signing report found / Platform imza raporu bulunamadi.",
   "",
 ];
 
