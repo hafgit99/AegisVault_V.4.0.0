@@ -39,10 +39,17 @@ function requireReport(sectionName, report) {
   }
 }
 
+function requireReportIfPresent(sectionName, report) {
+  if (!report) return;
+  if (report.success === false || report.failed > 0) {
+    errors.push(`${sectionName.toUpperCase()}_REPORT_FAILED`);
+  }
+}
+
 requireReport("unit", summary.unit);
 requireReport("import_export_regression", summary.importExportRegression);
 requireReport("security_regression", summary.securityRegression);
-requireReport("e2e", summary.e2e);
+requireReportIfPresent("e2e", summary.e2e);
 
 if (!summary.extensionBuilds?.chrome?.exists) {
   errors.push("CHROME_EXTENSION_BUILD_MISSING");

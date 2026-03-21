@@ -27,6 +27,23 @@ function readFirstJson(paths) {
 
 function summarizeVitest(report) {
   if (!report) return null;
+  if (typeof report.numTotalTests === "number") {
+    const suites =
+      typeof report.numTotalTestSuites === "number"
+        ? report.numTotalTestSuites
+        : Array.isArray(report.testResults)
+          ? report.testResults.length
+          : 0;
+    return {
+      suites,
+      passed: Number(report.numPassedTests || 0),
+      failed: Number(report.numFailedTests || 0),
+      success:
+        typeof report.success === "boolean"
+          ? report.success
+          : Number(report.numFailedTests || 0) === 0,
+    };
+  }
   const testResults = Array.isArray(report.testResults) ? report.testResults : [];
   let passed = 0;
   let failed = 0;
@@ -36,11 +53,13 @@ function summarizeVitest(report) {
       if (assertion.status === "failed") failed += 1;
     }
   }
+  const suites =
+    typeof report.numTotalTestSuites === "number" ? report.numTotalTestSuites : testResults.length;
   return {
-    suites: testResults.length,
+    suites,
     passed,
     failed,
-    success: failed === 0,
+    success: typeof report.success === "boolean" ? report.success : failed === 0,
   };
 }
 
@@ -76,13 +95,6 @@ function fileStatus(filePath) {
     path: filePath,
     exists: fs.existsSync(filePath),
   };
-}
-
-if (fs.existsSync(vitestResultsDir)) {
-  console.log(`[ci-report] vitest-results directory exists: ${vitestResultsDir}`);
-  console.log(`[ci-report] contents:`, fs.readdirSync(vitestResultsDir));
-} else {
-  console.log(`[ci-report] vitest-results directory MISSING: ${vitestResultsDir}`);
 }
 
 const unitReport = summarizeVitest(readFirstJson([
