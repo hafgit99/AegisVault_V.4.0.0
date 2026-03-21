@@ -95,6 +95,14 @@ async function main() {
     buildFlag = '-m';
   }
 
+  if (process.env.AEGIS_REQUIRE_PLATFORM_SIGNING !== '1') {
+    delete process.env.CSC_LINK;
+    delete process.env.CSC_KEY_PASSWORD;
+    delete process.env.APPLE_ID;
+    delete process.env.APPLE_APP_SPECIFIC_PASSWORD;
+    delete process.env.APPLE_TEAM_ID;
+  }
+
   run(resolveCommand('npm'), ['run', 'build']);
   run(resolveCommand('electron-builder'), [buildFlag, '--config', 'electron-builder.config.cjs', '--publish', 'never'], {
     AEGIS_ELECTRON_OUTPUT_DIR: effectiveOutputDir,
