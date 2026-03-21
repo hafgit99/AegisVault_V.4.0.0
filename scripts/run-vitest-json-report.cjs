@@ -20,7 +20,7 @@ const vitestArgs = [
   ...restArgs,
   "--reporter=default",
   "--reporter=json",
-  "--outputFile",
+  "--outputFile.json",
   outputFile,
 ];
 
