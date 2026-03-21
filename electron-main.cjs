@@ -1037,12 +1037,14 @@ function registerNativeHostWindows() {
       'aegisvault@example.com',
     ])];
     const allowedExtensionIdsJson = JSON.stringify(combinedAllowlist);
+    const allowedExtensionIdsCsv = combinedAllowlist.join(',');
 
     // 1. Launcher CMD dosyasını dinamik olarak oluştur
     const launcherPath = path.join(nativeHostDir, 'aegis-native-host-launcher.cmd');
     const launcherContent = [
       '@echo off',
       'setlocal',
+      `set "AEGIS_EXTENSION_ALLOWLIST=${allowedExtensionIdsCsv}"`,
       `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "${hostScriptPath}" -AllowedExtensionIdsJson "${allowedExtensionIdsJson.replace(/"/g, '\\"')}"`,
       '',
     ].join('\r\n');
@@ -1284,8 +1286,8 @@ function buildDesktopBridgeResponsePayload(response, requestMessage, timestamp) 
     timestamp,
     response,
   });
-  
-  if (parsedArgs.debug || process.env.NODE_ENV === 'development') {
+
+  if (process.env.NODE_ENV === 'development') {
     console.debug(`[Aegis Native Bridge] Signing payload: ${payload.substring(0, 100)}...`);
   }
   return payload;

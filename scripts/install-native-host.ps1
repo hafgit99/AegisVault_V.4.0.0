@@ -26,10 +26,12 @@ $manifestPath = Join-Path $nativeHostDir "$HostName.json"
 $firefoxManifestPath = Join-Path $nativeHostDir "$HostName.firefox.json"
 $combinedAllowedExtensionIds = @($ExtensionIds + $FirefoxExtensionIds | Select-Object -Unique)
 $combinedAllowedExtensionIdsJson = $combinedAllowedExtensionIds | ConvertTo-Json -Compress
+$combinedAllowedExtensionIdsCsv = ($combinedAllowedExtensionIds -join ",")
 
 $launcherContent = @"
 @echo off
 setlocal
+set "AEGIS_EXTENSION_ALLOWLIST=$combinedAllowedExtensionIdsCsv"
 powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "$hostScriptPath" -AllowedExtensionIdsJson "$combinedAllowedExtensionIdsJson"
 "@
 

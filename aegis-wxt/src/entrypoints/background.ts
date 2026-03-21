@@ -149,6 +149,7 @@ export default defineBackground({
     let runtimeDesktopBridgeIdentity: { publicJwk: JsonWebKey; keyId: string } | null = null;
     let runtimeUiLanguage = 'en';
     let runtimeInstallationId = '';
+    let warnedAboutLegacyNativeResponse = false;
     const UI_LANGUAGE_STORAGE_KEY = 'aegis_ui_language';
     const INSTALLATION_ID_STORAGE_KEY = 'aegis_extension_installation_id';
     const PAIRING_SECRET_STORAGE_KEY = 'aegis_desktop_pairing_secret';
@@ -416,11 +417,12 @@ export default defineBackground({
         privateKey,
         new TextEncoder().encode(payload),
       );
+      const derSignature = convertP1363SignatureToDer(signature);
       return {
         clientKeyId: keyMaterial.keyId,
         clientTimestamp: timestamp,
         clientNonce: nonce,
-        clientSignature: toHex(signature),
+        clientSignature: toHex(derSignature),
         ...(includePublicKey ? { clientPublicJwk: keyMaterial.publicJwk } : {}),
       };
     };
@@ -569,6 +571,48 @@ export default defineBackground({
       return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
     };
 
+    const trimLeadingZeroes = (bytes: Uint8Array) => {
+      let start = 0;
+      while (start < bytes.length - 1 && bytes[start] === 0) {
+        start += 1;
+      }
+      return bytes.slice(start);
+    };
+
+    const encodeDerLength = (length: number) => {
+      if (length < 0x80) {
+        return Uint8Array.from([length]);
+      }
+      const octets: number[] = [];
+      let remaining = length;
+      while (remaining > 0) {
+        octets.unshift(remaining & 0xff);
+        remaining >>= 8;
+      }
+      return Uint8Array.from([0x80 | octets.length, ...octets]);
+    };
+
+    const encodeDerInteger = (value: Uint8Array) => {
+      const normalized = trimLeadingZeroes(value);
+      const needsPadding = (normalized[0] & 0x80) !== 0;
+      const body = needsPadding ? Uint8Array.from([0, ...normalized]) : normalized;
+      return Uint8Array.from([0x02, ...encodeDerLength(body.length), ...body]);
+    };
+
+    const convertP1363SignatureToDer = (signature: ArrayBuffer) => {
+      const bytes = new Uint8Array(signature);
+      if (bytes.length % 2 !== 0) {
+        throw new Error('INVALID_ECDSA_SIGNATURE_LENGTH');
+      }
+      const half = bytes.length / 2;
+      const r = bytes.slice(0, half);
+      const s = bytes.slice(half);
+      const encodedR = encodeDerInteger(r);
+      const encodedS = encodeDerInteger(s);
+      const sequenceBody = Uint8Array.from([...encodedR, ...encodedS]);
+      return Uint8Array.from([0x30, ...encodeDerLength(sequenceBody.length), ...sequenceBody]).buffer;
+    };
+
     const generateRequestNonce = () => {
       const bytes = crypto.getRandomValues(new Uint8Array(16));
       return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -605,6 +649,13 @@ export default defineBackground({
         };
         const rawResponse = await runtimeApi.sendNativeMessage(NATIVE_HOST_NAME, requestMessage);
         if (!rawResponse || typeof rawResponse !== 'object') return null;
+        if (!('desktopAuth' in rawResponse) || rawResponse.desktopAuth == null) {
+          if (!warnedAboutLegacyNativeResponse) {
+            warnedAboutLegacyNativeResponse = true;
+            console.warn('[Aegis Vault] Native host returned an unsigned legacy response; accepting compatibility mode.');
+          }
+          return rawResponse;
+        }
         return await verifyDesktopBridgeResponse(requestMessage, rawResponse);
       } catch {
         return null;

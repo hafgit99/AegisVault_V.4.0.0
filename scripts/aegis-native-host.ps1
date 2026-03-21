@@ -7,9 +7,18 @@ $ErrorActionPreference = "Stop"
 
 $AllowedExtensionIds = @()
 try {
-  $parsedAllowedIds = $AllowedExtensionIdsJson | ConvertFrom-Json
-  if ($parsedAllowedIds -is [System.Array]) {
-    $AllowedExtensionIds = @($parsedAllowedIds | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { [string]$_ })
+  $rawAllowlist = if (-not [string]::IsNullOrWhiteSpace($env:AEGIS_EXTENSION_ALLOWLIST)) {
+    @($env:AEGIS_EXTENSION_ALLOWLIST -split ',' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+  } else {
+    $parsedAllowedIds = $AllowedExtensionIdsJson | ConvertFrom-Json
+    if ($parsedAllowedIds -is [System.Array]) {
+      @($parsedAllowedIds | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { [string]$_ })
+    } else {
+      @()
+    }
+  }
+  if ($rawAllowlist -is [System.Array]) {
+    $AllowedExtensionIds = @($rawAllowlist)
   }
 } catch {
   $AllowedExtensionIds = @()
