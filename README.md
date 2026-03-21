@@ -2,6 +2,10 @@
 
 Offline-first, zero-knowledge password manager and 2FA authenticator with Electron desktop, React web app, and cross-browser extension support.
 
+<p align="center">
+  <img src="public/icon.png" alt="Aegis Vault icon" width="120">
+</p>
+
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Desktop](https://img.shields.io/badge/Desktop-Electron-47848f?logo=electron)
 ![Frontend](https://img.shields.io/badge/Frontend-React%2019-61dafb?logo=react)
