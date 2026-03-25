@@ -71,7 +71,7 @@ if (ALLOWLIST_EXTENSION_IDS.length === 0) {
 // Varsayılan davranış: STRICT allowlist zorunlu.
 // Geriye dönük uyumluluk gerektiğinde AEGIS_STRICT_ALLOWLIST_MODE=0 verilerek gevşetilebilir.
 const STRICT_ALLOWLIST_MODE = (process.env.AEGIS_STRICT_ALLOWLIST_MODE || '1') !== '0';
-const LOOPBACK_SYNC_ENABLED = (process.env.AEGIS_ENABLE_LOOPBACK_SYNC || (app.isPackaged ? '0' : '1')) === '1';
+const LOOPBACK_SYNC_ENABLED = process.env.AEGIS_ENABLE_LOOPBACK_SYNC !== '0';
 const PAIRING_SECRET = (process.env.AEGIS_EXTENSION_PAIRING_SECRET || '').trim();
 const PAIRING_TTL_MS = 10000;
 
@@ -1833,7 +1833,7 @@ if (LOOPBACK_SYNC_ENABLED) {
 // ─────────────────────────────────────────────────────────────────
 ipcMain.on('sync-vault-state', (event, state) => {
   // 1. Sender validation
-  if (!mainWindow || event.senderFrame !== mainWindow.webContents.mainFrame) {
+  if (!mainWindow || event.sender !== mainWindow.webContents) {
     console.warn('[IPC] Unauthorized IPC sender for sync-vault-state');
     return;
   }
@@ -1848,7 +1848,7 @@ ipcMain.on('sync-vault-state', (event, state) => {
 
 ipcMain.on('lock-vault', (event) => {
   // 1. Sender validation
-  if (!mainWindow || event.senderFrame !== mainWindow.webContents.mainFrame) {
+  if (!mainWindow || event.sender !== mainWindow.webContents) {
     console.warn('[IPC] Unauthorized IPC sender for lock-vault');
     return;
   }
@@ -1858,7 +1858,7 @@ ipcMain.on('lock-vault', (event) => {
 });
 
 ipcMain.on('aegis-domain-credentials-response', (event, payload) => {
-  if (!mainWindow || event.senderFrame !== mainWindow.webContents.mainFrame) {
+  if (!mainWindow || event.sender !== mainWindow.webContents) {
     console.warn('[IPC] Unauthorized IPC sender for aegis-domain-credentials-response');
     return;
   }
@@ -1874,7 +1874,7 @@ ipcMain.on('aegis-domain-credentials-response', (event, payload) => {
 });
 
 ipcMain.handle('list-extension-pairings', (event) => {
-  if (!mainWindow || event.senderFrame !== mainWindow.webContents.mainFrame) {
+  if (!mainWindow || event.sender !== mainWindow.webContents) {
     console.warn('[IPC] Unauthorized IPC sender for list-extension-pairings');
     return [];
   }
@@ -1899,7 +1899,7 @@ ipcMain.handle('list-extension-pairings', (event) => {
 });
 
 ipcMain.handle('remove-extension-pairing', (event, extensionId) => {
-  if (!mainWindow || event.senderFrame !== mainWindow.webContents.mainFrame) {
+  if (!mainWindow || event.sender !== mainWindow.webContents) {
     console.warn('[IPC] Unauthorized IPC sender for remove-extension-pairing');
     return { success: false, error: 'UNAUTHORIZED' };
   }
