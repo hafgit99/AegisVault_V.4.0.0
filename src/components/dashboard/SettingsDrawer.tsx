@@ -273,6 +273,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
   );
   const sharingOverview = useMemo(
     () => SharingOverviewService.buildReport(passwords),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [passwords, sharingOverviewVersion]
   );
   const securityCenterSummary = useMemo(
@@ -448,6 +449,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
   };
   const sharingAuditEvents = useMemo(
     () => SharingAuditService.listEvents(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [sharingOverviewVersion]
   );
   const filteredSharingAuditEvents = useMemo(

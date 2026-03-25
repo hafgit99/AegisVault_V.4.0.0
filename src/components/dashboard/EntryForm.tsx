@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useState, lazy, Suspense } from "react";
 import { X, Wand2, Eye, EyeOff, ShieldCheck, Lock, Paperclip, FileUp, Tag, KeyRound, FileText, Camera } from "lucide-react";
 import { useVault } from "../../contexts/VaultContext";
 import { vaultService, type VaultEntry } from "../../vaultService";
@@ -34,7 +34,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
   const [totpInput, setTotpInput] = useState(initialEntry?.totpSecret || "");
   const [showTotpSection, setShowTotpSection] = useState(!!(initialEntry?.totpSecret || initialEntry?.totp_secret));
   const [showQRScanner, setShowQRScanner] = useState(false);
-  const [sharedSpaces, setSharedSpaces] = useState(() => SharedSpaceService.listSpaces());
+  const [sharedSpaces] = useState(() => SharedSpaceService.listSpaces());
   const existingAttachments = Array.isArray(newEntry.attachments) ? newEntry.attachments : [];
   const visibleExistingAttachments = existingAttachments.filter((att) => !removedAttachmentIds.includes(att.id));
   const activeProfile = VaultManager.getActiveProfile();
@@ -46,9 +46,6 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
   const sharingFocusContext = initialEntry?.ui_focus_context;
   const sharingFocusLabel = initialEntry?.ui_focus_label;
 
-  useEffect(() => {
-    setSharedSpaces(SharedSpaceService.listSpaces());
-  }, []);
 
   const updatePrimarySharing = (
     updater: (

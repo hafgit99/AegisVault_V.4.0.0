@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { CheckSquare, Square, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -48,6 +49,7 @@ export function PasskeySiteInventoryModal({
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   useEffect(() => {
+     
     if (!isOpen) {
       setSelectedIds([]);
       setFilter("all");
@@ -59,11 +61,13 @@ export function PasskeySiteInventoryModal({
     if (!isOpen || !remediationResult) return;
     const nextRisky = entries.find((entry) => entry.riskFlags.length > 0) || null;
     if (nextRisky) {
+       
       setFilter("attention");
       setSortBy("risk_first");
       setSelectedIds([nextRisky.id]);
       return;
     }
+     
     setSelectedIds([]);
   }, [entries, isOpen, remediationResult]);
 

@@ -13,6 +13,7 @@ export default defineConfig([
     'build/native-host',
     'aegis-wxt/dist',
     'aegis-wxt/.wxt',
+    'android-aegis-temp',
   ]),
   {
     files: ['**/*.{ts,tsx}'],

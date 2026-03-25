@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Plus, ShieldAlert, Trash2, Users, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -64,6 +65,28 @@ export function SharedSpacesModal({
     setSpaces(SharedSpaceService.listSpaces());
   };
 
+  const beginEdit = (space?: CanonicalSharedSpace) => {
+    if (!space) {
+      setEditingSpaceId(null);
+      setDraftSpace(createEmptyDraftSpace());
+      setDraftMember({ role: "viewer", status: "active" });
+      setCreateModeHighlight(true);
+      setCreateModeTick((current) => current + 1);
+      return;
+    }
+
+    setCreateModeHighlight(false);
+    setEditingSpaceId(space.id);
+    setDraftSpace({
+      ...space,
+      members: space.members.map((member) => ({ ...member })),
+    });
+    setDraftMember({
+      role: space.default_role,
+      status: "active",
+    });
+  };
+
   useEffect(() => {
     if (!isOpen) return;
     refreshSpaces();
@@ -106,28 +129,6 @@ export function SharedSpacesModal({
     const timer = window.setTimeout(() => setCreateModeHighlight(false), 2200);
     return () => window.clearTimeout(timer);
   }, [createModeHighlight, isOpen]);
-
-  const beginEdit = (space?: CanonicalSharedSpace) => {
-    if (!space) {
-      setEditingSpaceId(null);
-      setDraftSpace(createEmptyDraftSpace());
-      setDraftMember({ role: "viewer", status: "active" });
-      setCreateModeHighlight(true);
-      setCreateModeTick((current) => current + 1);
-      return;
-    }
-
-    setCreateModeHighlight(false);
-    setEditingSpaceId(space.id);
-    setDraftSpace({
-      ...space,
-      members: space.members.map((member) => ({ ...member })),
-    });
-    setDraftMember({
-      role: space.default_role,
-      status: "active",
-    });
-  };
 
   const addMember = () => {
     if (!(draftMember.name || "").trim() && !(draftMember.email || "").trim()) {
