@@ -1,5 +1,36 @@
 # Changelog
 
+## [4.1.0] - Cross-Platform Security & Governance Update
+
+We are proud to release version 4.1.0 of Aegis Vault. This update brings major architectural improvements to security monitoring, cross-platform compatibility, and release governance.
+
+### 🔐 Security Center 2.0 & Triage
+- **Proactive Risk Signals:** Real-time monitoring for missing 2FA, 180+ day password age, and unmonitored sensitive shares.
+- **Security Triage Queue:** A dedicated interface to review and resolve security findings with a 7-day trend analysis.
+- **Immutable Audit History:** Every security action (ignore, resolve, reopen) is now cryptographically logged for local audit-ready forensics.
+
+### 🌐 Cross-Platform & Canonical Standards
+- **Unified Schema Registry:** Introduced a canonical schema (v0.1) for seamless Android-to-Desktop data migration.
+- **Encrypted Backup Envelope:** Aligned Android and Desktop backup formats for cross-device restoration.
+- **Migration Rationale:** Detailed migration reports now provide transparency on how data is transformed during version upgrades.
+
+### 🛠️ Passkey Governance (Phase 4)
+- **Site-Passkey Inventory:** Comprehensive management for all stored FIDO2/WebAuthn credentials.
+- **Risk-Based Remediation:** Automated triage for credentials with missing RP IDs or weak metadata.
+- **Bulk Operations:** Perform security audits and cleanup on multiple passkeys simultaneously.
+
+### 🏢 Sharing & Team Collaboration (Phase 6)
+- **Member Lifecycle Management:** New `invite -> approve -> emergency_only -> remove` workflow for Shared Spaces.
+- **Granular Audit Logs:** Every membership change is tracked and filterable in the Sharing Audit Panel.
+- **Accessibility (A11y):** Enhanced keyboard navigation and screen-reader support for all sharing modals.
+
+### 🛡️ Release Governance & Trust (Phase 8-9)
+- **Audit-Ready Evidence:** Native support for SBOM (Software Bill of Materials) and Provenance tracking.
+- **Release Trust Panel:** A new internal dashboard for owners to verify the integrity of the build chain before deployment.
+- **Automated Checklists:** The application now auto-validates CI quality gates and release requirements.
+
+---
+
 ## [4.0.0] - Secure-by-Default Update
 
 We are excited to announce version 4.0.0 of Aegis Vault. This release represents a massive leap forward in our security architecture, focusing on a zero-knowledge approach, secure cross-origin bridges, and hardened user experience.
