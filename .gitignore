@@ -81,3 +81,4 @@ ci-artifacts/
 [Cc]lean-output.json
 debug-out.txt
 vitest-results/
+android-aegis-temp/
