@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { QRSyncService } from '../QRSyncService';
 import { SecureAppSettings } from '../SecureAppSettings';
+import { AEGIS_APP_VERSION, AEGIS_QR_SYNC_FORMAT } from '../../config/schema-registry';
 
 describe('QRSyncService', () => {
   const entries = [
@@ -25,10 +26,11 @@ describe('QRSyncService', () => {
     const transferCode = 'ABCD-EFGH-IJKL-MNOP';
     const result = await QRSyncService.createPackage(entries, { transferCode });
 
-    expect(result.rawPackage).toContain('aegis-qr-sync-v1');
+    expect(result.rawPackage).toContain(AEGIS_QR_SYNC_FORMAT);
     expect(result.rawPackage).not.toContain('Sup3rSecret!');
     expect(result.rawPackage).not.toContain('Example');
     expect(result.packageInfo.protectionMode).toBe('transfer-code');
+    expect(result.packageInfo.version).toBe(AEGIS_APP_VERSION);
   });
 
   it('round-trips entries with the correct transfer code', async () => {

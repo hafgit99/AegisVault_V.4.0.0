@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { X, Wand2, Settings, ShieldAlert, ShieldCheck, Lock, FileUp, FileDown, Database, AlertTriangle, Eye, EyeOff, Heart, Fingerprint } from "lucide-react";
 import { GlowCard } from "../ui/GlowCard";
 import { getCategoryIcon } from "../../lib/getCategoryIcon";
@@ -11,15 +11,41 @@ import { QRScanner } from "../QRScanner";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import { BackupService } from "../../lib/BackupService";
+import { CanonicalMigrationService } from "../../lib/canonical-migration";
 import { ReAuthModal } from "../ReAuthModal";
 import { WipeConfirmationModal } from "../WipeConfirmationModal";
 import { PasswordGenerator } from "../settings/PasswordGenerator";
+import { SharedSpacesModal } from "./SharedSpacesModal";
+import { SharingAuditPanel } from "./SharingAuditPanel";
+import { SharingOverviewPanel } from "./SharingOverviewPanel";
+import { PasskeySiteInventoryModal } from "./PasskeySiteInventoryModal";
+import { SecurityCenterPanel } from "./SecurityCenterPanel";
+import { ReleaseTrustPanel } from "./ReleaseTrustPanel";
 import { VaultManager } from "../../lib/VaultManager";
 import { PasskeyBindingService } from "../../lib/PasskeyBindingService";
-import { SecureAppSettings, type SecurityModeProfile } from "../../lib/SecureAppSettings";
+import { PasskeyInventoryService } from "../../lib/PasskeyInventoryService";
+import {
+  SecureAppSettings,
+  type SecurityModeProfile,
+  type SecurityCenterHistoryEvent,
+  type ReleaseTrustHistoryEvent,
+} from "../../lib/SecureAppSettings";
 import { SecurityModePolicy } from "../../lib/SecurityModePolicy";
 import { TotpVaultPolicy, type TotpVaultMode } from "../../lib/TotpVaultPolicy";
 import { QRSyncService, type QRSyncPackage, type QRSyncReceiverSession } from "../../lib/QRSyncService";
+import { AEGIS_SYNC_AUDIT_LANGUAGE, AEGIS_SYNC_CONFLICT_RULES, AEGIS_SYNC_MODES, AEGIS_SYNC_STRATEGY, AEGIS_SYNC_TRANSPORTS } from "../../config/sync-strategy";
+import { SyncConflictResolutionService } from "../../lib/SyncConflictResolutionService";
+import { SyncAuditService } from "../../lib/SyncAuditService";
+import { SecurityCenterService } from "../../lib/SecurityCenterService";
+import { ReleaseTrustService } from "../../lib/ReleaseTrustService";
+import type { SecurityCenterTriageItem } from "../../lib/SecurityCenterService";
+import type { MigrationReport } from "../../lib/migration-report";
+import { SharingOverviewService } from "../../lib/SharingOverviewService";
+import type { SharingOverviewIssueType } from "../../lib/SharingOverviewService";
+import { VaultSharingLinkService } from "../../lib/VaultSharingLinkService";
+import { SharingAuditService } from "../../lib/SharingAuditService";
+import type { SharingAuditFilter } from "../../lib/SharingAuditService";
+import type { PasskeyInventorySiteEntry } from "../../lib/PasskeyInventoryService";
 
 interface DesktopPairingRecord {
   extensionId: string;
@@ -91,6 +117,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
   const [importReport, setImportReport] = useState<ImportAnalysisReport | null>(null);
+  const [latestMigrationReport, setLatestMigrationReport] = useState<MigrationReport | null>(null);
 
   // Sync State
   const [syncMode, setSyncMode] = useState<"none" | "export-config" | "export" | "import">("none");
@@ -101,23 +128,58 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
   const [syncExportPackage, setSyncExportPackage] = useState<QRSyncPackage | null>(null);
   const [qrTransferHistory, setQrTransferHistory] = useState<ReturnType<typeof QRSyncService.listTransferHistory>>([]);
   const [qrTransferAudit, setQrTransferAudit] = useState<ReturnType<typeof QRSyncService.listAuditEvents>>([]);
+  const [showFullQrHistory, setShowFullQrHistory] = useState(false);
+  const [showFullQrAudit, setShowFullQrAudit] = useState(false);
+  const [syncAuditEvents, setSyncAuditEvents] = useState<ReturnType<typeof SyncAuditService.listEvents>>([]);
+  const [syncAuditFilter, setSyncAuditFilter] = useState<"all" | "imports" | "restore_migration" | "qr">("all");
 
   // UI State
   const [showWeakPasswordsPopup, setShowWeakPasswordsPopup] = useState(false);
   const [showSecretMenu, setShowSecretMenu] = useState(false);
   const [showWipeModal, setShowWipeModal] = useState(false);
+  const [showSharedSpacesModal, setShowSharedSpacesModal] = useState(false);
+  const [focusedSharedSpaceId, setFocusedSharedSpaceId] = useState<string | null>(null);
+  const [focusedSharedSpaceContext, setFocusedSharedSpaceContext] = useState<"audit" | "issue" | null>(null);
+  const [sharingOverviewVersion, setSharingOverviewVersion] = useState(0);
+  const [sharingAuditFilter, setSharingAuditFilter] = useState<SharingAuditFilter>("all");
+  const [sharingAuditFocus, setSharingAuditFocus] = useState<{ itemId: number; type: SharingOverviewIssueType; title: string } | null>(null);
+  const [selectedSharingIssueKey, setSelectedSharingIssueKey] = useState<string | null>(null);
   const [hasPasskeyBinding, setHasPasskeyBinding] = useState(false);
   const [passkeyBindingDetails, setPasskeyBindingDetails] = useState<ReturnType<typeof PasskeyBindingService.getBinding> | null>(null);
   const [allPasskeyBindings, setAllPasskeyBindings] = useState<ReturnType<typeof PasskeyBindingService.listBindings>>([]);
   const [passkeyEventLog, setPasskeyEventLog] = useState<ReturnType<typeof PasskeyBindingService.getEventLog>>([]);
   const [passkeyRevocations, setPasskeyRevocations] = useState<ReturnType<typeof PasskeyBindingService.listRevocations>>([]);
   const [passkeyPolicy, setPasskeyPolicy] = useState(PasskeyBindingService.getPolicy());
+  const [securityCenterReviews, setSecurityCenterReviews] = useState<Record<string, string>>(() => SecureAppSettings.getSecurityCenterReviews());
+  const [securityCenterHistory, setSecurityCenterHistory] = useState<SecurityCenterHistoryEvent[]>(() => SecureAppSettings.getSecurityCenterHistory());
+  const [releaseTrustChecklist, setReleaseTrustChecklist] = useState<Record<string, string>>(() => SecureAppSettings.getReleaseTrustChecklist());
+  const [releaseTrustApprovals, setReleaseTrustApprovals] = useState<Record<string, string>>(() => SecureAppSettings.getReleaseTrustApprovals());
+  const [releaseTrustHistory, setReleaseTrustHistory] = useState<ReleaseTrustHistoryEvent[]>(() => SecureAppSettings.getReleaseTrustHistory());
+  const [sitePasskeyFilter, setSitePasskeyFilter] = useState<"all" | "attention" | "healthy" | "future" | "missing_rp_id" | "missing_credential_id">("all");
+  const [showPasskeySiteModal, setShowPasskeySiteModal] = useState(false);
+  const [passkeyRemediationResult, setPasskeyRemediationResult] = useState<null | {
+    kind: "missing_rp_id" | "missing_credential_id" | "future_mode";
+    count: number;
+    at: number;
+  }>(null);
+  const [pendingBulkFix, setPendingBulkFix] = useState<null | {
+    kind: "missing_rp_id" | "missing_credential_id" | "future_mode";
+    count: number;
+    selectedIds?: number[];
+  }>(null);
   const [totpMode, setTotpMode] = useState<TotpVaultMode>(() => TotpVaultPolicy.getMode());
   const [totpVaultProfileName, setTotpVaultProfileName] = useState<string>("Aegis 2FA Vault");
   const [securityModeProfile, setSecurityModeProfile] = useState<SecurityModeProfile>(() => SecurityModePolicy.getProfile());
   const [allowPlaintextExport, setAllowPlaintextExport] = useState<boolean>(() => SecureAppSettings.getPlaintextExportEnabled());
   const [desktopPairings, setDesktopPairings] = useState<DesktopPairingRecord[]>([]);
   const [loadingDesktopPairings, setLoadingDesktopPairings] = useState(false);
+  const passkeyActiveDeviceRef = useRef<HTMLDivElement | null>(null);
+  const passkeyRevocationRef = useRef<HTMLDivElement | null>(null);
+  const passkeyPolicyRef = useRef<HTMLDivElement | null>(null);
+  const desktopPairingsRef = useRef<HTMLDivElement | null>(null);
+  const importReportRef = useRef<HTMLDivElement | null>(null);
+  const qrAuditPanelRef = useRef<HTMLDivElement | null>(null);
+  const migrationReportRef = useRef<HTMLDivElement | null>(null);
 
   // ReAuth State (P1-3)
   const [reAuthAction, setReAuthAction] = useState<{ name: string; action: () => void } | null>(null);
@@ -155,12 +217,370 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
     if (warning === "ENCRYPTED_AEGIS_BACKUP") {
       return t("importWarningEncryptedBackup", "Encrypted Aegis backup imported.");
     }
+    if (warning === "SYNC_CONFLICT_DUPLICATES_DETECTED") {
+      return t("syncConflictWarningDuplicates", "Existing vault items with matching signatures were detected before import.");
+    }
+    if (warning === "SYNC_CONFLICT_EXACT_MATCHES_DETECTED") {
+      return t("syncConflictWarningExactMatches", "Some incoming items appear to be exact matches of existing vault records.");
+    }
     return warning;
   };
   const persistPlaintextExportPreference = (enabled: boolean) => {
     SecureAppSettings.setPlaintextExportEnabled(enabled);
   };
   const currentSecurityModeDefinition = SecurityModePolicy.getDefinition(securityModeProfile);
+  const activeSyncMode = AEGIS_SYNC_MODES[AEGIS_SYNC_STRATEGY.activeMode];
+  const futureSyncMode = AEGIS_SYNC_MODES[AEGIS_SYNC_STRATEGY.futureMode];
+  const syncTransportSummaries = useMemo(() => {
+    return activeSyncMode.defaultTransportKeys.map((transportKey) => {
+      const transport = AEGIS_SYNC_TRANSPORTS[transportKey];
+      let statusKey = "syncStrategyStatusReady";
+      let statusDefault = "Ready";
+
+      if (transportKey === "qr_transfer" && !currentSecurityModeDefinition.allowQrSync) {
+        statusKey = "syncStrategyStatusBlocked";
+        statusDefault = "Blocked by security mode";
+      } else if (transportKey === "plaintext_export" && !allowPlaintextExport) {
+        statusKey = "syncStrategyStatusRestricted";
+        statusDefault = "Restricted";
+      }
+
+      return {
+        ...transport,
+        statusKey,
+        statusDefault,
+      };
+    });
+  }, [activeSyncMode.defaultTransportKeys, allowPlaintextExport, currentSecurityModeDefinition.allowQrSync]);
+  const syncAuditDefinitions = useMemo(() => AEGIS_SYNC_AUDIT_LANGUAGE.slice(0, 3), []);
+  const filteredSyncAuditEvents = useMemo(() => {
+    if (syncAuditFilter === "all") return syncAuditEvents;
+    if (syncAuditFilter === "qr") {
+      return syncAuditEvents.filter((event) => event.source === "qr_import");
+    }
+    if (syncAuditFilter === "restore_migration") {
+      return syncAuditEvents.filter((event) => event.source === "canonical_restore" || event.source === "migration");
+    }
+    return syncAuditEvents.filter((event) => event.source === "backup_import" || event.source === "structured_import");
+  }, [syncAuditEvents, syncAuditFilter]);
+  const syncAuditSourceCounts = useMemo(
+    () => ({
+      imports: syncAuditEvents.filter((event) => event.source === "backup_import" || event.source === "structured_import").length,
+      qr: syncAuditEvents.filter((event) => event.source === "qr_import").length,
+      restore: syncAuditEvents.filter((event) => event.source === "canonical_restore" || event.source === "migration").length,
+    }),
+    [syncAuditEvents]
+  );
+  const sharingOverview = useMemo(
+    () => SharingOverviewService.buildReport(passwords),
+    [passwords, sharingOverviewVersion]
+  );
+  const securityCenterSummary = useMemo(
+    () => SecurityCenterService.buildSummary(passwords, securityCenterReviews, {
+      desktopPairings,
+      syncAuditEvents,
+    }),
+    [passwords, securityCenterReviews, desktopPairings, syncAuditEvents]
+  );
+  const releaseTrustSummary = useMemo(() => ReleaseTrustService.buildSummary(), []);
+
+  const appendReleaseTrustHistory = useCallback((event: ReleaseTrustHistoryEvent) => {
+    const next = [event, ...SecureAppSettings.getReleaseTrustHistory()].slice(0, 24);
+    SecureAppSettings.setReleaseTrustHistory(next);
+    setReleaseTrustHistory(next);
+  }, []);
+
+  const toggleReleaseTrustChecklist = useCallback((checkKey: string) => {
+    const next = { ...SecureAppSettings.getReleaseTrustChecklist() };
+    const now = new Date().toISOString();
+    if (next[checkKey]) {
+      delete next[checkKey];
+      appendReleaseTrustHistory({
+        id: `rt-${checkKey}-reopen-${now}`,
+        at: now,
+        action: "evidence_reopened",
+        targetId: checkKey,
+        title: checkKey,
+      });
+      toast.info(t("releaseTrustChecklistReopened", "Evidence checklist item reopened."));
+    } else {
+      next[checkKey] = now;
+      appendReleaseTrustHistory({
+        id: `rt-${checkKey}-collect-${now}`,
+        at: now,
+        action: "evidence_collected",
+        targetId: checkKey,
+        title: checkKey,
+      });
+      toast.success(t("releaseTrustChecklistCollectedToast", "Evidence checklist item marked as collected."));
+    }
+    SecureAppSettings.setReleaseTrustChecklist(next);
+    setReleaseTrustChecklist(next);
+  }, [appendReleaseTrustHistory, t]);
+
+  const toggleReleaseTrustApproval = useCallback((packageId: string) => {
+    const next = { ...SecureAppSettings.getReleaseTrustApprovals() };
+    const now = new Date().toISOString();
+    if (next[packageId]) {
+      delete next[packageId];
+      appendReleaseTrustHistory({
+        id: `rt-${packageId}-clear-${now}`,
+        at: now,
+        action: "owner_approval_cleared",
+        targetId: packageId,
+        title: packageId,
+      });
+      toast.info(t("releaseTrustApprovalClearedToast", "Owner approval was cleared."));
+    } else {
+      next[packageId] = now;
+      appendReleaseTrustHistory({
+        id: `rt-${packageId}-approve-${now}`,
+        at: now,
+        action: "owner_approved",
+        targetId: packageId,
+        title: packageId,
+      });
+      toast.success(t("releaseTrustApprovalMarkedToast", "Owner approval was recorded."));
+    }
+    SecureAppSettings.setReleaseTrustApprovals(next);
+    setReleaseTrustApprovals(next);
+  }, [appendReleaseTrustHistory, t]);
+  useEffect(() => {
+    if (securityCenterSummary.resolvedTriageItems.length === 0) return;
+
+    const currentHistory = SecureAppSettings.getSecurityCenterHistory();
+    const existingResolvedKeys = new Set(
+      currentHistory
+        .filter((event) => event.action === "auto_resolved")
+        .map((event) => event.reviewKey)
+    );
+    const additions = securityCenterSummary.resolvedTriageItems
+      .filter((item) => !existingResolvedKeys.has(item.reviewKey))
+      .map((item) => ({
+        id: crypto.randomUUID(),
+        at: new Date().toISOString(),
+        action: "auto_resolved" as const,
+        reviewKey: item.reviewKey,
+        issueType: item.issueType,
+        title: item.title,
+      }));
+
+    if (additions.length === 0) return;
+
+    const nextHistory = [...currentHistory, ...additions].slice(-40);
+    SecureAppSettings.setSecurityCenterHistory(nextHistory);
+    setSecurityCenterHistory(nextHistory);
+  }, [securityCenterSummary.resolvedTriageItems]);
+  const openSecurityCenterTriageItem = (item: SecurityCenterTriageItem) => {
+    if (item.issueType === "device_trust") {
+      desktopPairingsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (item.issueType === "local_risk_activity") {
+      qrAuditPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    const target = passwords.find((entry) => entry.id === item.itemId);
+    if (!target) {
+      toast.info(t("securityCenterTriageItemMissing", "The selected security item could not be found."));
+      return;
+    }
+
+    if (item.issueType === "sensitive_sharing") {
+      onClose();
+      onEditEntry({
+        ...target,
+        pass: target.pass || "",
+        ui_focus_context: "sharing_issue",
+        ui_focus_label: item.title,
+      });
+      return;
+    }
+
+    onClose();
+    onEditEntry({
+      ...target,
+      pass: target.pass || "",
+      ui_focus_label: item.title,
+    });
+  };
+  const markSecurityCenterTriageReviewed = (item: SecurityCenterTriageItem) => {
+    const next = {
+      ...SecureAppSettings.getSecurityCenterReviews(),
+      [item.reviewKey]: new Date().toISOString(),
+    };
+    const nextHistory = [
+      ...SecureAppSettings.getSecurityCenterHistory(),
+      {
+        id: crypto.randomUUID(),
+        at: new Date().toISOString(),
+        action: "reviewed" as const,
+        reviewKey: item.reviewKey,
+        issueType: item.issueType,
+        title: item.title,
+      },
+    ].slice(-40);
+    SecureAppSettings.setSecurityCenterReviews(next);
+    SecureAppSettings.setSecurityCenterHistory(nextHistory);
+    setSecurityCenterReviews(next);
+    setSecurityCenterHistory(nextHistory);
+    toast.success(t("securityCenterReviewed", "Security triage item marked as reviewed."));
+  };
+  const reopenSecurityCenterTriageItem = (item: SecurityCenterTriageItem) => {
+    const next = { ...SecureAppSettings.getSecurityCenterReviews() };
+    delete next[item.reviewKey];
+    const nextHistory = [
+      ...SecureAppSettings.getSecurityCenterHistory(),
+      {
+        id: crypto.randomUUID(),
+        at: new Date().toISOString(),
+        action: "reopened" as const,
+        reviewKey: item.reviewKey,
+        issueType: item.issueType,
+        title: item.title,
+      },
+    ].slice(-40);
+    SecureAppSettings.setSecurityCenterReviews(next);
+    SecureAppSettings.setSecurityCenterHistory(nextHistory);
+    setSecurityCenterReviews(next);
+    setSecurityCenterHistory(nextHistory);
+    toast.success(t("securityCenterReopened", "Security triage item was reopened."));
+  };
+  const sharingAuditEvents = useMemo(
+    () => SharingAuditService.listEvents(),
+    [sharingOverviewVersion]
+  );
+  const filteredSharingAuditEvents = useMemo(
+    () => SharingAuditService.filterEvents(sharingAuditEvents, sharingAuditFilter),
+    [sharingAuditEvents, sharingAuditFilter]
+  );
+  const highlightedSharingAuditIds = useMemo(
+    () =>
+      SharingAuditService.getRelatedEventIdsForIssue(
+        filteredSharingAuditEvents,
+        sharingAuditFocus
+          ? { itemId: sharingAuditFocus.itemId, type: sharingAuditFocus.type }
+          : null
+      ),
+    [filteredSharingAuditEvents, sharingAuditFocus]
+  );
+  const openSharingIssueItem = (
+    itemId: number,
+    options?: { focusContext?: "sharing_issue" | "sharing_audit"; focusLabel?: string }
+  ) => {
+    const target = passwords.find((entry) => entry.id === itemId);
+    if (!target) {
+      toast.error(t("sharingOverviewItemMissing"));
+      return;
+    }
+    onClose();
+    onEditEntry({
+      ...target,
+      pass: target.pass || "",
+      ui_focus_context: options?.focusContext,
+      ui_focus_label: options?.focusLabel || target.title,
+    });
+  };
+  const resolveSharingIssue = (issue: { itemId: number; type: SharingOverviewIssueType; title?: string }) => {
+    setSelectedSharingIssueKey(`${issue.type}-${issue.itemId}`);
+    setSharingAuditFocus({
+      itemId: issue.itemId,
+      type: issue.type,
+      title: issue.title || String(issue.itemId),
+    });
+    if (issue.type === "review_required") {
+      setSharingAuditFilter("reviews");
+    } else if (issue.type === "orphaned_space" || issue.type === "no_members") {
+      setSharingAuditFilter("assignments");
+    }
+
+    if (issue.type === "review_required") {
+      const marked = VaultSharingLinkService.markEntryAssignmentsReviewed(issue.itemId);
+      if (!marked) {
+        toast.error(t("sharingOverviewReviewFailed"));
+        return;
+      }
+      setSharingOverviewVersion((current) => current + 1);
+      toast.success(t("sharingOverviewReviewed"));
+      return;
+    }
+
+    if (issue.type === "orphaned_space" || issue.type === "no_members") {
+      setFocusedSharedSpaceId(null);
+      setFocusedSharedSpaceContext("issue");
+      setShowSharedSpacesModal(true);
+      return;
+    }
+
+    openSharingIssueItem(issue.itemId, {
+      focusContext: "sharing_issue",
+      focusLabel: issue.title,
+    });
+  };
+  const openSharingAuditTarget = (event: Parameters<typeof SharingAuditService.getNavigationTarget>[0]) => {
+    const target = SharingAuditService.getNavigationTarget(event);
+    if (!target) {
+      toast.info(t("sharingAuditTargetMissing"));
+      return;
+    }
+
+    if (target.kind === "entry") {
+      setSharingAuditFocus(null);
+      setSelectedSharingIssueKey(null);
+      openSharingIssueItem(target.entryId, {
+        focusContext: "sharing_audit",
+        focusLabel: event.detail || event.entryId || undefined,
+      });
+      return;
+    }
+
+    setFocusedSharedSpaceId(target.spaceId);
+    setFocusedSharedSpaceContext("audit");
+    setShowSharedSpacesModal(true);
+  };
+  const focusSharingAuditTarget = (event: Parameters<typeof SharingAuditService.getNavigationTarget>[0]) => {
+    const target = SharingAuditService.getNavigationTarget(event);
+    if (!target) {
+      toast.info(t("sharingAuditTargetMissing"));
+      return;
+    }
+    setSharingAuditFilter(SharingAuditService.getSuggestedFilterForEvent(event));
+
+    if (target.kind === "space") {
+      setFocusedSharedSpaceId(target.spaceId);
+      setFocusedSharedSpaceContext("audit");
+      setSharingAuditFocus({
+        itemId: -1,
+        type: "no_members",
+        title: event.detail || target.spaceId,
+      });
+      return;
+    }
+
+    const matchingIssue = sharingOverview.issues.find((issue) => issue.itemId === target.entryId) || null;
+    if (!matchingIssue) {
+      setSelectedSharingIssueKey(null);
+      setSharingAuditFocus({
+        itemId: target.entryId,
+        type: event.type === "assignment_reviewed" ? "review_required" : "sensitive_without_emergency",
+        title: event.detail || String(target.entryId),
+      });
+      return;
+    }
+
+    setSelectedSharingIssueKey(`${matchingIssue.type}-${matchingIssue.itemId}`);
+    setSharingAuditFocus({
+      itemId: matchingIssue.itemId,
+      type: matchingIssue.type,
+      title: matchingIssue.title,
+    });
+  };
+  const openSharingSpace = (spaceId: string, context: "issue" | "audit" | null = "issue") => {
+    setFocusedSharedSpaceId(spaceId);
+    setFocusedSharedSpaceContext(context);
+    setSelectedSharingIssueKey(null);
+    setShowSharedSpacesModal(true);
+  };
   const mapQrAuditLabel = (type: string) => {
     if (type === "package_created") return t("qrSyncAuditCreated", "Transfer created");
     if (type === "package_consumed") return t("qrSyncAuditConsumed", "Transfer imported");
@@ -169,10 +589,201 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
     if (type === "receiver_session_created") return t("qrSyncAuditReceiverSession", "Receiver session created");
     return type;
   };
+  const mapQrAuditToSyncKey = (type: string) => {
+    if (type === "package_created") return "transfer_created";
+    if (type === "package_consumed") return "transfer_imported";
+    if (type === "package_revoked") return "transfer_revoked";
+    if (type === "package_rejected") return "transfer_rejected";
+    if (type === "receiver_session_created") return "receiver_session_created";
+    return null;
+  };
+  const mapSyncAuditLabel = (type: string) => {
+    if (type === "backup_import_completed") return t("syncAuditBackupImportCompleted", "Encrypted backup import completed");
+    if (type === "structured_import_completed") return t("syncAuditStructuredImportCompleted", "Structured import completed");
+    if (type === "qr_import_completed") return t("syncAuditQrImportCompleted", "QR import completed");
+    if (type === "canonical_restore_completed") return t("syncAuditCanonicalRestoreCompleted", "Canonical restore completed");
+    if (type === "migration_completed") return t("syncAuditMigrationCompleted", "Migration completed");
+    return type;
+  };
+  const navigateFromSyncAudit = (source: string) => {
+    if ((source === "backup_import" || source === "structured_import") && importReportRef.current) {
+      importReportRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (source === "qr_import" && qrAuditPanelRef.current) {
+      qrAuditPanelRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if ((source === "canonical_restore" || source === "migration") && migrationReportRef.current) {
+      migrationReportRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
   const refreshQrSyncTelemetry = useCallback(() => {
     setQrTransferHistory(QRSyncService.listTransferHistory());
     setQrTransferAudit(QRSyncService.listAuditEvents());
+    setSyncAuditEvents(SyncAuditService.listEvents());
   }, []);
+  const passkeyInventorySummary = useMemo(
+    () =>
+      PasskeyInventoryService.buildSummary({
+        bindings: allPasskeyBindings,
+        policy: passkeyPolicy,
+        revocations: passkeyRevocations,
+        eventLog: passkeyEventLog,
+        vaultEntries: passwords,
+      }),
+    [allPasskeyBindings, passkeyEventLog, passkeyPolicy, passkeyRevocations, passwords]
+  );
+  const filteredSitePasskeyEntries = useMemo(() => {
+    if (sitePasskeyFilter === "attention") {
+      return passkeyInventorySummary.siteEntries.filter((entry) => entry.riskFlags.length > 0);
+    }
+    if (sitePasskeyFilter === "healthy") {
+      return passkeyInventorySummary.siteEntries.filter((entry) => entry.riskFlags.length === 0);
+    }
+    if (sitePasskeyFilter === "future") {
+      return passkeyInventorySummary.siteEntries.filter((entry) => entry.mode === "site_passkey_future_rp");
+    }
+    if (sitePasskeyFilter === "missing_rp_id" || sitePasskeyFilter === "missing_credential_id") {
+      return passkeyInventorySummary.siteEntries.filter((entry) => entry.riskFlags.includes(sitePasskeyFilter));
+    }
+    return passkeyInventorySummary.siteEntries;
+  }, [passkeyInventorySummary.siteEntries, sitePasskeyFilter]);
+  const previewSitePasskeyEntries = useMemo(() => {
+    const source = passkeyInventorySummary.previewSiteEntries;
+    if (sitePasskeyFilter === "attention") {
+      return source.filter((entry) => entry.riskFlags.length > 0);
+    }
+    if (sitePasskeyFilter === "healthy") {
+      return source.filter((entry) => entry.riskFlags.length === 0);
+    }
+    if (sitePasskeyFilter === "future") {
+      return source.filter((entry) => entry.mode === "site_passkey_future_rp");
+    }
+    if (sitePasskeyFilter === "missing_rp_id" || sitePasskeyFilter === "missing_credential_id") {
+      return source.filter((entry) => entry.riskFlags.includes(sitePasskeyFilter));
+    }
+    return source;
+  }, [passkeyInventorySummary.previewSiteEntries, sitePasskeyFilter]);
+  const openPasskeySiteEntry = (item: PasskeyInventorySiteEntry) => {
+    const target = passwords.find((entry) => entry.id === item.id);
+    if (!target) return;
+    onClose();
+    onEditEntry({ ...target, pass: target.pass || "" });
+  };
+  const deriveRpIdFromEntry = (entry: VaultEntry): string => {
+    const raw = (entry.website || "").trim();
+    if (!raw) return "";
+    try {
+      const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+      return new URL(withProtocol).hostname.replace(/^www\./i, "");
+    } catch {
+      return raw.replace(/^https?:\/\//i, "").split("/")[0].replace(/^www\./i, "");
+    }
+  };
+  const handlePasskeyBulkFix = async (kind: "missing_rp_id" | "missing_credential_id" | "future_mode", selectedIds?: number[]) => {
+    const candidates = passwords.filter((entry) => {
+      if (selectedIds?.length && !selectedIds.includes(entry.id)) return false;
+      if (!(entry.category === "Passkeys" || entry.passkeyMetadata)) return false;
+      if (kind === "missing_rp_id") return !entry.passkeyMetadata?.rp_id;
+      if (kind === "missing_credential_id") return !entry.passkeyMetadata?.credential_id;
+      return entry.passkeyMetadata?.mode === "site_passkey_future_rp";
+    });
+
+    let updated = 0;
+    for (const entry of candidates) {
+      const nextMetadata = {
+        mode: entry.passkeyMetadata?.mode || "site_passkey_mvp",
+        ...entry.passkeyMetadata,
+      };
+      if (kind === "missing_rp_id") {
+        const derived = deriveRpIdFromEntry(entry);
+        if (!derived) continue;
+        nextMetadata.rp_id = derived;
+      } else if (kind === "missing_credential_id") {
+        const derivedCredential = entry.pass || "";
+        if (!derivedCredential) continue;
+        nextMetadata.credential_id = derivedCredential;
+      } else {
+        nextMetadata.mode = "site_passkey_mvp";
+      }
+
+      await vaultService.addPassword({
+        ...entry,
+        pass: entry.pass || "",
+        passkeyMetadata: nextMetadata,
+      });
+      updated += 1;
+    }
+
+    setPendingBulkFix(null);
+    loadPasswords();
+    if (updated === 0) {
+      toast.info(
+        kind === "missing_rp_id"
+          ? t("passkeyInventoryBulkFixRpNone", "No RP ID could be auto-filled from site URLs.")
+          : kind === "missing_credential_id"
+            ? t("passkeyInventoryBulkFixCredentialNone", "No credential ID could be auto-filled from current records.")
+            : t("passkeyInventoryBulkConvertFutureNone", "No future-mode record could be converted.")
+      );
+      return;
+    }
+
+    toast.success(
+      kind === "missing_rp_id"
+        ? t("passkeyInventoryBulkFixRpDone", { count: updated, defaultValue: "{{count}} RP ID field updated." })
+        : kind === "missing_credential_id"
+          ? t("passkeyInventoryBulkFixCredentialDone", { count: updated, defaultValue: "{{count}} credential ID field updated." })
+          : t("passkeyInventoryBulkConvertFutureDone", { count: updated, defaultValue: "{{count}} future-mode record converted." })
+    );
+    setPasskeyRemediationResult({ kind, count: updated, at: Date.now() });
+  };
+  const requestPasskeyBulkFix = (kind: "missing_rp_id" | "missing_credential_id" | "future_mode", selectedIds?: number[]) => {
+    const count = passwords.filter((entry) => {
+      if (selectedIds?.length && !selectedIds.includes(entry.id)) return false;
+      if (!(entry.category === "Passkeys" || entry.passkeyMetadata)) return false;
+      if (kind === "missing_rp_id") return !entry.passkeyMetadata?.rp_id;
+      if (kind === "missing_credential_id") return !entry.passkeyMetadata?.credential_id;
+      return entry.passkeyMetadata?.mode === "site_passkey_future_rp";
+    }).length;
+    setPendingBulkFix({ kind, count, selectedIds });
+    if (selectedIds?.length && count === 0) {
+      toast.info(t("passkeyInventorySelectionNoFix", "No selected record matches this bulk action."));
+    }
+  };
+  const scrollToPasskeySection = (section: "active" | "revocations" | "policy") => {
+    const ref =
+      section === "active"
+        ? passkeyActiveDeviceRef
+        : section === "revocations"
+          ? passkeyRevocationRef
+          : passkeyPolicyRef;
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+  const handlePasskeyInventoryAction = (key: string) => {
+    if (key === "passkeyInventoryActionRecovery") {
+      requireAuth(t('passkeyRecoveryExportBtn'), handlePasskeyRecoveryExport);
+      return;
+    }
+    if (key === "passkeyInventoryActionAudit") {
+      scrollToPasskeySection("revocations");
+      return;
+    }
+    if (key === "passkeyInventoryActionRotate") {
+      scrollToPasskeySection("policy");
+      toast.info(t('passkeyInventoryRotateHint', 'Review rotation threshold and refresh aging passkeys.'));
+      return;
+    }
+    if (key === "passkeyInventoryActionReviewSiteEntries") {
+      const target = passkeyInventorySummary.siteEntries.find((entry) => entry.riskFlags.length > 0);
+      if (!target) {
+        toast.info(t('passkeyInventorySiteEntriesHealthy', 'Site passkey entries look healthy.'));
+        return;
+      }
+      setSitePasskeyFilter("attention");
+      openPasskeySiteEntry(target);
+    }
+  };
 
   const loadPasskeyState = useCallback(async () => {
     await SecureAppSettings.initialize();
@@ -184,6 +795,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
     setPasskeyEventLog(PasskeyBindingService.getEventLog(activeProfile?.id || null, activeProfile?.dbName || 'aegis_opfs_vault'));
     setPasskeyRevocations(PasskeyBindingService.listRevocations());
     setPasskeyPolicy(PasskeyBindingService.getPolicy());
+    setSecurityCenterReviews(SecureAppSettings.getSecurityCenterReviews());
     const currentProfile = SecurityModePolicy.getProfile();
     setSecurityModeProfile(currentProfile);
     setAllowPlaintextExport(
@@ -365,6 +977,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
     if (!file) return;
     setIsImporting(true);
     setImportReport(null);
+    setLatestMigrationReport(null);
 
     try {
       if (file.name.endsWith('.aes')) {
@@ -374,8 +987,10 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
            return;
          }
          const text = await file.text();
+         const migrationPreview = await CanonicalMigrationService.migrateLegacyBackupToCanonicalWithReport(text, backupPass, backupPass, passwords);
          const dec = await BackupService.decryptBackup<Partial<VaultEntry>>(text, backupPass);
          const entries = dec;
+         const conflictSummary = SyncConflictResolutionService.summarize(passwords, entries, "backup_import");
          let processes = 0;
          setImportProgress({ status: "importing", totalAnalyzed: entries.length, processed: 0 });
          for (const entry of entries) {
@@ -391,10 +1006,34 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
            skippedRows: 0,
            weakPasswords: entries.filter((entry) => !entry.pass || entry.pass.length < 8).length,
            missingCriticalFields: entries.filter((entry) => !entry.title || !entry.username || !entry.website).length,
-           duplicateCandidates: 0,
-           warnings: ["ENCRYPTED_AEGIS_BACKUP"],
+           duplicateCandidates: conflictSummary.duplicateCount,
+           conflictSummary,
+           warnings: [
+             "ENCRYPTED_AEGIS_BACKUP",
+             ...(conflictSummary.duplicateCount > 0 ? ["SYNC_CONFLICT_DUPLICATES_DETECTED"] : []),
+             ...(conflictSummary.exactMatchCount > 0 ? ["SYNC_CONFLICT_EXACT_MATCHES_DETECTED"] : []),
+           ],
          });
+         setLatestMigrationReport(migrationPreview.report);
          loadPasswords();
+         if (conflictSummary.duplicateCount > 0) {
+           toast.info(t("syncConflictToastSummary", {
+             duplicates: conflictSummary.duplicateCount,
+             exact: conflictSummary.exactMatchCount,
+             defaultValue: "Import check: {{duplicates}} existing match(es), {{exact}} exact match(es) detected.",
+           }));
+         }
+         SyncAuditService.recordEvent({
+           type: "backup_import_completed",
+           source: "backup_import",
+           detail: t("syncAuditBackupImportCompleted", "Encrypted backup import completed"),
+           metadata: {
+             imported: entries.length,
+             duplicates: conflictSummary.duplicateCount,
+             exact: conflictSummary.exactMatchCount,
+           },
+         });
+         refreshQrSyncTelemetry();
          toast.success(t("importSuccess", { count: entries.length }));
          setIsImporting(false);
          return;
@@ -404,6 +1043,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
         setImportProgress(progress);
       });
 
+      const conflictSummary = SyncConflictResolutionService.summarize(passwords, entries, "structured_import");
       const totalAnalyzed = report.totalRows || entries.length;
       let processed = 0;
 
@@ -416,8 +1056,35 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
       }
 
       setImportProgress({ status: "complete", totalAnalyzed, processed });
-      setImportReport(report);
+      setImportReport({
+        ...report,
+        duplicateCandidates: report.duplicateCandidates + conflictSummary.duplicateCount,
+        conflictSummary,
+        warnings: [
+          ...report.warnings,
+          ...(conflictSummary.duplicateCount > 0 ? ["SYNC_CONFLICT_DUPLICATES_DETECTED"] : []),
+          ...(conflictSummary.exactMatchCount > 0 ? ["SYNC_CONFLICT_EXACT_MATCHES_DETECTED"] : []),
+        ],
+      });
       loadPasswords();
+      if (conflictSummary.duplicateCount > 0) {
+        toast.info(t("syncConflictToastSummary", {
+          duplicates: conflictSummary.duplicateCount,
+          exact: conflictSummary.exactMatchCount,
+          defaultValue: "Import check: {{duplicates}} existing match(es), {{exact}} exact match(es) detected.",
+        }));
+      }
+      SyncAuditService.recordEvent({
+        type: "structured_import_completed",
+        source: "structured_import",
+        detail: t("syncAuditStructuredImportCompleted", "Structured import completed"),
+        metadata: {
+          imported: report.validEntries,
+          duplicates: conflictSummary.duplicateCount,
+          exact: conflictSummary.exactMatchCount,
+        },
+      });
+      refreshQrSyncTelemetry();
       toast.success(t("importSuccess", { count: report.validEntries }));
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'IMPORT_FAILED';
@@ -484,12 +1151,30 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
         transferCode: syncTransferCode,
         receiverSession: syncReceiverSession,
       });
+      const conflictSummary = SyncConflictResolutionService.summarize(passwords, entries, "qr_import");
       for (const e of entries) {
         await vaultService.addPassword(e);
       }
       loadPasswords();
       refreshQrSyncTelemetry();
       resetSyncFlow();
+      if (conflictSummary.duplicateCount > 0) {
+        toast.info(t("syncConflictQrToastSummary", {
+          duplicates: conflictSummary.duplicateCount,
+          defaultValue: "QR import found {{duplicates}} existing match(es) in the local vault.",
+        }));
+      }
+      SyncAuditService.recordEvent({
+        type: "qr_import_completed",
+        source: "qr_import",
+        detail: t("syncAuditQrImportCompleted", "QR import completed"),
+        metadata: {
+          imported: entries.length,
+          duplicates: conflictSummary.duplicateCount,
+          exact: conflictSummary.exactMatchCount,
+        },
+      });
+      refreshQrSyncTelemetry();
       toast.success(t("syncImportSuccess", { count: entries.length }));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'QR_SYNC_IMPORT_FAILED';
@@ -565,7 +1250,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
 
   const handlePasskeyRevokeForProfile = async () => {
     if (!window.confirm(t('passkeyRevokeConfirm'))) return;
-    const reason = window.prompt(t('passkeyRevokeReasonPrompt', 'Optional revoke note:'), 'manual_revoke') || 'manual_revoke';
+    const reason = "manual_revoke";
     await PasskeyBindingService.initialize();
     const revoked = PasskeyBindingService.revokeBinding(activeProfile?.id || null, activeProfile?.dbName || 'aegis_opfs_vault', reason);
     if (revoked) {
@@ -598,7 +1283,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
     if (!window.confirm(t("qrSyncRevokeConfirm", "Do you want to revoke this QR transfer? It can no longer be imported."))) {
       return;
     }
-    const reason = window.prompt(t("qrSyncRevokeReasonPrompt", "Optional revoke note:"), "manual_revoke") || "manual_revoke";
+    const reason = "manual_revoke";
     const revoked = QRSyncService.revokeTransfer(sessionId, reason);
     refreshQrSyncTelemetry();
     if (revoked) {
@@ -691,24 +1376,102 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
         />
       )}
 
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-        <div className="absolute inset-0 bg-[var(--color-deep-navy)]/40 backdrop-blur-sm" onClick={onClose} />
-        <GlowCard className="settings-drawer-surface max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-white/40 rounded-[2rem] p-8 relative z-10 shadow-2xl animate-in zoom-in-95 duration-300 slide-in-from-bottom-10 custom-scrollbar">
-          <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full hover:bg-black/5 text-gray-500 transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+      <SharedSpacesModal
+        isOpen={showSharedSpacesModal}
+        initialSpaceId={focusedSharedSpaceId}
+        focusContext={focusedSharedSpaceContext}
+        onClose={() => {
+          setShowSharedSpacesModal(false);
+          setFocusedSharedSpaceId(null);
+          setFocusedSharedSpaceContext(null);
+          setSharingOverviewVersion((current) => current + 1);
+        }}
+      />
+      <PasskeySiteInventoryModal
+        isOpen={showPasskeySiteModal}
+        entries={passkeyInventorySummary.siteEntries}
+        remediationResult={passkeyRemediationResult}
+        onClose={() => {
+          setShowPasskeySiteModal(false);
+          setPasskeyRemediationResult(null);
+        }}
+        onOpenEntry={(entry) => {
+          setShowPasskeySiteModal(false);
+          setPasskeyRemediationResult(null);
+          openPasskeySiteEntry(entry);
+        }}
+        onBulkFixRp={(selectedIds) => requestPasskeyBulkFix("missing_rp_id", selectedIds)}
+        onBulkFixCredential={(selectedIds) => requestPasskeyBulkFix("missing_credential_id", selectedIds)}
+        onBulkConvertFuture={(selectedIds) => requestPasskeyBulkFix("future_mode", selectedIds)}
+        onOpenPolicy={() => {
+          setShowPasskeySiteModal(false);
+          scrollToPasskeySection("policy");
+        }}
+        onOpenAudit={() => {
+          setShowPasskeySiteModal(false);
+          scrollToPasskeySection("revocations");
+        }}
+      />
 
-          <div className="flex items-center gap-4 mb-8" onClick={handleLogoClick}>
-            <div className="w-14 h-14 bg-gradient-to-br from-[var(--color-sage-green)] to-[#6b8268] text-white rounded-2xl flex items-center justify-center shadow-lg cursor-pointer">
-              <Settings className="w-7 h-7" />
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 lg:p-5 animate-in fade-in duration-300">
+        <div className="absolute inset-0 bg-[var(--color-deep-navy)]/40 backdrop-blur-sm" onClick={onClose} />
+        <GlowCard className="settings-drawer-surface relative z-10 flex h-[min(94vh,960px)] w-full max-w-[1180px] flex-col overflow-hidden rounded-[2rem] border border-white/30 p-0 shadow-2xl animate-in zoom-in-95 duration-300 slide-in-from-bottom-10">
+          <div className="border-b border-white/10 px-5 py-5 lg:px-7">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-4 min-w-0" onClick={handleLogoClick}>
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--color-sage-green)] to-[#6b8268] text-white shadow-lg cursor-pointer">
+                  <Settings className="h-7 w-7" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-2xl lg:text-[2rem] font-bold tracking-tight text-[var(--color-deep-navy)]">
+                    {t("settingsTitle")}
+                  </h2>
+                  <p className="mt-1 text-sm opacity-70 max-w-2xl">
+                    {t("settingsDesc")}
+                  </p>
+                </div>
+              </div>
+              <button onClick={onClose} className="rounded-full p-2 text-gray-500 transition-colors hover:bg-black/5">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <div>
-              <h2 className="text-3xl font-bold tracking-tight text-[var(--color-deep-navy)]">{t("settingsTitle")}</h2>
-              <p className="opacity-60 text-sm mt-0.5">{t("settingsDesc")}</p>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="settings-card-surface-muted rounded-2xl border px-4 py-3">
+                <div className="settings-section-kicker">
+                  {t("settingsOverviewVaultRecords", "Vault records")}
+                </div>
+                <div className="mt-1 text-2xl font-black text-[var(--color-deep-navy)] dark:text-white">{passwords.length}</div>
+                <div className="settings-section-copy mt-1">{t("settingsDesc")}</div>
+              </div>
+              <div className="settings-card-surface-muted rounded-2xl border px-4 py-3">
+                <div className="settings-section-kicker">
+                  {t("settingsOverviewSecurityScore", "Security score")}
+                </div>
+                <div className="mt-1 text-2xl font-black text-[var(--color-deep-navy)] dark:text-white">{securityCenterSummary.score}</div>
+                <div className="settings-section-copy mt-1">
+                  {t(`securityCenterRisk${securityCenterSummary.riskLevel === "low" ? "Low" : securityCenterSummary.riskLevel === "medium" ? "Medium" : "High"}`)}
+                </div>
+              </div>
+              <div className="settings-card-surface-muted rounded-2xl border px-4 py-3">
+                <div className="settings-section-kicker">
+                  {t("settingsOverviewReleaseTrust", "Release trust")}
+                </div>
+                <div className="mt-1 text-2xl font-black text-[var(--color-deep-navy)] dark:text-white">{releaseTrustSummary.score}</div>
+                <div className="settings-section-copy mt-1">
+                  {releaseTrustSummary.openGapCount === 0
+                    ? t("settingsOverviewReleaseTrustHealthy", "Audit-ready baseline is clean.")
+                    : t("settingsOverviewReleaseTrustGaps", {
+                        count: releaseTrustSummary.openGapCount,
+                        defaultValue: "{{count}} open gaps are being tracked.",
+                      })}
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="space-y-6 flex flex-col">
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 lg:px-7 custom-scrollbar">
+            <div className="mx-auto flex max-w-[1040px] flex-col space-y-5">
             {/* Advanced Generator Section */}
             <PasswordGenerator isOpen={isOpen} />
 
@@ -726,6 +1489,74 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                 {t("viewIssuesBtn")}
               </button>
             </div>
+
+            <SecurityCenterPanel
+              summary={securityCenterSummary}
+              onReviewPasswords={() => setShowWeakPasswordsPopup(true)}
+              onReviewPasskeys={() => setShowPasskeySiteModal(true)}
+              onReviewSharing={() => {
+                setFocusedSharedSpaceId(null);
+                setFocusedSharedSpaceContext(null);
+                setSelectedSharingIssueKey(null);
+                setShowSharedSpacesModal(true);
+              }}
+              onReviewDevices={() => {
+                desktopPairingsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }}
+              onReviewLocalRisk={() => {
+                qrAuditPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }}
+              onOpenTriageItem={openSecurityCenterTriageItem}
+              onMarkReviewed={markSecurityCenterTriageReviewed}
+              onReopenReviewed={reopenSecurityCenterTriageItem}
+              historyItems={securityCenterHistory}
+            />
+
+            <ReleaseTrustPanel
+              summary={releaseTrustSummary}
+              checklistStatus={releaseTrustChecklist}
+              autoChecklistStatus={releaseTrustSummary.autoChecklistStatus}
+              packageApprovals={releaseTrustApprovals}
+              onToggleChecklistItem={toggleReleaseTrustChecklist}
+              onTogglePackageApproval={toggleReleaseTrustApproval}
+              historyItems={releaseTrustHistory}
+            />
+
+            <SharingOverviewPanel
+              report={sharingOverview}
+              onManageSpaces={() => {
+                setFocusedSharedSpaceId(null);
+                setFocusedSharedSpaceContext(null);
+                setSelectedSharingIssueKey(null);
+                setShowSharedSpacesModal(true);
+              }}
+              onOpenIssueItem={(issue) => {
+                setSelectedSharingIssueKey(`${issue.type}-${issue.itemId}`);
+                setSharingAuditFocus({
+                  itemId: issue.itemId,
+                  type: issue.type,
+                  title: issue.title,
+                });
+                openSharingIssueItem(issue.itemId, {
+                  focusContext: "sharing_issue",
+                  focusLabel: issue.title,
+                });
+              }}
+              onResolveIssue={resolveSharingIssue}
+              onOpenSpace={(spaceId) => openSharingSpace(spaceId, "issue")}
+              activeIssueKey={selectedSharingIssueKey}
+              activeSpaceId={focusedSharedSpaceId}
+            />
+
+            <SharingAuditPanel
+              events={filteredSharingAuditEvents}
+              activeFilter={sharingAuditFilter}
+              onFilterChange={setSharingAuditFilter}
+              highlightedEventIds={highlightedSharingAuditIds}
+              focusLabel={sharingAuditFocus?.title || null}
+              onOpenEventTarget={openSharingAuditTarget}
+              onFocusEventTarget={focusSharingAuditTarget}
+            />
 
             {/* Security & Sessions */}
             <div className="settings-panel rounded-3xl p-6 shadow-sm">
@@ -790,7 +1621,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                 </select>
               </div>
 
-              <div className="settings-subpanel p-5 rounded-2xl border shadow-inner mb-4">
+              <div ref={desktopPairingsRef} className="settings-subpanel p-5 rounded-2xl border shadow-inner mb-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h4 className="font-semibold text-sm mb-1 text-[var(--color-deep-navy)]">{t('hibpSettingsTitle')}</h4>
@@ -900,8 +1731,296 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                   </button>
                 </div>
 
+                <div className="settings-card-surface mt-4 rounded-2xl p-4">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="font-semibold text-sm text-[var(--color-deep-navy)]">
+                      {t('passkeyInventoryTitle', 'Passkey inventory summary')}
+                    </div>
+                    <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${
+                      passkeyInventorySummary.status === 'healthy'
+                        ? 'bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)]'
+                        : 'bg-amber-500/10 text-amber-700'
+                    }`}>
+                      {passkeyInventorySummary.status === 'healthy'
+                        ? t('passkeyInventoryHealthy', 'Healthy')
+                        : t('passkeyInventoryAttention', 'Needs attention')}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-[11px]">
+                    <div className="settings-card-item rounded-xl p-3">
+                      <div className="opacity-60">{t('passkeyInventoryBindings', 'Bindings')}</div>
+                      <div className="mt-1 text-base font-semibold text-[var(--color-deep-navy)]">{passkeyInventorySummary.totalBindings}</div>
+                    </div>
+                    <div className="settings-card-item rounded-xl p-3">
+                      <div className="opacity-60">{t('passkeyInventoryRecovery', 'Recovery exported')}</div>
+                      <div className="mt-1 text-base font-semibold text-[var(--color-deep-navy)]">{passkeyInventorySummary.recoveryExportedCount}</div>
+                    </div>
+                    <div className="settings-card-item rounded-xl p-3">
+                      <div className="opacity-60">{t('passkeyInventoryRotation', 'Rotation required')}</div>
+                      <div className="mt-1 text-base font-semibold text-[var(--color-deep-navy)]">{passkeyInventorySummary.rotationRequiredCount}</div>
+                    </div>
+                    <div className="settings-card-item rounded-xl p-3">
+                      <div className="opacity-60">{t('passkeyInventoryRevoked', 'Revoked')}</div>
+                      <div className="mt-1 text-base font-semibold text-[var(--color-deep-navy)]">{passkeyInventorySummary.revokedCount}</div>
+                    </div>
+                    <div className="settings-card-item rounded-xl p-3">
+                      <div className="opacity-60">{t('passkeyInventoryActiveDevices', 'Active devices')}</div>
+                      <div className="mt-1 text-base font-semibold text-[var(--color-deep-navy)]">{passkeyInventorySummary.activeDeviceCount}</div>
+                    </div>
+                    <div className="settings-card-item rounded-xl p-3">
+                      <div className="opacity-60">{t('passkeyInventoryRecentEvents', 'Recent events')}</div>
+                      <div className="mt-1 text-base font-semibold text-[var(--color-deep-navy)]">{passkeyInventorySummary.recentEventCount}</div>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px]">
+                    <div className="settings-card-item rounded-xl p-3">
+                      <div className="opacity-60">{t('passkeyInventoryModeVaultUnlock', 'Vault unlock')}</div>
+                      <div className="mt-1 text-base font-semibold text-[var(--color-deep-navy)]">{passkeyInventorySummary.modeCounts.vault_unlock}</div>
+                    </div>
+                    <div className="settings-card-item rounded-xl p-3">
+                      <div className="opacity-60">{t('passkeyInventoryModeSiteMvp', 'Site passkey MVP')}</div>
+                      <div className="mt-1 text-base font-semibold text-[var(--color-deep-navy)]">{passkeyInventorySummary.modeCounts.site_passkey_mvp}</div>
+                    </div>
+                    <div className="settings-card-item rounded-xl p-3">
+                      <div className="opacity-60">{t('passkeyInventoryModeFutureRp', 'Future RP')}</div>
+                      <div className="mt-1 text-base font-semibold text-[var(--color-deep-navy)]">{passkeyInventorySummary.modeCounts.site_passkey_future_rp}</div>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
+                    <div className="settings-card-item rounded-xl p-3">
+                      <div className="opacity-60">{t('passkeyInventorySiteEntries', 'Site passkey records')}</div>
+                      <div className="mt-1 text-base font-semibold text-[var(--color-deep-navy)]">{passkeyInventorySummary.sitePasskeyCount}</div>
+                    </div>
+                    <div className="settings-card-item rounded-xl p-3">
+                      <div className="opacity-60">{t('passkeyInventorySiteAttention', 'Site records needing review')}</div>
+                      <div className="mt-1 text-base font-semibold text-[var(--color-deep-navy)]">{passkeyInventorySummary.sitePasskeyAttentionCount}</div>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowPasskeySiteModal(true)}
+                      className="rounded-2xl border border-[var(--color-sage-green)]/25 bg-[var(--color-sage-green)]/10 px-4 py-3 text-sm font-semibold text-[var(--color-sage-green)] transition-colors hover:bg-[var(--color-sage-green)]/15 dark:border-[var(--color-sage-green)]/20 dark:text-emerald-100"
+                    >
+                      {t('passkeyInventoryOpenSiteModal', 'Open site passkey list')}
+                    </button>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setSitePasskeyFilter('missing_rp_id')}
+                      className="settings-card-item rounded-xl p-3 text-left transition hover:border-amber-500/30 hover:bg-amber-500/5"
+                    >
+                      <div className="opacity-60">{t('passkeyInventoryRiskMissingRp', 'Missing RP ID')}</div>
+                      <div className="mt-1 text-base font-semibold text-[var(--color-deep-navy)]">{passkeyInventorySummary.riskCounts.missing_rp_id}</div>
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            requestPasskeyBulkFix('missing_rp_id');
+                          }}
+                          className="rounded-full bg-[var(--color-deep-navy)]/5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-deep-navy)]/70 disabled:opacity-40"
+                          disabled={passkeyInventorySummary.riskCounts.missing_rp_id === 0}
+                        >
+                          {t('passkeyInventoryBulkFixRp', 'Auto-fill RP ID')}
+                        </button>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSitePasskeyFilter('missing_credential_id')}
+                      className="settings-card-item rounded-xl p-3 text-left transition hover:border-amber-500/30 hover:bg-amber-500/5"
+                    >
+                      <div className="opacity-60">{t('passkeyInventoryRiskMissingCredential', 'Missing credential ID')}</div>
+                      <div className="mt-1 text-base font-semibold text-[var(--color-deep-navy)]">{passkeyInventorySummary.riskCounts.missing_credential_id}</div>
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            requestPasskeyBulkFix('missing_credential_id');
+                          }}
+                          className="rounded-full bg-[var(--color-deep-navy)]/5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-deep-navy)]/70 disabled:opacity-40"
+                          disabled={passkeyInventorySummary.riskCounts.missing_credential_id === 0}
+                        >
+                          {t('passkeyInventoryBulkFixCredential', 'Auto-fill credential ID')}
+                        </button>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSitePasskeyFilter('future')}
+                      className="settings-card-item rounded-xl p-3 text-left transition hover:border-amber-500/30 hover:bg-amber-500/5"
+                    >
+                      <div className="opacity-60">{t('passkeyInventoryRiskFutureMode', 'Future mode')}</div>
+                      <div className="mt-1 text-base font-semibold text-[var(--color-deep-navy)]">{passkeyInventorySummary.riskCounts.future_mode}</div>
+                    </button>
+                  </div>
+                  {pendingBulkFix && (
+                    <div className="mt-3 rounded-2xl border border-amber-500/20 bg-amber-500/8 px-4 py-3 text-[11px] text-[var(--color-deep-navy)] dark:text-white">
+                      <div className="font-semibold">
+                        {pendingBulkFix.kind === 'missing_rp_id'
+                          ? t('passkeyInventoryBulkFixRpConfirmTitle', 'Confirm RP ID auto-fill')
+                          : pendingBulkFix.kind === 'missing_credential_id'
+                            ? t('passkeyInventoryBulkFixCredentialConfirmTitle', 'Confirm credential ID auto-fill')
+                            : t('passkeyInventoryBulkConvertFutureConfirmTitle', 'Confirm future-mode conversion')}
+                      </div>
+                      <div className="mt-1 opacity-75">
+                        {pendingBulkFix.kind === 'missing_rp_id'
+                          ? t('passkeyInventoryBulkFixRpConfirmBody', {
+                              count: pendingBulkFix.count,
+                              defaultValue: '{{count}} record will be updated using website/RP inference.',
+                            })
+                          : pendingBulkFix.kind === 'missing_credential_id'
+                            ? t('passkeyInventoryBulkFixCredentialConfirmBody', {
+                                count: pendingBulkFix.count,
+                                defaultValue: '{{count}} record will be updated using the current stored credential value.',
+                              })
+                            : t('passkeyInventoryBulkConvertFutureConfirmBody', {
+                                count: pendingBulkFix.count,
+                                defaultValue: '{{count}} future-mode record will be converted to site_passkey_mvp.',
+                              })}
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void handlePasskeyBulkFix(pendingBulkFix.kind, pendingBulkFix.selectedIds)}
+                          className="rounded-full bg-amber-500/15 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-800 dark:text-amber-200"
+                        >
+                          {t('passkeyInventoryBulkFixConfirm', 'Apply update')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPendingBulkFix(null)}
+                          className="rounded-full bg-[var(--color-deep-navy)]/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-deep-navy)]/70 dark:bg-white/10 dark:text-white/70"
+                        >
+                          {t('cancel', 'Cancel')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {passkeyInventorySummary.actionKeys.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {passkeyInventorySummary.actionKeys.map((key) => (
+                        <button
+                          key={key}
+                          onClick={() => handlePasskeyInventoryAction(key)}
+                          className="rounded-full bg-[var(--color-deep-navy)]/5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-deep-navy)]/70"
+                        >
+                          {t(key)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {passkeyInventorySummary.siteEntries.length > 0 && (
+                    <div className="mt-4 rounded-2xl border border-black/5 bg-black/[0.02] px-3 py-3 dark:border-white/10 dark:bg-white/[0.03]">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-deep-navy)]/60 dark:text-white/60">
+                          {t('passkeyInventorySiteListTitle', 'Tracked site passkeys')}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { key: "all", label: t('passkeyInventoryFilterAll', 'All') },
+                            { key: "attention", label: t('passkeyInventoryFilterAttention', 'Needs review') },
+                            { key: "healthy", label: t('passkeyInventoryFilterHealthy', 'Healthy') },
+                            { key: "future", label: t('passkeyInventoryFilterFuture', 'Future RP') },
+                            { key: "missing_rp_id", label: t('passkeyInventoryMissingRpIdShort', 'Missing RP') },
+                            { key: "missing_credential_id", label: t('passkeyInventoryMissingCredentialShort', 'Missing credential') },
+                          ].map((filter) => (
+                            <button
+                              key={filter.key}
+                              type="button"
+                              onClick={() => setSitePasskeyFilter(filter.key as typeof sitePasskeyFilter)}
+                              className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest transition ${
+                                sitePasskeyFilter === filter.key
+                                  ? 'bg-[var(--color-sage-green)]/15 text-[var(--color-sage-green)]'
+                                  : 'bg-[var(--color-deep-navy)]/5 text-[var(--color-deep-navy)]/70 dark:bg-white/10 dark:text-white/70'
+                              }`}
+                            >
+                              {filter.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-3 text-[11px] opacity-70">
+                        <div>
+                          {t('passkeyInventoryFilterCount', {
+                            shown: previewSitePasskeyEntries.length,
+                            total: passkeyInventorySummary.siteEntries.length,
+                            defaultValue: '{{shown}} / {{total}} record shown',
+                          })}
+                        </div>
+                        {filteredSitePasskeyEntries.some((item) => item.riskFlags.length > 0) ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const firstRisky = filteredSitePasskeyEntries.find((item) => item.riskFlags.length > 0);
+                              if (firstRisky) openPasskeySiteEntry(firstRisky);
+                            }}
+                            className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300"
+                          >
+                            {t('passkeyInventoryReviewNext', 'Review next risky entry')}
+                          </button>
+                        ) : null}
+                      </div>
+                      {passkeyInventorySummary.siteEntries.length > passkeyInventorySummary.previewSiteEntries.length ? (
+                        <div className="mt-2 text-[10px] font-bold uppercase tracking-widest text-[var(--color-deep-navy)]/55 dark:text-white/55">
+                          {t('passkeyInventoryPreviewLimit', {
+                            shown: passkeyInventorySummary.previewSiteEntries.length,
+                            total: passkeyInventorySummary.siteEntries.length,
+                            defaultValue: 'Overview shows top {{shown}} of {{total}} records. Open full list for all items.',
+                          })}
+                        </div>
+                      ) : null}
+                      <div className="mt-3 space-y-2">
+                        {previewSitePasskeyEntries.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => openPasskeySiteEntry(item)}
+                            className="flex w-full items-start justify-between gap-3 rounded-xl border border-black/5 bg-white/70 px-3 py-2 text-left transition hover:border-[var(--color-sage-green)]/30 hover:bg-[var(--color-sage-green)]/8 dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-[var(--color-sage-green)]/10"
+                          >
+                            <div className="min-w-0">
+                              <div className="font-semibold text-[var(--color-deep-navy)] dark:text-white">{item.title}</div>
+                              <div className="mt-0.5 text-[11px] opacity-70">
+                                {item.rpId || t('passkeyInventoryMissingRpId', 'Missing RP ID')}
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                              {item.riskFlags.length === 0 ? (
+                                <span className="rounded-full bg-[var(--color-sage-green)]/12 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-sage-green)]">
+                                  {t('passkeyInventoryHealthy', 'Healthy')}
+                                </span>
+                              ) : (
+                                item.riskFlags.map((flag) => (
+                                  <span
+                                    key={`${item.id}-${flag}`}
+                                    className="rounded-full bg-amber-500/12 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300"
+                                  >
+                                    {flag === 'missing_rp_id'
+                                      ? t('passkeyInventoryMissingRpIdShort', 'Missing RP')
+                                      : flag === 'missing_credential_id'
+                                        ? t('passkeyInventoryMissingCredentialShort', 'Missing credential')
+                                        : t('passkeyInventoryFutureModeShort', 'Future mode')}
+                                  </span>
+                                ))
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                        {previewSitePasskeyEntries.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-black/10 px-3 py-4 text-center text-[11px] opacity-65 dark:border-white/10">
+                            {t('passkeyInventoryFilterEmpty', 'No site passkey record matches this filter.')}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {passkeyBindingDetails && (
-                  <div className="settings-card-surface mt-4 rounded-2xl p-4">
+                  <div ref={passkeyActiveDeviceRef} className="settings-card-surface mt-4 rounded-2xl p-4">
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <div className="font-semibold text-sm text-[var(--color-deep-navy)]">
                         {t('passkeyActiveDeviceTitle', 'Active passkey on this device')}
@@ -946,7 +2065,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                   </div>
                 )}
 
-                <div className="settings-card-surface-muted mt-4 rounded-2xl p-4">
+                <div ref={passkeyPolicyRef} className="settings-card-surface-muted mt-4 rounded-2xl p-4">
                   <div className="font-semibold text-sm text-[var(--color-deep-navy)] mb-3">
                     {t('passkeyPolicyTitle', 'Passkey security policy')}
                   </div>
@@ -982,7 +2101,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                 </div>
 
                 {passkeyRevocations.length > 0 && (
-                  <div className="settings-card-surface-muted mt-4 rounded-2xl p-4">
+                  <div ref={passkeyRevocationRef} className="settings-card-surface-muted mt-4 rounded-2xl p-4">
                     <div className="font-semibold text-sm text-[var(--color-deep-navy)] mb-2">
                       {t('passkeyRevocationListTitle', 'Synchronized revoke list')}
                     </div>
@@ -1179,6 +2298,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                 </button>
               </div>
             </div>
+          </div>
 
             {/* Secret Menu - Duress Mode */}
             {showSecretMenu && (
@@ -1256,6 +2376,113 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                     {isImporting ? t("importProcessing") : t("importBtn")}
                     <input type="file" accept=".csv,.json,.aes" className="hidden" onChange={handleImport} />
                   </label>
+                </div>
+              </div>
+
+              <div className="mt-4 settings-subpanel p-5 rounded-2xl border shadow-inner">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="max-w-2xl">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="rounded-full bg-[var(--color-sage-green)]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-sage-green)]">
+                        {t("syncStrategyBadge", "Faz 5 / Sync Strategy")}
+                      </span>
+                      <span className="rounded-full bg-[var(--color-deep-navy)]/5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-deep-navy)]/60">
+                        {t(activeSyncMode.titleKey, activeSyncMode.titleDefault)}
+                      </span>
+                    </div>
+                    <h4 className="mt-3 font-semibold text-sm text-[var(--color-deep-navy)]">{t("syncStrategyTitle", "Sync Strategy Summary")}</h4>
+                    <p className="mt-1 text-xs opacity-75 leading-relaxed">
+                      {t(activeSyncMode.descriptionKey, activeSyncMode.descriptionDefault)}
+                    </p>
+                    <p className="mt-2 text-xs opacity-70 leading-relaxed">
+                      {t(AEGIS_SYNC_STRATEGY.reviewKey, AEGIS_SYNC_STRATEGY.reviewDefault)}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 text-xs xl:min-w-[240px]">
+                    <div className="rounded-2xl border settings-card-surface px-4 py-3">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-deep-navy)]/50">
+                        {t("syncStrategyCurrentMode", "Current model")}
+                      </div>
+                      <div className="mt-1 font-semibold text-[var(--color-deep-navy)]">
+                        {t(activeSyncMode.titleKey, activeSyncMode.titleDefault)}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border settings-card-surface px-4 py-3">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-deep-navy)]/50">
+                        {t("syncStrategyFutureMode", "Reserved next layer")}
+                      </div>
+                      <div className="mt-1 font-semibold text-[var(--color-deep-navy)]">
+                        {t(futureSyncMode.titleKey, futureSyncMode.titleDefault)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 grid grid-cols-1 xl:grid-cols-3 gap-3">
+                  {syncTransportSummaries.map((transport) => (
+                    <div key={transport.key} className="rounded-2xl border settings-card-surface px-4 py-4 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-[var(--color-deep-navy)]">
+                            {t(transport.titleKey, transport.titleDefault)}
+                          </div>
+                          <div className="mt-1 text-xs opacity-75 leading-relaxed">
+                            {t(transport.descriptionKey, transport.descriptionDefault)}
+                          </div>
+                        </div>
+                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${
+                          transport.statusKey === "syncStrategyStatusBlocked"
+                            ? "bg-red-500/10 text-red-600"
+                            : transport.statusKey === "syncStrategyStatusRestricted"
+                              ? "bg-amber-500/10 text-amber-700"
+                              : "bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)]"
+                        }`}>
+                          {t(transport.statusKey, transport.statusDefault)}
+                        </span>
+                      </div>
+                      <div className="mt-3 text-[11px] text-[var(--color-deep-navy)]/65 leading-relaxed">
+                        {t(transport.trustBoundaryKey, transport.trustBoundaryDefault)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  <div className="rounded-2xl border settings-card-surface px-4 py-4 shadow-sm">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-deep-navy)]/50">
+                      {t("syncConflictRulesTitle", "Conflict rules")}
+                    </div>
+                    <div className="mt-3 space-y-3">
+                      {AEGIS_SYNC_CONFLICT_RULES.map((rule) => (
+                        <div key={rule.key} className="rounded-xl border border-black/5 bg-white/40 px-3 py-3">
+                          <div className="text-sm font-semibold text-[var(--color-deep-navy)]">
+                            {t(rule.titleKey, rule.titleDefault)}
+                          </div>
+                          <div className="mt-1 text-xs opacity-75 leading-relaxed">
+                            {t(rule.descriptionKey, rule.descriptionDefault)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border settings-card-surface px-4 py-4 shadow-sm">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-deep-navy)]/50">
+                      {t("syncAuditLanguageTitle", "Transport audit language")}
+                    </div>
+                    <div className="mt-3 space-y-3">
+                      {syncAuditDefinitions.map((eventDef) => (
+                        <div key={eventDef.key} className="rounded-xl border border-black/5 bg-white/40 px-3 py-3">
+                          <div className="text-sm font-semibold text-[var(--color-deep-navy)]">
+                            {t(eventDef.titleKey, eventDef.titleDefault)}
+                          </div>
+                          <div className="mt-1 text-xs opacity-75 leading-relaxed">
+                            {t(eventDef.descriptionKey, eventDef.descriptionDefault)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 rounded-2xl border border-dashed settings-card-surface px-4 py-3 text-xs opacity-75">
+                  {t(AEGIS_SYNC_STRATEGY.conflictPolicyKey, AEGIS_SYNC_STRATEGY.conflictPolicyDefault)}
                 </div>
               </div>
 
@@ -1381,7 +2608,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
               )}
 
               <div className="mt-6 grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <div className="settings-subpanel p-5 rounded-2xl border shadow-inner">
+                <div ref={qrAuditPanelRef} className="settings-subpanel p-5 rounded-2xl border shadow-inner">
                   <div className="flex items-center justify-between gap-3 mb-4">
                     <div>
                       <h4 className="font-semibold text-sm text-[var(--color-deep-navy)]">{t("qrSyncHistoryTitle", "QR Transfer History")}</h4>
@@ -1396,7 +2623,9 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                       <div className="rounded-xl border border-dashed settings-card-surface px-4 py-5 text-xs opacity-60">
                         {t("qrSyncHistoryEmpty", "No QR transfer history recorded yet.")}
                       </div>
-                    ) : qrTransferHistory.slice(0, 6).map((record) => (
+                    ) : (
+                      <>
+                        {qrTransferHistory.slice(0, showFullQrHistory ? undefined : 2).map((record) => (
                       <div key={record.sessionId} className="rounded-xl border settings-card-surface px-4 py-3 shadow-sm">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -1450,6 +2679,16 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                         )}
                       </div>
                     ))}
+                        {qrTransferHistory.length > 2 && (
+                          <button
+                            onClick={() => setShowFullQrHistory(!showFullQrHistory)}
+                            className="w-full mt-2 rounded-xl border border-black/5 bg-black/5 py-2.5 text-xs font-bold text-[var(--color-deep-navy)] transition-all hover:bg-black/10 active:scale-95 dark:border-white/5 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                          >
+                            {showFullQrHistory ? t("qrSyncHistoryShowLess", "Daha az göster") : t("qrSyncHistoryShowMore", "{{count}} tanesini daha göster", { count: qrTransferHistory.length - 2 })}
+                          </button>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -1468,12 +2707,26 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                       <div className="rounded-xl border border-dashed settings-card-surface px-4 py-5 text-xs opacity-60">
                         {t("qrSyncAuditEmpty", "No QR sync audit events recorded yet.")}
                       </div>
-                    ) : qrTransferAudit.slice(0, 8).map((event) => (
+                    ) : (
+                      <>
+                        {qrTransferAudit.slice(0, showFullQrAudit ? undefined : 2).map((event) => (
                       <div key={event.id} className="rounded-xl border settings-card-surface px-4 py-3 shadow-sm">
                         <div className="flex items-center justify-between gap-3">
                           <div className="text-sm font-semibold text-[var(--color-deep-navy)]">{mapQrAuditLabel(event.type)}</div>
                           <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-deep-navy)]/40">{formatPairingTimestamp(event.at)}</div>
                         </div>
+                        {(() => {
+                          const syncAuditKey = mapQrAuditToSyncKey(event.type);
+                          const auditDefinition = syncAuditKey
+                            ? AEGIS_SYNC_AUDIT_LANGUAGE.find((item) => item.key === syncAuditKey)
+                            : null;
+                          if (!auditDefinition) return null;
+                          return (
+                            <div className="mt-1 text-[11px] text-[var(--color-deep-navy)]/55">
+                              {t(auditDefinition.descriptionKey, auditDefinition.descriptionDefault)}
+                            </div>
+                          );
+                        })()}
                         {event.detail && (
                           <div className="mt-1 text-xs text-[var(--color-deep-navy)]/70">{event.detail}</div>
                         )}
@@ -1491,13 +2744,119 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                         </div>
                       </div>
                     ))}
+                        {qrTransferAudit.length > 2 && (
+                          <button
+                            onClick={() => setShowFullQrAudit(!showFullQrAudit)}
+                            className="w-full mt-2 rounded-xl border border-black/5 bg-black/5 py-2.5 text-xs font-bold text-[var(--color-deep-navy)] transition-all hover:bg-black/10 active:scale-95 dark:border-white/5 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                          >
+                            {showFullQrAudit ? t("qrSyncAuditShowLess", "Daha az göster") : t("qrSyncAuditShowMore", "{{count}} tanesini daha göster", { count: qrTransferAudit.length - 2 })}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="settings-subpanel p-5 rounded-2xl border shadow-inner">
+                  <div className="flex items-center justify-between gap-3 mb-4">
+                    <div>
+                      <h4 className="font-semibold text-sm text-[var(--color-deep-navy)]">{t("syncAuditTitle", "Sync Audit Summary")}</h4>
+                      <p className="text-xs opacity-70 mt-1">{t("syncAuditDesc", "Track completed import, QR, restore, and migration flows with conflict metadata.")}</p>
+                    </div>
+                    <span className="rounded-full bg-[var(--color-sage-green)]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-sage-green)]">
+                      {syncAuditEvents.length}
+                    </span>
+                  </div>
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      {[
+                        ["all", t("syncAuditFilterAll", "All")],
+                      ["imports", t("syncAuditFilterImports", "Imports")],
+                      ["qr", t("syncAuditFilterQr", "QR")],
+                      ["restore_migration", t("syncAuditFilterRestore", "Restore/Migration")],
+                      ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setSyncAuditFilter(value as "all" | "imports" | "restore_migration" | "qr")}
+                        className={`rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest ${
+                          syncAuditFilter === value
+                            ? "settings-filter-chip settings-filter-chip-active"
+                            : "settings-filter-chip"
+                        }`}
+                        aria-pressed={syncAuditFilter === value}
+                      >
+                        {label}
+                      </button>
+                      ))}
+                    </div>
+                    <div className="mb-4 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--color-deep-navy)]/60">
+                      <span className="rounded-full bg-[var(--color-deep-navy)]/5 px-3 py-1.5">
+                        {t("syncAuditSummaryImports", {
+                          count: syncAuditSourceCounts.imports,
+                          defaultValue: "{{count}} imports",
+                        })}
+                      </span>
+                      <span className="rounded-full bg-[var(--color-deep-navy)]/5 px-3 py-1.5">
+                        {t("syncAuditSummaryQr", {
+                          count: syncAuditSourceCounts.qr,
+                          defaultValue: "{{count}} QR flows",
+                        })}
+                      </span>
+                      <span className="rounded-full bg-[var(--color-deep-navy)]/5 px-3 py-1.5">
+                        {t("syncAuditSummaryRestore", {
+                          count: syncAuditSourceCounts.restore,
+                          defaultValue: "{{count}} restore/migration",
+                        })}
+                      </span>
+                    </div>
+                    <div className="space-y-3">
+                    {filteredSyncAuditEvents.length === 0 ? (
+                      <div className="rounded-xl border border-dashed settings-card-surface px-4 py-5 text-xs opacity-60">
+                        {t("syncAuditEmpty", "No sync audit events recorded yet.")}
+                      </div>
+                    ) : filteredSyncAuditEvents.slice(0, 6).map((event) => (
+                      <div key={event.id} className="rounded-xl border settings-card-surface px-4 py-3 shadow-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-sm font-semibold text-[var(--color-deep-navy)]">{mapSyncAuditLabel(event.type)}</div>
+                          <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-deep-navy)]/40">{formatPairingTimestamp(event.at)}</div>
+                        </div>
+                        {event.detail && (
+                          <div className="mt-1 text-xs text-[var(--color-deep-navy)]/70">{event.detail}</div>
+                        )}
+                        <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
+                          <span className="rounded-full bg-[var(--color-deep-navy)]/5 px-2 py-1 font-bold text-[var(--color-deep-navy)]/60">
+                            {event.source}
+                          </span>
+                          {Object.entries(event.metadata || {}).map(([key, value]) => (
+                            <span key={`${event.id}-${key}`} className="rounded-full bg-black/5 px-2 py-1 font-bold text-[var(--color-deep-navy)]/60">
+                              {key}: {String(value)}
+                            </span>
+                          ))}
+                        </div>
+                        {(event.source === "backup_import" || event.source === "structured_import" || event.source === "qr_import" || event.source === "canonical_restore" || event.source === "migration") && (
+                          <div className="mt-3 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => navigateFromSyncAudit(event.source)}
+                              className="rounded-xl border border-[var(--color-deep-navy)]/10 bg-white/70 px-4 py-2 text-xs font-bold text-[var(--color-deep-navy)] transition-all hover:bg-white active:scale-95"
+                            >
+                              {event.source === "qr_import"
+                                ? t("syncAuditOpenQr", "Open QR section")
+                                : event.source === "canonical_restore" || event.source === "migration"
+                                  ? t("syncAuditOpenMigrationReport", "Open migration report")
+                                  : t("syncAuditOpenImportReport", "Open import report")}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
 
               {/* Import Report */}
               {importReport && (
-                <div className="import-report-card mt-5 p-5 rounded-2xl border animate-in fade-in zoom-in-95 duration-500 shadow-sm relative overflow-hidden">
+                <div ref={importReportRef} className="import-report-card mt-5 p-5 rounded-2xl border animate-in fade-in zoom-in-95 duration-500 shadow-sm relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
                   <div className="flex items-start gap-4 relative z-10">
                     <div className="p-2 bg-amber-500/15 rounded-xl text-amber-500 shrink-0"><AlertTriangle className="w-5 h-5" /></div>
@@ -1527,6 +2886,32 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                           <span className="opacity-70">{t("importDuplicateCandidates", "Duplicate Candidates")}</span>
                           <span className={`font-bold ${importReport.duplicateCandidates > 0 ? "text-amber-500" : "opacity-40"}`}>{importReport.duplicateCandidates}</span>
                         </div>
+                        {importReport.conflictSummary && importReport.conflictSummary.duplicateCount > 0 && (
+                          <div className="pt-2">
+                            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+                              <div className="text-[10px] font-bold uppercase tracking-widest text-amber-700">
+                                {t("syncConflictReportTitle", "Sync Conflict Summary")}
+                              </div>
+                              <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                                <div className="rounded-xl bg-white/60 px-3 py-2">
+                                  <div className="opacity-60">{t("syncConflictReportIncoming", "Incoming")}</div>
+                                  <div className="mt-1 font-bold text-[var(--color-deep-navy)]">{importReport.conflictSummary.incomingCount}</div>
+                                </div>
+                                <div className="rounded-xl bg-white/60 px-3 py-2">
+                                  <div className="opacity-60">{t("syncConflictReportMatches", "Existing matches")}</div>
+                                  <div className="mt-1 font-bold text-amber-700">{importReport.conflictSummary.duplicateCount}</div>
+                                </div>
+                                <div className="rounded-xl bg-white/60 px-3 py-2">
+                                  <div className="opacity-60">{t("syncConflictReportExact", "Exact matches")}</div>
+                                  <div className="mt-1 font-bold text-[var(--color-deep-navy)]">{importReport.conflictSummary.exactMatchCount}</div>
+                                </div>
+                              </div>
+                              <p className="mt-3 text-xs opacity-75 leading-relaxed">
+                                {t("syncConflictReportDesc", "Incoming items were compared with the local vault before import. Matching signatures do not block import, but they indicate records you may want to review.")}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                         {importReport.warnings.length > 0 && (
                           <div className="pt-2">
                             <div className="text-[10px] font-bold uppercase tracking-widest opacity-50">{t("importWarningsTitle", "Detected Format / Warnings")}</div>
@@ -1540,6 +2925,60 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                           </div>
                         )}
                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {latestMigrationReport && (
+                <div ref={migrationReportRef} className="import-report-card mt-5 p-5 rounded-2xl border animate-in fade-in zoom-in-95 duration-500 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-sage-green)]/5 rounded-full blur-2xl pointer-events-none" />
+                  <div className="flex items-start gap-4 relative z-10">
+                    <div className="p-2 bg-[var(--color-sage-green)]/15 rounded-xl text-[var(--color-sage-green)] shrink-0">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-sm text-[var(--color-deep-navy)]">{t("migrationReportTitle", "Migration Report")}</h4>
+                      <p className="text-xs opacity-60 mt-1 mb-2">{t("migrationReportDesc", "Latest canonical migration preview generated during encrypted backup import.")}</p>
+                      <div className="space-y-2 mt-3 font-[var(--font-geist-mono)] text-xs">
+                        <div className="flex justify-between items-center py-1.5 border-b border-[var(--color-deep-navy)]/10">
+                          <span className="opacity-70">{t("migrationReportSource", "Source")}</span>
+                          <span className="font-bold text-[var(--color-deep-navy)]">{latestMigrationReport.source}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-1.5 border-b border-[var(--color-deep-navy)]/10">
+                          <span className="opacity-70">{t("migrationReportTarget", "Target")}</span>
+                          <span className="font-bold text-[var(--color-deep-navy)]">{latestMigrationReport.target}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-1.5 border-b border-[var(--color-deep-navy)]/10">
+                          <span className="opacity-70">{t("migrationReportRecords", "Migrated records")}</span>
+                          <span className="font-bold text-[var(--color-sage-green)]">{latestMigrationReport.migratedRecords}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-1.5">
+                          <span className="opacity-70">{t("migrationReportGeneratedAt", "Generated")}</span>
+                          <span className="font-bold text-[var(--color-deep-navy)]">{formatPairingTimestamp(latestMigrationReport.generatedAt)}</span>
+                        </div>
+                      </div>
+                      {!!latestMigrationReport.metadata?.conflictSummary && (
+                        <div className="mt-4 rounded-2xl border border-[var(--color-sage-green)]/20 bg-[var(--color-sage-green)]/5 px-4 py-3">
+                          <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-sage-green)]">
+                            {t("migrationReportConflictTitle", "Migration Conflict Summary")}
+                          </div>
+                          <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                            <div className="rounded-xl bg-white/60 px-3 py-2">
+                              <div className="opacity-60">{t("syncConflictReportIncoming", "Incoming")}</div>
+                              <div className="mt-1 font-bold text-[var(--color-deep-navy)]">{String((latestMigrationReport.metadata.conflictSummary as { incomingCount?: number }).incomingCount ?? 0)}</div>
+                            </div>
+                            <div className="rounded-xl bg-white/60 px-3 py-2">
+                              <div className="opacity-60">{t("syncConflictReportMatches", "Existing matches")}</div>
+                              <div className="mt-1 font-bold text-[var(--color-sage-green)]">{String((latestMigrationReport.metadata.conflictSummary as { duplicateCount?: number }).duplicateCount ?? 0)}</div>
+                            </div>
+                            <div className="rounded-xl bg-white/60 px-3 py-2">
+                              <div className="opacity-60">{t("syncConflictReportExact", "Exact matches")}</div>
+                              <div className="mt-1 font-bold text-[var(--color-deep-navy)]">{String((latestMigrationReport.metadata.conflictSummary as { exactMatchCount?: number }).exactMatchCount ?? 0)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -2,20 +2,23 @@ import type { VaultEntry } from '../vaultService';
 import { BackupService } from './BackupService';
 import { toBufferSource } from './crypto-types';
 import {
+  AEGIS_APP_VERSION,
+  AEGIS_QR_SYNC_FORMAT,
+  AEGIS_QR_SYNC_PAIRING_FORMAT,
+} from '../config/schema-registry';
+import {
   SecureAppSettings,
   type QRTransferAuditEvent,
   type QRTransferLedgerRecord,
 } from './SecureAppSettings';
 
-const QR_SYNC_FORMAT = 'aegis-qr-sync-v1';
-const QR_SYNC_PAIRING_FORMAT = 'aegis-qr-ecdh-v1';
 const TRANSFER_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const DEFAULT_EXPIRY_MS = 5 * 60 * 1000;
 const DEFAULT_PAIRING_EXPIRY_MS = 10 * 60 * 1000;
 
 export interface QRSyncPackage {
-  format: typeof QR_SYNC_FORMAT;
-  version: '4.0.0';
+  format: typeof AEGIS_QR_SYNC_FORMAT;
+  version: typeof AEGIS_APP_VERSION;
   sessionId: string;
   createdAt: string;
   expiresAt: string;
@@ -27,7 +30,7 @@ export interface QRSyncPackage {
 }
 
 export interface QRSyncReceiverSession {
-  format: typeof QR_SYNC_PAIRING_FORMAT;
+  format: typeof AEGIS_QR_SYNC_PAIRING_FORMAT;
   publicKey: string;
   privateKey: CryptoKey;
   createdAt: string;
@@ -94,8 +97,8 @@ const isQRSyncEntry = (entry: unknown): entry is QRSyncEntry => {
 
 const parsePairingPublicKey = (value: string): string => {
   const trimmed = value.trim();
-  if (trimmed.startsWith(`${QR_SYNC_PAIRING_FORMAT}:`)) {
-    return trimmed.slice(`${QR_SYNC_PAIRING_FORMAT}:`.length);
+  if (trimmed.startsWith(`${AEGIS_QR_SYNC_PAIRING_FORMAT}:`)) {
+    return trimmed.slice(`${AEGIS_QR_SYNC_PAIRING_FORMAT}:`.length);
   }
   return trimmed;
 };
@@ -290,8 +293,8 @@ export class QRSyncService {
     const keyPair = await generateEcdhKeyPair();
     const publicKey = await exportPublicKey(keyPair.publicKey);
     const session: QRSyncReceiverSession = {
-      format: QR_SYNC_PAIRING_FORMAT,
-      publicKey: `${QR_SYNC_PAIRING_FORMAT}:${publicKey}`,
+      format: AEGIS_QR_SYNC_PAIRING_FORMAT,
+      publicKey: `${AEGIS_QR_SYNC_PAIRING_FORMAT}:${publicKey}`,
       privateKey: keyPair.privateKey,
       createdAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + expiresInMs).toISOString(),
@@ -335,8 +338,8 @@ export class QRSyncService {
     const derivedPassword = await deriveBackupPassword(normalizedCode, sessionId, sharedSecret);
     const encryptedPayload = await BackupService.encryptBackup(entries, derivedPassword);
     const qrPackage: QRSyncPackage = {
-      format: QR_SYNC_FORMAT,
-      version: '4.0.0',
+      format: AEGIS_QR_SYNC_FORMAT,
+      version: AEGIS_APP_VERSION,
       sessionId,
       createdAt,
       expiresAt,
@@ -390,7 +393,7 @@ export class QRSyncService {
     }
 
     if (
-      qrPackage.format !== QR_SYNC_FORMAT ||
+      qrPackage.format !== AEGIS_QR_SYNC_FORMAT ||
       typeof qrPackage.payload !== 'string' ||
       typeof qrPackage.sessionId !== 'string' ||
       typeof qrPackage.expiresAt !== 'string'

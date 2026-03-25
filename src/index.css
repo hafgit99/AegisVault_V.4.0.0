@@ -834,9 +834,12 @@
   }
 
   .settings-action-btn-primary {
-    background: var(--color-deep-navy);
-    color: #ffffff;
-    border: 1px solid rgba(10, 17, 40, 0.25);
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--color-deep-navy) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(10, 17, 40, 0.25) !important;
+    box-shadow: 0 8px 20px rgba(10, 17, 40, 0.16);
   }
 
   .settings-action-btn-secondary {
@@ -857,6 +860,23 @@
 
   .settings-action-btn-danger:hover {
     background: rgba(254, 226, 226, 0.95);
+  }
+
+  .settings-action-btn-primary:hover {
+    background: rgba(17, 29, 48, 0.96) !important;
+    border-color: rgba(10, 17, 40, 0.32) !important;
+  }
+
+  .settings-action-btn-primary:disabled,
+  .settings-action-btn-secondary:disabled,
+  .settings-action-btn-danger:disabled {
+    appearance: none;
+    -webkit-appearance: none;
+    background: rgba(148, 163, 184, 0.22) !important;
+    color: rgba(15, 23, 42, 0.38) !important;
+    border-color: rgba(148, 163, 184, 0.16) !important;
+    box-shadow: none !important;
+    cursor: not-allowed;
   }
 
   .settings-card-surface {
@@ -901,6 +921,68 @@
     border-color: rgba(114, 136, 111, 0.46);
   }
 
+  .settings-filter-chip {
+    border: 1px solid transparent;
+    background: rgba(10, 17, 40, 0.05);
+    color: rgba(10, 17, 40, 0.7);
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+  }
+
+  .settings-filter-chip:hover {
+    background: rgba(10, 17, 40, 0.1);
+  }
+
+  .settings-filter-chip-active {
+    border-color: rgba(114, 136, 111, 0.3);
+    background: rgba(114, 136, 111, 0.16);
+    color: var(--color-deep-navy);
+  }
+
+  .settings-badge-muted {
+    background: rgba(10, 17, 40, 0.05);
+    color: rgba(10, 17, 40, 0.6);
+    border: 1px solid rgba(10, 17, 40, 0.04);
+  }
+
+  .settings-badge-positive {
+    background: rgba(114, 136, 111, 0.12);
+    color: var(--color-sage-green);
+    border: 1px solid rgba(114, 136, 111, 0.2);
+  }
+
+  .settings-pill-secondary {
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--color-deep-navy);
+    border: 1px solid rgba(10, 17, 40, 0.08);
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+  }
+
+  .settings-pill-secondary:hover {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(10, 17, 40, 0.14);
+  }
+
+  .settings-section-kicker {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(10, 17, 40, 0.45);
+  }
+
+  .settings-section-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--color-deep-navy);
+  }
+
+  .settings-section-copy {
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: rgba(10, 17, 40, 0.68);
+  }
+
   [data-theme="dark"] .totp-mode-btn {
     background: rgba(31, 43, 62, 0.86);
     border-color: rgba(137, 168, 140, 0.28);
@@ -932,9 +1014,18 @@
   }
 
   [data-theme="dark"] .settings-action-btn-primary {
-    background: linear-gradient(135deg, #2b3f5e, #22344f);
-    color: #f4f8ff;
-    border-color: rgba(137, 168, 140, 0.34);
+    appearance: none;
+    -webkit-appearance: none;
+    background: linear-gradient(135deg, #2b3f5e, #22344f) !important;
+    color: #f4f8ff !important;
+    border-color: rgba(137, 168, 140, 0.34) !important;
+    box-shadow: 0 10px 24px rgba(5, 10, 20, 0.28);
+  }
+
+  [data-theme="dark"] .settings-action-btn-primary:hover {
+    background: linear-gradient(135deg, #344b6f, #29405f) !important;
+    border-color: rgba(137, 168, 140, 0.42) !important;
+    color: #ffffff !important;
   }
 
   [data-theme="dark"] .settings-action-btn-secondary {
@@ -1011,6 +1102,58 @@
     background: rgba(48, 66, 94, 0.96);
     border-color: rgba(137, 168, 140, 0.44);
     color: #ffffff;
+  }
+
+  [data-theme="dark"] .settings-filter-chip {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(243, 247, 255, 0.75);
+  }
+
+  [data-theme="dark"] .settings-filter-chip:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #f3f7ff;
+  }
+
+  [data-theme="dark"] .settings-filter-chip-active {
+    border-color: rgba(137, 168, 140, 0.34);
+    background: rgba(137, 168, 140, 0.16);
+    color: #f3f7ff;
+  }
+
+  [data-theme="dark"] .settings-badge-muted {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(243, 247, 255, 0.68);
+    border-color: rgba(137, 168, 140, 0.14);
+  }
+
+  [data-theme="dark"] .settings-badge-positive {
+    background: rgba(137, 168, 140, 0.16);
+    color: #dff7e6;
+    border-color: rgba(137, 168, 140, 0.26);
+  }
+
+  [data-theme="dark"] .settings-pill-secondary {
+    background: rgba(38, 51, 73, 0.92);
+    color: #eef4ff;
+    border-color: rgba(137, 168, 140, 0.22);
+  }
+
+  [data-theme="dark"] .settings-pill-secondary:hover {
+    background: rgba(48, 66, 94, 0.96);
+    border-color: rgba(137, 168, 140, 0.32);
+    color: #ffffff;
+  }
+
+  [data-theme="dark"] .settings-section-kicker {
+    color: rgba(243, 247, 255, 0.45);
+  }
+
+  [data-theme="dark"] .settings-section-title {
+    color: #f3f7ff;
+  }
+
+  [data-theme="dark"] .settings-section-copy {
+    color: rgba(243, 247, 255, 0.72);
   }
 
   [data-theme="dark"] .emergency-kit-btn {

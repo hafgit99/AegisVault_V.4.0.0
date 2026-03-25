@@ -6,6 +6,7 @@ import { extensionBridge } from "../lib/ExtensionBridge";
 import { breachChecker } from "../lib/breach-check";
 import { SecureAppSettings } from "../lib/SecureAppSettings";
 import { SecurityModePolicy } from "../lib/SecurityModePolicy";
+import { VaultSharingLinkService } from "../lib/VaultSharingLinkService";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import DOMPurify from "dompurify";
@@ -272,7 +273,8 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
     setIsDecrypting(true);
     const isTrash = categoryFilter === "Trash";
     vaultService.getPasswords(debouncedSearch, categoryFilter, isTrash, searchScope).then(data => {
-      const sortedData = [...data].sort((a, b) => {
+      const hydratedData = VaultSharingLinkService.hydrateEntries(data);
+      const sortedData = [...hydratedData].sort((a, b) => {
         if (sortOption === "title_asc") {
           return (a.title || "").localeCompare((b.title || ""), undefined, { sensitivity: "base", numeric: true });
         }
@@ -419,9 +421,25 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
       website: DOMPurify.sanitize(entry.website || ""),
       category: DOMPurify.sanitize(entry.category || "General"),
       tags: entry.tags?.map(tg => DOMPurify.sanitize(tg)) || [],
+      sharing: Array.isArray(entry.sharing)
+        ? entry.sharing.map((assignment) => ({
+            ...assignment,
+            space_id: DOMPurify.sanitize(assignment.space_id),
+            shared_by: assignment.shared_by ? DOMPurify.sanitize(assignment.shared_by) : undefined,
+            notes: assignment.notes ? DOMPurify.sanitize(assignment.notes) : undefined,
+          }))
+        : undefined,
     };
 
     const newId = await vaultService.addPassword(cleanEntry);
+
+    if (newId) {
+      if (Array.isArray(cleanEntry.sharing) && cleanEntry.sharing.length > 0) {
+        VaultSharingLinkService.setAssignmentsForEntry(newId as number, cleanEntry.sharing);
+      } else {
+        VaultSharingLinkService.clearAssignmentsForEntry(newId as number);
+      }
+    }
 
     if (attachments.length > 0 && newId) {
       toast.info(t("uploadingAttachments"));

@@ -80,3 +80,4 @@ coverage/
 ci-artifacts/
 [Cc]lean-output.json
 debug-out.txt
+vitest-results/

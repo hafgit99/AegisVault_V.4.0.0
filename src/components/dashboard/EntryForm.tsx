@@ -1,10 +1,11 @@
-import { useState, lazy, Suspense } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { X, Wand2, Eye, EyeOff, ShieldCheck, Lock, Paperclip, FileUp, Tag, KeyRound, FileText, Camera } from "lucide-react";
 import { useVault } from "../../contexts/VaultContext";
 import { vaultService, type VaultEntry } from "../../vaultService";
 import { parseOtpauthUri } from "../../lib/TOTPService";
 import { VaultManager } from "../../lib/VaultManager";
 import { TotpVaultPolicy } from "../../lib/TotpVaultPolicy";
+import { SharedSpaceService } from "../../lib/SharedSpaceService";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 
@@ -33,12 +34,74 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
   const [totpInput, setTotpInput] = useState(initialEntry?.totpSecret || "");
   const [showTotpSection, setShowTotpSection] = useState(!!(initialEntry?.totpSecret || initialEntry?.totp_secret));
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [sharedSpaces, setSharedSpaces] = useState(() => SharedSpaceService.listSpaces());
   const existingAttachments = Array.isArray(newEntry.attachments) ? newEntry.attachments : [];
   const visibleExistingAttachments = existingAttachments.filter((att) => !removedAttachmentIds.includes(att.id));
   const activeProfile = VaultManager.getActiveProfile();
   const totpMode = TotpVaultPolicy.getMode();
   const isSeparateTotpMode = totpMode === 'separate_2fa_vault';
   const isInTwoFactorVault = TotpVaultPolicy.isTwoFactorVault(activeProfile?.id);
+  const primarySharing = Array.isArray(newEntry.sharing) ? newEntry.sharing[0] : undefined;
+  const initialPrimarySharing = Array.isArray(initialEntry?.sharing) ? initialEntry?.sharing[0] : undefined;
+  const sharingFocusContext = initialEntry?.ui_focus_context;
+  const sharingFocusLabel = initialEntry?.ui_focus_label;
+
+  useEffect(() => {
+    setSharedSpaces(SharedSpaceService.listSpaces());
+  }, []);
+
+  const updatePrimarySharing = (
+    updater: (
+      current: NonNullable<Partial<VaultEntry>["sharing"]>[number]
+    ) => NonNullable<Partial<VaultEntry>["sharing"]>[number] | null
+  ) => {
+    setNewEntry((prev) => {
+      const current = Array.isArray(prev.sharing) && prev.sharing[0]
+        ? prev.sharing[0]
+        : {
+            space_id: "",
+            role: "viewer" as const,
+            is_sensitive: false,
+            emergency_access: false,
+            notes: "",
+          };
+      const next = updater(current);
+      return {
+        ...prev,
+        sharing: next ? [next] : undefined,
+      };
+    });
+  };
+
+  const hasPrimarySharingChanged = () => {
+    const normalize = (value?: typeof primarySharing) =>
+      value
+        ? {
+            space_id: value.space_id || "",
+            role: value.role || "viewer",
+            is_sensitive: Boolean(value.is_sensitive),
+            emergency_access: Boolean(value.emergency_access),
+            notes: value.notes || "",
+          }
+        : null;
+
+    return JSON.stringify(normalize(primarySharing)) !== JSON.stringify(normalize(initialPrimarySharing));
+  };
+
+  const isNoteCategory = newEntry.category === "Notes";
+  const isWifiCategory = newEntry.category === "WiFi";
+  const isPasskeyCategory = newEntry.category === "Passkeys";
+
+  const updatePasskeyMetadata = (updates: Record<string, string>) => {
+    setNewEntry((prev) => ({
+      ...prev,
+      passkeyMetadata: {
+        mode: prev.passkeyMetadata?.mode || "site_passkey_mvp",
+        ...prev.passkeyMetadata,
+        ...updates,
+      },
+    }));
+  };
 
   const generateSecurePassword = () => {
     const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+=-";
@@ -83,6 +146,18 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
     const payload: Partial<VaultEntry> = {
       ...newEntry,
       attachments: visibleExistingAttachments,
+      sharing:
+        primarySharing && primarySharing.space_id
+          ? [
+              {
+                ...primarySharing,
+                space_id: primarySharing.space_id,
+                last_reviewed_at: hasPrimarySharingChanged()
+                  ? new Date().toISOString()
+                  : primarySharing.last_reviewed_at,
+              },
+            ]
+          : undefined,
     };
 
     if (isSeparateTotpMode && !isInTwoFactorVault) {
@@ -113,6 +188,21 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
         </button>
       </div>
 
+      {sharingFocusContext ? (
+        <div className="rounded-2xl border border-[var(--color-sage-green)]/20 bg-[var(--color-sage-green)]/10 px-4 py-3 text-sm text-[var(--color-deep-navy)] dark:border-[var(--color-sage-green)]/25 dark:bg-[var(--color-sage-green)]/10 dark:text-white">
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-sage-green)]">
+            {sharingFocusContext === "sharing_audit"
+              ? t("entryFormFocusAuditTitle")
+              : t("entryFormFocusIssueTitle")}
+          </div>
+          <div className="mt-1 text-xs opacity-80">
+            {t("entryFormFocusDescription", {
+              target: sharingFocusLabel || newEntry.title || t("sharingAuditUnknown"),
+            })}
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-2 gap-4">
         <input
           required
@@ -122,6 +212,8 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
               ? t("placeholderCardTitle")
               : newEntry.category === "Identities"
               ? t("placeholderIdentityTitle")
+              : newEntry.category === "Passkeys"
+              ? t("placeholderPasskeyTitle")
               : newEntry.category === "Notes"
               ? t("placeholderNoteTitle")
               : newEntry.category === "WiFi"
@@ -134,17 +226,33 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
         />
         <select
           value={newEntry.category}
-          onChange={(e) => setNewEntry({ ...newEntry, category: e.target.value })}
+          onChange={(e) =>
+            setNewEntry((prev) => ({
+              ...prev,
+              category: e.target.value,
+              passkeyMetadata:
+                e.target.value === "Passkeys"
+                  ? {
+                      mode: prev.passkeyMetadata?.mode || "site_passkey_mvp",
+                      credential_id: prev.passkeyMetadata?.credential_id || prev.pass || "",
+                      rp_id: prev.passkeyMetadata?.rp_id || "",
+                      display_name: prev.passkeyMetadata?.display_name || prev.title || "",
+                      user_handle: prev.passkeyMetadata?.user_handle || prev.username || "",
+                    }
+                  : prev.passkeyMetadata,
+            }))
+          }
           className="entry-field col-span-1 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
         >
           <option value="General">{t("general")}</option>
           <option value="Cards">{t("cards")}</option>
           <option value="Identities">{t("identities")}</option>
+          <option value="Passkeys">{t("passkeys")}</option>
           <option value="Notes">{t("notes")}</option>
           <option value="WiFi">{t("wifi")}</option>
         </select>
 
-        {newEntry.category !== "Notes" && (
+        {!isNoteCategory && !isPasskeyCategory && (
           <input
             type="text"
             placeholder={
@@ -152,7 +260,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                 ? t("placeholderCardUser")
                 : newEntry.category === "Identities"
                 ? t("placeholderIdentityUser")
-                : newEntry.category === "WiFi"
+                : isWifiCategory
                 ? t("placeholderWifiUser")
                 : t("usernameEmailPlaceholder")
             }
@@ -162,7 +270,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
           />
         )}
 
-        {newEntry.category !== "Notes" && (
+        {!isNoteCategory && !isPasskeyCategory && (
           <input
             type="text"
             placeholder={
@@ -170,7 +278,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                 ? t("placeholderCardUrl")
                 : newEntry.category === "Identities"
                 ? t("placeholderIdentityUrl")
-                : newEntry.category === "WiFi"
+                : isWifiCategory
                 ? t("placeholderWifiUrl")
                 : t("placeholderUrl")
             }
@@ -181,7 +289,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
         )}
 
         <div className="col-span-2 relative flex items-center">
-          {newEntry.category === "Notes" ? (
+          {isNoteCategory ? (
             <textarea
               required
               placeholder={t("placeholderNotePass")}
@@ -198,17 +306,32 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                   ? t("placeholderCardPass")
                   : newEntry.category === "Identities"
                   ? t("placeholderIdentityPass")
-                  : newEntry.category === "WiFi"
+                  : isWifiCategory
                   ? t("placeholderWifiPass")
+                  : isPasskeyCategory
+                  ? t("placeholderPasskeyCredentialId")
                   : t("securePassword")
               }
               value={newEntry.pass}
-              onChange={(e) => setNewEntry({ ...newEntry, pass: e.target.value })}
+              onChange={(e) => {
+                const value = e.target.value;
+                setNewEntry((prev) => ({
+                  ...prev,
+                  pass: value,
+                  passkeyMetadata: isPasskeyCategory
+                    ? {
+                        mode: prev.passkeyMetadata?.mode || "site_passkey_mvp",
+                        ...prev.passkeyMetadata,
+                        credential_id: value,
+                      }
+                    : prev.passkeyMetadata,
+                }));
+              }}
               className="entry-field w-full rounded-lg py-2.5 pl-3 pr-20 text-sm font-medium outline-none pass-font"
             />
           )}
 
-          {newEntry.category !== "Notes" && (
+          {!isNoteCategory && !isPasskeyCategory && (
             <div className="absolute right-2 flex items-center gap-1">
               <button
                 type="button"
@@ -268,6 +391,167 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
             </div>
           )}
         </div>
+
+        {/* Sharing Assignment */}
+        <div className="col-span-2 rounded-xl border border-[var(--color-sage-green)]/20 bg-[var(--color-sage-green)]/5 p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] uppercase font-bold tracking-widest text-[var(--color-sage-green)]">
+                {t("entrySharingTitle")}
+              </div>
+              <p className="mt-1 text-xs text-[var(--color-deep-navy)]/65">
+                {t("entrySharingDesc")}
+              </p>
+            </div>
+            <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-semibold text-[var(--color-deep-navy)]/65">
+              {t("entrySharingSpacesCount", { count: sharedSpaces.length })}
+            </span>
+          </div>
+
+          {sharedSpaces.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-[var(--color-sage-green)]/25 px-3 py-2 text-xs text-[var(--color-deep-navy)]/60">
+              {t("entrySharingNoSpaces")}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <select
+                  value={primarySharing?.space_id || ""}
+                  onChange={(e) => {
+                    const nextSpaceId = e.target.value;
+                    if (!nextSpaceId) {
+                      setNewEntry((prev) => ({ ...prev, sharing: undefined }));
+                      return;
+                    }
+                    updatePrimarySharing((current) => ({
+                      ...current,
+                      space_id: nextSpaceId,
+                    }));
+                  }}
+                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                >
+                  <option value="">{t("entrySharingSpacePlaceholder")}</option>
+                  {sharedSpaces.map((space) => (
+                    <option key={space.id} value={space.id}>
+                      {space.name}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={primarySharing?.role || "viewer"}
+                  onChange={(e) =>
+                    updatePrimarySharing((current) =>
+                      current.space_id
+                        ? {
+                            ...current,
+                            role: e.target.value === "editor" ? "editor" : "viewer",
+                          }
+                        : null
+                    )
+                  }
+                  disabled={!primarySharing?.space_id}
+                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none disabled:opacity-50"
+                >
+                  <option value="viewer">{t("entrySharingRoleViewer")}</option>
+                  <option value="editor">{t("entrySharingRoleEditor")}</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <label className="flex items-center gap-2 rounded-lg border border-black/5 bg-white/60 px-3 py-2 text-xs font-medium text-[var(--color-deep-navy)]/75">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(primarySharing?.is_sensitive)}
+                    disabled={!primarySharing?.space_id}
+                    onChange={(e) =>
+                      updatePrimarySharing((current) =>
+                        current.space_id
+                          ? {
+                              ...current,
+                              is_sensitive: e.target.checked,
+                            }
+                          : null
+                      )
+                    }
+                  />
+                  {t("entrySharingSensitive")}
+                </label>
+                <label className="flex items-center gap-2 rounded-lg border border-black/5 bg-white/60 px-3 py-2 text-xs font-medium text-[var(--color-deep-navy)]/75">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(primarySharing?.emergency_access)}
+                    disabled={!primarySharing?.space_id}
+                    onChange={(e) =>
+                      updatePrimarySharing((current) =>
+                        current.space_id
+                          ? {
+                              ...current,
+                              emergency_access: e.target.checked,
+                            }
+                          : null
+                      )
+                    }
+                  />
+                  {t("entrySharingEmergency")}
+                </label>
+              </div>
+
+              <textarea
+                rows={2}
+                value={primarySharing?.notes || ""}
+                disabled={!primarySharing?.space_id}
+                onChange={(e) =>
+                  updatePrimarySharing((current) =>
+                    current.space_id
+                      ? {
+                          ...current,
+                          notes: e.target.value,
+                        }
+                      : null
+                  )
+                }
+                placeholder={t("entrySharingNotesPlaceholder")}
+                className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none disabled:opacity-50"
+              />
+            </div>
+          )}
+        </div>
+
+        {isPasskeyCategory ? (
+          <>
+            <input
+              type="text"
+              placeholder={t("passkeyRpIdPlaceholder")}
+              value={newEntry.passkeyMetadata?.rp_id || ""}
+              onChange={(e) => updatePasskeyMetadata({ rp_id: e.target.value })}
+              className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+            />
+            <input
+              type="text"
+              placeholder={t("passkeyDisplayNamePlaceholder")}
+              value={newEntry.passkeyMetadata?.display_name || ""}
+              onChange={(e) => updatePasskeyMetadata({ display_name: e.target.value })}
+              className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+            />
+            <input
+              type="text"
+              placeholder={t("passkeyUserHandlePlaceholder")}
+              value={newEntry.passkeyMetadata?.user_handle || ""}
+              onChange={(e) => updatePasskeyMetadata({ user_handle: e.target.value })}
+              className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+            />
+            <select
+              value={newEntry.passkeyMetadata?.mode || "site_passkey_mvp"}
+              onChange={(e) => updatePasskeyMetadata({ mode: e.target.value })}
+              className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+            >
+              <option value="site_passkey_mvp">{t("passkeyModeSiteMvp")}</option>
+              <option value="vault_unlock">{t("passkeyModeVaultUnlock")}</option>
+              <option value="site_passkey_future_rp">{t("passkeyModeFutureRp")}</option>
+            </select>
+          </>
+        ) : null}
 
         {/* TOTP 2FA Section */}
         {newEntry.category !== "Notes" && (

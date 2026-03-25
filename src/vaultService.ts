@@ -1,6 +1,7 @@
 import { openDB, type IDBPDatabase } from "idb";
 import { argon2id } from 'hash-wasm';
 import { SQLiteOPFS, isOPFSAvailable, clearAllOPFSFiles } from './lib/SQLiteOPFS';
+import type { CanonicalSharingAssignment } from './lib/canonical-schema';
 import { 
   toBufferSource, 
   bufferToHex, 
@@ -10,6 +11,7 @@ import {
 } from './lib/crypto-types';
 import { type EncryptionProfile, isFieldEncrypted } from './config/encryption-profiles';
 import { SecureAppSettings } from './lib/SecureAppSettings';
+import type { CanonicalPasskeyFields } from './lib/canonical-schema';
 // Represents the SQLite-WASM SQLCipher over OPFS architecture
 // We use IndexedDB to simulate the OPFS persistence layer for this demo.
 export interface VaultMetadata {
@@ -82,11 +84,17 @@ export interface VaultEntry {
   // Secure Notes — encrypted at rest
   encrypted_notes?: string; // AES-GCM encrypted notes content
   notes_iv?: string;        // IV for notes encryption
+  encrypted_passkey_meta?: string; // AES-GCM encrypted site passkey metadata JSON
+  passkey_meta_iv?: string;        // IV for passkey metadata encryption
 
   // Decrypted fields for UI (never persisted)
   pass?: string;
   totpSecret?: string;     // Decrypted TOTP secret (only in memory)
   notes?: string;          // Decrypted notes content (only in memory)
+  passkeyMetadata?: CanonicalPasskeyFields | null; // Decrypted passkey metadata for site-passkey MVP
+  sharing?: CanonicalSharingAssignment[]; // Canonical sharing metadata for UI/export helpers
+  ui_focus_context?: 'sharing_issue' | 'sharing_audit'; // Transient UI hint for edit flows
+  ui_focus_label?: string; // Transient UI label shown in edit flows
 }
 
 export class VaultService {
@@ -1088,6 +1096,20 @@ export class VaultService {
       newEntry.notes_iv = entry.notes_iv;
     }
 
+    if (entry.passkeyMetadata) {
+      const passkeyMetaIv = generateRandomBytes(12);
+      const passkeyMetaCipher = await window.crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: toBufferSource(passkeyMetaIv) },
+        this.aesKey!,
+        toBufferSource(enc.encode(JSON.stringify(entry.passkeyMetadata)))
+      );
+      newEntry.encrypted_passkey_meta = bufferToHex(passkeyMetaCipher);
+      newEntry.passkey_meta_iv = bufferToHex(passkeyMetaIv);
+    } else if (entry.encrypted_passkey_meta) {
+      newEntry.encrypted_passkey_meta = entry.encrypted_passkey_meta;
+      newEntry.passkey_meta_iv = entry.passkey_meta_iv;
+    }
+
     if (entry.attachments) {
       newEntry.attachments = await this.encryptAttachmentMetadataList(entry.attachments as VaultAttachmentMeta[]);
     }
@@ -1366,6 +1388,23 @@ export class VaultService {
             );
             decrypted.notes = dec.decode(notesPlain);
           } catch { decrypted.notes = undefined; }
+        }
+
+        if (entry.encrypted_passkey_meta && entry.passkey_meta_iv) {
+          try {
+            const passkeyMetaCipher = isLikelyHexUtil(entry.encrypted_passkey_meta)
+              ? hexToBuffer(entry.encrypted_passkey_meta)
+              : Uint8Array.from(atob(entry.encrypted_passkey_meta), c => c.charCodeAt(0));
+            const passkeyMetaIv = isLikelyHexUtil(entry.passkey_meta_iv)
+              ? hexToBuffer(entry.passkey_meta_iv)
+              : Uint8Array.from(atob(entry.passkey_meta_iv), c => c.charCodeAt(0));
+            const passkeyMetaPlain = await window.crypto.subtle.decrypt(
+              { name: "AES-GCM", iv: toBufferSource(passkeyMetaIv) },
+              this.aesKey!,
+              toBufferSource(passkeyMetaCipher)
+            );
+            decrypted.passkeyMetadata = JSON.parse(dec.decode(passkeyMetaPlain)) as CanonicalPasskeyFields;
+          } catch { decrypted.passkeyMetadata = undefined; }
         }
 
         return decrypted;

@@ -20,6 +20,14 @@ type ImportServiceWithTestAccess = typeof ImportService & {
       duplicateCandidates: number;
     };
   };
+  parseCsvCanonical: (text: string) => {
+    records: Array<Record<string, unknown>>;
+    report: {
+      warnings: string[];
+      validEntries: number;
+      duplicateCandidates: number;
+    };
+  };
 };
 
 const importServiceForTest = ImportService as unknown as ImportServiceWithTestAccess;
@@ -85,6 +93,17 @@ describe("ImportService vendor fixture matrix", () => {
       title: "Proton Mail",
       username: "user@proton.me",
       category: "Personal",
+    });
+  });
+
+  it("maps Bitwarden CSV fixture into canonical records", () => {
+    const result = importServiceForTest.parseCsvCanonical(fixture("bitwarden-export.csv"));
+
+    expect(result.report.validEntries).toBe(2);
+    expect(result.records[0]).toMatchObject({
+      title: "Netflix",
+      username: "user@example.com",
+      url: "https://netflix.com/login",
     });
   });
 });

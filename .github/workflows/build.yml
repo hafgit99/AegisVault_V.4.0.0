@@ -38,6 +38,9 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
+      - name: Prepare CI Artifact Layout
+        run: npm run ci:prepare:artifacts
+
       - name: Lint
         run: npm run lint
 
@@ -152,6 +155,9 @@ jobs:
 
       - name: Install Extension Dependencies
         run: npm --prefix aegis-wxt ci
+
+      - name: Prepare CI Artifact Layout
+        run: npm run ci:prepare:artifacts
 
       - name: Validate Release Signing Environment
         run: npm run release:validate-signing-env

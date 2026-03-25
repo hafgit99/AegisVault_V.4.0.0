@@ -1,4 +1,5 @@
 import type { VaultEntry } from "../vaultService";
+import { toCanonicalVaultRecords } from "./canonical-adapters";
 
 export interface ExportableVaultEntry {
   title: string;
@@ -52,5 +53,9 @@ export class ExportService {
       website: entry.website,
       tags: entry.tags || [],
     }));
+  }
+
+  static buildCanonicalJson(entries: VaultEntry[]): string {
+    return JSON.stringify(toCanonicalVaultRecords(entries), null, 2);
   }
 }

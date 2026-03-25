@@ -1,4 +1,7 @@
 import type { VaultEntry } from "../vaultService";
+import type { CanonicalVaultRecord } from "./canonical-schema";
+import type { SyncConflictSummary } from "./SyncConflictResolutionService";
+import { normalizeCanonicalCategory } from "./canonical-schema";
 
 export interface ImportProgress {
   totalAnalyzed: number;
@@ -16,10 +19,16 @@ export interface ImportAnalysisReport {
   missingCriticalFields: number;
   duplicateCandidates: number;
   warnings: string[];
+  conflictSummary?: SyncConflictSummary;
 }
 
 export interface ImportParseResult {
   entries: Partial<VaultEntry>[];
+  report: ImportAnalysisReport;
+}
+
+export interface CanonicalImportParseResult {
+  records: CanonicalVaultRecord[];
   report: ImportAnalysisReport;
 }
 
@@ -56,6 +65,9 @@ const isNonEmptyString = (value: unknown): value is string =>
 const normalizeCategory = (value: string | undefined): string =>
   value && value.trim() ? value.trim() : "General";
 
+const normalizeUrl = (value: string | undefined): string =>
+  String(value || "").trim();
+
 const buildEntry = (candidate: {
   title?: string;
   username?: string;
@@ -78,6 +90,41 @@ const buildEntry = (candidate: {
     website,
     category: normalizeCategory(candidate.category),
     tags: candidate.tags?.filter(Boolean) || [],
+  };
+};
+
+const toCanonicalRecord = (candidate: {
+  title?: string;
+  username?: string;
+  pass?: string;
+  website?: string;
+  category?: string;
+  tags?: string[];
+  notes?: string;
+}): CanonicalVaultRecord | null => {
+  const password = String(candidate.pass || "").trim();
+  if (!password) return null;
+
+  const title = String(candidate.title || "").trim();
+  const username = String(candidate.username || "").trim();
+  const url = normalizeUrl(candidate.website);
+  const tags = candidate.tags?.filter(Boolean) || [];
+  const notes = String(candidate.notes || "").trim();
+
+  return {
+    id: `import-${Math.random().toString(36).slice(2, 10)}`,
+    title: title || url || username || "Imported Entry",
+    username,
+    url,
+    category: normalizeCanonicalCategory(candidate.category),
+    favorite: false,
+    tags,
+    deleted_at: null,
+    secret: {
+      password,
+      ...(notes ? { notes } : {}),
+    },
+    attachments: [],
   };
 };
 
@@ -351,5 +398,47 @@ export class ImportService {
     }
 
     return { entries, report: finalizeReport(entries, report) };
+  }
+
+  static parseJsonCanonical(text: string): CanonicalImportParseResult {
+    const result = this.parseJson(text);
+    const records = result.entries
+      .map((entry) =>
+        toCanonicalRecord({
+          title: typeof entry.title === "string" ? entry.title : "",
+          username: typeof entry.username === "string" ? entry.username : "",
+          pass: typeof entry.pass === "string" ? entry.pass : "",
+          website: typeof entry.website === "string" ? entry.website : "",
+          category: typeof entry.category === "string" ? entry.category : "",
+          tags: Array.isArray(entry.tags) ? entry.tags.filter((tag): tag is string => typeof tag === "string") : [],
+        })
+      )
+      .filter((record): record is CanonicalVaultRecord => Boolean(record));
+
+    return {
+      records,
+      report: result.report,
+    };
+  }
+
+  static parseCsvCanonical(text: string): CanonicalImportParseResult {
+    const result = this.parseCsv(text);
+    const records = result.entries
+      .map((entry) =>
+        toCanonicalRecord({
+          title: typeof entry.title === "string" ? entry.title : "",
+          username: typeof entry.username === "string" ? entry.username : "",
+          pass: typeof entry.pass === "string" ? entry.pass : "",
+          website: typeof entry.website === "string" ? entry.website : "",
+          category: typeof entry.category === "string" ? entry.category : "",
+          tags: Array.isArray(entry.tags) ? entry.tags.filter((tag): tag is string => typeof tag === "string") : [],
+        })
+      )
+      .filter((record): record is CanonicalVaultRecord => Boolean(record));
+
+    return {
+      records,
+      report: result.report,
+    };
   }
 }

@@ -5,6 +5,7 @@ import { useVault } from "../../contexts/VaultContext";
 import { vaultService, type VaultEntry } from "../../vaultService";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
+import { SharedSpaceService } from "../../lib/SharedSpaceService";
 
 interface VaultEntryCardProps {
   entry: VaultEntry;
@@ -53,6 +54,10 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
     !p.pass ||
     p.pass.length < 8 ||
     (p.pwned_count || 0) > 0;
+  const sharedSpaceName = p.sharing?.[0]?.space_id
+    ? SharedSpaceService.listSpaces().find((space) => space.id === p.sharing?.[0]?.space_id)?.name
+    : null;
+  const isSitePasskeyRecord = p.category === "Passkeys" || Boolean(p.passkeyMetadata);
 
   const compact = viewDensity === "compact";
 
@@ -66,6 +71,16 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
           <div className="min-h-7 flex items-center">
           <h3 className={`${compact ? "text-base" : "text-lg"} font-bold text-[var(--color-deep-navy)] truncate flex items-center gap-2 min-w-0`}>
             {p.title}
+            {sharedSpaceName && (
+              <span className="rounded-full bg-[var(--color-sage-green)]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-sage-green)]">
+                {sharedSpaceName}
+              </span>
+            )}
+            {isSitePasskeyRecord && (
+              <span className="rounded-full bg-sky-500/12 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-sky-700 dark:text-sky-300">
+                {t("passkeys")}
+              </span>
+            )}
             {(p.pwned_count || 0) > 0 && (
               <span
                 className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest font-black"
@@ -78,7 +93,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
           </div>
           <div className={`flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mt-1 ${compact ? "text-xs" : "text-sm"}`}>
             <p className="opacity-60 font-[var(--font-geist-mono)] tracking-tight truncate flex items-center gap-2">
-              {p.username}
+              {isSitePasskeyRecord ? (p.passkeyMetadata?.rp_id || p.username) : p.username}
               {p.tags && p.tags.length > 0 && (
                 <span className="hidden xl:flex items-center gap-1 opacity-70 border border-black/10 px-1.5 py-0.5 rounded text-[10px] ml-2">
                   <Tag className="w-2.5 h-2.5" /> {p.tags[0]} {p.tags.length > 1 && `+${p.tags.length - 1}`}

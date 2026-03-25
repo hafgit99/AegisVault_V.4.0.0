@@ -41,4 +41,40 @@ describe("ExportService regression tests", () => {
       },
     ]);
   });
+
+  it("builds canonical JSON payloads from vault entries", () => {
+    const json = ExportService.buildCanonicalJson([
+      {
+        id: 1,
+        title: "Github",
+        username: "octocat",
+        website: "https://github.com",
+        category: "login",
+        updated_at: "2026-03-23T10:00:00.000Z",
+        pass: "secretPass123",
+        notes: "important note",
+        tags: ["dev"],
+      },
+    ] as never);
+
+    expect(JSON.parse(json)).toEqual([
+      {
+        id: 1,
+        title: "Github",
+        username: "octocat",
+        url: "https://github.com",
+        category: "login",
+        favorite: false,
+        tags: ["dev"],
+        deleted_at: null,
+        updated_at: "2026-03-23T10:00:00.000Z",
+        secret: {
+          password: "secretPass123",
+          notes: "important note",
+        },
+        passkey: null,
+        attachments: [],
+      },
+    ]);
+  });
 });

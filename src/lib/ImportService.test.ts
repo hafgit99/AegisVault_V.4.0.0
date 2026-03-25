@@ -27,6 +27,32 @@ type ImportServiceWithTestAccess = typeof ImportService & {
       warnings: string[];
     };
   };
+  parseCsvCanonical: (text: string) => {
+    records: Array<Record<string, unknown>>;
+    report: {
+      sourceFormat: "csv" | "json";
+      totalRows: number;
+      validEntries: number;
+      skippedRows: number;
+      weakPasswords: number;
+      missingCriticalFields: number;
+      duplicateCandidates: number;
+      warnings: string[];
+    };
+  };
+  parseJsonCanonical: (text: string) => {
+    records: Array<Record<string, unknown>>;
+    report: {
+      sourceFormat: "csv" | "json";
+      totalRows: number;
+      validEntries: number;
+      skippedRows: number;
+      weakPasswords: number;
+      missingCriticalFields: number;
+      duplicateCandidates: number;
+      warnings: string[];
+    };
+  };
 };
 
 const importServiceForTest = ImportService as unknown as ImportServiceWithTestAccess;
@@ -111,5 +137,54 @@ describe("ImportService regression tests", () => {
     const result = () => importServiceForTest.parseJson("{}");
 
     expect(result).toThrow("No valid passwords could be imported from the JSON file.");
+  });
+
+  it("builds canonical records from CSV import output", () => {
+    const csv =
+      "title,username,password,website,tags\n" +
+      '"Github","octocat","secretPass123","https://github.com","dev;git"\n';
+
+    const result = importServiceForTest.parseCsvCanonical(csv);
+
+    expect(result.records).toHaveLength(1);
+    expect(result.records[0]).toMatchObject({
+      title: "Github",
+      username: "octocat",
+      url: "https://github.com",
+      category: "other",
+      favorite: false,
+      tags: ["dev", "git"],
+      secret: {
+        password: "secretPass123",
+      },
+    });
+  });
+
+  it("builds canonical records from JSON import output", () => {
+    const payload = JSON.stringify({
+      items: [
+        {
+          title: "Github",
+          category: "Work",
+          login: {
+            username: "octocat",
+            password: "secretPass123",
+            uris: [{ uri: "https://github.com/login" }],
+          },
+        },
+      ],
+    });
+
+    const result = importServiceForTest.parseJsonCanonical(payload);
+
+    expect(result.records).toHaveLength(1);
+    expect(result.records[0]).toMatchObject({
+      title: "Github",
+      username: "octocat",
+      url: "https://github.com/login",
+      secret: {
+        password: "secretPass123",
+      },
+    });
   });
 });
