@@ -228,6 +228,9 @@ describe('SecureAppSettings', () => {
         },
       ]);
 
+      // setAutoLockTime now dispatches the 'aegis-secure-setting-changed' event (replaces old setIdleTimeout)
+      SecureAppSettings.setAutoLockTime(8);
+
       expect(listener).toHaveBeenCalledTimes(1);
       expect(listener.mock.calls[0]?.[0]).toBeInstanceOf(CustomEvent);
 
