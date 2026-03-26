@@ -29,6 +29,8 @@ Kapsamdaki bilesenler:
 - native messaging host
 - yerel depolama: IndexedDB / SQLite OPFS / localStorage yardimci verileri
 - QR sync export/import akisi
+- opsiyonel E2E encrypted sync relay ve istemci entegrasyonu
+- WebAuthn site passkey runtime (registration/auth)
 
 Kapsam disi:
 
@@ -45,6 +47,8 @@ Kapsam disi:
 4. QR sync aktarimlarini plaintext'ten cikarmak ve baglamsal olarak korumak
 5. At-rest metadata sizintisini azaltmak
 6. Replay, downgrade, spoofing ve yanlis baglamda veri erisimini engellemek
+7. Sync relay uzerinden sifir-bilgi (zero-knowledge) veri surekliligi saglamak
+8. Passkey operasyonlarinda origin baglamini (RP-ID) korumak
 
 ## 4. Korunan Varliklar
 
@@ -58,6 +62,8 @@ Kritik varliklar:
 - passkey binding ve recovery package artefactlari
 - desktop-extension pairing secret'lari
 - QR sync transfer code ve opsiyonel receiver pairing artefactlari
+- sync root secret ve türetilmiş sync encryption/auth anahtarları
+- şifreli sync blob paketleri (payload + IV + HMAC)
 
 ## 5. Trust Boundary Diyagramlari
 
@@ -105,6 +111,12 @@ Kritik varliklar:
       +---------------------------+
       | Renderer domain resolver  |
       | short-lived credential    |
+      +---------------------------+
+          | TB6: Client -> Cloud (HTTPS + E2EE)
+          v
+      +---------------------------+
+      | Aegis Sync Relay Server   |
+      | Zero-knowledge blob store |
       +---------------------------+
 ```
 
@@ -172,6 +184,8 @@ Imported entries
 - TA3: Yanlis origin / yanlis extension ID ile bridge denemesi yapan istemci
 - TA4: Storage dump alan saldirgan
 - TA5: Kullanici hatasi veya guvensiz operasyonel kullanim
+- TA6: Kotu niyetli veya kompromize olmus Sync Relay sunucusu
+- TA7: Ortadaki adam (MITM) veya sahte WebAuthn RP sunucusu
 
 ## 7. Baslica Tehdit Senaryolari
 
@@ -253,6 +267,36 @@ Kontroller:
 Residual risk:
 - manuel migration sureclerinde kullanici hatasi tamamen yok edilemez
 
+### T6. Sync Relay uzerinden veri sizintisi veya manipulasyonu
+
+Hedef:
+- sunucudaki blob'lari deşifre etmek veya sahte blob enjekte etmek
+
+Kontroller:
+- E2EE (AES-256-GCM): sunucu sadece şifreli blob'u görür
+- HMAC-SHA256: her paket auth key ile imzalanır, sunucu veya MITM manipüle edemez
+- Sequence Number: replay saldırılarını ve eski veriyle üzerine yazmayı (overwrite) engeller
+- Separate Keys: vault şifreleme anahtarı ile sync anahtarı HKDF ile ayrıştırılmıştır
+
+Durum:
+- Sıfır-bilgi mimarisiyle sunucu tarafındaki risk minimize edildi
+
+Residual risk:
+- Sunucu veriyi silebilebilir (DoS), ancak okuyamaz veya değiştiremez
+
+### T7. Passkey Spoofing veya Yanlış RP Bağlama
+
+Hedef:
+- bir sitenin passkey'ini başka bir site için kullanmak veya sahte passkey enjekte etmek
+
+Kontroller:
+- Browser-Enforced Origin: WebAuthn API tarayıcı seviyesinde RP-ID doğrulaması yapar
+- Metadata Binding: Passkey credential_id ve metadata'sı vault entry'ye sıkıca bağlanır
+- Audit Log: Her passkey auth işlemi `last_auth_at` ile izlenir
+
+Durum:
+- WebAuthn standartları gereği spoofing riski tarayıcı güvenliğine tabidir
+
 ## 8. Yerel Kotu Niyetli Surec Senaryolari
 
 Bu dokumanin en onemli ozel senaryosu yerel saldirgandir.
@@ -313,6 +357,7 @@ Residual risk:
 - loopback uzerinden challenge alip full vault cekme modeli
 - QR sync plaintext JSON aktarimi
 - pairing iliskisinin yalnizca secret saklayan basit kayit olarak kalmasi
+- sync relay uzerinden vault plaintext ifşası (E2EE ile kapatıldı)
 
 ### 9.2 Kismi olarak azaltılan riskler
 

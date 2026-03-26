@@ -3,6 +3,10 @@ import { test, expect } from '@playwright/test';
 test.describe('QR Sync Regression', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    // Bypass Onboarding by setting localStorage immediately
+    await page.evaluate(() => {
+      localStorage.setItem('aegis_onboarding_done', 'true');
+    });
 
     // Wait for the login page to load
     await page.waitForSelector('.vault-login-root', { timeout: 15000 });

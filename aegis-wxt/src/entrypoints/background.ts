@@ -800,6 +800,17 @@ export default defineBackground({
       return Array.isArray(data) ? data : [];
     };
 
+    const getNativeDomainPasskeys = async (domain: string) => {
+      const response = await sendNativeHostMessage({
+        type: 'GET_DOMAIN_PASSKEYS',
+        domain,
+        requestNonce: generateRequestNonce(),
+      });
+      if (!response || typeof response !== 'object') return [];
+      const data = response.data;
+      return Array.isArray(data) ? data : [];
+    };
+
     const signDesktopChallenge = async (tokenHex: string, payload: string) => {
       const keyBytes = hexToUint8(tokenHex);
       const payloadBytes = new TextEncoder().encode(payload);
@@ -808,7 +819,7 @@ export default defineBackground({
       return toHex(sig);
     };
 
-    const signPairingPayload = async (method: 'GET', path: '/api/challenge' | '/api/status' | '/api/vault' | '/api/domain-credentials') => {
+    const signPairingPayload = async (method: 'GET', path: '/api/challenge' | '/api/status' | '/api/vault' | '/api/domain-credentials' | '/api/domain-passkeys') => {
       const activePairingSecret = await ensureActivePairingSecret();
       if (!activePairingSecret || !EXTENSION_ID) return null;
       const ts = Date.now().toString();
@@ -902,7 +913,7 @@ export default defineBackground({
 
     const desktopSignedGet = async (
       host: string,
-      path: '/api/status' | '/api/vault' | '/api/domain-credentials',
+      path: '/api/status' | '/api/vault' | '/api/domain-credentials' | '/api/domain-passkeys',
       requestDomain: string = ''
     ) => {
       const activePairingSecret = await ensureActivePairingSecret();
@@ -961,6 +972,34 @@ export default defineBackground({
       for (const host of hosts) {
         try {
           const res = await desktopSignedGet(host, '/api/domain-credentials', normalizedDomain);
+          if (!res || !res.ok) {
+            continue;
+          }
+          const data = await res.json();
+          return Array.isArray(data) ? data : [];
+        } catch {
+          // try next host
+        }
+      }
+
+      return [];
+    };
+
+    const fetchDomainPasskeysFromDesktop = async (domain: string) => {
+      const nativeMatches = await getNativeDomainPasskeys(domain);
+      if (nativeMatches.length > 0) {
+        return nativeMatches;
+      }
+
+      const activePairingSecret = await ensureActivePairingSecret();
+      if (!isLoopbackSyncActive() || !activePairingSecret) return [];
+      const normalizedDomain = domain.toLowerCase().trim();
+      if (!normalizedDomain) return [];
+
+      const hosts = ['127.0.0.1', 'localhost'];
+      for (const host of hosts) {
+        try {
+          const res = await desktopSignedGet(host, '/api/domain-passkeys', normalizedDomain);
           if (!res || !res.ok) {
             continue;
           }
@@ -1342,6 +1381,72 @@ export default defineBackground({
         };
 
         resolveDesktopMatches().catch(() => {
+          sendResponse({ success: true, data: [] });
+        });
+        return true;
+      }
+
+      // ── GET_DOMAIN_PASSKEYS: Sadece aktif domain'e uygun passkey'leri ver ──
+      else if (message.type === "GET_DOMAIN_PASSKEYS") {
+        const requestedDomain = typeof message.domain === 'string'
+          ? message.domain.toLowerCase().trim()
+          : '';
+        const requestNonce = typeof message.requestNonce === 'string'
+          ? message.requestNonce.trim()
+          : '';
+        const now = Date.now();
+
+        const runtimeSender = sender as RuntimeMessageSenderWithOrigin;
+        const senderUrl = runtimeSender?.tab?.url;
+        const senderDomain = senderUrl ? getDomain(senderUrl) : '';
+        const isFromPopup = !runtimeSender?.tab && (
+          (typeof runtimeSender?.url === 'string' && (
+            runtimeSender.url.startsWith('chrome-extension://') ||
+            runtimeSender.url.startsWith('moz-extension://')
+          )) ||
+          (typeof runtimeSender?.origin === 'string' && (
+            runtimeSender.origin.startsWith('chrome-extension://') ||
+            runtimeSender.origin.startsWith('moz-extension://')
+          ))
+        );
+
+        cleanupNonceMap(now);
+
+        if (!requestedDomain || !requestNonce) {
+          sendResponse({ success: false, data: [] });
+          return true;
+        }
+
+        if (!isFromPopup && (!senderDomain || requestedDomain !== senderDomain)) {
+          sendResponse({ success: false, data: [] });
+          return true;
+        }
+
+        if (requestNonceMap.has(requestNonce)) {
+          sendResponse({ success: false, data: [] });
+          return true;
+        }
+
+        requestNonceMap.set(requestNonce, now);
+
+        const resolveDesktopPasskeys = async () => {
+          if (NATIVE_MESSAGING_ENABLED) {
+            const nativeStatus = await getNativeVaultStatus();
+            if (nativeStatus && !nativeStatus.isUnlocked) {
+              sendResponse({ success: true, data: [] });
+              return;
+            }
+          } else if (!isVaultUnlocked) {
+            sendResponse({ success: true, data: [] });
+            return;
+          }
+
+          const matches = await fetchDomainPasskeysFromDesktop(requestedDomain);
+          resetSessionTimeout();
+          sendResponse({ success: true, data: matches.slice(0, 5) });
+        };
+
+        resolveDesktopPasskeys().catch(() => {
           sendResponse({ success: true, data: [] });
         });
         return true;

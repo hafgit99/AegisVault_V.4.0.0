@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect */
+ 
 import { CheckSquare, Square, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";

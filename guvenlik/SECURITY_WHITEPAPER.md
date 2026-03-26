@@ -17,6 +17,8 @@ Merkezi ve IndexedDB tabanli secure settings modeli artik su veri siniflarini ka
 - TOTP vault policy
 - QR sync consumed package ledger
 - vault profile listesi ve aktif vault secimi
+- sync relay session state ve sequence tracking
+- passkey registration/auth ephemeral state
 
 Bu degisiklik, uygulama tarafinda daginik `localStorage` kullanimlarini azaltmis ve istemci tarafli ayar/meta veri depolamasini daha denetlenebilir tek bir modele toplamIstir.
 
@@ -103,7 +105,8 @@ Tam "signed release" seviyesi icin su adim hala gereklidir:
 
 - ozel signing key veya kod imzalama sertifikasinin CI ortaminda zorunlu kullanimi
 - release manifest imzasinin her yayin icin dogrulanmasi
-- tercihen harici artifact attestation/provenance entegrasyonu
+- tercihen harici artifact attestation/provenance entegrasyonu (TAMAMLANDI: GitHub Build Attestation / SLSA Level 2)
+- Reproducible Build (TAMAMLANDI: Docker-native deterministic build)
 
 ## 16. Paketli Electron Fail-Safe ve Self-Diagnostic Katmani
 
@@ -188,6 +191,40 @@ Bu modelin kazanci:
 
 Bu alan, QR sync guven modelini sadece kriptografik degil, denetlenebilir ve geri alinabilir hale getirir.
 
+## 19. E2E Encrypted Sync Relay Protokolü (V1)
+
+Aegis 4.2 ile opsiyonel bulut senkronizasyonu "sıfır-bilgi" (zero-knowledge) prensibiyle eklenmiştir.
+
+### 19.1 Anahtar Yönetimi
+
+- **Sync Root Secret**: Kasa anahtarından bağımsız olarak cihaz eşleştirme sırasında oluşturulur.
+- **Sub-key Derivation**: HKDF-SHA256 kullanılarak `encryptionKey` (AES-256-GCM) ve `authKey` (HMAC-SHA256) türetilir.
+
+### 19.2 Paket Yapısı (Enveloping)
+
+Her senkronizasyon paketi şu alanları içerir:
+- `payload`: Base64url(AES-GCM-Encrypted veriler)
+- `iv`: 12-byte rastgele initialization vector
+- `hmac`: Tüm paketin (IV + Ciphertext) HMAC-SHA256 imzası
+- `sequenceNumber`: Replay ve downgrade saldırılarını önleyen artan sayaç
+
+### 19.3 Sunucu Rolü
+
+Relay sunucusu (Aegis Sync Relay) sadece şifreli paketleri saklar ve taşır. Sunucu:
+- Plaintext veriyi göremez (Sıfır-bilgi)
+- Veriyi değiştiremez (HMAC doğrulaması istemci tarafında yapılır)
+- Eski veriyi enjekte edemez (Sequence number kontrolü)
+
+## 20. WebAuthn (Passkey) Runtime Entegrasyonu
+
+Aegis 4.2, tarayıcı eklentisi üzerinden sitelere "Passkey" (FIDO2/WebAuthn) desteği sağlar.
+
+### 20.1 Güvenlik Kontrolleri
+
+- **Origin Isolation**: WebAuthn API, talebin geldiği sitenin RP-ID'sini (domain) tarayıcı seviyesinde doğrular.
+- **Safe Bridge**: Passkey kayıt ve kimlik doğrulama talepleri, Aegis Secure Bridge (Native Host) üzerinden izole bir şekilde Electron ortamına iletilir.
+- **Entry Binding**: Üretilen Federal Credential ID, kasa içerisindeki ilgili girdiyle (entry) sıkıca bağlanır; bu sayede bir sitenin passkey'i başka bir site için kullanılamaz.
+
 Version: 1.1
 Date: 2026-03-15
 Status: Public Technical Whitepaper (Pre-Audit)
@@ -266,6 +303,9 @@ Ozellikle extension ve desktop bridge tarafinda sadece gerekli minimum veri tasi
   | TB5
   v
 [Renderer domain credential provider]
+  | TB6 (HTTPS + E2EE)
+  v
+[Aegis Sync Relay / Cloud]
 ```
 
 ### 3.3 Desktop-Extension-Native Host Veri Akisi

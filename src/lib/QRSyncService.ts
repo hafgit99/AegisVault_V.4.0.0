@@ -54,7 +54,7 @@ export interface QRSyncCreateResult {
   packageInfo: QRSyncPackage;
 }
 
-export type QRSyncEntry = Pick<VaultEntry, 'title' | 'username' | 'pass' | 'website' | 'category' | 'tags'>;
+export type QRSyncEntry = Pick<VaultEntry, 'title' | 'username' | 'pass' | 'website' | 'category' | 'tags' | 'passkeyMetadata'>;
 
 type ConsumedPackageMap = Record<string, string>;
 type TransferLedgerMap = Record<string, QRTransferLedgerRecord>;
@@ -91,7 +91,8 @@ const isQRSyncEntry = (entry: unknown): entry is QRSyncEntry => {
     (candidate.username === undefined || typeof candidate.username === 'string') &&
     (candidate.website === undefined || typeof candidate.website === 'string') &&
     (candidate.category === undefined || typeof candidate.category === 'string') &&
-    (candidate.tags === undefined || Array.isArray(candidate.tags))
+    (candidate.tags === undefined || Array.isArray(candidate.tags)) &&
+    (candidate.passkeyMetadata === undefined || typeof candidate.passkeyMetadata === 'object')
   );
 };
 

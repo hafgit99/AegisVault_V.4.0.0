@@ -2,6 +2,7 @@ import { openDB, type IDBPDatabase } from "idb";
 import { argon2id } from 'hash-wasm';
 import { SQLiteOPFS, isOPFSAvailable, clearAllOPFSFiles } from './lib/SQLiteOPFS';
 import type { CanonicalSharingAssignment } from './lib/canonical-schema';
+import { SearchService } from './lib/SearchService';
 import { 
   toBufferSource, 
   bufferToHex, 
@@ -105,6 +106,7 @@ export class VaultService {
   private sensitiveMaterial: Uint8Array | null = null;
   private isConnected: boolean = false;
   private activeDbName: string = 'aegis_opfs_vault';
+  private decryptedEntriesCache: VaultEntry[] | null = null;
   private searchIndexHmacKey: CryptoKey | null = null;
   private readonly authArgon2Params = {
     iterations: 3,
@@ -147,30 +149,11 @@ export class VaultService {
   }
 
   private normalizeSearchValue(value: string = ""): string {
-    return value
-      .toLowerCase()
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]/g, " ")
-      .trim();
+    return SearchService.normalize(value);
   }
 
   private tokenizeSearchFields(fields: string[]): string[] {
-    const tokenSet = new Set<string>();
-    for (const rawField of fields) {
-      const normalized = this.normalizeSearchValue(rawField || "");
-      if (!normalized) continue;
-
-      const parts = normalized.split(/\s+/).filter(Boolean);
-      for (const token of parts) {
-        tokenSet.add(token);
-        const maxPrefix = Math.min(8, token.length);
-        for (let i = 2; i <= maxPrefix; i++) {
-          tokenSet.add(token.slice(0, i));
-        }
-      }
-    }
-    return Array.from(tokenSet).slice(0, 256);
+    return SearchService.tokenize(fields);
   }
 
   private async getSearchIndexHmacKey(): Promise<CryptoKey> {
@@ -556,7 +539,6 @@ export class VaultService {
         }
       },
     });
-
     // 2b. Try to open SQLite-OPFS backend
     if (isOPFSAvailable()) {
       try {
@@ -567,10 +549,10 @@ export class VaultService {
       } catch (err) {
         console.warn(`[SQLite-OPFS] ⚠️ SQLite başlatılamadı, IDB fallback kullanılıyor:`, err);
         this.sqliteDb = null;
-        this.useSQLite = false;
       }
     } else {
       console.log(`[SQLite-OPFS] OPFS kullanılamıyor, IDB backend ile devam ediliyor.`);
+      this.useSQLite = false;
     }
 
     // 3. Handle Dynamic Salt and Migration (Read-only initially)
@@ -688,6 +670,7 @@ export class VaultService {
                 key,
                 toBufferSource(cipherArray)
               );
+              this.decryptedEntriesCache = null;
               return true; // Success!
             } catch {
               continue; // Try next
@@ -826,6 +809,7 @@ export class VaultService {
       const sqliteCount = this.sqliteDb.countPasswords();
       const idbCount = await this.opfsMockDb.count('passwords');
       
+
       if (sqliteCount === 0 && idbCount > 0) {
         console.log(`[SQLite-OPFS] 🔄 IDB → SQLite migrasyon başlıyor (${idbCount} girdi)...`);
         
@@ -833,7 +817,7 @@ export class VaultService {
           // 1. Parolaları migrate et
           const allIdbEntries: VaultEntry[] = await this.opfsMockDb.getAll('passwords');
           for (const entry of allIdbEntries) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             this.sqliteDb.putPassword(entry as any);
           }
           
@@ -1034,7 +1018,7 @@ export class VaultService {
     );
 
     const newEntry: VaultEntry = {
-      id: entry.id || Date.now(),
+      id: entry.id || Math.floor(Date.now() * 1000 + (Math.random() * 1000)),
       title: title as string,
       username: username as string,
       encrypted_title: encrypted_title as string | undefined,
@@ -1116,13 +1100,25 @@ export class VaultService {
 
     // Dual-write: SQLite (primary) + IDB (fallback)
     if (this.useSQLite && this.sqliteDb) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       this.sqliteDb.putPassword(newEntry as any);
     }
     if (this.opfsMockDb) {
       await this.opfsMockDb.put('passwords', newEntry);
     }
+    
+    // Invalidate Cache after mutation
+    this.decryptedEntriesCache = null;
+    
     return newEntry.id;
+  }
+
+  /**
+   * Mevcut bir girişi günceller.
+   * addPassword'u mevcut id ile çağırır.
+   */
+  async updatePassword(id: number, entry: Partial<VaultEntry>) {
+    return this.addPassword({ ...entry, id });
   }
 
   async getPasswords(
@@ -1133,288 +1129,132 @@ export class VaultService {
   ): Promise<VaultEntry[]> {
     if (!this.aesKey || (!this.opfsMockDb && !this.sqliteDb)) return [];
 
-    // SQLite'tan oku (birincil kaynak)
-    let allEntries: VaultEntry[];
-    if (this.useSQLite && this.sqliteDb) {
-      allEntries = this.sqliteDb.getAllPasswords() as VaultEntry[];
-    } else {
-      allEntries = await this.opfsMockDb!.getAll('passwords');
+    // 1. Ensure Cache is Populated (Decrypt EVERYTHING once - Optimized for 4.2)
+    if (!this.decryptedEntriesCache) {
+      console.log("[VaultService] ⚡ Populating decrypted cache for huge vault performance...");
+      let rawEntries: VaultEntry[];
+      if (this.useSQLite && this.sqliteDb) {
+        rawEntries = this.sqliteDb.getAllPasswords() as VaultEntry[];
+      } else {
+        rawEntries = await this.opfsMockDb!.getAll('passwords');
+      }
+
+      const dec = new TextDecoder();
+      const migratedEntries: VaultEntry[] = [];
+      
+      // Decrypt in chunks to let UI thread breathe if vault is huge
+      this.decryptedEntriesCache = [];
+      const CHUNK_SIZE = 100;
+      for (let i = 0; i < rawEntries.length; i += CHUNK_SIZE) {
+        const chunk = rawEntries.slice(i, i + CHUNK_SIZE);
+        const decryptedChunk = await Promise.all(chunk.map(async (entry) => {
+          try {
+            // On-the-fly migration: legacy categories
+            if (['Work', 'Bank', 'Social'].includes(entry.category)) {
+              entry.category = 'General';
+            }
+
+            const { uiEntry, storageEntry } = await this.prepareEntryMetadataForUse(entry);
+            if (storageEntry) migratedEntries.push(storageEntry);
+            
+            const decryptedEntry: VaultEntry = { ...uiEntry };
+            
+            // Fully decrypt sensitive fields for the cache
+            if (entry.encrypted_password && entry.iv) {
+              try {
+                const cipherArray = isLikelyHexUtil(entry.encrypted_password) ? hexToBuffer(entry.encrypted_password) : Uint8Array.from(atob(entry.encrypted_password), c => c.charCodeAt(0));
+                const ivArray = isLikelyHexUtil(entry.iv) ? hexToBuffer(entry.iv) : Uint8Array.from(atob(entry.iv), c => c.charCodeAt(0));
+
+                const plainBuffer = await window.crypto.subtle.decrypt(
+                  { name: "AES-GCM", iv: toBufferSource(ivArray) },
+                  this.aesKey!,
+                  toBufferSource(cipherArray)
+                );
+                decryptedEntry.pass = dec.decode(plainBuffer);
+              } catch { decryptedEntry.pass = "••DECRYPT_ERROR••"; }
+            }
+
+            // TOTP
+            if (entry.totp_secret && entry.totp_iv) {
+              try {
+                const totpCipher = isLikelyHexUtil(entry.totp_secret) ? hexToBuffer(entry.totp_secret) : Uint8Array.from(atob(entry.totp_secret), c => c.charCodeAt(0));
+                const totpIv = isLikelyHexUtil(entry.totp_iv) ? hexToBuffer(entry.totp_iv) : Uint8Array.from(atob(entry.totp_iv), c => c.charCodeAt(0));
+                const totpPlain = await window.crypto.subtle.decrypt(
+                  { name: "AES-GCM", iv: toBufferSource(totpIv) },
+                  this.aesKey!,
+                  toBufferSource(totpCipher)
+                );
+                decryptedEntry.totpSecret = dec.decode(totpPlain);
+              } catch { /* skip */ }
+            }
+
+            // Notes
+            if (entry.encrypted_notes && entry.notes_iv) {
+              try {
+                const notesCipher = isLikelyHexUtil(entry.encrypted_notes) ? hexToBuffer(entry.encrypted_notes) : Uint8Array.from(atob(entry.encrypted_notes), c => c.charCodeAt(0));
+                const notesIv = isLikelyHexUtil(entry.notes_iv) ? hexToBuffer(entry.notes_iv) : Uint8Array.from(atob(entry.notes_iv), c => c.charCodeAt(0));
+                const notesPlain = await window.crypto.subtle.decrypt(
+                  { name: "AES-GCM", iv: toBufferSource(notesIv) },
+                  this.aesKey!,
+                  toBufferSource(notesCipher)
+                );
+                decryptedEntry.notes = dec.decode(notesPlain);
+              } catch { /* skip */ }
+            }
+
+            // Passkey Meta
+            if (entry.encrypted_passkey_meta && entry.passkey_meta_iv) {
+              try {
+                const passkeyMetaCipher = isLikelyHexUtil(entry.encrypted_passkey_meta) ? hexToBuffer(entry.encrypted_passkey_meta) : Uint8Array.from(atob(entry.encrypted_passkey_meta), c => c.charCodeAt(0));
+                const passkeyMetaIv = isLikelyHexUtil(entry.passkey_meta_iv) ? hexToBuffer(entry.passkey_meta_iv) : Uint8Array.from(atob(entry.passkey_meta_iv), c => c.charCodeAt(0));
+                const passkeyMetaPlain = await window.crypto.subtle.decrypt(
+                  { name: "AES-GCM", iv: toBufferSource(passkeyMetaIv) },
+                  this.aesKey!,
+                  toBufferSource(passkeyMetaCipher)
+                );
+                decryptedEntry.passkeyMetadata = JSON.parse(dec.decode(passkeyMetaPlain)) as CanonicalPasskeyFields;
+              } catch { /* skip */ }
+            }
+            return decryptedEntry;
+          } catch { return entry; }
+        }));
+        this.decryptedEntriesCache.push(...decryptedChunk);
+        
+        // Give control back to browser (defer next chunk)
+        if (rawEntries.length > CHUNK_SIZE) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+
+      // Flush migrations
+      if (migratedEntries.length > 0 && this.opfsMockDb) {
+        for (const m of migratedEntries) {
+          await this.opfsMockDb.put('passwords', m).catch(() => {});
+          if (this.useSQLite && this.sqliteDb) this.sqliteDb.putPassword(m as any);
+        }
+      }
     }
+
+    // 2. Memory Filtering (Optimized based on Trash/Category)
+    let filtered = this.decryptedEntriesCache || [];
 
     // Filter by Trash State
-    if (isTrash) {
-      allEntries = allEntries.filter(e => e.deletedAt);
-    } else {
-      allEntries = allEntries.filter(e => !e.deletedAt);
-    }
+    filtered = isTrash 
+      ? filtered.filter(e => e.deletedAt) 
+      : filtered.filter(e => !e.deletedAt);
 
-    // On-the-fly migration for old categories
-    allEntries = allEntries.map(e => {
-        if (['Work', 'Bank', 'Social'].includes(e.category)) {
-            e.category = 'General';
-            // Save migrated category back to DB stealthily
-            this.opfsMockDb!.put('passwords', e).catch(err => console.debug("Migration failed:", err));
-        }
-        return e;
-    });
-
-    const migratedEntries: VaultEntry[] = [];
-    allEntries = await Promise.all(allEntries.map(async (entry) => {
-      const { uiEntry, storageEntry } = await this.prepareEntryMetadataForUse(entry);
-      if (storageEntry) migratedEntries.push(storageEntry);
-      return uiEntry;
-    }));
-
-    if (migratedEntries.length > 0) {
-      try {
-        for (const migrated of migratedEntries) {
-          if (this.useSQLite && this.sqliteDb) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            this.sqliteDb.putPassword(migrated as any);
-          }
-          if (this.opfsMockDb) {
-            await this.opfsMockDb.put('passwords', migrated);
-          }
-        }
-      } catch (err) {
-        console.debug('Metadata migration write skipped:', err);
-      }
-    }
-
-    if (searchQuery.trim()) {
-      const normalize = (value: string = "") =>
-        this.normalizeSearchValue(value).replace(/\s+/g, "");
-
-      const queryTokens = searchQuery
-        .toLowerCase()
-        .normalize("NFKD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean);
-
-      if (this.encryptionProfile === 'maximum') {
-        const hashedQueryTokens = await Promise.all(
-          queryTokens
-            .map((token) => normalize(token))
-            .filter(Boolean)
-            .map((token) => this.hashSearchToken(token))
-        );
-
-        if (hashedQueryTokens.length > 0) {
-          allEntries = allEntries.filter((entry) => {
-            const indexValues = Array.isArray(entry.search_index) ? entry.search_index : [];
-            if (indexValues.length === 0) return false;
-            return hashedQueryTokens.every((hashed) => indexValues.includes(hashed));
-          });
-        }
-      }
-
-      const isSubsequence = (needle: string, haystack: string) => {
-        let i = 0;
-        let j = 0;
-        while (i < needle.length && j < haystack.length) {
-          if (needle[i] === haystack[j]) i++;
-          j++;
-        }
-        return i === needle.length;
-      };
-
-      const scored = allEntries
-        .map((entry) => {
-          const title = normalize(entry.title || "");
-          const username = normalize(entry.username || "");
-          const website = normalize(entry.website || "");
-          const category = normalize(entry.category || "");
-          const tags = (entry.tags || []).map((t) => normalize(t));
-          const scopedFields =
-            searchScope === "title"
-              ? [title]
-              : searchScope === "username"
-              ? [username]
-              : searchScope === "tags"
-              ? tags
-              : [title, username, website, category, ...tags];
-          const fullByScope =
-            searchScope === "title"
-              ? title
-              : searchScope === "username"
-              ? username
-              : searchScope === "tags"
-              ? tags.join("")
-              : `${title}${username}${website}${category}${tags.join("")}`;
-
-          let score = 0;
-          let matchedAllTokens = true;
-          let prefixMatchedAllTokens = true;
-
-          for (const rawToken of queryTokens) {
-            const token = normalize(rawToken);
-            if (!token) continue;
-
-            let tokenMatched = false;
-            const tokenPrefixMatched = scopedFields.some((f) => f.startsWith(token));
-            if (!tokenPrefixMatched) {
-              prefixMatchedAllTokens = false;
-            }
-
-            if ((searchScope === "all" || searchScope === "title") && title.startsWith(token)) {
-              score += 120;
-              tokenMatched = true;
-            } else if ((searchScope === "all" || searchScope === "title") && title.includes(token)) {
-              score += 90;
-              tokenMatched = true;
-            }
-
-            if (!tokenMatched && (searchScope === "all" || searchScope === "username") && username.includes(token)) {
-              score += 60;
-              tokenMatched = true;
-            }
-
-            if (!tokenMatched && searchScope === "all" && website.includes(token)) {
-              score += 50;
-              tokenMatched = true;
-            }
-
-            if (!tokenMatched && searchScope === "all" && category.includes(token)) {
-              score += 35;
-              tokenMatched = true;
-            }
-
-            if (!tokenMatched && (searchScope === "all" || searchScope === "tags") && tags.some((tag) => tag.includes(token))) {
-              score += 40;
-              tokenMatched = true;
-            }
-
-            if (!tokenMatched && token.length >= 4 && isSubsequence(token, fullByScope)) {
-              score += 20;
-              tokenMatched = true;
-            }
-
-            if (!tokenMatched) {
-              matchedAllTokens = false;
-              break;
-            }
-          }
-
-          return { entry, score, matchedAllTokens, prefixMatchedAllTokens };
-        })
-        .filter((item) => item.matchedAllTokens);
-
-      const hasPrefixOnlySet = scored.some((item) => item.prefixMatchedAllTokens);
-      const filteredForSort = hasPrefixOnlySet
-        ? scored.filter((item) => item.prefixMatchedAllTokens)
-        : scored;
-
-      const ranked = filteredForSort
-        .sort((a, b) => {
-          if (b.score !== a.score) return b.score - a.score;
-          const aTime = a.entry.updated_at ? new Date(a.entry.updated_at).getTime() : 0;
-          const bTime = b.entry.updated_at ? new Date(b.entry.updated_at).getTime() : 0;
-          return bTime - aTime;
-        })
-        .map((item) => item.entry);
-
-      allEntries = ranked;
-    }
-
+    // Filter by category/tag
     if (categoryFilter && categoryFilter !== "Trash") {
       if (categoryFilter.startsWith('#')) {
         const tag = categoryFilter.substring(1);
-        allEntries = allEntries.filter(e => e.tags && e.tags.includes(tag));
+        filtered = filtered.filter(e => e.tags && e.tags.includes(tag));
       } else {
-        allEntries = allEntries.filter(e => e.category === categoryFilter);
+        filtered = filtered.filter(e => e.category === categoryFilter);
       }
     }
 
-    const dec = new TextDecoder();
-    
-    const decryptedEntries = await Promise.all(allEntries.map(async (entry) => {
-      try {
-        if (!entry.encrypted_password || !entry.iv) return entry;
-        
-        // Advanced detection mechanism to prevent Base64 strings looking like Hex from breaking decryption.
-        
-        let cipherArray: Uint8Array;
-        let ivArray: Uint8Array;
-
-        try {
-           // First Try: Handle Native Hex Data (from latest version)
-           if (isLikelyHexUtil(entry.encrypted_password) && isLikelyHexUtil(entry.iv)) {
-             cipherArray = hexToBuffer(entry.encrypted_password);
-             ivArray = hexToBuffer(entry.iv);
-           } else {
-             // Fallback to legacy Base64 decode
-             cipherArray = Uint8Array.from(atob(entry.encrypted_password), c => c.charCodeAt(0));
-             ivArray = Uint8Array.from(atob(entry.iv), c => c.charCodeAt(0));
-           }
-        } catch {
-           // If direct parsing throws, fallback strictly to base64
-           cipherArray = Uint8Array.from(atob(entry.encrypted_password), c => c.charCodeAt(0));
-           ivArray = Uint8Array.from(atob(entry.iv), c => c.charCodeAt(0));
-        }
-
-        const plainBuffer = await window.crypto.subtle.decrypt(
-          { name: "AES-GCM", iv: toBufferSource(ivArray) },
-          this.aesKey!,
-          toBufferSource(cipherArray)
-        );
-
-        const decrypted: VaultEntry = { ...entry, pass: dec.decode(plainBuffer) };
-
-        // 🔓 TOTP Secret deşifreleme
-        if (entry.totp_secret && entry.totp_iv) {
-          try {
-            const totpCipher = isLikelyHexUtil(entry.totp_secret) ? hexToBuffer(entry.totp_secret) : Uint8Array.from(atob(entry.totp_secret), c => c.charCodeAt(0));
-            const totpIv = isLikelyHexUtil(entry.totp_iv) ? hexToBuffer(entry.totp_iv) : Uint8Array.from(atob(entry.totp_iv), c => c.charCodeAt(0));
-            const totpPlain = await window.crypto.subtle.decrypt(
-              { name: "AES-GCM", iv: toBufferSource(totpIv) },
-              this.aesKey!,
-              toBufferSource(totpCipher)
-            );
-            decrypted.totpSecret = dec.decode(totpPlain);
-          } catch { decrypted.totpSecret = undefined; }
-        }
-
-        // 🔓 Secure Notes deşifreleme
-        if (entry.encrypted_notes && entry.notes_iv) {
-          try {
-            const notesCipher = isLikelyHexUtil(entry.encrypted_notes) ? hexToBuffer(entry.encrypted_notes) : Uint8Array.from(atob(entry.encrypted_notes), c => c.charCodeAt(0));
-            const notesIv = isLikelyHexUtil(entry.notes_iv) ? hexToBuffer(entry.notes_iv) : Uint8Array.from(atob(entry.notes_iv), c => c.charCodeAt(0));
-            const notesPlain = await window.crypto.subtle.decrypt(
-              { name: "AES-GCM", iv: toBufferSource(notesIv) },
-              this.aesKey!,
-              toBufferSource(notesCipher)
-            );
-            decrypted.notes = dec.decode(notesPlain);
-          } catch { decrypted.notes = undefined; }
-        }
-
-        if (entry.encrypted_passkey_meta && entry.passkey_meta_iv) {
-          try {
-            const passkeyMetaCipher = isLikelyHexUtil(entry.encrypted_passkey_meta)
-              ? hexToBuffer(entry.encrypted_passkey_meta)
-              : Uint8Array.from(atob(entry.encrypted_passkey_meta), c => c.charCodeAt(0));
-            const passkeyMetaIv = isLikelyHexUtil(entry.passkey_meta_iv)
-              ? hexToBuffer(entry.passkey_meta_iv)
-              : Uint8Array.from(atob(entry.passkey_meta_iv), c => c.charCodeAt(0));
-            const passkeyMetaPlain = await window.crypto.subtle.decrypt(
-              { name: "AES-GCM", iv: toBufferSource(passkeyMetaIv) },
-              this.aesKey!,
-              toBufferSource(passkeyMetaCipher)
-            );
-            decrypted.passkeyMetadata = JSON.parse(dec.decode(passkeyMetaPlain)) as CanonicalPasskeyFields;
-          } catch { decrypted.passkeyMetadata = undefined; }
-        }
-
-        return decrypted;
-      } catch {
-        console.error("Decryption failed for entry", entry.id, " - Title:", entry.title || '[redacted]');
-        return { ...entry, pass: "••DECRYPT_ERROR••" };
-      }
-    }));
-
-    return decryptedEntries;
+    // 3. Delegate Search logic to SearchService for blazingly fast results
+    return SearchService.searchDecrypted(filtered, searchQuery, searchScope);
   }
 
   // --- Parola Değiştirme (Change Master Password) ---
@@ -1507,7 +1347,7 @@ export class VaultService {
       this.sqliteDb.putMetadata('main_salt', { id: 'main_salt', salt: newMainSaltB64, createdAt: new Date().toISOString(), version: 2 });
       this.sqliteDb.putMetadata('auth_credential', { id: 'auth_credential', credential: newCredential });
       for (const item of updatedEntriesToSave) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         this.sqliteDb.putPassword(item as any);
       }
       await this.sqliteDb.flushToOPFS();
@@ -1548,6 +1388,7 @@ export class VaultService {
       this.opfsMockDb.close();
       this.opfsMockDb = null;
     }
+    this.decryptedEntriesCache = null;
     this.isConnected = false;
     console.log("[SQLite-OPFS] Vault locked. Master Key securely OVERWRITTEN and sanitized from memory.");
   }
@@ -1569,19 +1410,18 @@ export class VaultService {
     let weak = 0;
     let missingFields = 0;
     const weakIds: number[] = [];
-    
-    const tx = this.opfsMockDb!.transaction('passwords', 'readwrite');
-    const store = tx.objectStore('passwords');
-
+    const newEntries: VaultEntry[] = [];
     for (const entry of entries) {
-      if (!entry.title || !entry.pass) missingFields++;
+      if (!entry.title || !entry.pass) {
+        missingFields++;
+        if (!entry.pass) continue;
+      }
       
-      const newId = Date.now() + Math.random();
-      if (entry.pass && entry.pass.length < 8) {
+      const newId = Math.floor(Date.now() * 1000 + Math.random() * 1000000);
+      if (entry.pass.length < 8) {
         weak++;
         weakIds.push(newId);
       }
-      if (!entry.pass) continue; 
 
       const enc = new TextEncoder();
       const iv = generateRandomBytes(12);
@@ -1591,15 +1431,7 @@ export class VaultService {
         toBufferSource(enc.encode(entry.pass))
       );
 
-      const {
-        title, username, category, website, tags,
-        encrypted_title, title_iv,
-        encrypted_username, username_iv,
-        encrypted_category, category_iv,
-        encrypted_website, website_iv,
-        encrypted_tags, tags_iv,
-        search_index
-      } = await this.buildMetadataAtRest(
+      const metadata = await this.buildMetadataAtRest(
         entry.title || 'Imported Entry',
         entry.username || '',
         entry.website || '',
@@ -1609,40 +1441,45 @@ export class VaultService {
 
       const newEntry: VaultEntry = {
         id: newId, 
-        title: title as string, 
-        username: username as string, 
-        category: category as string, 
-        website: website as string, 
-        tags: tags as string[] | undefined,
-        encrypted_title: encrypted_title as string | undefined, 
-        title_iv: title_iv as string | undefined,
-        encrypted_username: encrypted_username as string | undefined, 
-        username_iv: username_iv as string | undefined,
-        encrypted_category: encrypted_category as string | undefined, 
-        category_iv: category_iv as string | undefined,
-        encrypted_website: encrypted_website as string | undefined, 
-        website_iv: website_iv as string | undefined,
-        encrypted_tags: encrypted_tags as string | undefined, 
-        tags_iv: tags_iv as string | undefined,
-        search_index: search_index as string[] | undefined,
+        title: metadata.title as string, 
+        username: metadata.username as string, 
+        category: metadata.category as string, 
+        website: metadata.website as string, 
+        tags: metadata.tags as string[] | undefined,
+        encrypted_title: metadata.encrypted_title as string | undefined, 
+        title_iv: metadata.title_iv as string | undefined,
+        encrypted_username: metadata.encrypted_username as string | undefined, 
+        username_iv: metadata.username_iv as string | undefined,
+        encrypted_category: metadata.encrypted_category as string | undefined, 
+        category_iv: metadata.category_iv as string | undefined,
+        encrypted_website: metadata.encrypted_website as string | undefined, 
+        website_iv: metadata.website_iv as string | undefined,
+        encrypted_tags: metadata.encrypted_tags as string | undefined, 
+        tags_iv: metadata.tags_iv as string | undefined,
+        search_index: metadata.search_index as string[] | undefined,
         encrypted_password: bufferToHex(cipherBuffer),
         iv: bufferToHex(iv),
         updated_at: new Date().toISOString(),
         strength: this.calculateStrength(entry.pass),
         pwned_count: entry.pwned_count || 0,
       };
-
-      await store.put(newEntry);
       
-      // Dual-write: SQLite'a da yaz
-      if (this.useSQLite && this.sqliteDb) {
-        this.sqliteDb.putPassword(newEntry);
-      }
+      newEntries.push(newEntry);
     }
-    await tx.done;
 
-    // Hemen OPFS'e yaz
+    if (this.opfsMockDb) {
+      const tx = this.opfsMockDb.transaction('passwords', 'readwrite');
+      const store = tx.objectStore('passwords');
+      for (const entry of newEntries) {
+        await store.put(entry);
+      }
+      await tx.done;
+    }
+
     if (this.useSQLite && this.sqliteDb) {
+      for (const entry of newEntries) {
+        this.sqliteDb.putPassword(entry);
+      }
       await this.sqliteDb.flushToOPFS();
     }
 
@@ -1690,8 +1527,8 @@ export class VaultService {
       await this.opfsMockDb.put('attachments', {
         id: attachmentId,
         entryId: entryId,
-        iv: iv,
-        encrypted_data: cipherBuffer
+        iv: bufferToHex(iv),
+        encrypted_data: bufferToHex(cipherBuffer as ArrayBuffer)
       });
 
       const tx = this.opfsMockDb.transaction('passwords', 'readwrite');
@@ -1791,6 +1628,9 @@ export class VaultService {
       this.sqliteDb.updatePasswordField(entryId, 'deleted_at', deletedTime);
       await this.sqliteDb.flushToOPFS();
     }
+
+    // Invalidate Cache
+    this.decryptedEntriesCache = null;
   }
 
   async restoreFromTrash(entryId: number): Promise<void> {
@@ -1812,6 +1652,9 @@ export class VaultService {
       this.sqliteDb.updatePasswordField(entryId, 'deleted_at', null);
       await this.sqliteDb.flushToOPFS();
     }
+
+    // Invalidate Cache
+    this.decryptedEntriesCache = null;
   }
 
   async deletePermanently(entryId: number): Promise<void> {
@@ -1838,6 +1681,9 @@ export class VaultService {
       this.sqliteDb.deletePassword(entryId);
       await this.sqliteDb.flushToOPFS();
     }
+
+    // Invalidate Cache
+    this.decryptedEntriesCache = null;
   }
 
   async emptyTrash(): Promise<void> {

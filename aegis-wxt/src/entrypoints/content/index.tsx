@@ -10,16 +10,24 @@ type ContentI18n = {
   recordsLabel: string;
   noRecordForSite: string;
   filledSuccess: string;
+  authSuccess: string;
+  errorTitle: string;
+  unlockedTitle: string;
+  lockedTitle: string;
 };
 
 const normalizeUiLanguage = (value: unknown) =>
   typeof value === 'string' && value.toLowerCase().startsWith('tr') ? 'tr' : 'en';
 
 const buildContentI18n = (language: 'tr' | 'en'): ContentI18n => ({
-  noUsername: language === 'tr' ? 'Kullanici adi yok' : 'No username',
-  recordsLabel: language === 'tr' ? 'kayit' : 'record(s)',
-  noRecordForSite: language === 'tr' ? 'Bu site icin kayit bulunamadi' : 'No records found for this site',
-  filledSuccess: language === 'tr' ? 'Basariyla dolduruldu' : 'Filled successfully',
+  noUsername: language === 'tr' ? 'Kullanıcı adı yok' : 'No username',
+  recordsLabel: language === 'tr' ? 'kayıt' : 'record(s)',
+  noRecordForSite: language === 'tr' ? 'Bu site için kayıt bulunamadı' : 'No records found for this site',
+  filledSuccess: language === 'tr' ? 'Başarıyla dolduruldu' : 'Filled successfully',
+  authSuccess: language === 'tr' ? 'Kimlik doğrulama başarılı' : 'Authentication successful',
+  errorTitle: language === 'tr' ? 'Bir hata oluştu' : 'An error occurred',
+  unlockedTitle: language === 'tr' ? 'Kasa Açık' : 'Vault Unlocked',
+  lockedTitle: language === 'tr' ? 'Kasa Kilitli' : 'Vault Locked',
 });
 
 let extensionLanguage: 'tr' | 'en' = normalizeUiLanguage(typeof navigator !== 'undefined' ? navigator.language : 'en');
@@ -30,6 +38,17 @@ type CredentialMatch = {
   username?: string;
   pass?: string;
   website?: string;
+};
+
+type PasskeyMatch = {
+  title?: string;
+  username?: string;
+  website?: string;
+  passkeyMetadata?: {
+    credential_id: string;
+    rp_id: string;
+    mode: string;
+  };
 };
 
 const syncLanguageState = (language: unknown) => {
@@ -49,7 +68,7 @@ const STYLES = {
     zIndex: 2147483647,
     fontFamily: "'Geist Mono', 'SF Mono', 'Cascadia Code', 'Fira Code', monospace",
   },
-  popup: (top: number, left: number) => ({
+  popup: (top: number, left: number, isDark: boolean) => ({
     position: 'absolute' as const,
     top: top + 8,
     left: Math.min(left, window.innerWidth - 280),
@@ -58,20 +77,28 @@ const STYLES = {
     zIndex: 2147483647,
     borderRadius: 16,
     overflow: 'hidden',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.10)',
-    border: '1.5px solid rgba(114,136,111,0.22)',
-    background: 'linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(245,248,244,0.98) 100%)',
+    boxShadow: isDark 
+      ? '0 20px 60px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3)' 
+      : '0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.10)',
+    border: isDark 
+       ? '1.5px solid rgba(255,255,255,0.1)' 
+       : '1.5px solid rgba(114,136,111,0.22)',
+    background: isDark
+      ? 'linear-gradient(135deg, rgba(20,24,33,0.96) 0%, rgba(15,18,24,0.98) 100%)'
+      : 'linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(245,248,244,0.98) 100%)',
     backdropFilter: 'blur(20px)',
     WebkitBackdropFilter: 'blur(20px)',
   }),
-  header: {
+  header: (isDark: boolean) => ({
     padding: '12px 14px 10px',
-    borderBottom: '1px solid rgba(114,136,111,0.12)',
+    borderBottom: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(114,136,111,0.12)',
     display: 'flex' as const,
     alignItems: 'center' as const,
     gap: 8,
-    background: 'linear-gradient(90deg, rgba(114,136,111,0.08) 0%, rgba(114,136,111,0.04) 100%)',
-  },
+    background: isDark 
+      ? 'linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)'
+      : 'linear-gradient(90deg, rgba(114,136,111,0.08) 0%, rgba(114,136,111,0.04) 100%)',
+  }),
   logo: {
     width: 22,
     height: 22,
@@ -82,28 +109,31 @@ const STYLES = {
     justifyContent: 'center' as const,
     flexShrink: 0,
   },
-  headerTitle: {
+  headerTitle: (isDark: boolean) => ({
     fontSize: 13,
     fontWeight: 700,
-    color: '#101828',
+    color: isDark ? '#f9fafb' : '#101828',
     letterSpacing: '-0.3px',
-  },
-  headerSub: {
+    flex: 1,
+  }),
+  headerSub: (isDark: boolean) => ({
     fontSize: 10,
-    color: '#72886f',
+    color: isDark ? '#9ca3af' : '#72886f',
     marginLeft: 'auto' as const,
     fontWeight: 600,
-    background: 'rgba(114,136,111,0.10)',
+    background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(114,136,111,0.10)',
     padding: '2px 7px',
     borderRadius: 20,
-  },
+  }),
   body: {
     padding: '8px 10px 10px',
     display: 'flex' as const,
     flexDirection: 'column' as const,
     gap: 5,
+    maxHeight: 280,
+    overflowY: 'auto' as const,
   },
-  entryRow: (hovered: boolean) => ({
+  entryRow: (hovered: boolean, isDark: boolean) => ({
     display: 'flex' as const,
     alignItems: 'center' as const,
     gap: 10,
@@ -112,12 +142,14 @@ const STYLES = {
     cursor: 'pointer' as const,
     transition: 'all 0.15s ease',
     background: hovered
-      ? 'linear-gradient(90deg, rgba(114,136,111,0.13) 0%, rgba(114,136,111,0.07) 100%)'
-      : 'rgba(114,136,111,0.04)',
-    border: hovered ? '1px solid rgba(114,136,111,0.25)' : '1px solid rgba(114,136,111,0.08)',
+      ? (isDark ? 'rgba(255,255,255,0.05)' : 'linear-gradient(90deg, rgba(114,136,111,0.13) 0%, rgba(114,136,111,0.07) 100%)')
+      : (isDark ? 'transparent' : 'rgba(114,136,111,0.04)'),
+    border: hovered 
+      ? (isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(114,136,111,0.25)') 
+      : (isDark ? '1px solid transparent' : '1px solid rgba(114,136,111,0.08)'),
     transform: hovered ? 'translateX(2px)' : 'none',
   }),
-  avatar: () => ({
+  avatar: (isDark: boolean) => ({
     width: 32,
     height: 32,
     borderRadius: 8,
@@ -129,7 +161,7 @@ const STYLES = {
     fontWeight: 800,
     fontSize: 13,
     flexShrink: 0,
-    boxShadow: '0 2px 8px rgba(114,136,111,0.25)',
+    boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(114,136,111,0.25)',
   }),
   entryInfo: {
     display: 'flex' as const,
@@ -137,49 +169,65 @@ const STYLES = {
     overflow: 'hidden' as const,
     flex: 1,
   },
-  entryTitle: {
+  entryTitle: (isDark: boolean) => ({
     fontSize: 12,
     fontWeight: 700,
-    color: '#101828',
+    color: isDark ? '#f3f4f6' : '#101828',
     whiteSpace: 'nowrap' as const,
     overflow: 'hidden' as const,
     textOverflow: 'ellipsis' as const,
-  },
-  entryUser: {
+  }),
+  entryUser: (isDark: boolean) => ({
     fontSize: 10,
-    color: '#64748b',
+    color: isDark ? '#9ca3af' : '#64748b',
     whiteSpace: 'nowrap' as const,
     overflow: 'hidden' as const,
     textOverflow: 'ellipsis' as const,
     marginTop: 1,
-  },
-  fillArrow: {
+  }),
+  fillArrow: (isDark: boolean) => ({
     fontSize: 14,
-    color: '#72886f',
+    color: isDark ? '#4b5563' : '#72886f',
     flexShrink: 0,
     opacity: 0.7,
+  }),
+  filledView: {
+    padding: '40px 0',
+    textAlign: 'center' as const,
   },
-  successBox: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: 7,
-    padding: '12px',
-    background: 'rgba(34,197,94,0.08)',
-    border: '1px solid rgba(34,197,94,0.20)',
-    borderRadius: 10,
-    margin: '4px 0',
+  successIcon: {
+    width: 32,
+    height: 32,
+    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    borderRadius: '50%',
+    margin: '0 auto 12px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'white',
+    boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
   },
-  successText: {
-    fontSize: 12,
-    fontWeight: 700,
-    color: '#16a34a',
-  },
-  emptyText: {
+  successText: (isDark: boolean) => ({
+    fontSize: 13,
+    fontWeight: 600,
+    color: isDark ? '#10b981' : '#16a34a',
+  }),
+  emptyText: (isDark: boolean) => ({
     fontSize: 11,
-    color: '#94a3b8',
+    color: isDark ? '#94a3b8' : '#94a3b8',
     textAlign: 'center' as const,
     padding: '10px 0 6px',
+  }),
+  passkeyBadge: {
+    fontSize: 9,
+    fontWeight: 800,
+    color: 'white',
+    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    padding: '1px 5px',
+    borderRadius: 4,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.5px',
+    boxShadow: '0 1px 3px rgba(16,185,129,0.3)',
   },
 };
 
@@ -236,24 +284,34 @@ function fillInputs(inputEl: HTMLInputElement, entry: CredentialMatch) {
 }
 
 // ─── Entry Row Component ───
-const EntryRow = ({ entry, onFill }: { entry: CredentialMatch; onFill: () => void }) => {
+const EntryRow = ({ entry, onFill, isPasskey, isDark }: { entry: CredentialMatch | PasskeyMatch; onFill: () => void; isPasskey?: boolean; isDark: boolean }) => {
   const [hovered, setHovered] = useState(false);
   return (
     <div
-      style={STYLES.entryRow(hovered)}
+      style={STYLES.entryRow(hovered, isDark)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onMouseDown={(e) => e.preventDefault()} // focus kaybını engelle
       onClick={onFill}
     >
-      <div style={STYLES.avatar()}>
-        {entry.title?.charAt(0)?.toUpperCase() || '?'}
+      <div style={STYLES.avatar(isDark)}>
+        {isPasskey ? (
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        ) : (
+          entry.title?.charAt(0)?.toUpperCase() || '?'
+        )}
       </div>
       <div style={STYLES.entryInfo}>
-        <div style={STYLES.entryTitle}>{entry.title}</div>
-        <div style={STYLES.entryUser}>{entry.username || EXT_I18N.noUsername}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={STYLES.entryTitle(isDark)}>{entry.title}</div>
+          {isPasskey && <span style={STYLES.passkeyBadge}>Key</span>}
+        </div>
+        <div style={STYLES.entryUser(isDark)}>{entry.username || EXT_I18N.noUsername}</div>
       </div>
-      <span style={STYLES.fillArrow}>→</span>
+      <span style={STYLES.fillArrow(isDark)}>→</span>
     </div>
   );
 };
@@ -264,6 +322,9 @@ const AegisOverlay = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [filled, setFilled] = useState(false);
   const [matchingPasswords, setMatchingPasswords] = useState<CredentialMatch[]>([]);
+  const [matchingPasskeys, setMatchingPasskeys] = useState<PasskeyMatch[]>([]);
+  const [pendingWebAuthnOptions, setPendingWebAuthnOptions] = useState<any | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -274,11 +335,25 @@ const AegisOverlay = () => {
     }
   };
 
+  useEffect(() => {
+    // Detect dark mode from system preference or body/html class
+    const checkDark = () => {
+       const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+       const hostClasses = document.documentElement.classList.contains('dark') || document.body.classList.contains('dark') || document.documentElement.getAttribute('data-theme') === 'dark';
+       setIsDarkMode(systemDark || hostClasses);
+    };
+    checkDark();
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    media.addEventListener('change', checkDark);
+    return () => media.removeEventListener('change', checkDark);
+  }, []);
+
   const hide = useCallback(() => {
     clearHideTimer();
     setIsVisible(false);
     setFilled(false);
     setMatchingPasswords([]);
+    setMatchingPasskeys([]);
     inputRef.current = null;
     setActiveRect(null);
   }, []);
@@ -286,10 +361,11 @@ const AegisOverlay = () => {
   useEffect(() => {
     const handleFocus = async (e: FocusEvent) => {
       const target = e.target as HTMLInputElement;
+      if (!target || target.tagName !== 'INPUT') return;
+
+      const isWebAuthn = target.autocomplete === 'webauthn' || target.getAttribute('autocomplete') === 'webauthn';
       if (
-        !target ||
-        target.tagName !== 'INPUT' ||
-        !['password', 'text', 'email'].includes(target.type)
+        (!['password', 'text', 'email', 'username'].includes(target.type) && !isWebAuthn)
       ) return;
 
       clearHideTimer();
@@ -304,13 +380,22 @@ const AegisOverlay = () => {
         const requestNonce = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
           ? crypto.randomUUID()
           : `${Date.now()}-${Math.random()}`;
-        const response = await browser.runtime.sendMessage({ type: 'GET_DOMAIN_CREDS', domain, requestNonce });
-        const matches = Array.isArray(response?.data) ? response.data as CredentialMatch[] : [];
-        if (!response?.success || matches.length === 0) { hide(); return; }
+
+        // Fetch both credentials and passkeys in parallel
+        const [credsResponse, passkeysResponse] = await Promise.all([
+          browser.runtime.sendMessage({ type: 'GET_DOMAIN_CREDS', domain, requestNonce }),
+          browser.runtime.sendMessage({ type: 'GET_DOMAIN_PASSKEYS', domain, requestNonce }),
+        ]);
+
+        const matches = Array.isArray(credsResponse?.data) ? credsResponse.data as CredentialMatch[] : [];
+        const passkeyMatches = Array.isArray(passkeysResponse?.data) ? passkeysResponse.data as PasskeyMatch[] : [];
+        
+        if (matches.length === 0 && passkeyMatches.length === 0) { hide(); return; }
 
         inputRef.current = target;
         setActiveRect(target.getBoundingClientRect());
         setMatchingPasswords(matches);
+        setMatchingPasskeys(passkeyMatches);
         setFilled(false);
         setIsVisible(true);
       } catch {
@@ -343,57 +428,105 @@ const AegisOverlay = () => {
     };
   }, [hide]);
 
+  useEffect(() => {
+    const handleInjectedMessage = (event: MessageEvent) => {
+      if (event.source !== window) return;
+      if (event.data?.type === 'AEGIS_WEBAUTHN_CONDITIONAL_PENDING') {
+        console.log('[Aegis Vault] 🛡️ Received conditional WebAuthn options:', event.data.options);
+        setPendingWebAuthnOptions(event.data.options);
+      }
+    };
+    window.addEventListener('message', handleInjectedMessage);
+    return () => window.removeEventListener('message', handleInjectedMessage);
+  }, []);
+
   if (!isVisible || !activeRect) return null;
 
   return (
     <div style={STYLES.container}>
-      <div
-        style={STYLES.popup(activeRect.bottom, activeRect.left)}
-        onMouseEnter={clearHideTimer}
-        onMouseLeave={() => {
-          hideTimer.current = setTimeout(() => hide(), 300);
-        }}
-      >
-        {/* Header */}
-        <div style={STYLES.header}>
-          <div style={STYLES.logo}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z" fill="white" opacity="0.9"/>
-            </svg>
-          </div>
-          <span style={STYLES.headerTitle}>Aegis Vault</span>
-          <span style={STYLES.headerSub}>{matchingPasswords.length} {EXT_I18N.recordsLabel}</span>
-        </div>
-
-        {/* Body */}
-        <div style={STYLES.body}>
-          {!filled ? (
-            matchingPasswords.length > 0 ? (
-              matchingPasswords.map((entry, idx) => (
-                <EntryRow
-                  key={idx}
-                  entry={entry}
-                  onFill={() => {
-                    clearHideTimer();
-                    if (inputRef.current) {
-                      fillInputs(inputRef.current, entry);
-                    }
-                    setFilled(true);
-                    setTimeout(() => hide(), 900);
-                  }}
-                />
-              ))
-            ) : (
-              <div style={STYLES.emptyText}>{EXT_I18N.noRecordForSite}</div>
-            )
-          ) : (
-            <div style={STYLES.successBox}>
-              <span style={{ fontSize: 16 }}>✓</span>
-              <span style={STYLES.successText}>{EXT_I18N.filledSuccess}</span>
+        <div style={STYLES.popup(activeRect.bottom, activeRect.left, isDarkMode)}>
+          {/* Header */}
+          <div style={STYLES.header(isDarkMode)}>
+            <div style={STYLES.logo}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z" fill="white" opacity="0.9"/>
+              </svg>
             </div>
-          )}
+            <span style={STYLES.headerTitle(isDarkMode)}>Aegis Vault</span>
+            <span style={STYLES.headerSub(isDarkMode)}>{(matchingPasswords.length + matchingPasskeys.length)} {EXT_I18N.recordsLabel}</span>
+          </div>
+
+          {/* Body */}
+          <div style={STYLES.body}>
+            {!filled ? (
+              (matchingPasswords.length > 0 || matchingPasskeys.length > 0) ? (
+                <>
+                  {matchingPasskeys.map((passkey, idx) => (
+                    <EntryRow
+                      key={`pk-${idx}`}
+                      entry={passkey}
+                      isPasskey={true}
+                      isDark={isDarkMode}
+                      onFill={async () => {
+                        clearHideTimer();
+                        // Passkey selection logic - Trigger WebAuthn
+                        console.log('[Aegis Vault] Passkey selected:', passkey.title);
+                        
+                        if (!pendingWebAuthnOptions) {
+                          toast?.error?.(EXT_I18N.errorTitle || 'WebAuthn request not found');
+                          return;
+                        }
+
+                        try {
+                          const response = await browser.runtime.sendMessage({
+                            type: 'AUTH_PASSKEY',
+                            domain: window.location.hostname,
+                            options: pendingWebAuthnOptions,
+                            passkeyMetadata: passkey.passkeyMetadata
+                          });
+
+                          if (response?.success) {
+                            console.log('[Aegis Vault] Passkey Auth Success:', response.authResult);
+                            toast?.success?.(EXT_I18N.authSuccess);
+                            setFilled(true);
+                            setTimeout(() => hide(), 900);
+                          } else {
+                            console.error('[Aegis Vault] Passkey Auth Failed:', response?.error);
+                            toast?.error?.(response?.error || EXT_I18N.errorTitle);
+                          }
+                        } catch (err) {
+                           console.error('[Aegis Vault] Auth error:', err);
+                        }
+                      }}
+                    />
+                  ))}
+                  {matchingPasswords.map((entry, idx) => (
+                    <EntryRow
+                      key={`pw-${idx}`}
+                      entry={entry}
+                      isDark={isDarkMode}
+                      onFill={() => {
+                        clearHideTimer();
+                        if (inputRef.current) {
+                          fillInputs(inputRef.current, entry);
+                        }
+                        setFilled(true);
+                        setTimeout(() => hide(), 900);
+                      }}
+                    />
+                  ))}
+                </>
+              ) : (
+                <div style={STYLES.emptyText(isDarkMode)}>{EXT_I18N.noRecordForSite}</div>
+              )
+            ) : (
+              <div style={STYLES.filledView}>
+                <div style={STYLES.successIcon}>✓</div>
+                <div style={STYLES.successText(isDarkMode)}>{EXT_I18N.filledSuccess}</div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
     </div>
   );
 };

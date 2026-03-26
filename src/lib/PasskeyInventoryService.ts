@@ -97,6 +97,7 @@ export class PasskeyInventoryService {
     const modeCounts: Record<PasskeyProgramMode, number> = {
       vault_unlock: bindings.length,
       site_passkey_mvp: siteEntries.filter((entry) => entry.mode === "site_passkey_mvp").length,
+      site_passkey_active: siteEntries.filter((entry) => entry.mode === "site_passkey_active").length,
       site_passkey_future_rp: siteEntries.filter((entry) => entry.mode === "site_passkey_future_rp").length,
     };
     const riskCounts = {
@@ -125,6 +126,21 @@ export class PasskeyInventoryService {
       sitePasskeyAttentionCount,
       siteEntries,
       previewSiteEntries: siteEntries.slice(0, 6),
+    };
+  }
+
+  /**
+   * Basarili auth sonrasi passkey metadata guncellemesi yapar.
+   */
+  static updateMetadataAfterAuth(entry: VaultEntry, authenticatedAt: string): VaultEntry {
+    if (!entry.passkeyMetadata) return entry;
+    return {
+      ...entry,
+      passkeyMetadata: {
+        ...entry.passkeyMetadata,
+        last_auth_at: authenticatedAt,
+        server_verified: true,
+      },
     };
   }
 }

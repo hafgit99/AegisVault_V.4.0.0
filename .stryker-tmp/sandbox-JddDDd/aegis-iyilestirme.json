@@ -1,0 +1,271 @@
+{
+  "project": "AegisVault_V4",
+  "mode": "security_hardening_and_ux",
+  "owner": "hafiz",
+  "branch_strategy": [
+    "feature/p0-bridge-hardening",
+    "feature/p1-secure-export",
+    "feature/p2-ux-a11y-refactor"
+  ],
+  "global_rules_for_ai": [
+    "Backward compatibility koru; migration gerekiyorsa veri kaybı olmasın.",
+    "Prod guvenligini dev kolayligina tercih et.",
+    "Her P adimindan sonra lint+build+test calistir.",
+    "Kritik islemlerde (wipe/export) guvenlik onayi olmadan devam etme.",
+    "Dosya/klasor isimlerini tutarli ve kucuk parcalara bol."
+  ],
+  "definition_of_done": [
+    "Kod derleniyor: npm run build",
+    "Lint temiz: npm run lint",
+    "Testler geciyor: npx vitest run",
+    "Yeni guvenlik akislarina en az 1 birim testi eklendi",
+    "README/SECURITY_NOTES guncellendi"
+  ],
+  "tasks": [
+    {
+      "id": "P0-1",
+      "title": "Electron bridge token modelini kapat/sertlestir",
+      "priority": "P0",
+      "impact": 10,
+      "effort": "M",
+      "depends_on": [],
+      "files": [
+        "electron-main.cjs",
+        "preload.cjs",
+        "src/contexts/VaultContext.tsx"
+      ],
+      "objective": [
+        "/api/status endpoint token dondurmesin.",
+        "Origin yoksa request reddedilsin.",
+        "Sadece allowlist extension kimlikleri erisebilsin.",
+        "Mumkunse HTTP yerine IPC challenge-response modeline gec."
+      ],
+      "acceptance_criteria": [
+        "Origin yok => 403",
+        "Allowlist disi extension => 403",
+        "Token harvest mumkun degil",
+        "Vault data endpoint auth olmadan bos/403"
+      ],
+      "ai_prompt": "Harden Electron sync bridge security in `electron-main.cjs`. Remove token leakage from status endpoint, enforce strict origin validation, block requests with missing origin, and implement extension allowlist checks. Keep existing functionality for legitimate extension flow. Update any renderer/preload integration accordingly. Add tests or minimal verification script and document behavior."
+    },
+    {
+      "id": "P0-2",
+      "title": "WXT postMessage dogrulama",
+      "priority": "P0",
+      "impact": 9,
+      "effort": "M",
+      "depends_on": [
+        "P0-1"
+      ],
+      "files": [
+        "aegis-wxt/src/entrypoints/content/index.tsx",
+        "aegis-wxt/src/entrypoints/background.ts",
+        "src/lib/ExtensionBridge.ts"
+      ],
+      "objective": [
+        "AEGIS_* mesajlarinda origin+nonce dogrulamasi",
+        "Imzasiz/sahte mesajlari drop et",
+        "SAVE_VAULT/LOCK_VAULT sadece trusted kanal"
+      ],
+      "acceptance_criteria": [
+        "Rastgele web sayfasi SAVE_VAULT tetikleyemiyor",
+        "Replay mesajlar reddediliyor",
+        "Normal akis bozulmuyor"
+      ],
+      "ai_prompt": "Add strict message authentication for AEGIS postMessage bridge. Require origin validation and one-time nonce/session proof before processing SAVE_VAULT and LOCK_VAULT messages. Reject unsigned or replayed messages. Preserve normal extension sync behavior."
+    },
+    {
+      "id": "P0-3",
+      "title": "Legacy extension hattini uretimden cikar",
+      "priority": "P0",
+      "impact": 9,
+      "effort": "S",
+      "depends_on": [],
+      "files": [
+        "vite.extension.config.ts",
+        "package.json",
+        "extension/content.ts"
+      ],
+      "objective": [
+        "Legacy extension build prod pipeline disinda",
+        "Wildcard origin ('*') kaldir"
+      ],
+      "acceptance_criteria": [
+        "Prod build artifact icinde legacy bridge yok",
+        "Scriptler net: modern WXT tek kaynak"
+      ],
+      "ai_prompt": "Decommission legacy extension build path for production. Keep it dev-only or remove safely. Eliminate wildcard origin usage in legacy content bridge. Ensure package scripts clearly point to supported extension pipeline."
+    },
+    {
+      "id": "P0-4",
+      "title": "Prod'da demo auto-seed kapat",
+      "priority": "P0",
+      "impact": 8,
+      "effort": "S",
+      "depends_on": [],
+      "files": [
+        "src/vaultService.ts"
+      ],
+      "objective": [
+        "Demo kayitlar sadece dev modda eklensin"
+      ],
+      "acceptance_criteria": [
+        "Yeni prod vault bos baslar",
+        "Dev deneyimi opsiyonel flag ile korunur"
+      ],
+      "ai_prompt": "Disable demo credential auto-seeding in production. Keep optional dev-only behavior behind explicit environment flag. Ensure no sample credentials are inserted in prod startup paths."
+    },
+    {
+      "id": "P1-1",
+      "title": "Encrypted export varsayilani",
+      "priority": "P1",
+      "impact": 9,
+      "effort": "L",
+      "depends_on": [
+        "P0-1",
+        "P0-2"
+      ],
+      "files": [
+        "src/components/dashboard/SettingsDrawer.tsx",
+        "src/vaultService.ts",
+        "src/lib/BackupService.ts"
+      ],
+      "objective": [
+        "Export default encrypted format",
+        "Argon2id + AES-GCM ile backup sifreleme",
+        "Plaintext export advanced warning arkasinda"
+      ],
+      "acceptance_criteria": [
+        "Default export plaintext degil",
+        "Import encrypted backup basariyla aciliyor"
+      ],
+      "ai_prompt": "Implement encrypted backup export/import as default. Use Argon2id for key derivation and AES-GCM for payload encryption. Keep plaintext export only as advanced option with explicit risk warning. Add format versioning and migration-safe parser."
+    },
+    {
+      "id": "P1-2",
+      "title": "Wipe/Reset cift dogrulama",
+      "priority": "P1",
+      "impact": 8,
+      "effort": "M",
+      "depends_on": [],
+      "files": [
+        "src/components/VaultLogin.tsx",
+        "src/components/dashboard/SettingsDrawer.tsx"
+      ],
+      "objective": [
+        "Typed confirmation phrase",
+        "Ikinci onay modali + kapsam ozeti"
+      ],
+      "acceptance_criteria": [
+        "Tek tik wipe yok",
+        "Kullanici neyin silinecegini net goruyor"
+      ],
+      "ai_prompt": "Add two-step confirmation UX for destructive wipe/reset actions: typed phrase + final confirmation modal with clear scope summary. Prevent accidental one-click destructive execution."
+    },
+    {
+      "id": "P1-3",
+      "title": "Kritik aksiyonlarda re-auth",
+      "priority": "P1",
+      "impact": 8,
+      "effort": "M",
+      "depends_on": [],
+      "files": [
+        "src/components/dashboard/SettingsDrawer.tsx",
+        "src/components/Dashboard.tsx"
+      ],
+      "objective": [
+        "Export, Emergency Kit, PIN degisiminde master password re-auth"
+      ],
+      "acceptance_criteria": [
+        "Acik oturumda bile kritik aksiyon re-auth ister"
+      ],
+      "ai_prompt": "Introduce master password re-auth gate for high-risk actions: export, emergency kit generation, and secret PIN updates. Keep UX smooth with clear timeout/session rules."
+    },
+    {
+      "id": "P2-1",
+      "title": "SettingsDrawer moduler refactor",
+      "priority": "P2",
+      "impact": 6.5,
+      "effort": "L",
+      "depends_on": [
+        "P1-1",
+        "P1-2"
+      ],
+      "files": [
+        "src/components/dashboard/SettingsDrawer.tsx",
+        "src/components/dashboard/settings/*"
+      ],
+      "objective": [
+        "Security/Data/Sync/Advanced tablara ayir"
+      ],
+      "acceptance_criteria": [
+        "Ana dosya kuculur, sorumluluklar ayrilir"
+      ],
+      "ai_prompt": "Refactor SettingsDrawer into modular subcomponents: SecurityTab, DataTab, SyncTab, AdvancedTab. Preserve behavior and translations, reduce component complexity."
+    },
+    {
+      "id": "P2-2",
+      "title": "A11y hardening",
+      "priority": "P2",
+      "impact": 7,
+      "effort": "M",
+      "depends_on": [],
+      "files": [
+        "src/components/dashboard/EntryForm.tsx",
+        "src/components/dashboard/SettingsDrawer.tsx",
+        "src/components/dashboard/DashboardHeader.tsx"
+      ],
+      "objective": [
+        "Label-for/id tamamlama",
+        "Dialog role/aria-modal/focus trap",
+        "Icon button aria-label standardi"
+      ],
+      "acceptance_criteria": [
+        "Klavye-only kullanim tamam",
+        "Temel WCAG AA kontrolleri gecer"
+      ],
+      "ai_prompt": "Improve accessibility in forms and dialogs: proper labels, dialog semantics, focus trap, keyboard navigation, and consistent aria-labels for icon-only buttons."
+    }
+  ],
+  "verification_commands": [
+    "npm run lint",
+    "npm run build",
+    "npx vitest run",
+    "npm run build:extension",
+    "manual: test fake postMessage injection",
+    "manual: test unauthorized localhost bridge access"
+  ],
+  "manual_security_tests": [
+    {
+      "id": "SEC-POSTMESSAGE-01",
+      "step": "Random webpage console'dan AEGIS_SYNC_VAULT postMessage dene",
+      "expected": "ignored/rejected"
+    },
+    {
+      "id": "SEC-BRIDGE-01",
+      "step": "Origin header olmadan /api/status istegi dene",
+      "expected": "403"
+    },
+    {
+      "id": "SEC-BRIDGE-02",
+      "step": "Allowlist disi extension origin ile /api/vault istegi",
+      "expected": "403 or empty"
+    },
+    {
+      "id": "SEC-EXPORT-01",
+      "step": "Default export dosyasini metin editorle ac",
+      "expected": "plaintext credential gorunmez"
+    }
+  ],
+  "pr_template": {
+    "title_pattern": "[P{0|1|2}] <short-title>",
+    "body_sections": [
+      "Problem",
+      "Threat Model / Risk",
+      "What Changed",
+      "Backward Compatibility",
+      "Validation (commands + manual tests)",
+      "Follow-ups"
+    ]
+  }
+}

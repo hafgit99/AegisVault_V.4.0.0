@@ -313,6 +313,16 @@ class ExtensionBridge {
     window.crypto.getRandomValues(array);
     return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
   }
+
+  /** @internal ONLY FOR TESTING */
+  public reset() {
+    this.sessionToken = null;
+    this.isListening = false;
+    this.activePort = null;
+    this.trustedExtensionId = null;
+    this.challengeNonceMap.clear();
+    window.removeEventListener("message", this.messageListener);
+  }
 }
 
 export const extensionBridge = new ExtensionBridge();

@@ -18,7 +18,7 @@ describe("SyncConflictResolutionService", () => {
         pass: "secret-2",
         website: "https://other.test",
       },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     ] as any;
 
     const incomingEntries = [

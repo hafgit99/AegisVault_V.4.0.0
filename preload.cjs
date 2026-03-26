@@ -8,6 +8,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 let domainCredentialProvider = null;
+let domainPasskeyProvider = null;
+let passkeyAuthHandler = null;
 
 ipcRenderer.on('aegis-domain-credentials-request', async (_event, payload) => {
   const requestId = typeof payload?.requestId === 'string' ? payload.requestId : '';
@@ -38,6 +40,60 @@ ipcRenderer.on('aegis-domain-credentials-request', async (_event, payload) => {
   }
 });
 
+ipcRenderer.on('aegis-domain-passkeys-request', async (_event, payload) => {
+  const requestId = typeof payload?.requestId === 'string' ? payload.requestId : '';
+  const domain = typeof payload?.domain === 'string' ? payload.domain : '';
+
+  if (!requestId) return;
+
+  try {
+    const rawResult = domainPasskeyProvider ? await domainPasskeyProvider(domain) : [];
+    const sanitized = Array.isArray(rawResult)
+      ? rawResult.slice(0, 5).map((item) => ({
+          title: String(item?.title || ''),
+          username: String(item?.username || ''),
+          website: String(item?.website || ''),
+          passkeyMetadata: item?.passkeyMetadata ? {
+            credential_id: String(item.passkeyMetadata.credential_id || ''),
+            rp_id: String(item.passkeyMetadata.rp_id || ''),
+            mode: String(item.passkeyMetadata.mode || ''),
+          } : null,
+        }))
+      : [];
+
+    ipcRenderer.send('aegis-domain-passkeys-response', {
+      requestId,
+      data: sanitized,
+    });
+  } catch {
+    ipcRenderer.send('aegis-domain-passkeys-response', {
+      requestId,
+      data: [],
+    });
+  }
+});
+
+ipcRenderer.on('aegis-auth-passkey-request', async (_event, payload) => {
+  const requestId = typeof payload?.requestId === 'string' ? payload.requestId : '';
+  const options = payload?.options;
+
+  if (!requestId || !options) return;
+
+  try {
+    if (!passkeyAuthHandler) throw new Error('PASSKEY_AUTH_HANDLER_NOT_SET');
+    const result = await passkeyAuthHandler(options); // options: SitePasskeyAuthOptions
+    ipcRenderer.send('aegis-auth-passkey-response', {
+      requestId,
+      data: result, // result: SitePasskeyAuthResult
+    });
+  } catch (err) {
+    ipcRenderer.send('aegis-auth-passkey-response', {
+      requestId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
 contextBridge.exposeInMainWorld('aegisElectron', {
   /**
    * Electron ana sürecine yalnızca kasa durumunu gönderir.
@@ -55,6 +111,14 @@ contextBridge.exposeInMainWorld('aegisElectron', {
    */
   setDomainCredentialProvider: (provider) => {
     domainCredentialProvider = typeof provider === 'function' ? provider : null;
+  },
+
+  setDomainPasskeyProvider: (provider) => {
+    domainPasskeyProvider = typeof provider === 'function' ? provider : null;
+  },
+
+  setPasskeyAuthHandler: (handler) => {
+    passkeyAuthHandler = typeof handler === 'function' ? handler : null;
   },
 
   /**

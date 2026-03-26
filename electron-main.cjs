@@ -21,6 +21,9 @@ const vaultState = {
 let desktopUiLanguage = 'en';
 let mainWindow = null; // IPC validation için global referans
 const pendingDomainCredentialRequests = new Map();
+const pendingDomainPasskeyRequests = new Map();
+const pendingPasskeyAuthRequests = new Map();
+const pendingPasskeyRegRequests = new Map();
 let nativeBridgeServer = null;
 let nativeBridgeSocketPath = null;
 let desktopBridgeIdentity = null;
@@ -181,6 +184,24 @@ function sanitizeCredentialArray(data) {
     .filter((item) => item.pass && item.website);
 }
 
+function sanitizePasskeyArray(data) {
+  if (!Array.isArray(data)) return [];
+  return data
+    .filter((item) => item && typeof item === 'object')
+    .slice(0, 5)
+    .map((item) => ({
+      title: String(item.title || ''),
+      username: String(item.username || ''),
+      website: String(item.website || ''),
+      passkeyMetadata: item.passkeyMetadata ? {
+        credential_id: String(item.passkeyMetadata.credential_id || ''),
+        rp_id: String(item.passkeyMetadata.rp_id || ''),
+        mode: String(item.passkeyMetadata.mode || ''),
+      } : null,
+    }))
+    .filter((item) => item.passkeyMetadata && item.website);
+}
+
 function requestDomainCredentialsFromRenderer(domain) {
   if (!mainWindow || mainWindow.isDestroyed()) {
     return Promise.resolve([]);
@@ -209,6 +230,74 @@ function requestDomainCredentialsFromRenderer(domain) {
       clearTimeout(timeout);
       pendingDomainCredentialRequests.delete(requestId);
       resolve([]);
+    }
+  });
+}
+
+function requestDomainPasskeysFromRenderer(domain) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return Promise.resolve([]);
+  }
+
+  const requestId = crypto.randomUUID();
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      pendingDomainPasskeyRequests.delete(requestId);
+      resolve([]);
+    }, 3000);
+
+    pendingDomainPasskeyRequests.set(requestId, {
+      resolve: (data) => {
+        clearTimeout(timeout);
+        resolve(sanitizePasskeyArray(data));
+      },
+    });
+
+    try {
+      mainWindow.webContents.send('aegis-domain-passkeys-request', {
+        requestId,
+        domain,
+      });
+    } catch {
+      clearTimeout(timeout);
+      pendingDomainPasskeyRequests.delete(requestId);
+      resolve([]);
+    }
+  });
+}
+
+function requestPasskeyAuthFromRenderer(options) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return Promise.reject(new Error('MAIN_WINDOW_NOT_AVAILABLE'));
+  }
+
+  const requestId = crypto.randomUUID();
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      pendingPasskeyAuthRequests.delete(requestId);
+      reject(new Error('TIMEOUT'));
+    }, 60000);
+
+    pendingPasskeyAuthRequests.set(requestId, {
+      resolve: (data) => {
+        clearTimeout(timeout);
+        resolve(data);
+      },
+      reject: (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      }
+    });
+
+    try {
+      mainWindow.webContents.send('aegis-auth-passkey-request', {
+        requestId,
+        options,
+      });
+    } catch (err) {
+      clearTimeout(timeout);
+      pendingPasskeyAuthRequests.delete(requestId);
+      reject(err);
     }
   });
 }
@@ -1006,6 +1095,40 @@ async function handleNativeBridgeRequest(message) {
     return { ok: true, data: matches };
   }
 
+  if (type === 'GET_DOMAIN_PASSKEYS') {
+    const requestDomain = normalizeDomain(typeof message?.domain === 'string' ? message.domain : '');
+    if (!requestDomain) {
+      return { ok: false, error: 'INVALID_DOMAIN', data: [] };
+    }
+
+    if (!vaultState.unlocked) {
+      return { ok: true, data: [] };
+    }
+
+    const matches = await requestDomainPasskeysFromRenderer(requestDomain);
+    touchPairingUsage(extensionId, clientInfo, 'domain-passkeys');
+    return { ok: true, data: matches };
+  }
+
+  if (type === 'AUTH_PASSKEY') {
+    const options = message?.options;
+    if (!options) {
+      return { ok: false, error: 'INVALID_OPTIONS' };
+    }
+
+    if (!vaultState.unlocked) {
+      return { ok: false, error: 'VAULT_LOCKED' };
+    }
+
+    try {
+      const authResult = await requestPasskeyAuthFromRenderer(options);
+      touchPairingUsage(extensionId, clientInfo, 'passkey-auth');
+      return { ok: true, authResult };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  }
+
   return { ok: false, error: 'UNSUPPORTED_MESSAGE_TYPE' };
 }
 
@@ -1020,7 +1143,19 @@ function registerNativeHostWindows() {
   }
 
   try {
+    const regCheckPath = path.join(app.getPath('userData'), 'last-native-host-reg.json');
+    const currentVersion = app.getVersion();
     const nativeHostDir = path.join(app.getPath('userData'), 'native-host');
+    const manifestPath = path.join(nativeHostDir, `com.aegisvault.desktop.json`);
+
+    // Only register if version changed or manifest is missing
+    if (fs.existsSync(regCheckPath) && fs.existsSync(manifestPath)) {
+      const regInfo = JSON.parse(fs.readFileSync(regCheckPath, 'utf8'));
+      if (regInfo.version === currentVersion) {
+        console.log('[Aegis Auto-Register] Native host registration skipped (already up to date)');
+        return;
+      }
+    }
     const hostScriptPath = app.isPackaged
       ? path.join(process.resourcesPath, 'native-host', 'aegis-native-host.ps1')
       : path.join(__dirname, 'scripts', 'aegis-native-host.ps1');
@@ -1052,7 +1187,7 @@ function registerNativeHostWindows() {
 
     // 2. Chrome/Edge manifest dosyasını dinamik olarak oluştur
     const hostName = 'com.aegisvault.desktop';
-    const manifestPath = path.join(nativeHostDir, `${hostName}.json`);
+    const chromeManifestPath = path.join(nativeHostDir, `${hostName}.json`);
     const chromeManifest = {
       name: hostName,
       description: 'Aegis Vault native messaging bridge',
@@ -1060,7 +1195,7 @@ function registerNativeHostWindows() {
       type: 'stdio',
       allowed_origins: ALLOWLIST_EXTENSION_IDS.map((id) => `chrome-extension://${id}/`),
     };
-    fs.writeFileSync(manifestPath, JSON.stringify(chromeManifest, null, 2), 'utf8');
+    fs.writeFileSync(chromeManifestPath, JSON.stringify(chromeManifest, null, 2), 'utf8');
 
     // 3. Firefox manifest dosyasını dinamik olarak oluştur
     const firefoxManifestPath = path.join(nativeHostDir, `${hostName}.firefox.json`);
@@ -1075,7 +1210,7 @@ function registerNativeHostWindows() {
     };
     fs.writeFileSync(firefoxManifestPath, JSON.stringify(firefoxManifest, null, 2), 'utf8');
 
-    const escapedManifestPath = manifestPath.replace(/"/g, '\\"');
+    const escapedManifestPath = chromeManifestPath.replace(/"/g, '\\"');
     const escapedFirefoxPath = firefoxManifestPath.replace(/"/g, '\\"');
 
     // 4. Registry'ye kaydet (Chrome, Edge, Firefox)
@@ -1108,6 +1243,7 @@ function registerNativeHostWindows() {
         stdio: 'pipe'
       });
       console.log('[Aegis Auto-Register] Native host registry entries updated');
+      fs.writeFileSync(regCheckPath, JSON.stringify({ version: currentVersion, registeredAt: new Date().toISOString() }), 'utf8');
       console.log(`[Aegis Auto-Register] Native host launcher: ${launcherPath}`);
     } catch (execErr) {
       console.warn('[Aegis Auto-Register] PowerShell execution warning:', execErr.message.substring(0, 100));
@@ -1805,6 +1941,33 @@ const syncServer = http.createServer(async (req, res) => {
     return;
   }
 
+  if (requestPath === '/api/domain-passkeys' && req.method === 'GET') {
+    const requestUrl = parseRequestUrl(req);
+    const requestDomain = normalizeDomain(
+      (req.headers['x-aegis-request-domain'] || '') ||
+      requestUrl?.searchParams.get('domain') ||
+      ''
+    );
+
+    if (!requestDomain) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'INVALID_DOMAIN' }));
+      return;
+    }
+
+    if (!vaultState.unlocked) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify([]));
+      return;
+    }
+
+    const matches = await requestDomainPasskeysFromRenderer(requestDomain);
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(matches));
+    return;
+  }
+
   res.writeHead(404);
   res.end();
   
@@ -1871,6 +2034,42 @@ ipcMain.on('aegis-domain-credentials-response', (event, payload) => {
 
   pendingDomainCredentialRequests.delete(requestId);
   pending.resolve(payload?.data);
+});
+
+ipcMain.on('aegis-domain-passkeys-response', (event, payload) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) {
+    console.warn('[IPC] Unauthorized IPC sender for aegis-domain-passkeys-response');
+    return;
+  }
+
+  const requestId = typeof payload?.requestId === 'string' ? payload.requestId : '';
+  if (!requestId) return;
+
+  const pending = pendingDomainPasskeyRequests.get(requestId);
+  if (!pending) return;
+
+  pendingDomainPasskeyRequests.delete(requestId);
+  pending.resolve(payload?.data);
+});
+
+ipcMain.on('aegis-auth-passkey-response', (event, payload) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) {
+    console.warn('[IPC] Unauthorized IPC sender for aegis-auth-passkey-response');
+    return;
+  }
+
+  const requestId = typeof payload?.requestId === 'string' ? payload.requestId : '';
+  if (!requestId) return;
+
+  const pending = pendingPasskeyAuthRequests.get(requestId);
+  if (!pending) return;
+
+  pendingPasskeyAuthRequests.delete(requestId);
+  if (payload?.error) {
+    pending.reject(new Error(payload.error));
+  } else {
+    pending.resolve(payload?.data);
+  }
 });
 
 ipcMain.handle('list-extension-pairings', (event) => {
@@ -2059,38 +2258,46 @@ process.on('unhandledRejection', (reason) => {
 
 app.whenReady().then(() => {
   recordStartupDiagnosticEvent('info', 'APP_READY', 'Electron app ready');
-  loadPersistentPairings();
+  
+  // 1. Minimum initialization for Window
   loadUiPreferences();
-  if (!LOOPBACK_SYNC_ENABLED) {
-    recordStartupDiagnosticEvent('info', 'LOOPBACK_DISABLED', 'Loopback sync disabled by default');
-  }
+  createWindow();
+
+  // 2. Perform non-critical startup tasks in background to preserve cold start speed
+  process.nextTick(() => {
+    loadPersistentPairings();
+    if (!LOOPBACK_SYNC_ENABLED) {
+      recordStartupDiagnosticEvent('info', 'LOOPBACK_DISABLED', 'Loopback sync disabled by default');
+    }
   
-  // 🖥️ Auto-register native host and initialize pairing secret
-  registerNativeHostWindows();
-  ensureNativeHostPairingSecret();
-  
-  // CSP: Yalnızca kendi kaynaklarından script ve stil yükle
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [
-          "default-src 'self'; " +
-          "script-src 'self' 'wasm-unsafe-eval'; " +
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-          "font-src 'self' https://fonts.gstatic.com; " +
-          "img-src 'self' data: blob:; " +
-          `connect-src 'self' https://api.pwnedpasswords.com${LOOPBACK_SYNC_ENABLED ? " http://127.0.0.1:23456" : ""}; ` +
-          "worker-src 'self' blob:; " +
-          "object-src 'none'; " +
-          "base-uri 'self'"
-        ]
-      }
+    // 🖥️ Auto-register native host and initialize pairing secret
+    // Defer heavy PowerShell hit slightly
+    setTimeout(() => {
+      registerNativeHostWindows();
+      ensureNativeHostPairingSecret();
+      startNativeBridgeServer();
+    }, 1500);
+    
+    // Global CSP HeaderInjection
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'self'; " +
+            "script-src 'self' 'wasm-unsafe-eval'; " +
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+            "font-src 'self' https://fonts.gstatic.com; " +
+            "img-src 'self' data: blob:; " +
+            `connect-src 'self' https://api.pwnedpasswords.com${LOOPBACK_SYNC_ENABLED ? " http://127.0.0.1:23456" : ""}; ` +
+            "worker-src 'self' blob:; " +
+            "object-src 'none'; " +
+            "base-uri 'self'"
+          ]
+        }
+      });
     });
   });
-
-  startNativeBridgeServer();
-  createWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

@@ -46,6 +46,9 @@ import { VaultSharingLinkService } from "../../lib/VaultSharingLinkService";
 import { SharingAuditService } from "../../lib/SharingAuditService";
 import type { SharingAuditFilter } from "../../lib/SharingAuditService";
 import type { PasskeyInventorySiteEntry } from "../../lib/PasskeyInventoryService";
+import { SyncDevicesPanel } from "./SyncDevicesPanel";
+import { SyncConflictModal } from "./SyncConflictModal";
+import { SyncDeviceService } from "../../lib/SyncDeviceService";
 
 interface DesktopPairingRecord {
   extensionId: string;
@@ -180,6 +183,10 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
   const importReportRef = useRef<HTMLDivElement | null>(null);
   const qrAuditPanelRef = useRef<HTMLDivElement | null>(null);
   const migrationReportRef = useRef<HTMLDivElement | null>(null);
+  const syncDevicesRef = useRef<HTMLDivElement | null>(null);
+  const [showSyncConflictModal, setShowSyncConflictModal] = useState(false);
+  const [pendingSyncConflicts, setPendingSyncConflicts] = useState<Array<{ local: VaultEntry, remote: VaultEntry }>>([]);
+  const [e2eSyncEnabled, setE2eSyncEnabled] = useState(false);
 
   // ReAuth State (P1-3)
   const [reAuthAction, setReAuthAction] = useState<{ name: string; action: () => void } | null>(null);
@@ -273,7 +280,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
   );
   const sharingOverview = useMemo(
     () => SharingOverviewService.buildReport(passwords),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [passwords, sharingOverviewVersion]
   );
   const securityCenterSummary = useMemo(
@@ -449,7 +456,7 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
   };
   const sharingAuditEvents = useMemo(
     () => SharingAuditService.listEvents(),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [sharingOverviewVersion]
   );
   const filteredSharingAuditEvents = useMemo(
@@ -2282,6 +2289,40 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Phase 2: E2EE Sync Strategy & Devices */}
+              <div ref={syncDevicesRef} className="settings-panel rounded-3xl p-6 shadow-sm mt-4">
+                <div className="flex items-center gap-2 mb-6">
+                  <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                  <h3 className="text-lg font-semibold tracking-tight">E2EE Bulut Senkronizasyonu (Faz 2)</h3>
+                </div>
+
+                <div className="settings-subpanel p-5 rounded-2xl border shadow-inner mb-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h4 className="font-semibold text-sm mb-1 text-[var(--color-deep-navy)]">Uçtan Uca Şifreli Senkronizasyon</h4>
+                      <p className="text-xs opacity-70 leading-relaxed max-w-md">
+                        Vault verilerinizi Aegis Relay üzerinden diğer cihazlarınızla otomatik senkronize edin. Tüm veriler cihazınızda şifrelenir.
+                      </p>
+                    </div>
+                    <label className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--color-deep-navy)]">
+                      <input
+                        type="checkbox"
+                        checked={e2eSyncEnabled}
+                        onChange={(e) => setE2eSyncEnabled(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500/40"
+                      />
+                      Aktif Et
+                    </label>
+                  </div>
+                </div>
+
+                {e2eSyncEnabled && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                    <SyncDevicesPanel />
+                  </div>
+                )}
               </div>
 
               {/* Donation */}

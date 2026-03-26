@@ -1,6 +1,7 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense, useRef } from "react";
+import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { Plus, Trash2 } from "lucide-react";
-import type { VaultEntry } from "../vaultService";
+import { vaultService, type VaultEntry } from '../vaultService';
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import { SecureAppSettings } from "../lib/SecureAppSettings";
@@ -13,6 +14,7 @@ import { DashboardHeader } from "./dashboard/DashboardHeader";
 import { WatchtowerPanel } from "./dashboard/WatchtowerPanel";
 import { CategorySidebar } from "./dashboard/CategorySidebar";
 import { VaultEntryCard } from "./dashboard/VaultEntryCard";
+import { VirtualizedVaultList } from "./dashboard/VirtualizedVaultList";
 import { GlowCard } from "./ui/GlowCard";
 
 // Heavy/conditional components (lazy loaded — only fetched when needed)
@@ -34,9 +36,13 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
     visibleCount,
     setVisibleCount,
     handleEmptyTrash,
+    handleLock,
+    handleRestoreEntry,
+    viewDensity,
   } = useVault();
 
-  // UI State (yalnızca bu bileşene ait)
+  const searchRef = useRef<HTMLInputElement>(null);
+
   const [isAdding, setIsAdding] = useState(false);
   const [editEntry, setEditEntry] = useState<Partial<VaultEntry> | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -49,11 +55,28 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
 
+  useKeyboardShortcuts({
+    onSearch: () => searchRef.current?.focus(),
+    onLock: handleLock,
+    onNewEntry: () => {
+      setEditEntry({
+        category:
+          categoryFilter && categoryFilter !== "Trash" && !categoryFilter.startsWith("#")
+            ? categoryFilter
+            : "General",
+      });
+      setIsAdding(true);
+    },
+    onEscape: () => {
+      setIsAdding(false);
+      setShowSettings(false);
+    }
+  });
+
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", themeMode);
     SecureAppSettings.setThemeMode(themeMode);
     
-    // Sync theme with extension if possible
     try {
       const globalNav = window as unknown as { 
         browser?: { runtime?: { sendMessage: (m: unknown) => Promise<void> } }; 
@@ -80,7 +103,7 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
     setLogoClicks((prev) => {
       const next = prev + 1;
       if (next === 5) {
-        setShowSettings(true); // Settings'i aç — gizli menü orada
+        setShowSettings(true);
         toast.info(t("secretMenuActive"));
         return 0;
       }
@@ -98,10 +121,8 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
     setEditEntry(null);
   };
 
-  // Emergency Kit PDF (dynamic import — jsPDF only loaded when needed)
   const downloadEmergencyKit = async () => {
     setShowEmergencyKit(true);
-    
     const [{ jsPDF }, { default: autoTable }] = await Promise.all([
       import("jspdf"),
       import("jspdf-autotable"),
@@ -186,11 +207,10 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
         onLogoClick={handleLogoClick}
         themeMode={themeMode}
         onThemeToggle={() => setThemeMode((prev) => (prev === "light" ? "dark" : "light"))}
+        searchRef={searchRef}
       />
 
-      {/* Bento Grid Layout */}
       <main role="main" aria-label="Vault entries" className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 px-4 xl:px-8">
-        {/* Main Vault Panel */}
         <GlowCard className="lg:col-span-8 xl:col-span-9 glass-card p-6 md:p-8 flex flex-col gap-6 relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--color-sage-green)] opacity-[0.03] blur-3xl rounded-full pointer-events-none group-hover/glow:opacity-10 transition-opacity duration-1000" />
 
@@ -236,48 +256,47 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
             )}
           </div>
 
-          <div
-            className="flex flex-col gap-4 mt-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar"
-            onScroll={(e) => {
-              const bottom = Math.abs(e.currentTarget.scrollHeight - e.currentTarget.scrollTop - e.currentTarget.clientHeight) < 50;
-              if (bottom && visibleCount < passwords.length) {
-                setVisibleCount((prev) => prev + 20);
-              }
-            }}
-          >
-            {/* Entry Form */}
-            {isAdding && (
-              <Suspense fallback={<div className="p-8 text-center opacity-50">Loading...</div>}><EntryForm initialEntry={editEntry || undefined} onClose={handleCloseForm} /></Suspense>
-            )}
-
-            {/* Shimmer Skeleton / Entries / Empty State */}
+          <div className="flex-1 min-h-0">
             {isDecrypting ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/30 border border-white/20 relative overflow-hidden">
-                  <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent" />
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-black/5" />
-                    <div className="flex flex-col gap-2">
-                      <div className="h-4 w-32 bg-black/10 rounded" />
-                      <div className="h-3 w-24 bg-black/5 rounded" />
+              <div className="flex flex-col gap-4 mt-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/30 border border-white/20 relative overflow-hidden">
+                    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-black/5" />
+                      <div className="flex flex-col gap-2">
+                        <div className="h-4 w-32 bg-black/10 rounded" />
+                        <div className="h-3 w-24 bg-black/5 rounded" />
+                      </div>
                     </div>
+                    <div className="h-10 w-24 bg-black/5 rounded-xl" />
                   </div>
-                  <div className="h-10 w-24 bg-black/5 rounded-xl" />
-                </div>
-              ))
+                ))}
+              </div>
             ) : passwords.length === 0 ? (
-              <div className="text-center py-10 opacity-50 text-sm italic">
+              <div className="text-center py-20 opacity-40 text-sm italic mt-4">
                 {categoryFilter === "Trash" ? t("noTrashItems") : t("noPasswordsFound")}
               </div>
             ) : (
-              passwords.slice(0, visibleCount).map((p) => (
-                <VaultEntryCard key={p.id} entry={p} onEdit={handleEditEntry} />
-              ))
+              <div className="h-[65vh] mt-4">
+                <VirtualizedVaultList 
+                    entries={passwords} 
+                    onEdit={handleEditEntry} 
+                    viewDensity={viewDensity} 
+                />
+              </div>
+            )}
+            
+            {isAdding && (
+              <div className="absolute inset-0 z-[60] bg-[var(--color-cloud-dancer)] p-6 md:p-8 animate-in slide-in-from-bottom-5 duration-300 rounded-[2.5rem]">
+                <Suspense fallback={<div className="p-8 text-center opacity-50">Loading...</div>}>
+                  <EntryForm initialEntry={editEntry || undefined} onClose={handleCloseForm} />
+                </Suspense>
+              </div>
             )}
           </div>
         </GlowCard>
 
-        {/* Right Sidebar */}
         <nav aria-label="Categories and security" className="lg:col-span-4 xl:col-span-3 flex flex-col gap-6 xl:gap-8">
           <WatchtowerPanel />
           <CategorySidebar onDownloadEmergencyKit={downloadEmergencyKit} isGeneratingKit={showEmergencyKit} />
@@ -297,10 +316,6 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
     </div>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────
-// Dashboard (dışarıdan çağrılan ana bileşen — VaultProvider ile sarar)
-// ─────────────────────────────────────────────────────────────────
 
 interface DashboardProps {
   onLock: () => void;

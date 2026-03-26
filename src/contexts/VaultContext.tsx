@@ -7,10 +7,12 @@ import { breachChecker } from "../lib/breach-check";
 import { SecureAppSettings } from "../lib/SecureAppSettings";
 import { SecurityModePolicy } from "../lib/SecurityModePolicy";
 import { VaultSharingLinkService } from "../lib/VaultSharingLinkService";
+import { WebAuthnService } from "../lib/WebAuthnService";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import DOMPurify from "dompurify";
 import type { SecurityModeProfile } from "../lib/SecureAppSettings";
+import type { SitePasskeyAuthOptions } from "../lib/WebAuthnService";
 
 // Güvenli eklenti haberleşmesi için oturum nonce'u (P0-2)
 let currentExtensionNonce: string | null = null;
@@ -116,6 +118,8 @@ type ElectronVaultState = {
 type ElectronBridgeApi = {
   syncVaultState?: (state: ElectronVaultState) => void;
   setDomainCredentialProvider?: (provider: ((domain: string) => DomainCredential[]) | null) => void;
+  setDomainPasskeyProvider?: (provider: ((domain: string) => any[]) | null) => void;
+  setPasskeyAuthHandler?: (handler: ((options: SitePasskeyAuthOptions) => Promise<any>) | null) => void;
   lockVault?: () => void;
 };
 
@@ -290,11 +294,9 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
         return bTime - aTime;
       });
 
-      setTimeout(() => {
-        setPasswords(sortedData);
-        setVisibleCount(20);
-        setIsDecrypting(false);
-      }, 900);
+      setPasswords(sortedData);
+      setVisibleCount(20);
+      setIsDecrypting(false);
     });
 
     // 🔒 Şifrelenmiş PIN'leri yükle
@@ -370,6 +372,28 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
         }));
     };
 
+    const getPasskeysForDomain = (domain: string) => {
+      const normalizedDomain = normalizeDomain(domain);
+      if (!normalizedDomain) return [];
+
+      return passwords
+        .filter((p) => p.website && isDomainMatch(p.website, normalizedDomain) && p.passkeyMetadata)
+        .slice(0, 5)
+        .map((p) => ({
+          title: p.title,
+          username: p.username,
+          website: p.website,
+          passkeyMetadata: p.passkeyMetadata,
+        }));
+    };
+
+    const handlePasskeyAuthRequest = async (options: SitePasskeyAuthOptions) => {
+      if (passwords.length === 0) {
+        throw new Error('VAULT_LOCKED');
+      }
+      return await WebAuthnService.authenticateSitePasskey(options);
+    };
+
     try {
       const electronApi = getElectronApi();
       if (electronApi?.syncVaultState) {
@@ -381,6 +405,12 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
       if (electronApi?.setDomainCredentialProvider) {
         electronApi.setDomainCredentialProvider((domain: string) => getMatchesForDomain(domain));
       }
+      if (electronApi?.setDomainPasskeyProvider) {
+        electronApi.setDomainPasskeyProvider((domain: string) => getPasskeysForDomain(domain));
+      }
+      if (electronApi?.setPasskeyAuthHandler) {
+        electronApi.setPasskeyAuthHandler(handlePasskeyAuthRequest);
+      }
     } catch {
       // Electron bridge bu ortamda mevcut olmayabilir
     }
@@ -390,6 +420,12 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
         const electronApi = getElectronApi();
         if (electronApi?.setDomainCredentialProvider) {
           electronApi.setDomainCredentialProvider(null);
+        }
+        if (electronApi?.setDomainPasskeyProvider) {
+          electronApi.setDomainPasskeyProvider(null);
+        }
+        if (electronApi?.setPasskeyAuthHandler) {
+          electronApi.setPasskeyAuthHandler(null);
         }
       } catch {
         // cleanup hatasi ana akis icin kritik degil
@@ -633,6 +669,9 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
       }
       if (electronApi?.setDomainCredentialProvider) {
         electronApi.setDomainCredentialProvider(null);
+      }
+      if (electronApi?.setDomainPasskeyProvider) {
+        electronApi.setDomainPasskeyProvider(null);
       }
       if (electronApi?.lockVault) electronApi.lockVault();
     } catch {

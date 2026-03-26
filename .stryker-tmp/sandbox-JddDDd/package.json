@@ -1,0 +1,180 @@
+{
+  "name": "aegis-4.0",
+  "private": true,
+  "version": "4.1.0",
+  "description": "Zero-Knowledge Password Manager | Secure & Premium Vault",
+  "author": "hafgit99 <contact@aegisvault.pro>",
+  "type": "module",
+  "main": "electron-main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "build:extension": "cd aegis-wxt && npm run build",
+    "build:electron": "node scripts/build-electron.cjs",
+    "build:native-host-manifest": "node scripts/generate-native-host-manifest.cjs",
+    "verify:native-host-manifest": "node scripts/verify-native-host-manifest.cjs",
+    "register:native-host": "powershell -ExecutionPolicy Bypass -File scripts/register-native-host.ps1",
+    "unregister:native-host": "powershell -ExecutionPolicy Bypass -File scripts/unregister-native-host.ps1",
+    "test": "vitest run --config vitest.config.ts",
+    "test:unit:ci": "node scripts/run-vitest-json-report.cjs vitest-results/vitest-results.json --config vitest.config.ts",
+    "test:import-export-regression": "node scripts/run-vitest-json-report.cjs vitest-results/import-export-regression.json --config vitest.config.ts src/lib/ImportService.test.ts src/lib/__tests__/ExportService.test.ts src/lib/__tests__/ImportVendorFixtures.test.ts",
+    "test:security-regression": "node scripts/run-vitest-json-report.cjs vitest-results/security-regression.json --config vitest.config.ts src/lib/__tests__/QRSyncService.test.ts src/lib/__tests__/ExtensionSecurity.test.ts src/lib/__tests__/PasskeyBindingService.test.ts src/lib/__tests__/NativeBridgeHost.test.ts",
+    "test:coverage": "vitest run --config vitest.config.ts --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ci": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "test:quality-gate": "npm run lint && npm run test:unit:ci && npm run test:import-export-regression && npm run test:security-regression && npm run test:e2e:ci",
+    "ci:prepare:artifacts": "node scripts/ensure-ci-artifact-layout.cjs",
+    "release:smoke": "node scripts/release-smoke-check.cjs",
+    "release:sbom": "node scripts/generate-sbom.cjs",
+    "release:provenance": "node scripts/generate-release-provenance.cjs",
+    "release:validate-signing-env": "node scripts/validate-release-signing-env.cjs",
+    "release:validate-platform-signing-env": "node scripts/validate-platform-signing-env.cjs",
+    "release:sign-manifest": "node scripts/sign-release-manifest.cjs",
+    "release:verify": "node scripts/verify-release-trust-chain.cjs",
+    "release:verify-platform-signing": "node scripts/verify-platform-signing.cjs",
+    "release:trust-chain": "npm run release:sbom && npm run release:provenance && npm run release:sign-manifest && npm run release:verify",
+    "release:generate-keys": "node scripts/generate-signing-keys.cjs",
+    "ci:report": "node scripts/generate-ci-artifact-report.cjs",
+    "ci:enforce:quality": "node scripts/enforce-ci-quality.cjs quality",
+    "ci:enforce:release": "node scripts/enforce-ci-quality.cjs release",
+    "test:mutate": "stryker run",
+    "bench:search-index": "vitest run benchmarks/searchIndex.benchmark.test.ts",
+    "start:electron": "electron .",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "build": {
+    "appId": "com.aegis.vault",
+    "productName": "Aegis Vault",
+    "asar": true,
+    "files": [
+      "dist/**/*",
+      "electron-main.cjs",
+      "preload.cjs"
+    ],
+    "extraResources": [
+      {
+        "from": "scripts/aegis-native-host.ps1",
+        "to": "native-host/aegis-native-host.ps1"
+      },
+      {
+        "from": "scripts/install-native-host.ps1",
+        "to": "native-host/install-native-host.ps1"
+      },
+      {
+        "from": "scripts/unregister-native-host.ps1",
+        "to": "native-host/unregister-native-host.ps1"
+      }
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "executableName": "AegisVault",
+      "icon": "public/icon.png",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "public/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "public/icon.png",
+      "category": "Utility"
+    },
+    "nsis": {
+      "include": "build/installer.nsh",
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "installerLanguages": [
+        "en_US",
+        "tr_TR"
+      ],
+      "language": "1033"
+    }
+  },
+  "dependencies": {
+    "@fontsource/geist-mono": "^5.2.7",
+    "@fontsource/geist-sans": "^5.2.5",
+    "@lo-fi/qr-data-sync": "^0.999.2",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-toast": "^1.2.15",
+    "@zxing/browser": "^0.1.5",
+    "@zxing/library": "^0.21.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
+    "crypto-js": "^4.2.0",
+    "dompurify": "^3.3.1",
+    "dotenv": "^17.3.1",
+    "framer-motion": "^12.34.2",
+    "geist": "^1.7.0",
+    "hash-wasm": "^4.12.0",
+    "html2canvas": "^1.4.1",
+    "i18next": "^25.8.13",
+    "i18next-browser-languagedetector": "^8.2.1",
+    "idb": "^8.0.3",
+    "jspdf": "^4.2.0",
+    "jspdf-autotable": "^5.0.7",
+    "jsqr": "^1.4.0",
+    "lucide-react": "^0.575.0",
+    "qrcode.react": "^4.2.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-i18next": "^16.5.4",
+    "react-toastify": "^11.0.5",
+    "sql.js": "^1.14.0",
+    "tailwind-merge": "^3.5.0",
+    "wa-sqlite": "^1.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.58.2",
+    "@stryker-mutator/core": "^9.6.0",
+    "@stryker-mutator/vitest-runner": "^9.6.0",
+    "@tailwindcss/vite": "^4.2.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/chrome": "^0.1.36",
+    "@types/crypto-js": "^4.2.2",
+    "@types/dompurify": "^3.0.5",
+    "@types/jspdf": "^1.3.3",
+    "@types/node": "^24.12.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "@vitest/coverage-v8": "^4.0.18",
+    "electron": "^40.6.0",
+    "electron-builder": "^26.8.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "fake-indexeddb": "^6.2.5",
+    "globals": "^16.5.0",
+    "jsdom": "^28.1.0",
+    "playwright": "^1.58.2",
+    "tailwindcss": "^4.2.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.48.0",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
+  }
+}

@@ -25,9 +25,10 @@ interface DashboardHeaderProps {
   onLogoClick: () => void;
   themeMode: "light" | "dark";
   onThemeToggle: () => void;
+  searchRef?: React.RefObject<HTMLInputElement | null>;
 }
 
-export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick, themeMode, onThemeToggle }: DashboardHeaderProps) {
+export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick, themeMode, onThemeToggle, searchRef }: DashboardHeaderProps) {
   const { t, i18n } = useTranslation();
   const {
     watchtower,
@@ -141,6 +142,7 @@ export function DashboardHeader({ onSettingsOpen, onDonationOpen, onLogoClick, t
           <div className="relative group">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-50 transition-opacity group-focus-within:opacity-100" />
             <input
+              ref={searchRef}
               type="text"
               placeholder={t("searchPlaceholder")}
               value={searchQuery}

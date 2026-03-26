@@ -1,4 +1,5 @@
 import { BackupService } from './BackupService';
+import type { VaultEntry } from '../vaultService';
 
 export interface PasskeyBindingMeta {
   createdAt: string;
@@ -645,5 +646,50 @@ export class PasskeyBindingService {
       });
       writeBindingMap(map);
     }
+  }
+
+  /**
+   * Yeni bir WebAuthn site passkey credential kaydini, mevcut bir VaultEntry'nin
+   * site passkey veri modeline (metadata) baglar.
+   */
+  static bindSiteCredentialToEntry(entry: VaultEntry, credentialId: string, rpId: string): VaultEntry {
+    const now = new Date().toISOString();
+    return {
+      ...entry,
+      passkeyMetadata: {
+        ...(entry.passkeyMetadata || {}),
+        credential_id: credentialId,
+        rp_id: rpId,
+        mode: "site_passkey_active",
+        created_at: entry.passkeyMetadata?.created_at || now,
+        last_registration_at: now,
+      },
+    };
+  }
+
+  /**
+   * Merges an external list of revocations into the local store.
+   * Used by QR Sync and future encrypted sync to propagate revocation intent.
+   */
+  static mergeExternalRevocations(external: PasskeyRevocationRecord[]): number {
+    const local = readRevocations();
+    const map = new Map<string, PasskeyRevocationRecord>();
+    
+    // De-duplicate by credentialId (keep the one with latest revokedAt)
+    [...local, ...external].forEach(rev => {
+      const existing = map.get(rev.credentialId);
+      if (!existing || Date.parse(rev.revokedAt) > Date.parse(existing.revokedAt)) {
+        map.set(rev.credentialId, rev);
+      }
+    });
+
+    const merged = Array.from(map.values());
+    const addedCount = merged.length - local.length;
+    
+    if (addedCount > 0) {
+      writeRevocations(merged);
+    }
+    
+    return addedCount;
   }
 }

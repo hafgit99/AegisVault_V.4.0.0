@@ -312,6 +312,26 @@ async function handleMessageWithDeps(
       return;
     }
 
+    if (type === 'GET_DOMAIN_PASSKEYS') {
+      const domain = normalizeDomain(typeof message?.domain === 'string' ? message.domain : '');
+      if (!domain) {
+        deps.writeMessage({ ok: false, error: 'INVALID_DOMAIN', data: [] });
+        return;
+      }
+
+      const data = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
+        type: 'GET_DOMAIN_PASSKEYS',
+        domain,
+      }), pairingSecret);
+      deps.writeMessage({
+        ok: Boolean(data?.ok),
+        error: data?.ok ? undefined : String(data?.error || 'DOMAIN_FAILED'),
+        data: Array.isArray(data?.data) ? data.data : [],
+        desktopAuth: data?.desktopAuth || null,
+      });
+      return;
+    }
+
     deps.writeMessage({ ok: false, error: 'UNSUPPORTED_MESSAGE_TYPE' });
   } catch (error) {
     deps.writeMessage({

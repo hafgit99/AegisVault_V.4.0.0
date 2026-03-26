@@ -30,15 +30,23 @@ module.exports = {
     executableName: 'AegisVault',
     icon: 'public/icon.png',
     requestedExecutionLevel: 'asInvoker',
+    cscLink: process.env.AEGIS_WIN_CSC_LINK || undefined,
+    cscKeyPassword: process.env.AEGIS_WIN_CSC_KEY_PASSWORD || undefined,
   },
   mac: {
     target: ['dmg', 'zip'],
     icon: 'public/icon.png',
+    hardenedRuntime: true,
+    gatekeeperAssess: false,
+    entitlements: 'build/entitlements.mac.plist',
+    entitlementsInherit: 'build/entitlements.mac.plist',
   },
   linux: {
     target: ['AppImage', 'deb'],
     icon: 'public/icon.png',
     category: 'Utility',
+    maintainer: 'Aegis Team',
+    executableName: 'aegis-vault',
   },
   nsis: {
     include: 'build/installer.nsh',

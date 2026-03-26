@@ -1,0 +1,84 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+errors.txt
+tsc_errors.txt
+vitest.log
+
+# Build & Release
+node_modules
+dist
+dist-ssr
+release
+build/native-host/
+native-host/
+*.exe
+*.msi
+*.dmg
+*.deb
+*.rpm
+*.apk
+
+# Environment & Secrets
+.env
+.env.*
+*.p12
+*.pem
+*.jks
+*.keystore
+
+# Editor & System
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+thumbs.db
+
+# Assistant Files
+.agent
+.agents
+.gemini
+
+# Audit & Report files (unnecessary for code repo)
+*_ARTIFACT.md
+*_REPORT.md
+*_WALKTHROUGH.md
+RED_TEAM_AUDIT_DURESS.md
+VISUAL_VIBE_AUDIT.md
+PUBLISHING_GUIDE.md
+CORRUPTION_REPORT.md
+HACKING_ATTEMPT_REPORT.md
+guvenlik/*_RAPORU_TR.md
+guvenlik/*_RAPOR_EKI_TR.md
+guvenlik/*_ANALIZ_RAPORU.md
+guvenlik/COMPETITOR_POSITIONING_ANALYSIS.md
+guvenlik/EXTERNAL_AUDIT_PREP.md
+guvenlik/SECURITY_AUDIT_READINESS_*.md
+
+# Playwright E2E Test Outputs
+playwright-report/
+test-results/
+test-*.txt
+test-output.json
+test_out.json
+plain-error.log
+error.log
+errors.txt
+tsc_errors.txt
+vitest.log
+coverage/
+ci-artifacts/
+[Cc]lean-output.json
+debug-out.txt
+vitest-results/
+android-aegis-temp/

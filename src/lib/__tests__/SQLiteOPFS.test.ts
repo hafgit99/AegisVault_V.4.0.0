@@ -252,4 +252,36 @@ describe('SQLiteOPFS', () => {
 
     vi.useRealTimers();
   });
+
+  it('5. open() initializes and migrates schema', async () => {
+    const sqlite = new SQLiteOPFS('init-test');
+    
+    // Mock navigator.storage.getDirectory for readOPFSFile
+    const mockFile = {
+      getFile: vi.fn().mockResolvedValue({
+        arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8))
+      }),
+      createWritable: vi.fn().mockResolvedValue({
+        write: vi.fn(),
+        close: vi.fn()
+      })
+    };
+    const mockDir = {
+      getFileHandle: vi.fn().mockResolvedValue(mockFile),
+      removeEntry: vi.fn()
+    };
+    Object.defineProperty(navigator, 'storage', {
+      value: { getDirectory: vi.fn().mockResolvedValue(mockDir) },
+      configurable: true
+    });
+
+    // Mock sql.js Database constructor
+    class Database extends FakeDb {}
+    const initSqlJsMock = await import('sql.js');
+    (initSqlJsMock.default as any).mockResolvedValue({ Database: Database });
+
+    await sqlite.open();
+    
+    expect(sqlite.isOpen).toBe(true);
+  });
 });

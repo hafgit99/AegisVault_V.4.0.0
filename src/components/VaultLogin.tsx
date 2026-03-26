@@ -105,7 +105,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: (secretKey: string) => void
         document.documentElement.setAttribute("data-theme", savedTheme);
       }
     } catch { /* ignore */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []); // Run only once on mount
 
   // 2. Refresh passkey state when active profile changes

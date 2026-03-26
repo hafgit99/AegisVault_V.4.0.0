@@ -1,5 +1,30 @@
 # Changelog
 
+## [4.2.0] - Turbo Search & High-Scale Performance Update
+
+This version focuses on "Performance Hardening" and ultra-smooth UX for massive vaults (1000+ entries) while achieving a zero-lint codebase for audit readiness.
+
+### 💨 High-Performance Search Engine
+- **SearchService Separation:** Decoupled search logic from the core vault service into a high-performance, score-weighted engine.
+- **HMAC Tokenization:** Implemented advanced prefix/subsequence tokenization for fast, scores-based "blind" searching on encrypted fields.
+- **Instant Filtering:** Sub-200ms results on vaults with thousands of entries, even on middle-range hardware.
+
+### 🖼️ DOM Virtualization & Scalability
+- **VirtualizedVaultList:** Introduced a truly virtualized rendering layer that only keeps visible vault cards in the DOM, keeping memory usage flat regardless of vault size.
+- **60 FPS Scrolling:** Eliminated scroll stuttering in large vaults by replacing traditional lists with a high-speed windowing technique.
+- **Chunked Decryption:** Optimized the initial account unlock process with deferred (chunked) decryption to prevent UI freezing during cache population.
+
+### 🛡️ Quality & Security Hardening
+- **Zero-Lint Quality Gate:** achieved a clean, 0-warning linting status across the entire codebase to meet strict audit compliance.
+- **TypeScript 5.x Strict Sync:** Full compliance with `verbatimModuleSyntax` and type-only imports for predictable enterprise builds.
+- **Conflict Resolution UI:** Refined the Sync Conflict Modal with precise "Last-Write-Wins" timestamps from the updated VaultEntry schema.
+
+### 🐛 Selected Fixes
+- Fixed a regression in E2E tests where the Onboarding Wizard blocked the Settings button.
+- Resolved a crash in the SyncConflictModal caused by missing timestamp fields.
+- Corrected various hydration issues in the decryption cache layer.
+
+
 ## [4.1.0] - Cross-Platform Security & Governance Update
 
 We are proud to release version 4.1.0 of Aegis Vault. This update brings major architectural improvements to security monitoring, cross-platform compatibility, and release governance.

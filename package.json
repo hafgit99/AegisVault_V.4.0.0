@@ -1,7 +1,7 @@
 {
   "name": "aegis-4.0",
   "private": true,
-  "version": "4.1.0",
+  "version": "4.2.0",
   "description": "Zero-Knowledge Password Manager | Secure & Premium Vault",
   "author": "hafgit99 <contact@aegisvault.pro>",
   "type": "module",
@@ -41,6 +41,7 @@
     "ci:report": "node scripts/generate-ci-artifact-report.cjs",
     "ci:enforce:quality": "node scripts/enforce-ci-quality.cjs quality",
     "ci:enforce:release": "node scripts/enforce-ci-quality.cjs release",
+    "test:mutate": "stryker run",
     "bench:search-index": "vitest run benchmarks/searchIndex.benchmark.test.ts",
     "start:electron": "electron .",
     "lint": "eslint .",
@@ -147,6 +148,8 @@
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.58.2",
+    "@stryker-mutator/core": "^9.6.0",
+    "@stryker-mutator/vitest-runner": "^9.6.0",
     "@tailwindcss/vite": "^4.2.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",

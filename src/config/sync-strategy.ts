@@ -14,7 +14,8 @@ export type AegisSyncAuditEventKey =
   | "transfer_imported"
   | "transfer_revoked"
   | "transfer_rejected"
-  | "receiver_session_created";
+  | "receiver_session_created"
+  | "passkey_revocation_synced";
 
 export interface AegisSyncTransportDefinition {
   key: AegisSyncTransportKey;
@@ -169,6 +170,13 @@ export const AEGIS_SYNC_AUDIT_LANGUAGE: AegisSyncAuditDefinition[] = [
     descriptionKey: "syncAuditReceiverSessionDesc",
     descriptionDefault: "A receiving device creates a short-lived pairing session for protected import.",
   },
+  {
+    key: "passkey_revocation_synced",
+    titleKey: "syncAuditPasskeyRevokedTitle",
+    titleDefault: "Passkey revocation propagated",
+    descriptionKey: "syncAuditPasskeyRevokedDesc",
+    descriptionDefault: "A revoked passkey credential list is updated via sync to maintain global security.",
+  },
 ];
 
 export const AEGIS_SYNC_STRATEGY = {
@@ -176,6 +184,10 @@ export const AEGIS_SYNC_STRATEGY = {
   futureMode: "optional_encrypted_sync" as const,
   conflictPolicyKey: "syncConflictPolicy",
   conflictPolicyDefault: "Conflict policy: local vault remains primary until an explicit merge or restore action is approved.",
+  passkeyPolicy: {
+    syncRevocations: true as const,
+    resolutionMode: "activity_freshest" as const, // Based on last_auth_at/last_registration_at
+  },
   reviewKey: "syncStrategyReview",
   reviewDefault: "4.1 strategy: keep offline-first as default, expose QR + encrypted backup clearly, and treat cloud sync as future opt-in scope.",
 } as const;

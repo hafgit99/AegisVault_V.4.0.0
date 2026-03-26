@@ -37,7 +37,7 @@ export interface CanonicalPasskeyFields {
   transport?: string;
   authenticator_attachment?: string;
   algorithm?: string;
-  mode?: 'vault_unlock' | 'site_passkey_mvp' | 'site_passkey_future_rp';
+  mode?: 'vault_unlock' | 'site_passkey_mvp' | 'site_passkey_active' | 'site_passkey_future_rp';
   server_verified?: boolean;
   created_at?: string;
   last_registration_at?: string;

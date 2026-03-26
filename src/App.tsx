@@ -6,6 +6,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { extensionBridge } from "./lib/ExtensionBridge";
 import { useAutoLock } from "./config/security-settings";
+import { OnboardingWizard } from "./components/onboarding/OnboardingWizard";
 
 function App() {
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -18,18 +19,31 @@ function App() {
     // vaultService.lock() // vaultService backend logic'inde gerekiyorsa (zaten dashboard unmount olunca cache düşer)
   }, isUnlocked);
 
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
   useEffect(() => {
     if (isUnlocked) {
-      extensionBridge.init(); // Kasamız açıkken eklentiden gelen bağlantıları dinlemeye hazırız
+      extensionBridge.init();
+      // Onboarding kontrolü: Daha önce tamamlanmamışsa göster
+      const isDone = localStorage.getItem('aegis_onboarding_done');
+      if (!isDone) setShowOnboarding(true);
     } else {
-      extensionBridge.dispose(); // Kasa kapalıyken tüm dış istek bağlantılarını kopar
+      extensionBridge.dispose();
+      setShowOnboarding(false);
     }
   }, [isUnlocked]);
 
+  const handleOnboardingComplete = (profile: string) => {
+    localStorage.setItem('aegis_onboarding_done', 'true');
+    localStorage.setItem('aegis_security_profile', profile);
+    setShowOnboarding(false);
+    // Burada ileride vaultService.setSecurityProfile(profile) çağrılabilir.
+  };
+
   return (
     <>
-      {/* Skip-to-content — klavye kullanıcıları için atla bağlantısı */}
-      <a href="#main-content" className="skip-to-content">
+      {showOnboarding && <OnboardingWizard onComplete={handleOnboardingComplete} />}
+      <a href="#main-content" className="skip_to_content">
         Skip to main content
       </a>
       <div className="min-h-screen relative bg-[var(--color-cloud-dancer)] text-[var(--color-deep-navy)] flex flex-col items-center w-full" role="application" aria-label="Aegis Vault Password Manager">

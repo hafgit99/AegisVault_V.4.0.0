@@ -79,6 +79,7 @@ export const resources = {
       passkeyInventoryRecentEvents: "Recent events",
       passkeyInventoryModeVaultUnlock: "Vault unlock",
       passkeyInventoryModeSiteMvp: "Site passkey MVP",
+      passkeyInventoryModeSiteActive: "Site passkey",
       passkeyInventoryModeFutureRp: "Future RP",
       passkeyInventoryActionRotate: "Rotate aging passkeys",
       passkeyInventoryActionRecovery: "Export recovery package",
@@ -97,6 +98,49 @@ export const resources = {
       passkeyInventorySiteListTitle: "Tracked site passkeys",
       passkeyInventorySiteEntriesHealthy: "Site passkey entries look healthy.",
       passkeyInventoryFilterAll: "All",
+      onboarding: {
+        welcome: {
+          title: "Welcome to Aegis Vault",
+          desc: "Protect your digital assets with the highest level of Zero-Knowledge security architecture."
+        },
+        profile: {
+          title: "Select Your Security Profile",
+          desc: "Define the balance of security and convenience that best fits your needs.",
+          standard: {
+            name: "Standard",
+            desc: "Fast and convenient. Recommended for personal daily use. (PBKDF2, Standard timeouts)"
+          },
+          advanced: {
+            name: "Advanced",
+            desc: "Balanced protection. High-entropy key derivation and biometric PRF support. (Argon2id)"
+          },
+          paranoid: {
+            name: "Paranoid",
+            desc: "Maximum security. Aggressive timeouts, memory-hard encryption, and background lock."
+          }
+        },
+        extension: {
+          title: "Supercharge Your Browser",
+          desc: "Automate your password entries and secure your browsing with the Aegis Extension.",
+          browser: "Chrome / Firefox / Edge",
+          install_desc: "Install the extension to link your vault directly to your browser.",
+          button: "Download Extension"
+        },
+        mobile: {
+          title: "Access Everywhere",
+          desc: "Install our mobile app and sync your vault securely using a QR code.",
+          sync: "Mobile Synchronization",
+          app_desc: "Carry your data with you on iOS and Android with end-to-end encryption."
+        },
+        finalize: {
+          title: "All Set!",
+          desc: "Your vault is securely initialized and ready to protect your digital life."
+        },
+        back: "Back",
+        next: "Continue",
+        finish: "Start Using Vault",
+        anytime: "You can change these settings anytime from the Vault Settings panel."
+      },
       passkeyInventoryFilterAttention: "Needs review",
       passkeyInventoryFilterHealthy: "Healthy",
       passkeyInventoryFilterFuture: "Future RP",
@@ -258,6 +302,7 @@ export const resources = {
       passkeyDisplayNamePlaceholder: "Display Name",
       passkeyUserHandlePlaceholder: "User Handle (optional)",
       passkeyModeSiteMvp: "Site passkey MVP",
+      passkeyModeSiteActive: "Site passkey",
       passkeyModeVaultUnlock: "Vault unlock",
       passkeyModeFutureRp: "Future RP",
       uploadAttachment: "M-Secure File Upload (Max 50MB)",
@@ -481,6 +526,32 @@ export const resources = {
       securityCenterReopen: "Reopen",
       securityCenterReopened: "Security triage item was reopened.",
       securityCenterTriageItemMissing: "The selected security item could not be found.",
+      
+      // Phase 2: Sync Relay
+      syncRelayTitle: "Cloud Sync (Relay)",
+      syncRelayDesc: "End-to-end encrypted synchronization via Aegis Relay server. Zero-knowledge model ensures the server never sees your data.",
+      syncRelayPush: "Push to Cloud",
+      syncRelayPull: "Pull from Cloud",
+      syncRelayLastTime: "Last Sync: {{time}}",
+      syncRelaySessionId: "Sync Session ID",
+      syncRelayConflictDetected: "Sync conflict detected. Manual merge required.",
+      syncRelaySetupTitle: "Setup Cloud Sync",
+      syncRelaySetupDesc: "Initialize a secure sync session and link your trusted devices.",
+      
+      // Phase 1: Passkey Runtime
+      passkeyRuntimeTitle: "Passkey (WebAuthn) Runtime",
+      passkeyRuntimeDesc: "Integrated Passkey registration and authentication for websites via Aegis Extension.",
+      passkeyRuntimeRegister: "Register Passkey",
+      passkeyRuntimeAuthenticate: "Authenticate with Passkey",
+      passkeyRuntimeBindingAdded: "Passkey successfully bound to vault entry.",
+      passkeyRuntimeOriginMismatch: "Security Alert: Passkey origin mismatch detected.",
+      
+      // Phase 3: Build & Supply Chain
+      supplyChainTitle: "Supply Chain & Integrity",
+      supplyChainSlsaLevel: "SLSA Level 2",
+      supplyChainAttestation: "Build Attestation",
+      supplyChainReproducible: "Reproducible Build",
+      supplyChainVerified: "Verified",
       sharingOverviewTitle: "Sharing Overview",
       sharingOverviewDesc: "Review the health of shared spaces, overdue access reviews, and sensitive entries before they turn into migration or audit risk.",
       sharingOverviewScore: "Sharing score",
@@ -844,6 +915,7 @@ export const resources = {
       passkeyInventoryRecentEvents: "Son olaylar",
       passkeyInventoryModeVaultUnlock: "Kasa acma",
       passkeyInventoryModeSiteMvp: "Site passkey MVP",
+      passkeyInventoryModeSiteActive: "Site passkey (Aktif)",
       passkeyInventoryModeFutureRp: "Gelecek RP",
       passkeyInventoryActionRotate: "Eskiyen passkeyleri dondur",
       passkeyInventoryActionRecovery: "Kurtarma paketi disa aktar",
@@ -1023,6 +1095,7 @@ export const resources = {
       passkeyDisplayNamePlaceholder: "Görünen Ad",
       passkeyUserHandlePlaceholder: "User Handle (opsiyonel)",
       passkeyModeSiteMvp: "Site passkey MVP",
+      passkeyModeSiteActive: "Site passkey (Aktif)",
       passkeyModeVaultUnlock: "Kasa açma",
       passkeyModeFutureRp: "Gelecek RP",
       uploadAttachment: "M-Secure Dosya Yükle (Max 50MB)",
@@ -1094,6 +1167,49 @@ export const resources = {
         securityCenterAllClear: "Ek açık güvenlik merkezi sorunu bulunmuyor.",
         releaseTrustTitle: "Release Güven Programı",
         releaseTrustDesc: "İmzalama, doğrulama, SBOM ve provenance kanıtlarını tek yerden izleyin.",
+        onboarding: {
+          welcome: {
+            title: "Aegis Vault'a Hoş Geldiniz",
+            desc: "Sıfır-bilgi (Zero-Knowledge) mimarisi ile dijital varlıklarınızı en üst düzeyde koruyun."
+          },
+          profile: {
+            title: "Güvenlik Profilinizi Seçin",
+            desc: "İhtiyacınıza en uygun güvenlik ve kullanım dengesini belirleyin.",
+            standard: {
+              name: "Standart",
+              desc: "Hızlı ve pratik. Günlük kişisel kullanım için önerilir. (PBKDF2, Standart zaman aşımları)"
+            },
+            advanced: {
+              name: "Gelişmiş",
+              desc: "Dengeli koruma. Yüksek entropili anahtar türetimi ve biyometrik PRF desteği. (Argon2id)"
+            },
+            paranoid: {
+              name: "Paranoid",
+              desc: "Maksimum güvenlik. Agresif zaman aşımları, bellek-yoğun şifreleme ve arka plan kilidi."
+            }
+          },
+          extension: {
+            title: "Tarayıcı Deneyimini Güçlendirin",
+            desc: "Aegis Extension ile şifrelerinizi formlara otomatik doldurun ve tarayıcınızı koruyun.",
+            browser: "Chrome / Firefox / Edge",
+            install_desc: "Uzantıyı yükleyerek kasanızı doğrudan tarayıcınıza bağlayın.",
+            button: "Uzantıyı İndir"
+          },
+          mobile: {
+            title: "Her Yerde Erişin",
+            desc: "Mobil uygulamamızı yükleyin ve QR kod ile kasanızı güvenle eşleştirin.",
+            sync: "Mobil Senkronizasyon",
+            app_desc: "Uçtan uca şifreleme ile verilerinizi iOS ve Android'de her an yanınızda taşıyın."
+          },
+          finalize: {
+            title: "Her Şey Hazır!",
+            desc: "Kasanız güvenli bir şekilde hazırlandı ve dijital hayatınızı korumaya hazır."
+          },
+          back: "Geri",
+          next: "Devam Et",
+          finish: "Kasayı Kullanmaya Başla",
+          anytime: "Bu ayarları dilediğiniz zaman Kasa Ayarları panelinden değiştirebilirsiniz."
+        },
         releaseTrustScore: "Güven skoru",
         releaseTrustRequired: "Geçen zorunlu",
         releaseTrustChecks: "Kontroller",
@@ -1246,6 +1362,32 @@ export const resources = {
       securityCenterReopen: "Yeniden aç",
       securityCenterReopened: "Güvenlik triage maddesi yeniden açıldı.",
       securityCenterTriageItemMissing: "Seçilen güvenlik kaydı bulunamadı.",
+
+      // Faz 2: Sync Relay
+      syncRelayTitle: "Bulut Senkronizasyonu",
+      syncRelayDesc: "Aegis Relay üzerinden uçtan uca şifreli senkronizasyon. Sıfır-bilgi modeliyle sunucu verinizi hiçbir zaman göremez.",
+      syncRelayPush: "Buluta Gönder",
+      syncRelayPull: "Buluttan Çek",
+      syncRelayLastTime: "Son Senkronizasyon: {{time}}",
+      syncRelaySessionId: "Sync Oturum Kimliği",
+      syncRelayConflictDetected: "Sync çakışması algılandı. Manuel birleştirme gerekiyor.",
+      syncRelaySetupTitle: "Bulut Senkronizasyonunu Kur",
+      syncRelaySetupDesc: "Güvenli bir sync oturumu başlatın ve güvenilir cihazlarınızı bağlayın.",
+
+      // Faz 1: Passkey Runtime
+      passkeyRuntimeTitle: "Passkey (WebAuthn) Runtime",
+      passkeyRuntimeDesc: "Web siteleri için entegre Passkey kaydı ve doğrulaması (Aegis Extension üzerinden).",
+      passkeyRuntimeRegister: "Passkey Kaydet",
+      passkeyRuntimeAuthenticate: "Passkey ile Doğrula",
+      passkeyRuntimeBindingAdded: "Passkey başarıyla kasa girdisine bağlandı.",
+      passkeyRuntimeOriginMismatch: "Güvenlik Uyarısı: Passkey origin uyuşmazlığı algılandı.",
+
+      // Faz 3: Build & Supply Chain
+      supplyChainTitle: "Tedarik Zinciri ve Bütünlük",
+      supplyChainSlsaLevel: "SLSA Seviye 2",
+      supplyChainAttestation: "Build Kanıtı (Attestation)",
+      supplyChainReproducible: "Yeniden Üretilebilir Build",
+      supplyChainVerified: "Doğrulandı",
       securitySessionTitle: "Güvenlik ve Oturum",
       plainExportPolicyTitle: "Düz Metin Dışa Aktarma Politikası",
       plainExportPolicyDesc: "Güvenlik nedeniyle CSV/JSON dışa aktarma varsayılan olarak kapalıdır. Yalnızca geçici veri taşıma ihtiyaçları için etkinleştirin.",
@@ -1478,6 +1620,7 @@ const trTranslationFixes: Record<string, string> = {
   passkeyDisplayNamePlaceholder: "Görünen Ad",
   passkeyUserHandlePlaceholder: "User Handle (opsiyonel)",
   passkeyModeSiteMvp: "Site passkey MVP",
+  passkeyModeSiteActive: "Site passkey (Aktif)",
   passkeyModeVaultUnlock: "Kasa açma",
   passkeyModeFutureRp: "Gelecek RP",
   uploadAttachment: "M-Secure Dosya Yükle (Maks. 50MB)",
