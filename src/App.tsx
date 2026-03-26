@@ -8,15 +8,18 @@ import { extensionBridge } from "./lib/ExtensionBridge";
 import { useAutoLock } from "./config/security-settings";
 import { OnboardingWizard } from "./components/onboarding/OnboardingWizard";
 
+import { vaultService } from "./vaultService";
+
 function App() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [secretKeyStr, setSecretKeyStr] = useState("");
 
   // Kullanıcı hareketsiz kaldığında kilitle
-  useAutoLock(() => {
+  useAutoLock(async () => {
     setIsUnlocked(false);
     setSecretKeyStr(""); // Hafızadan sil
-    // vaultService.lock() // vaultService backend logic'inde gerekiyorsa (zaten dashboard unmount olunca cache düşer)
+    await vaultService.lock(); // Belleği temizle ve şifreleri sanitizasyondan geçir
+    extensionBridge.lockAndDisconnect(); // Extension bağlantısını kes
   }, isUnlocked);
 
   const [showOnboarding, setShowOnboarding] = useState(false);

@@ -311,26 +311,6 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
     loadPasswords();
   }, [loadPasswords]);
 
-  // Auto-lock zamanlayıcısı (useRef ile stale closure önlenir)
-  useEffect(() => {
-    if (autoLockTime <= 0) return;
-    let timer: ReturnType<typeof setTimeout>;
-    const resetTimer = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        handleLockRef.current();
-        toast.info(t("autoLocked"));
-      }, autoLockTime * 60 * 1000);
-    };
-    const events = ["mousedown", "keydown", "touchstart", "scroll"];
-    events.forEach(e => window.addEventListener(e, resetTimer));
-    resetTimer();
-    return () => {
-      clearTimeout(timer);
-      events.forEach(e => window.removeEventListener(e, resetTimer));
-    };
-  }, [autoLockTime, t]);
-
   // ─── Extension Senkronizasyonu ─────────────────────────────────
   // Çok katmanlı strateji:
   //   1. Nonce ile güvenli postMessage (content script aynı sayfadaysa)

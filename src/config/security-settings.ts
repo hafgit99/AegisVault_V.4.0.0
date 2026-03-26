@@ -11,42 +11,24 @@ export const IDLE_TIMEOUT_OPTIONS = [
   { label: '4 hours', value: 14400 },
 ];
 
-// Helper to interact with settings
-export function getIdleTimeout(): number {
-  return SecureAppSettings.getIdleTimeout();
-}
-
-export function setIdleTimeout(seconds: number) {
-  SecureAppSettings.setIdleTimeout(seconds);
-}
-
 /**
  * Hook to automatically lock the vault after a period of inactivity.
- * @param onLock Callback to execute when vault should be locked (e.g., call vaultService.lock())
+ * @param onLock Callback to execute when vault should be locked
  * @param isUnlocked Whether the vault is currently unlocked
  */
 export function useAutoLock(onLock: () => void, isUnlocked: boolean) {
-  const [setVersion, setSetVersion] = useState(0);
+  const [version, setVersion] = useState(0);
 
-  // Listen to cross-tab settings updates
+  // Ayar değişikliklerini dinle
   useEffect(() => {
-    void SecureAppSettings.initialize().then(() => {
-      setSetVersion((v) => v + 1);
-    });
-
     const onSettingChanged = (event: Event) => {
       const customEvent = event as CustomEvent<{ key?: string }>;
-      if (customEvent.detail?.key === 'idleTimeout') {
-        setSetVersion((v) => v + 1);
-      }
+      // Herhangi bir güvenlik ayarı değiştiğinde versiyonu güncelle (autoLockTime dahil)
+      setVersion((v) => v + 1);
     };
     window.addEventListener('aegis-secure-setting-changed', onSettingChanged as EventListener);
     return () => window.removeEventListener('aegis-secure-setting-changed', onSettingChanged as EventListener);
   }, []);
-
-  // Sync internal state with external calls if necessary (though React's render cycle will handle component-level updates if we listen manually, but let's keep it simple)
-  // To allow same-tab updates to refresh this we could dispatch a custom event.
-  // For now, assume it's stable.
   
   useEffect(() => {
     if (!isUnlocked) return;
@@ -57,28 +39,25 @@ export function useAutoLock(onLock: () => void, isUnlocked: boolean) {
       lastActivityTime = Date.now();
     };
 
-    // Monitör user activity (fare ve klavye)
-    window.addEventListener('click', userActivity);
-    window.addEventListener('keydown', userActivity);
-    window.addEventListener('mousemove', userActivity);
-    window.addEventListener('touchstart', userActivity);
+    // Monitör user activity (fare, klavye, dokunmatik, ekran kaydırma)
+    const events = ['click', 'keydown', 'mousemove', 'touchstart', 'scroll', 'mousedown'];
+    events.forEach(e => window.addEventListener(e, userActivity));
 
     const lockInterval = setInterval(() => {
       const elapsed = (Date.now() - lastActivityTime) / 1000;
-      // Get the latest timeout config in case it changed without re-mounting
-      const currentTimeout = getIdleTimeout();
       
-      if (currentTimeout > 0 && elapsed >= currentTimeout) {
+      // Merkezi ayardan güncel kilit süresini al (Dakikayı saniyeye çevir)
+      const autoLockMinutes = SecureAppSettings.getAutoLockTime();
+      const currentTimeoutSeconds = autoLockMinutes * 60;
+      
+      if (currentTimeoutSeconds > 0 && elapsed >= currentTimeoutSeconds) {
         onLock();
       }
-    }, 10000); // Check every 10 seconds to improve responsiveness over 30s
+    }, 10000); // Her 10 saniyede bir kontrol et
     
     return () => {
       clearInterval(lockInterval);
-      window.removeEventListener('click', userActivity);
-      window.removeEventListener('keydown', userActivity);
-      window.removeEventListener('mousemove', userActivity);
-      window.removeEventListener('touchstart', userActivity);
+      events.forEach(e => window.removeEventListener(e, userActivity));
     };
-  }, [isUnlocked, onLock, setVersion]);
+  }, [isUnlocked, onLock, version]);
 }

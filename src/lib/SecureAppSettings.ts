@@ -865,6 +865,7 @@ export class SecureAppSettings {
     ensureMutableState();
     stateCache.autoLockTime = value;
     void schedulePersist();
+    window.dispatchEvent(new CustomEvent('aegis-secure-setting-changed', { detail: { key: 'autoLockTime' } }));
   }
 
   static getIdleTimeout(): number {
