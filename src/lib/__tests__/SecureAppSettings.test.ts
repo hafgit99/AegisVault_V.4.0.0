@@ -27,7 +27,6 @@ describe('SecureAppSettings', () => {
     localStorage.setItem('aegis_allow_plaintext_export', '1');
     localStorage.setItem('aegis_hibp_enabled', '1');
     localStorage.setItem('aegis_auto_lock_time', '7');
-    localStorage.setItem('aegis_idle_timeout', '900');
     localStorage.setItem('aegis:view-density', 'compact');
     localStorage.setItem('aegis:theme-mode', 'dark');
     localStorage.setItem('aegis_seen_tour', 'true');
@@ -129,7 +128,6 @@ describe('SecureAppSettings', () => {
     expect(SecureAppSettings.getPlaintextExportEnabled()).toBe(true);
     expect(SecureAppSettings.getHibpEnabled()).toBe(true);
     expect(SecureAppSettings.getAutoLockTime()).toBe(7);
-    expect(SecureAppSettings.getIdleTimeout()).toBe(900);
     expect(SecureAppSettings.getViewDensity()).toBe('compact');
     expect(SecureAppSettings.getThemeMode()).toBe('dark');
     expect(SecureAppSettings.getHasSeenTour()).toBe(true);
@@ -229,7 +227,6 @@ describe('SecureAppSettings', () => {
           title: 'Github',
         },
       ]);
-      SecureAppSettings.setIdleTimeout(480);
 
       expect(listener).toHaveBeenCalledTimes(1);
       expect(listener.mock.calls[0]?.[0]).toBeInstanceOf(CustomEvent);
@@ -274,7 +271,6 @@ describe('SecureAppSettings', () => {
       expect(SecureAppSettings.getSharingAudit()[0]?.type).toBe('space_saved');
       expect(SecureAppSettings.getSecurityCenterHistory()[0]?.title).toBe('Github');
       expect(SecureAppSettings.getSecurityCenterHistory()[0]?.action).toBe('reviewed');
-      expect(SecureAppSettings.getIdleTimeout()).toBe(480);
     } finally {
       window.removeEventListener('aegis-secure-setting-changed', listener);
     }
@@ -311,7 +307,6 @@ describe('SecureAppSettings', () => {
         lastUpdated: 42,
       },
       autoLockTime: 9,
-      idleTimeoutSeconds: 720,
       viewDensity: 'compact',
       themeMode: 'dark',
       hasSeenTour: true,

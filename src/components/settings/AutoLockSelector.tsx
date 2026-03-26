@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
-import { IDLE_TIMEOUT_OPTIONS, getIdleTimeout, setIdleTimeout } from '../../config/security-settings';
+import { IDLE_TIMEOUT_OPTIONS } from '../../config/security-settings';
+import { SecureAppSettings } from '../../lib/SecureAppSettings';
 
 export const AutoLockSelector: React.FC = () => {
-  const [timeoutSec, setTimeoutSec] = useState<number>(() => getIdleTimeout());
+  const [timeoutSec, setTimeoutSec] = useState<number>(() => SecureAppSettings.getAutoLockTime() * 60);
   const [saving, setSaving] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = parseInt(e.target.value, 10);
     setTimeoutSec(val);
     setSaving(true);
-    setIdleTimeout(val);
+    
+    // Convert seconds to minutes for the unified setting
+    const minutes = val / 60;
+    SecureAppSettings.setAutoLockTime(minutes);
     
     setTimeout(() => {
       setSaving(false);

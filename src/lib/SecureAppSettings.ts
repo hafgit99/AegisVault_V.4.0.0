@@ -106,7 +106,6 @@ interface SecureAppSettingsState {
   hibpEnabled: boolean;
   hibpCache: HibpCacheState | null;
   autoLockTime: number;
-  idleTimeoutSeconds: number;
   viewDensity: ViewDensity;
   themeMode: ThemeMode;
   hasSeenTour: boolean;
@@ -166,7 +165,6 @@ const DEFAULT_STATE: SecureAppSettingsState = {
   hibpEnabled: false,
   hibpCache: null,
   autoLockTime: 2,
-  idleTimeoutSeconds: 300,
   viewDensity: 'comfortable',
   themeMode: 'light',
   hasSeenTour: false,
@@ -223,7 +221,6 @@ const cloneState = (state: SecureAppSettingsState): SecureAppSettingsState => ({
       }
     : null,
   autoLockTime: state.autoLockTime,
-  idleTimeoutSeconds: state.idleTimeoutSeconds,
   viewDensity: state.viewDensity,
   themeMode: state.themeMode,
   hasSeenTour: state.hasSeenTour,
@@ -530,7 +527,6 @@ const normalizeState = (value: unknown): SecureAppSettingsState => {
         }
       : null,
     autoLockTime: typeof candidate.autoLockTime === 'number' && !Number.isNaN(candidate.autoLockTime) ? candidate.autoLockTime : DEFAULT_STATE.autoLockTime,
-    idleTimeoutSeconds: typeof candidate.idleTimeoutSeconds === 'number' && !Number.isNaN(candidate.idleTimeoutSeconds) ? candidate.idleTimeoutSeconds : DEFAULT_STATE.idleTimeoutSeconds,
     viewDensity: candidate.viewDensity === 'compact' ? 'compact' : 'comfortable',
     themeMode: candidate.themeMode === 'dark' ? 'dark' : 'light',
     hasSeenTour: Boolean(candidate.hasSeenTour),
@@ -660,7 +656,6 @@ const loadLegacyState = (): SecureAppSettingsState => {
       hibpEnabled: localStorage.getItem(LEGACY_KEYS.hibpEnabled) === '1',
       hibpCache: hibpCacheParsed,
       autoLockTime: Number.parseInt(localStorage.getItem(LEGACY_KEYS.autoLockTime) || '', 10),
-      idleTimeoutSeconds: Number.parseInt(localStorage.getItem(LEGACY_KEYS.idleTimeout) || '', 10),
       viewDensity: localStorage.getItem(LEGACY_KEYS.viewDensity) === 'compact' ? 'compact' : 'comfortable',
       themeMode: localStorage.getItem(LEGACY_KEYS.themeMode) === 'dark' ? 'dark' : 'light',
       hasSeenTour: localStorage.getItem(LEGACY_KEYS.seenTour) === 'true',
@@ -866,18 +861,6 @@ export class SecureAppSettings {
     stateCache.autoLockTime = value;
     void schedulePersist();
     window.dispatchEvent(new CustomEvent('aegis-secure-setting-changed', { detail: { key: 'autoLockTime' } }));
-  }
-
-  static getIdleTimeout(): number {
-    ensureBootstrapped();
-    return stateCache.idleTimeoutSeconds;
-  }
-
-  static setIdleTimeout(value: number): void {
-    ensureMutableState();
-    stateCache.idleTimeoutSeconds = value;
-    void schedulePersist();
-    window.dispatchEvent(new CustomEvent('aegis-secure-setting-changed', { detail: { key: 'idleTimeout' } }));
   }
 
   static getViewDensity(): ViewDensity {
