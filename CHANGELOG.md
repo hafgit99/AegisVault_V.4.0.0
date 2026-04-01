@@ -11,6 +11,10 @@ All notable changes to this project are documented in this file.
 - New persistence model in SecureAppSettings for emergency contacts, requests, audit, and policy.
 - EmergencyAccessService with request orchestration (`request`, `approve`, `reject`, `revoke`, `evaluateState`, `summary`).
 - Unit tests for Emergency Access service lifecycle scenarios.
+- Independent audit preparation document pack in English under `guvenlik/belgeler/`.
+- Security application templates for OSTIF, Mozilla MOSS, and OpenSSF review programs.
+- OSS-Fuzz eligibility/application notes and preparation checklist.
+- Dedicated CI workflows for CodeQL and Semgrep static security analysis.
 
 ### Changed
 
@@ -18,6 +22,7 @@ All notable changes to this project are documented in this file.
 - Password generation flow improved for registration scenarios.
 - Language handling improved for Turkish/English usage paths.
 - CLI documentation structure finalized (TR/EN guides and cheat sheets).
+- `SECURITY.md` rewritten with explicit audit policy and disclosure workflow.
 
 ### Fixed
 

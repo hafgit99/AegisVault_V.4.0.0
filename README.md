@@ -83,10 +83,12 @@ npm run cli -- list --limit 25
 ## Security and Governance
 
 - [Security Policy](SECURITY.md)
-- [Threat Model (TR)](guvenlik/THREAT_MODEL.md)
-- [Threat Model (EN)](guvenlik/THREAT_MODEL_EN.md)
-- [Security Whitepaper (TR)](guvenlik/SECURITY_WHITEPAPER.md)
-- [Security Whitepaper (EN)](guvenlik/SECURITY_WHITEPAPER_EN.md)
+- [Audit Preparation Pack (EN)](guvenlik/belgeler/README_AUDIT_PREP_EN.md)
+- [Threat Model (EN)](guvenlik/belgeler/THREAT_MODEL_EN.md)
+- [Security Whitepaper (EN)](guvenlik/belgeler/SECURITY_WHITEPAPER_EN.md)
+- [Audit Application Pack (EN)](guvenlik/belgeler/AUDIT_APPLICATION_PACK_EN.md)
+- [Private Vulnerability Reporting Setup (EN)](guvenlik/belgeler/PRIVATE_VULNERABILITY_REPORTING_SETUP_EN.md)
+- [OSS-Fuzz Application Notes (EN)](guvenlik/belgeler/OSS_FUZZ_APPLICATION_EN.md)
 - [Release Verification Guide](docs/VERIFY_RELEASE_TR.md)
 
 ## GitHub Safety Note

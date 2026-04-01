@@ -1,135 +1,93 @@
-# 🔐 Aegis Vault — Security Policy
+# Aegis Vault Security Policy
 
-## Security Model
+Last updated: 2026-04-01
 
-Aegis Vault is a **Zero-Knowledge** password manager. All sensitive data is encrypted client-side:
+## Security model
 
-- **Key Derivation:** `Argon2id` (64 MB memory, 3 iterations)
-- **Encryption:** `AES-256-GCM`
-- **Extension Bridge:** `HMAC-SHA256` challenge-response
-- **Biometrics:** `WebAuthn PRF` (device-bound, no server contact)
+Aegis Vault is designed as an offline-first, local zero-knowledge password manager.
 
-Your **Master Password NEVER leaves your device.**
+- Key derivation: `Argon2id`
+- Encryption: `AES-256-GCM`
+- Extension/Desktop bridge: challenge-response with integrity verification
+- Biometric unlock path: `WebAuthn` (device-bound)
 
----
+Master credentials and decrypted vault data are not intended to leave the user's device as plaintext.
 
-## Security Hardening (v4.0.0)
+## Supported versions
 
-### ✅ P0 Critical Fixes Applied
-- **Dev Mode Origin Bypass Closed** — No wildcard (`*`) CORS origins in any mode.
-- **CSP Hardened** — Removed `'unsafe-eval'` and `'unsafe-inline'`. Only `'wasm-unsafe-eval'` for WebAssembly.
-- **Extension Allowlist Hardening** — Static allowlist for extension ID validation; race condition attacks blocked.
-- **IPC Sender Validation** — Electron IPC messages validated against `mainWindow.webContents.mainFrame`.
-- **Loopback Pairing Hardening** — Desktop extension sync now requires explicit enablement plus a shared pairing secret before any challenge is issued.
-- **Main Process Plaintext Reduction** — Electron main no longer keeps a replicated plaintext vault; credentials are requested from the renderer on demand per domain.
-- **Native Messaging Migration Foundation** — The extension can now prefer a native messaging transport when a registered native host is available, reducing long-term dependence on loopback HTTP.
-- **Native Host Skeleton Added** — The repository now contains a native messaging host bridge and manifest generator to support the next migration step away from loopback-only desktop sync.
-- **Cross-Browser Native Host Registration** — Windows installer and recovery scripts now register and clean up native host entries for Chrome, Edge, and Firefox.
-- **Native Host Artifact Verification** — CI validates generated native host manifests before publishing Windows artifacts.
-- **Direct Local IPC for Native Host** — The native host now reaches Electron through a local named pipe / Unix socket bridge instead of calling the loopback HTTP server internally.
-- **Native IPC Request Authentication** — Electron now requires HMAC-authenticated native-bridge messages, so raw pipe access alone is not enough to query vault state or domain credentials.
-- **Loopback Fallback Narrowed** — When native messaging is enabled, the extension no longer falls back to loopback automatically unless explicitly allowed for recovery/dev scenarios.
-- **Runtime Pairing Secret Foundation** — The extension can now store a pairing secret in browser storage, reducing dependence on build-time secret injection and preparing for a fuller persistent pairing model.
-- **User-Approved Pairing Foundation** — Electron can now approve and persist per-extension pairing secrets, forming the basis for a stronger long-lived desktop-extension trust relationship.
+Security fixes are currently provided for:
 
-### ✅ P1 High Priority Fixes Applied
-- **Comprehensive Test Coverage** — Origin validation, CSP headers, extension ID format.
-- **Extension ID Format Validation** — Null, empty, and non-string extension IDs rejected.
-- **TypeScript Strict Types** — `Uint8Array` ↔ `BufferSource` conversions hardened.
+- `main` (development line)
+- Latest production tag (`v4.x`)
 
----
+Older tags may be unsupported for security patches.
 
-## Scope
+## Private vulnerability reporting
 
-### In-Scope
-| Component | Description |
-|-----------|-------------|
-| `src/vaultService.ts` | AES-256-GCM encryption, Argon2id KDF |
-| `src/lib/webAuthn.ts` | WebAuthn / Passkey PRF extension |
-| `src/lib/ExtensionBridge.ts` | HMAC challenge-response bridge |
-| `electron-main.cjs` | Electron IPC hardening |
-| `src/components/VaultLogin.tsx` | Authentication UI |
-| `aegis-wxt/` | Browser extension (WXT + MV3) |
+Do not open public issues for security vulnerabilities.
 
-### Out-of-Scope
-- Denial of Service (DoS) attacks on personal devices
-- Malware/keyloggers on the victim's device
-- Social engineering / phishing
-- Third-party dependency vulnerabilities (report upstream)
+Primary contact:
+- Email: `admin@aegisvault.xyz`
 
----
+Recommended report content:
+1. Affected component and version/commit.
+2. Reproduction steps with clear preconditions.
+3. Impact and likely attack path.
+4. Optional PoC and mitigations.
 
-## Reporting a Vulnerability
+Target response times:
+- Acknowledgement: within 48 hours
+- Initial triage: within 5 business days
+- Critical fix target: within 10 days (when feasible)
 
-> ⚠️ **Do NOT open a public GitHub issue for security vulnerabilities.**
+## Coordinated disclosure policy
 
-Please email us directly:
+We follow coordinated disclosure:
 
-**📧 admin@aegisvault.xyz**
+1. Report received and acknowledged.
+2. Severity triage and fix plan.
+3. Patch development and validation.
+4. Public advisory after patch availability.
 
-Include:
-1. Detailed steps to reproduce
-2. Affected version of Aegis Vault
-3. Proof-of-Concept code (if applicable)
-4. Estimated severity (Critical / High / Medium / Low)
+## Security audit policy
 
-We will acknowledge receipt **within 48 hours** and aim to deploy a fix **within 10 days** for critical issues.
+The project is in active independent-audit preparation.
 
----
+Current policy:
+- Threat model and whitepaper are published in [`guvenlik/belgeler`](guvenlik/belgeler).
+- Static analysis runs in CI (`CodeQL`, `Semgrep`) for pull requests and pushes.
+- High-risk areas (crypto, vault storage, bridge auth, import/export, sync) require explicit security review.
+- Security-impacting changes should include tests and updated documentation.
 
-## Disclosure Policy
+Planned external review channels:
+- OSTIF proposal submission
+- Mozilla MOSS submission
+- OpenSSF Security Review submission
+- OSS-Fuzz/ClusterFuzz assessment and submission package
 
-| Phase | Timeline |
-|-------|----------|
-| Acknowledgment | Within 48 hours |
-| Triage & Assessment | Within 5 business days |
-| Patch Development | Within 10 days (P0 Critical) |
-| Public Disclosure | After fix is verified and distributed |
+See:
+- [`guvenlik/belgeler/README_AUDIT_PREP_EN.md`](guvenlik/belgeler/README_AUDIT_PREP_EN.md)
+- [`guvenlik/belgeler/AUDIT_APPLICATION_PACK_EN.md`](guvenlik/belgeler/AUDIT_APPLICATION_PACK_EN.md)
 
-We follow **responsible disclosure**. Your report will remain strictly confidential until a patch is available.
+## In-scope components
 
----
+- `src/vaultService.ts`
+- `src/lib/*` (crypto, import/export, sync, bridge, emergency access)
+- `electron-main.cjs` and native host scripts
+- `aegis-wxt/` browser extension runtime
 
-## Security Practices
+## Out-of-scope examples
 
-- 🔍 Dependencies scanned via GitHub Actions (Dependabot enabled)
-- 🛡️ Any change affecting encryption or IPC requires manual security review
-- 📜 Encrypted export (`.aes`) is the default; plaintext export is heavily discouraged
-- 🧪 E2E security tests run on every PR (`npm run test:e2e`)
+- Device-level malware or keyloggers
+- Full OS/kernel compromise
+- Social engineering attacks
+- Third-party vulnerabilities that must be fixed upstream
 
----
+## Best-practice reminders
 
-## Audit Readiness
-
-The project is now in a pre-audit preparation phase rather than an early hardening-only phase.
-
-Current state:
-
-- Desktop-extension native messaging and pairing are operational
-- Main-process plaintext spread has been reduced
-- Windows native host packaging and registration flows exist
-- Trust boundary and data-flow documentation has been formalized in the whitepaper and threat model
-- Lint and test evidence are still not at audit-ready quality
-
-Reference note:
-
-- `guvenlik/SECURITY_AUDIT_READINESS_2026-03-15_TR.md`
-- `guvenlik/SECURITY_WHITEPAPER.md`
-- `guvenlik/THREAT_MODEL.md`
-
----
-
-## Acknowledgments
-
-We are grateful to the security researchers who have responsibly disclosed vulnerabilities:
-
-> *This section will be updated as reports are received and verified.*
-
----
-
-## Contact
-
-- **Security:** admin@aegisvault.xyz
-- **GitHub:** https://github.com/hafgit99/AegisVault_V.4.0.0
-- **Security Policy:** https://github.com/hafgit99/AegisVault_V.4.0.0/blob/main/SECURITY.md
-- **security.txt:** https://aegisvault.xyz/.well-known/security.txt
+- Never commit secrets, signing keys, private certificates, or `.env` credentials.
+- Keep dependency updates and lockfiles reviewed.
+- Run local checks before release candidates:
+  - `npm run lint`
+  - `npm run test:unit`
+  - `npm run test:security-regression`
