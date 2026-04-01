@@ -12,6 +12,15 @@ describe('QRSyncService', () => {
       website: 'https://example.com',
       category: 'Work',
       tags: ['critical'],
+      cardDetails: {
+        cardholder_name: 'Alice Doe',
+        card_number: '4111111111111111',
+        brand: 'visa',
+      },
+      identityDetails: {
+        document_type: 'national_id',
+        identity_number: '12345678901',
+      },
     },
   ];
 
@@ -41,6 +50,8 @@ describe('QRSyncService', () => {
     expect(parsed).toHaveLength(1);
     expect(parsed[0].title).toBe('Example');
     expect(parsed[0].pass).toBe('Sup3rSecret!');
+    expect(parsed[0].cardDetails?.card_number).toBe('4111111111111111');
+    expect(parsed[0].identityDetails?.identity_number).toBe('12345678901');
   });
 
   it('rejects incorrect transfer codes', async () => {

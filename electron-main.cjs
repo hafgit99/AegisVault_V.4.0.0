@@ -24,6 +24,8 @@ const pendingDomainCredentialRequests = new Map();
 const pendingDomainPasskeyRequests = new Map();
 const pendingPasskeyAuthRequests = new Map();
 const pendingPasskeyRegRequests = new Map();
+const pendingAutosaveCredentialRequests = new Map();
+const pendingVaultCliRequests = new Map();
 let nativeBridgeServer = null;
 let nativeBridgeSocketPath = null;
 let desktopBridgeIdentity = null;
@@ -47,6 +49,7 @@ const DEFAULT_ALLOWLIST_EXTENSION_IDS = [
   'gddgomiecgnihlljfkogfjgakedoielk',
   'kjbdjkfijeflhhbnkjgkmccljifidpcc',
   'aegisvault@example.com',
+  'aegisvault-cli@local',
 ];
 const chromiumDevExtensionIdPath = path.join(__dirname, 'aegis-wxt', 'dev', 'chromium-extension-id.txt');
 if (fs.existsSync(chromiumDevExtensionIdPath)) {
@@ -180,6 +183,31 @@ function sanitizeCredentialArray(data) {
       username: String(item.username || ''),
       pass: String(item.pass || ''),
       website: String(item.website || ''),
+      category: String(item.category || ''),
+      cardDetails: item.cardDetails && typeof item.cardDetails === 'object'
+        ? {
+            cardholder_name: String(item.cardDetails.cardholder_name || ''),
+            card_number: String(item.cardDetails.card_number || ''),
+            brand: String(item.cardDetails.brand || ''),
+            expiry_month: String(item.cardDetails.expiry_month || ''),
+            expiry_year: String(item.cardDetails.expiry_year || ''),
+            cvv: String(item.cardDetails.cvv || ''),
+            pin: String(item.cardDetails.pin || ''),
+            billing_zip: String(item.cardDetails.billing_zip || ''),
+            billing_address: String(item.cardDetails.billing_address || ''),
+          }
+        : null,
+      identityDetails: item.identityDetails && typeof item.identityDetails === 'object'
+        ? {
+            document_type: String(item.identityDetails.document_type || ''),
+            identity_number: String(item.identityDetails.identity_number || ''),
+            issuing_country: String(item.identityDetails.issuing_country || ''),
+            nationality: String(item.identityDetails.nationality || ''),
+            date_of_birth: String(item.identityDetails.date_of_birth || ''),
+            issued_at: String(item.identityDetails.issued_at || ''),
+            expires_at: String(item.identityDetails.expires_at || ''),
+          }
+        : null,
     }))
     .filter((item) => item.pass && item.website);
 }
@@ -200,6 +228,55 @@ function sanitizePasskeyArray(data) {
       } : null,
     }))
     .filter((item) => item.passkeyMetadata && item.website);
+}
+
+function sanitizeAutosaveCredential(value) {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value;
+  const website = String(candidate.website || '').trim();
+  const pass = String(candidate.pass || '');
+  if (!website || !pass) return null;
+
+  return {
+    title: String(candidate.title || '').slice(0, 120),
+    username: String(candidate.username || '').slice(0, 256),
+    pass: pass.slice(0, 1024),
+    website: website.slice(0, 512),
+    submittedAt: typeof candidate.submittedAt === 'string' ? candidate.submittedAt : new Date().toISOString(),
+    source: typeof candidate.source === 'string' ? candidate.source : 'browser_form',
+  };
+}
+
+function sanitizeVaultEntryForBridge(value) {
+  if (!value || typeof value !== 'object') return null;
+  const item = value;
+  const id = Number(item.id);
+  if (!Number.isFinite(id)) return null;
+  return {
+    id,
+    title: String(item.title || '').slice(0, 256),
+    username: String(item.username || '').slice(0, 256),
+    pass: String(item.pass || '').slice(0, 1024),
+    website: String(item.website || '').slice(0, 512),
+    category: String(item.category || 'General').slice(0, 64),
+    tags: Array.isArray(item.tags) ? item.tags.slice(0, 32).map((tag) => String(tag || '').slice(0, 64)) : [],
+    updated_at: typeof item.updated_at === 'string' ? item.updated_at : '',
+    deletedAt: typeof item.deletedAt === 'string' ? item.deletedAt : undefined,
+  };
+}
+
+function sanitizeVaultEntryInput(value) {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value;
+  const pass = String(candidate.pass || '');
+  return {
+    title: String(candidate.title || '').slice(0, 256),
+    username: String(candidate.username || '').slice(0, 256),
+    pass: pass.slice(0, 1024),
+    website: String(candidate.website || '').slice(0, 512),
+    category: String(candidate.category || 'General').slice(0, 64),
+    tags: Array.isArray(candidate.tags) ? candidate.tags.slice(0, 32).map((tag) => String(tag || '').slice(0, 64)) : [],
+  };
 }
 
 function requestDomainCredentialsFromRenderer(domain) {
@@ -298,6 +375,121 @@ function requestPasskeyAuthFromRenderer(options) {
       clearTimeout(timeout);
       pendingPasskeyAuthRequests.delete(requestId);
       reject(err);
+    }
+  });
+}
+
+function requestAutosaveCredentialFromRenderer(credential, context = {}) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return Promise.resolve({ saved: false, error: 'MAIN_WINDOW_NOT_AVAILABLE' });
+  }
+
+  const sanitizedCredential = sanitizeAutosaveCredential(credential);
+  if (!sanitizedCredential) {
+    return Promise.resolve({ saved: false, error: 'INVALID_CREDENTIAL' });
+  }
+
+  const requestId = crypto.randomUUID();
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      pendingAutosaveCredentialRequests.delete(requestId);
+      resolve({ saved: false, error: 'TIMEOUT' });
+    }, 4000);
+
+    pendingAutosaveCredentialRequests.set(requestId, {
+      resolve: (result) => {
+        clearTimeout(timeout);
+        if (!result || typeof result !== 'object') {
+          resolve({ saved: false, error: 'INVALID_RENDERER_RESPONSE' });
+          return;
+        }
+        resolve({
+          saved: Boolean(result.saved),
+          action: typeof result.action === 'string' ? result.action : 'none',
+          entryId: Number.isFinite(Number(result.entryId)) ? Number(result.entryId) : undefined,
+          error: typeof result.error === 'string' ? result.error : undefined,
+        });
+      },
+    });
+
+    try {
+      mainWindow.webContents.send('aegis-autosave-credential-request', {
+        requestId,
+        credential: sanitizedCredential,
+        context: {
+          extensionId: typeof context.extensionId === 'string' ? context.extensionId : '',
+          domain: typeof context.domain === 'string' ? context.domain : '',
+          browserName: typeof context.browserName === 'string' ? context.browserName : '',
+        },
+      });
+    } catch {
+      clearTimeout(timeout);
+      pendingAutosaveCredentialRequests.delete(requestId);
+      resolve({ saved: false, error: 'IPC_SEND_FAILED' });
+    }
+  });
+}
+
+function requestVaultCliOperationFromRenderer(operation, payload = {}) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return Promise.resolve({ ok: false, error: 'MAIN_WINDOW_NOT_AVAILABLE' });
+  }
+
+  const requestId = crypto.randomUUID();
+  const normalizedOperation = typeof operation === 'string' ? operation.trim().toLowerCase() : '';
+
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      pendingVaultCliRequests.delete(requestId);
+      resolve({ ok: false, error: 'TIMEOUT' });
+    }, 8000);
+
+    pendingVaultCliRequests.set(requestId, {
+      resolve: (result) => {
+        clearTimeout(timeout);
+        if (!result || typeof result !== 'object') {
+          resolve({ ok: false, error: 'INVALID_RENDERER_RESPONSE' });
+          return;
+        }
+        const ok = Boolean(result.ok);
+        const error = typeof result.error === 'string' ? result.error : undefined;
+        if (normalizedOperation === 'list') {
+          const list = Array.isArray(result.data) ? result.data : [];
+          resolve({
+            ok,
+            error: ok ? undefined : (error || 'LIST_FAILED'),
+            data: list
+              .map((entry) => sanitizeVaultEntryForBridge(entry))
+              .filter(Boolean),
+          });
+          return;
+        }
+        if (normalizedOperation === 'get') {
+          resolve({
+            ok,
+            error: ok ? undefined : (error || 'GET_FAILED'),
+            data: sanitizeVaultEntryForBridge(result.data),
+          });
+          return;
+        }
+        resolve({
+          ok,
+          error: ok ? undefined : (error || 'CLI_OPERATION_FAILED'),
+          data: result.data,
+        });
+      },
+    });
+
+    try {
+      mainWindow.webContents.send('aegis-vault-cli-request', {
+        requestId,
+        operation: normalizedOperation,
+        payload: payload && typeof payload === 'object' ? payload : {},
+      });
+    } catch {
+      clearTimeout(timeout);
+      pendingVaultCliRequests.delete(requestId);
+      resolve({ ok: false, error: 'IPC_SEND_FAILED' });
     }
   });
 }
@@ -1110,6 +1302,150 @@ async function handleNativeBridgeRequest(message) {
     return { ok: true, data: matches };
   }
 
+  if (type === 'AUTOSAVE_CREDENTIAL') {
+    const requestDomain = normalizeDomain(typeof message?.domain === 'string' ? message.domain : '');
+    const credential = sanitizeAutosaveCredential(message?.credential);
+    if (!requestDomain || !credential) {
+      return { ok: false, error: 'INVALID_AUTOSAVE_PAYLOAD' };
+    }
+
+    if (!vaultState.unlocked) {
+      return { ok: false, error: 'VAULT_LOCKED' };
+    }
+
+    const result = await requestAutosaveCredentialFromRenderer(credential, {
+      extensionId,
+      domain: requestDomain,
+      browserName: clientInfo.browserName,
+    });
+    touchPairingUsage(extensionId, clientInfo, 'autosave-credential');
+    return {
+      ok: Boolean(result.saved),
+      saved: Boolean(result.saved),
+      action: typeof result.action === 'string' ? result.action : 'none',
+      entryId: Number.isFinite(Number(result.entryId)) ? Number(result.entryId) : undefined,
+      error: result.saved ? undefined : (result.error || 'AUTOSAVE_REJECTED'),
+    };
+  }
+
+  if (type === 'LIST_VAULT_ENTRIES') {
+    if (!vaultState.unlocked) {
+      return { ok: false, error: 'VAULT_LOCKED', data: [] };
+    }
+    const result = await requestVaultCliOperationFromRenderer('list', {
+      query: typeof message?.query === 'string' ? message.query : '',
+      category: typeof message?.category === 'string' ? message.category : '',
+      scope: typeof message?.scope === 'string' ? message.scope : 'active',
+      searchScope: typeof message?.searchScope === 'string' ? message.searchScope : 'all',
+      limit: Number.isFinite(Number(message?.limit)) ? Number(message.limit) : 50,
+    });
+    touchPairingUsage(extensionId, clientInfo, 'cli-list');
+    return {
+      ok: Boolean(result?.ok),
+      error: result?.ok ? undefined : String(result?.error || 'CLI_LIST_FAILED'),
+      data: Array.isArray(result?.data) ? result.data : [],
+    };
+  }
+
+  if (type === 'GET_VAULT_ENTRY') {
+    if (!vaultState.unlocked) {
+      return { ok: false, error: 'VAULT_LOCKED', data: null };
+    }
+    const entryId = Number.isFinite(Number(message?.entryId)) ? Number(message.entryId) : NaN;
+    if (!Number.isFinite(entryId)) {
+      return { ok: false, error: 'INVALID_ENTRY_ID', data: null };
+    }
+    const result = await requestVaultCliOperationFromRenderer('get', { entryId });
+    touchPairingUsage(extensionId, clientInfo, 'cli-get');
+    return {
+      ok: Boolean(result?.ok),
+      error: result?.ok ? undefined : String(result?.error || 'CLI_GET_FAILED'),
+      data: result?.data || null,
+    };
+  }
+
+  if (type === 'CREATE_VAULT_ENTRY') {
+    if (!vaultState.unlocked) {
+      return { ok: false, error: 'VAULT_LOCKED' };
+    }
+    const entry = sanitizeVaultEntryInput(message?.entry);
+    if (!entry?.title || !entry?.pass) {
+      return { ok: false, error: 'INVALID_ENTRY_PAYLOAD' };
+    }
+    const result = await requestVaultCliOperationFromRenderer('create', { entry });
+    touchPairingUsage(extensionId, clientInfo, 'cli-create');
+    return {
+      ok: Boolean(result?.ok),
+      error: result?.ok ? undefined : String(result?.error || 'CLI_CREATE_FAILED'),
+      data: result?.data || null,
+    };
+  }
+
+  if (type === 'UPDATE_VAULT_ENTRY') {
+    if (!vaultState.unlocked) {
+      return { ok: false, error: 'VAULT_LOCKED' };
+    }
+    const entryId = Number.isFinite(Number(message?.entryId)) ? Number(message.entryId) : NaN;
+    const entry = sanitizeVaultEntryInput(message?.entry);
+    if (!Number.isFinite(entryId) || !entry) {
+      return { ok: false, error: 'INVALID_ENTRY_PAYLOAD' };
+    }
+    const result = await requestVaultCliOperationFromRenderer('update', { entryId, entry });
+    touchPairingUsage(extensionId, clientInfo, 'cli-update');
+    return {
+      ok: Boolean(result?.ok),
+      error: result?.ok ? undefined : String(result?.error || 'CLI_UPDATE_FAILED'),
+      data: result?.data || null,
+    };
+  }
+
+  if (type === 'DELETE_VAULT_ENTRY') {
+    if (!vaultState.unlocked) {
+      return { ok: false, error: 'VAULT_LOCKED' };
+    }
+    const entryId = Number.isFinite(Number(message?.entryId)) ? Number(message.entryId) : NaN;
+    if (!Number.isFinite(entryId)) {
+      return { ok: false, error: 'INVALID_ENTRY_ID' };
+    }
+    const result = await requestVaultCliOperationFromRenderer('delete', { entryId });
+    touchPairingUsage(extensionId, clientInfo, 'cli-delete');
+    return {
+      ok: Boolean(result?.ok),
+      error: result?.ok ? undefined : String(result?.error || 'CLI_DELETE_FAILED'),
+      data: result?.data || null,
+    };
+  }
+
+  if (type === 'RESTORE_VAULT_ENTRY') {
+    if (!vaultState.unlocked) {
+      return { ok: false, error: 'VAULT_LOCKED' };
+    }
+    const entryId = Number.isFinite(Number(message?.entryId)) ? Number(message.entryId) : NaN;
+    if (!Number.isFinite(entryId)) {
+      return { ok: false, error: 'INVALID_ENTRY_ID' };
+    }
+    const result = await requestVaultCliOperationFromRenderer('restore', { entryId });
+    touchPairingUsage(extensionId, clientInfo, 'cli-restore');
+    return {
+      ok: Boolean(result?.ok),
+      error: result?.ok ? undefined : String(result?.error || 'CLI_RESTORE_FAILED'),
+      data: result?.data || null,
+    };
+  }
+
+  if (type === 'EMPTY_VAULT_TRASH') {
+    if (!vaultState.unlocked) {
+      return { ok: false, error: 'VAULT_LOCKED' };
+    }
+    const result = await requestVaultCliOperationFromRenderer('empty-trash', {});
+    touchPairingUsage(extensionId, clientInfo, 'cli-empty-trash');
+    return {
+      ok: Boolean(result?.ok),
+      error: result?.ok ? undefined : String(result?.error || 'CLI_EMPTY_TRASH_FAILED'),
+      data: result?.data || null,
+    };
+  }
+
   if (type === 'AUTH_PASSKEY') {
     const options = message?.options;
     if (!options) {
@@ -1392,6 +1728,25 @@ function buildPairingPayload(method, path, ts, extensionId) {
 function buildNativeBridgePayload(message) {
   const clientInfo = normalizeClientInfo(message?.clientInfo, typeof message?.extensionId === 'string' ? message.extensionId.trim() : '');
   const clientPublicJwk = normalizeClientPublicJwk(message?.clientPublicJwk);
+  const credential = message?.credential && typeof message.credential === 'object'
+    ? {
+        title: typeof message.credential.title === 'string' ? message.credential.title : '',
+        username: typeof message.credential.username === 'string' ? message.credential.username : '',
+        pass: typeof message.credential.pass === 'string' ? message.credential.pass : '',
+        website: typeof message.credential.website === 'string' ? message.credential.website : '',
+        submittedAt: typeof message.credential.submittedAt === 'string' ? message.credential.submittedAt : '',
+        source: typeof message.credential.source === 'string' ? message.credential.source : 'browser_form',
+      }
+    : null;
+  const entry = message?.entry && typeof message.entry === 'object'
+    ? sanitizeVaultEntryInput(message.entry)
+    : null;
+  const entryId = Number.isFinite(Number(message?.entryId)) ? Number(message.entryId) : null;
+  const listQuery = typeof message?.query === 'string' ? message.query.slice(0, 256) : '';
+  const listCategory = typeof message?.category === 'string' ? message.category.slice(0, 64) : '';
+  const listScope = typeof message?.scope === 'string' ? message.scope.slice(0, 16) : '';
+  const listSearchScope = typeof message?.searchScope === 'string' ? message.searchScope.slice(0, 16) : '';
+  const listLimit = Number.isFinite(Number(message?.limit)) ? Number(message.limit) : 0;
   return JSON.stringify({
     type: typeof message?.type === 'string' ? message.type : '',
     extensionId: typeof message?.extensionId === 'string' ? message.extensionId.trim() : '',
@@ -1410,6 +1765,14 @@ function buildNativeBridgePayload(message) {
       userAgent: clientInfo.userAgent,
     },
     clientPublicJwk,
+    credential,
+    entry,
+    entryId,
+    query: listQuery,
+    category: listCategory,
+    scope: listScope,
+    searchScope: listSearchScope,
+    limit: listLimit,
   });
 }
 
@@ -2072,6 +2435,38 @@ ipcMain.on('aegis-auth-passkey-response', (event, payload) => {
   }
 });
 
+ipcMain.on('aegis-autosave-credential-response', (event, payload) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) {
+    console.warn('[IPC] Unauthorized IPC sender for aegis-autosave-credential-response');
+    return;
+  }
+
+  const requestId = typeof payload?.requestId === 'string' ? payload.requestId : '';
+  if (!requestId) return;
+
+  const pending = pendingAutosaveCredentialRequests.get(requestId);
+  if (!pending) return;
+
+  pendingAutosaveCredentialRequests.delete(requestId);
+  pending.resolve(payload?.data || { saved: false, error: 'EMPTY_RESPONSE' });
+});
+
+ipcMain.on('aegis-vault-cli-response', (event, payload) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) {
+    console.warn('[IPC] Unauthorized IPC sender for aegis-vault-cli-response');
+    return;
+  }
+
+  const requestId = typeof payload?.requestId === 'string' ? payload.requestId : '';
+  if (!requestId) return;
+
+  const pending = pendingVaultCliRequests.get(requestId);
+  if (!pending) return;
+
+  pendingVaultCliRequests.delete(requestId);
+  pending.resolve(payload?.data || { ok: false, error: 'EMPTY_RESPONSE' });
+});
+
 ipcMain.handle('list-extension-pairings', (event) => {
   if (!mainWindow || event.sender !== mainWindow.webContents) {
     console.warn('[IPC] Unauthorized IPC sender for list-extension-pairings');
@@ -2311,6 +2706,10 @@ app.on('window-all-closed', () => {
   vaultState.unlocked = false;
   vaultState.entryCount = 0;
   pendingDomainCredentialRequests.clear();
+  pendingDomainPasskeyRequests.clear();
+  pendingPasskeyAuthRequests.clear();
+  pendingAutosaveCredentialRequests.clear();
+  pendingVaultCliRequests.clear();
 
   if (process.platform !== 'darwin') {
     app.quit();

@@ -1,7 +1,7 @@
 import { useState, lazy, Suspense } from "react";
 import { X, Wand2, Eye, EyeOff, ShieldCheck, Lock, Paperclip, FileUp, Tag, KeyRound, FileText, Camera } from "lucide-react";
 import { useVault } from "../../contexts/VaultContext";
-import { vaultService, type VaultEntry } from "../../vaultService";
+import { vaultService, type VaultCardDetails, type VaultEntry, type VaultIdentityDetails } from "../../vaultService";
 import { parseOtpauthUri } from "../../lib/TOTPService";
 import { VaultManager } from "../../lib/VaultManager";
 import { TotpVaultPolicy } from "../../lib/TotpVaultPolicy";
@@ -88,6 +88,8 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
   const isNoteCategory = newEntry.category === "Notes";
   const isWifiCategory = newEntry.category === "WiFi";
   const isPasskeyCategory = newEntry.category === "Passkeys";
+  const isCardCategory = newEntry.category === "Cards";
+  const isIdentityCategory = newEntry.category === "Identities";
 
   const updatePasskeyMetadata = (updates: Record<string, string>) => {
     setNewEntry((prev) => ({
@@ -95,6 +97,26 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
       passkeyMetadata: {
         mode: prev.passkeyMetadata?.mode || "site_passkey_mvp",
         ...prev.passkeyMetadata,
+        ...updates,
+      },
+    }));
+  };
+
+  const updateCardDetails = (updates: Partial<VaultCardDetails>) => {
+    setNewEntry((prev) => ({
+      ...prev,
+      cardDetails: {
+        ...(prev.cardDetails || {}),
+        ...updates,
+      },
+    }));
+  };
+
+  const updateIdentityDetails = (updates: Partial<VaultIdentityDetails>) => {
+    setNewEntry((prev) => ({
+      ...prev,
+      identityDetails: {
+        ...(prev.identityDetails || {}),
         ...updates,
       },
     }));
@@ -227,6 +249,32 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
             setNewEntry((prev) => ({
               ...prev,
               category: e.target.value,
+              cardDetails:
+                e.target.value === "Cards"
+                  ? {
+                      card_number: prev.cardDetails?.card_number || prev.pass || "",
+                      cardholder_name: prev.cardDetails?.cardholder_name || prev.username || "",
+                      brand: prev.cardDetails?.brand || "",
+                      expiry_month: prev.cardDetails?.expiry_month || "",
+                      expiry_year: prev.cardDetails?.expiry_year || "",
+                      cvv: prev.cardDetails?.cvv || "",
+                      pin: prev.cardDetails?.pin || "",
+                      billing_zip: prev.cardDetails?.billing_zip || "",
+                      billing_address: prev.cardDetails?.billing_address || "",
+                    }
+                  : prev.cardDetails,
+              identityDetails:
+                e.target.value === "Identities"
+                  ? {
+                      document_type: prev.identityDetails?.document_type || "",
+                      identity_number: prev.identityDetails?.identity_number || prev.website || "",
+                      issuing_country: prev.identityDetails?.issuing_country || "",
+                      nationality: prev.identityDetails?.nationality || "",
+                      date_of_birth: prev.identityDetails?.date_of_birth || "",
+                      issued_at: prev.identityDetails?.issued_at || "",
+                      expires_at: prev.identityDetails?.expires_at || "",
+                    }
+                  : prev.identityDetails,
               passkeyMetadata:
                 e.target.value === "Passkeys"
                   ? {
@@ -315,9 +363,15 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                 setNewEntry((prev) => ({
                   ...prev,
                   pass: value,
+                  cardDetails: isCardCategory
+                    ? {
+                        ...(prev.cardDetails || {}),
+                        card_number: prev.cardDetails?.card_number || value,
+                      }
+                    : prev.cardDetails,
                   passkeyMetadata: isPasskeyCategory
                     ? {
-                        mode: prev.passkeyMetadata?.mode || "site_passkey_mvp",
+                      mode: prev.passkeyMetadata?.mode || "site_passkey_mvp",
                         ...prev.passkeyMetadata,
                         credential_id: value,
                       }
@@ -548,6 +602,154 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
               <option value="site_passkey_future_rp">{t("passkeyModeFutureRp")}</option>
             </select>
           </>
+        ) : null}
+
+        {isCardCategory ? (
+          <div className="col-span-2 rounded-xl border border-[var(--color-sage-green)]/20 bg-[var(--color-sage-green)]/5 p-4">
+            <div className="mb-3 text-[10px] uppercase font-bold tracking-widest text-[var(--color-sage-green)]">
+              {t("cardDetailsSectionTitle")}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                type="text"
+                placeholder={t("cardholderNamePlaceholder")}
+                value={newEntry.cardDetails?.cardholder_name || ""}
+                onChange={(e) => updateCardDetails({ cardholder_name: e.target.value })}
+                className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              />
+              <input
+                type="text"
+                placeholder={t("cardNumberPlaceholder")}
+                value={newEntry.cardDetails?.card_number || ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  updateCardDetails({ card_number: value });
+                  if (!(newEntry.pass || "").trim()) {
+                    setNewEntry((prev) => ({ ...prev, pass: value }));
+                  }
+                }}
+                className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              />
+              <select
+                value={newEntry.cardDetails?.brand || ""}
+                onChange={(e) => updateCardDetails({ brand: e.target.value })}
+                className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              >
+                <option value="">{t("cardBrandPlaceholder")}</option>
+                <option value="visa">{t("cardBrandVisa")}</option>
+                <option value="mastercard">{t("cardBrandMastercard")}</option>
+                <option value="amex">{t("cardBrandAmex")}</option>
+                <option value="discover">{t("cardBrandDiscover")}</option>
+                <option value="other">{t("cardBrandOther")}</option>
+              </select>
+              <input
+                type="text"
+                placeholder={t("cardExpiryMonthPlaceholder")}
+                value={newEntry.cardDetails?.expiry_month || ""}
+                onChange={(e) => updateCardDetails({ expiry_month: e.target.value })}
+                className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              />
+              <input
+                type="text"
+                placeholder={t("cardExpiryYearPlaceholder")}
+                value={newEntry.cardDetails?.expiry_year || ""}
+                onChange={(e) => updateCardDetails({ expiry_year: e.target.value })}
+                className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              />
+              <input
+                type="text"
+                placeholder={t("cardCvvPlaceholder")}
+                value={newEntry.cardDetails?.cvv || ""}
+                onChange={(e) => updateCardDetails({ cvv: e.target.value })}
+                className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              />
+              <input
+                type="text"
+                placeholder={t("cardPinPlaceholder")}
+                value={newEntry.cardDetails?.pin || ""}
+                onChange={(e) => updateCardDetails({ pin: e.target.value })}
+                className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              />
+              <input
+                type="text"
+                placeholder={t("cardBillingZipPlaceholder")}
+                value={newEntry.cardDetails?.billing_zip || ""}
+                onChange={(e) => updateCardDetails({ billing_zip: e.target.value })}
+                className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              />
+              <textarea
+                rows={2}
+                placeholder={t("cardBillingAddressPlaceholder")}
+                value={newEntry.cardDetails?.billing_address || ""}
+                onChange={(e) => updateCardDetails({ billing_address: e.target.value })}
+                className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none resize-none"
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {isIdentityCategory ? (
+          <div className="col-span-2 rounded-xl border border-[var(--color-sage-green)]/20 bg-[var(--color-sage-green)]/5 p-4">
+            <div className="mb-3 text-[10px] uppercase font-bold tracking-widest text-[var(--color-sage-green)]">
+              {t("identityDetailsSectionTitle")}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <select
+                value={newEntry.identityDetails?.document_type || ""}
+                onChange={(e) => updateIdentityDetails({ document_type: e.target.value })}
+                className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              >
+                <option value="">{t("identityDocumentTypePlaceholder")}</option>
+                <option value="national_id">{t("identityDocumentTypeNationalId")}</option>
+                <option value="passport">{t("identityDocumentTypePassport")}</option>
+                <option value="driver_license">{t("identityDocumentTypeDriverLicense")}</option>
+                <option value="residence_permit">{t("identityDocumentTypeResidencePermit")}</option>
+                <option value="other">{t("identityDocumentTypeOther")}</option>
+              </select>
+              <input
+                type="text"
+                placeholder={t("identityNumberPlaceholder")}
+                value={newEntry.identityDetails?.identity_number || ""}
+                onChange={(e) => updateIdentityDetails({ identity_number: e.target.value })}
+                className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              />
+              <input
+                type="text"
+                placeholder={t("identityIssuingCountryPlaceholder")}
+                value={newEntry.identityDetails?.issuing_country || ""}
+                onChange={(e) => updateIdentityDetails({ issuing_country: e.target.value })}
+                className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              />
+              <input
+                type="text"
+                placeholder={t("identityNationalityPlaceholder")}
+                value={newEntry.identityDetails?.nationality || ""}
+                onChange={(e) => updateIdentityDetails({ nationality: e.target.value })}
+                className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              />
+              <input
+                type="text"
+                placeholder={t("identityBirthDatePlaceholder")}
+                value={newEntry.identityDetails?.date_of_birth || ""}
+                onChange={(e) => updateIdentityDetails({ date_of_birth: e.target.value })}
+                className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              />
+              <input
+                type="text"
+                placeholder={t("identityIssuedAtPlaceholder")}
+                value={newEntry.identityDetails?.issued_at || ""}
+                onChange={(e) => updateIdentityDetails({ issued_at: e.target.value })}
+                className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              />
+              <input
+                type="text"
+                placeholder={t("identityExpiresAtPlaceholder")}
+                value={newEntry.identityDetails?.expires_at || ""}
+                onChange={(e) => updateIdentityDetails({ expires_at: e.target.value })}
+                className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              />
+            </div>
+          </div>
         ) : null}
 
         {/* TOTP 2FA Section */}

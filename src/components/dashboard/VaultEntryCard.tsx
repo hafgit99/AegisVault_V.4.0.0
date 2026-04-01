@@ -58,8 +58,24 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
     ? SharedSpaceService.listSpaces().find((space) => space.id === p.sharing?.[0]?.space_id)?.name
     : null;
   const isSitePasskeyRecord = p.category === "Passkeys" || Boolean(p.passkeyMetadata);
+  const isCardRecord = p.category === "Cards" && Boolean(p.cardDetails);
+  const isIdentityRecord = p.category === "Identities" && Boolean(p.identityDetails);
 
   const compact = viewDensity === "compact";
+
+  const maskCardNumber = (value: string) => {
+    const digits = String(value || "").replace(/\D/g, "");
+    if (!digits) return "";
+    const lastFour = digits.slice(-4);
+    return `•••• •••• •••• ${lastFour}`;
+  };
+
+  const maskIdentityNumber = (value: string) => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (raw.length <= 4) return raw;
+    return `${raw.slice(0, 2)}••••${raw.slice(-2)}`;
+  };
 
   return (
     <article className={`vault-entry-card grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] ${compact ? "gap-3 p-4" : "gap-4 p-5 md:p-6"} rounded-[1.25rem] transition-all relative group/item`}>
@@ -122,6 +138,42 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
           </div>
 
           <div className="space-y-2">
+            {isCardRecord && (
+              <div className="vault-entry-notes-box flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-lg">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-sage-green)]">
+                  {t("cards")}
+                </span>
+                {p.cardDetails?.brand ? (
+                  <span className="text-[11px] opacity-70">{p.cardDetails.brand.toUpperCase()}</span>
+                ) : null}
+                {p.cardDetails?.card_number ? (
+                  <span className="text-[11px] font-mono">{maskCardNumber(p.cardDetails.card_number)}</span>
+                ) : null}
+                {(p.cardDetails?.expiry_month || p.cardDetails?.expiry_year) ? (
+                  <span className="text-[11px] opacity-70">
+                    {p.cardDetails?.expiry_month || "--"}/{p.cardDetails?.expiry_year || "--"}
+                  </span>
+                ) : null}
+              </div>
+            )}
+
+            {isIdentityRecord && (
+              <div className="vault-entry-notes-box flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-lg">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-sage-green)]">
+                  {t("identities")}
+                </span>
+                {p.identityDetails?.document_type ? (
+                  <span className="text-[11px] opacity-70">{p.identityDetails.document_type}</span>
+                ) : null}
+                {p.identityDetails?.identity_number ? (
+                  <span className="text-[11px] font-mono">{maskIdentityNumber(p.identityDetails.identity_number)}</span>
+                ) : null}
+                {p.identityDetails?.issuing_country ? (
+                  <span className="text-[11px] opacity-70">{p.identityDetails.issuing_country}</span>
+                ) : null}
+              </div>
+            )}
+
             {/* Attachments */}
             {p.attachments && p.attachments.length > 0 && (
               <div className="flex flex-wrap gap-2">

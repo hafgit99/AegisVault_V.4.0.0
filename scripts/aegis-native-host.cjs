@@ -68,6 +68,32 @@ function buildBridgeProof(message, pairingSecret = '') {
       userAgent: typeof message?.clientInfo?.userAgent === 'string' ? message.clientInfo.userAgent.trim() : '',
     },
     clientPublicJwk: message?.clientPublicJwk || null,
+    credential: message?.credential && typeof message.credential === 'object'
+      ? {
+          title: typeof message.credential.title === 'string' ? message.credential.title : '',
+          username: typeof message.credential.username === 'string' ? message.credential.username : '',
+          pass: typeof message.credential.pass === 'string' ? message.credential.pass : '',
+          website: typeof message.credential.website === 'string' ? message.credential.website : '',
+          submittedAt: typeof message.credential.submittedAt === 'string' ? message.credential.submittedAt : '',
+          source: typeof message.credential.source === 'string' ? message.credential.source : 'browser_form',
+        }
+      : null,
+    entry: message?.entry && typeof message.entry === 'object'
+      ? {
+          title: typeof message.entry.title === 'string' ? message.entry.title : '',
+          username: typeof message.entry.username === 'string' ? message.entry.username : '',
+          pass: typeof message.entry.pass === 'string' ? message.entry.pass : '',
+          website: typeof message.entry.website === 'string' ? message.entry.website : '',
+          category: typeof message.entry.category === 'string' ? message.entry.category : '',
+          tags: Array.isArray(message.entry.tags) ? message.entry.tags.map((item) => String(item || '')) : [],
+        }
+      : null,
+    entryId: Number.isFinite(Number(message?.entryId)) ? Number(message.entryId) : 0,
+    query: typeof message?.query === 'string' ? message.query : '',
+    category: typeof message?.category === 'string' ? message.category : '',
+    scope: typeof message?.scope === 'string' ? message.scope : '',
+    searchScope: typeof message?.searchScope === 'string' ? message.searchScope : '',
+    limit: Number.isFinite(Number(message?.limit)) ? Number(message.limit) : 0,
   });
 
   return crypto
@@ -84,6 +110,35 @@ function createSignedBridgePayload(message, pairingSecret = '') {
 }
 
 function buildForwardBridgeMessage(message, overrides = {}) {
+  const rawCredential = message?.credential && typeof message.credential === 'object'
+    ? message.credential
+    : null;
+  const credential = rawCredential
+    ? {
+        title: String(rawCredential.title || '').slice(0, 120),
+        username: String(rawCredential.username || '').slice(0, 256),
+        pass: String(rawCredential.pass || '').slice(0, 1024),
+        website: String(rawCredential.website || '').slice(0, 512),
+        submittedAt: typeof rawCredential.submittedAt === 'string' ? rawCredential.submittedAt : '',
+        source: typeof rawCredential.source === 'string' ? rawCredential.source : 'browser_form',
+      }
+    : null;
+  const rawEntry = message?.entry && typeof message.entry === 'object'
+    ? message.entry
+    : null;
+  const entry = rawEntry
+    ? {
+        title: String(rawEntry.title || '').slice(0, 256),
+        username: String(rawEntry.username || '').slice(0, 256),
+        pass: String(rawEntry.pass || '').slice(0, 1024),
+        website: String(rawEntry.website || '').slice(0, 512),
+        category: String(rawEntry.category || 'General').slice(0, 64),
+        tags: Array.isArray(rawEntry.tags)
+          ? rawEntry.tags.slice(0, 32).map((item) => String(item || '').slice(0, 64))
+          : [],
+      }
+    : null;
+
   return {
     ...overrides,
     type: typeof overrides.type === 'string' ? overrides.type : message.type,
@@ -97,6 +152,14 @@ function buildForwardBridgeMessage(message, overrides = {}) {
     clientNonce: typeof message?.clientNonce === 'string' ? message.clientNonce : '',
     clientSignature: typeof message?.clientSignature === 'string' ? message.clientSignature : '',
     clientPublicJwk: message?.clientPublicJwk || null,
+    credential,
+    entryId: Number.isFinite(Number(message?.entryId)) ? Number(message.entryId) : undefined,
+    entry,
+    query: typeof message?.query === 'string' ? message.query.slice(0, 256) : '',
+    category: typeof message?.category === 'string' ? message.category.slice(0, 64) : '',
+    scope: typeof message?.scope === 'string' ? message.scope.slice(0, 16) : '',
+    searchScope: typeof message?.searchScope === 'string' ? message.searchScope.slice(0, 16) : '',
+    limit: Number.isFinite(Number(message?.limit)) ? Number(message.limit) : undefined,
   };
 }
 
@@ -328,6 +391,123 @@ async function handleMessageWithDeps(
         error: data?.ok ? undefined : String(data?.error || 'DOMAIN_FAILED'),
         data: Array.isArray(data?.data) ? data.data : [],
         desktopAuth: data?.desktopAuth || null,
+      });
+      return;
+    }
+
+    if (type === 'AUTOSAVE_CREDENTIAL') {
+      const domain = normalizeDomain(typeof message?.domain === 'string' ? message.domain : '');
+      const rawCredential = message?.credential && typeof message.credential === 'object' ? message.credential : null;
+      const credential = rawCredential ? {
+        title: String(rawCredential.title || '').slice(0, 120),
+        username: String(rawCredential.username || '').slice(0, 256),
+        pass: String(rawCredential.pass || '').slice(0, 1024),
+        website: String(rawCredential.website || '').slice(0, 512),
+        submittedAt: typeof rawCredential.submittedAt === 'string' ? rawCredential.submittedAt : '',
+        source: typeof rawCredential.source === 'string' ? rawCredential.source : 'browser_form',
+      } : null;
+
+      if (!domain || !credential?.pass || !credential?.website) {
+        deps.writeMessage({ ok: false, error: 'INVALID_AUTOSAVE_PAYLOAD' });
+        return;
+      }
+
+      const result = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
+        type: 'AUTOSAVE_CREDENTIAL',
+        domain,
+        credential,
+      }), pairingSecret);
+      deps.writeMessage({
+        ok: Boolean(result?.ok),
+        saved: Boolean(result?.saved),
+        action: typeof result?.action === 'string' ? result.action : 'none',
+        entryId: Number.isFinite(Number(result?.entryId)) ? Number(result.entryId) : undefined,
+        error: result?.ok ? undefined : String(result?.error || 'AUTOSAVE_FAILED'),
+        desktopAuth: result?.desktopAuth || null,
+      });
+      return;
+    }
+
+    if (type === 'LIST_VAULT_ENTRIES') {
+      const result = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
+        type: 'LIST_VAULT_ENTRIES',
+      }), pairingSecret);
+      deps.writeMessage({
+        ok: Boolean(result?.ok),
+        error: result?.ok ? undefined : String(result?.error || 'CLI_LIST_FAILED'),
+        data: Array.isArray(result?.data) ? result.data : [],
+        desktopAuth: result?.desktopAuth || null,
+      });
+      return;
+    }
+
+    if (type === 'GET_VAULT_ENTRY') {
+      const entryId = Number.isFinite(Number(message?.entryId)) ? Number(message.entryId) : NaN;
+      if (!Number.isFinite(entryId)) {
+        deps.writeMessage({ ok: false, error: 'INVALID_ENTRY_ID', data: null });
+        return;
+      }
+      const result = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
+        type: 'GET_VAULT_ENTRY',
+        entryId,
+      }), pairingSecret);
+      deps.writeMessage({
+        ok: Boolean(result?.ok),
+        error: result?.ok ? undefined : String(result?.error || 'CLI_GET_FAILED'),
+        data: result?.data || null,
+        desktopAuth: result?.desktopAuth || null,
+      });
+      return;
+    }
+
+    if (type === 'CREATE_VAULT_ENTRY' || type === 'UPDATE_VAULT_ENTRY') {
+      const entry = message?.entry && typeof message.entry === 'object' ? message.entry : null;
+      if (!entry) {
+        deps.writeMessage({ ok: false, error: 'INVALID_ENTRY_PAYLOAD' });
+        return;
+      }
+      const entryId = Number.isFinite(Number(message?.entryId)) ? Number(message.entryId) : undefined;
+      const result = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
+        type,
+        ...(Number.isFinite(Number(entryId)) ? { entryId } : {}),
+      }), pairingSecret);
+      deps.writeMessage({
+        ok: Boolean(result?.ok),
+        error: result?.ok ? undefined : String(result?.error || 'CLI_WRITE_FAILED'),
+        data: result?.data || null,
+        desktopAuth: result?.desktopAuth || null,
+      });
+      return;
+    }
+
+    if (type === 'DELETE_VAULT_ENTRY' || type === 'RESTORE_VAULT_ENTRY') {
+      const entryId = Number.isFinite(Number(message?.entryId)) ? Number(message.entryId) : NaN;
+      if (!Number.isFinite(entryId)) {
+        deps.writeMessage({ ok: false, error: 'INVALID_ENTRY_ID' });
+        return;
+      }
+      const result = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
+        type,
+        entryId,
+      }), pairingSecret);
+      deps.writeMessage({
+        ok: Boolean(result?.ok),
+        error: result?.ok ? undefined : String(result?.error || 'CLI_MUTATION_FAILED'),
+        data: result?.data || null,
+        desktopAuth: result?.desktopAuth || null,
+      });
+      return;
+    }
+
+    if (type === 'EMPTY_VAULT_TRASH') {
+      const result = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
+        type: 'EMPTY_VAULT_TRASH',
+      }), pairingSecret);
+      deps.writeMessage({
+        ok: Boolean(result?.ok),
+        error: result?.ok ? undefined : String(result?.error || 'CLI_EMPTY_TRASH_FAILED'),
+        data: result?.data || null,
+        desktopAuth: result?.desktopAuth || null,
       });
       return;
     }

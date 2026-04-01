@@ -13,7 +13,21 @@ vi.mock('../SyncAuditService', () => ({
 describe('CanonicalMigrationService', () => {
   const password = 'test-password';
   const legacyEntries = [
-    { id: 1, title: 'Legacy 1', pass: 'p1', category: 'General', updated_at: new Date().toISOString() },
+    {
+      id: 1,
+      title: 'Legacy 1',
+      pass: 'p1',
+      category: 'Cards',
+      updated_at: new Date().toISOString(),
+      cardDetails: {
+        cardholder_name: 'Legacy User',
+        card_number: '5555444433331111',
+      },
+      identityDetails: {
+        document_type: 'passport',
+        identity_number: 'X1234567',
+      },
+    },
   ];
 
   it('1. migrateLegacyBackupToCanonical: Legacy yedekleri canonical formata donusturur', async () => {
@@ -24,6 +38,7 @@ describe('CanonicalMigrationService', () => {
     expect(decrypted.kind).toBe('canonical-export-v1');
     expect(decrypted.records.length).toBe(1);
     expect(decrypted.records[0].title).toBe('Legacy 1');
+    expect((decrypted.records[0].custom_data as Record<string, any>)?.card_details?.card_number).toBe('5555444433331111');
   });
 
   it('2. restoreCanonicalBackupToVaultEntries: Canonical yedekten vault girislerini geri yukler', async () => {
@@ -33,6 +48,8 @@ describe('CanonicalMigrationService', () => {
     const restored = await CanonicalMigrationService.restoreCanonicalBackupToVaultEntries(canonicalBackup, password);
     expect(restored.length).toBe(1);
     expect(restored[0].title).toBe('Legacy 1');
+    expect(restored[0].cardDetails?.card_number).toBe('5555444433331111');
+    expect(restored[0].identityDetails?.identity_number).toBe('X1234567');
   });
 
   it('3. restoreCanonicalBackupToVaultEntriesWithReport: Rapor ile birlikte geri yukleme yapar', async () => {

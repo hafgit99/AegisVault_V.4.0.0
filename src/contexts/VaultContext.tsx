@@ -108,7 +108,24 @@ export interface VaultContextType {
   getCategoryIcon: (cat: string) => React.ReactNode;
 }
 
-type DomainCredential = Pick<VaultEntry, "title" | "username" | "pass" | "website">;
+type DomainCredential = Pick<
+  VaultEntry,
+  "title" | "username" | "pass" | "website" | "category" | "cardDetails" | "identityDetails"
+>;
+type AutosaveCredentialCandidate = {
+  title?: string;
+  username?: string;
+  pass?: string;
+  website?: string;
+  submittedAt?: string;
+  source?: string;
+};
+
+type VaultCliOperationPayload = Record<string, unknown>;
+type VaultCliHandler = (
+  operation: string,
+  payload?: VaultCliOperationPayload
+) => Promise<{ ok: boolean; error?: string; data?: unknown }>;
 
 type ElectronVaultState = {
   unlocked: boolean;
@@ -120,6 +137,10 @@ type ElectronBridgeApi = {
   setDomainCredentialProvider?: (provider: ((domain: string) => DomainCredential[]) | null) => void;
   setDomainPasskeyProvider?: (provider: ((domain: string) => any[]) | null) => void;
   setPasskeyAuthHandler?: (handler: ((options: SitePasskeyAuthOptions) => Promise<any>) | null) => void;
+  setAutosaveCredentialHandler?: (
+    handler: ((credential: AutosaveCredentialCandidate) => Promise<{ saved: boolean; action?: string; entryId?: number; error?: string }>) | null
+  ) => void;
+  setVaultCliHandler?: (handler: VaultCliHandler | null) => void;
   lockVault?: () => void;
 };
 
@@ -349,6 +370,9 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
           username: p.username,
           pass: p.pass,
           website: p.website,
+          category: p.category,
+          cardDetails: p.cardDetails,
+          identityDetails: p.identityDetails,
         }));
     };
 
@@ -374,6 +398,190 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
       return await WebAuthnService.authenticateSitePasskey(options);
     };
 
+    const handleAutosaveCredential = async (candidate: AutosaveCredentialCandidate) => {
+      const website = DOMPurify.sanitize(candidate?.website || '').trim();
+      const pass = String(candidate?.pass || '');
+      const username = DOMPurify.sanitize(candidate?.username || '').trim();
+      const title = DOMPurify.sanitize(candidate?.title || '').trim();
+
+      if (!website || !pass) {
+        return { saved: false, action: 'rejected', error: 'INVALID_CREDENTIAL' };
+      }
+      if (passwords.length === 0) {
+        return { saved: false, action: 'rejected', error: 'VAULT_LOCKED' };
+      }
+
+      const normalizedDomain = normalizeDomain(website);
+      const normalizedUsername = username.toLowerCase();
+      const existingForSite = passwords.filter((entry) => {
+        if (!entry.website) return false;
+        if (!isDomainMatch(entry.website, normalizedDomain)) return false;
+        const entryUsername = (entry.username || '').toLowerCase().trim();
+        return normalizedUsername ? entryUsername === normalizedUsername : true;
+      });
+
+      const exactDuplicate = existingForSite.find((entry) => entry.pass === pass);
+      if (exactDuplicate) {
+        return {
+          saved: false,
+          action: 'duplicate',
+          entryId: Number.isFinite(Number(exactDuplicate.id)) ? Number(exactDuplicate.id) : undefined,
+        };
+      }
+
+      const updateTarget = existingForSite.find((entry) => Number.isFinite(Number(entry.id)));
+      if (updateTarget && Number.isFinite(Number(updateTarget.id))) {
+        const updateId = Number(updateTarget.id);
+        await vaultService.updatePassword(updateId, {
+          ...updateTarget,
+          title: title || updateTarget.title || normalizedDomain,
+          username: username || updateTarget.username || '',
+          pass,
+          website,
+        });
+        loadPasswords();
+        return { saved: true, action: 'updated', entryId: updateId };
+      }
+
+      const newId = await vaultService.addPassword({
+        title: title || normalizedDomain,
+        username,
+        pass,
+        website,
+        category: 'General',
+      });
+      loadPasswords();
+      return {
+        saved: true,
+        action: 'created',
+        entryId: Number.isFinite(Number(newId)) ? Number(newId) : undefined,
+      };
+    };
+
+    const sanitizeCliEntry = (entry: Partial<VaultEntry>) => ({
+      id: Number(entry.id),
+      title: DOMPurify.sanitize(String(entry.title || '')).slice(0, 256),
+      username: DOMPurify.sanitize(String(entry.username || '')).slice(0, 256),
+      pass: String(entry.pass || '').slice(0, 1024),
+      website: DOMPurify.sanitize(String(entry.website || '')).slice(0, 512),
+      category: DOMPurify.sanitize(String(entry.category || 'General')).slice(0, 64),
+      tags: Array.isArray(entry.tags)
+        ? entry.tags.slice(0, 32).map((tag) => DOMPurify.sanitize(String(tag || '')).slice(0, 64))
+        : [],
+      updated_at: String(entry.updated_at || ''),
+      deletedAt: typeof entry.deletedAt === 'string' ? entry.deletedAt : undefined,
+    });
+
+    const findEntryById = async (entryId: number): Promise<VaultEntry | null> => {
+      if (!Number.isFinite(entryId)) return null;
+      const active = await vaultService.getPasswords('', '', false, 'all');
+      const inActive = active.find((item) => Number(item.id) === entryId);
+      if (inActive) return inActive;
+      const trash = await vaultService.getPasswords('', '', true, 'all');
+      return trash.find((item) => Number(item.id) === entryId) || null;
+    };
+
+    const handleVaultCliOperation: VaultCliHandler = async (operation, payload = {}) => {
+      const normalizedOp = String(operation || '').trim().toLowerCase();
+
+      if (normalizedOp === 'list') {
+        const query = typeof payload.query === 'string' ? payload.query : '';
+        const category = typeof payload.category === 'string' ? payload.category : '';
+        const scope = payload.scope === 'trash' ? 'trash' : 'active';
+        const searchScope = ((): "all" | "title" | "username" | "tags" => {
+          const candidate = typeof payload.searchScope === 'string' ? payload.searchScope : 'all';
+          return ['all', 'title', 'username', 'tags'].includes(candidate) ? (candidate as "all" | "title" | "username" | "tags") : 'all';
+        })();
+        const limitRaw = Number(payload.limit);
+        const limit = Number.isFinite(limitRaw) ? Math.min(200, Math.max(1, Math.trunc(limitRaw))) : 50;
+        const entries = await vaultService.getPasswords(query, category, scope === 'trash', searchScope);
+        return {
+          ok: true,
+          data: entries.slice(0, limit).map((entry) => sanitizeCliEntry(entry)),
+        };
+      }
+
+      if (normalizedOp === 'get') {
+        const entryId = Number(payload.entryId);
+        if (!Number.isFinite(entryId)) return { ok: false, error: 'INVALID_ENTRY_ID' };
+        const found = await findEntryById(entryId);
+        if (!found) return { ok: false, error: 'ENTRY_NOT_FOUND' };
+        return { ok: true, data: sanitizeCliEntry(found) };
+      }
+
+      if (normalizedOp === 'create') {
+        const rawEntry = payload.entry && typeof payload.entry === 'object' ? payload.entry as Partial<VaultEntry> : null;
+        if (!rawEntry) return { ok: false, error: 'INVALID_ENTRY_PAYLOAD' };
+        const title = DOMPurify.sanitize(String(rawEntry.title || '')).slice(0, 256);
+        const pass = String(rawEntry.pass || '').slice(0, 1024);
+        if (!title || !pass) return { ok: false, error: 'TITLE_AND_PASSWORD_REQUIRED' };
+        const entryToCreate: Partial<VaultEntry> = {
+          title,
+          username: DOMPurify.sanitize(String(rawEntry.username || '')).slice(0, 256),
+          pass,
+          website: DOMPurify.sanitize(String(rawEntry.website || '')).slice(0, 512),
+          category: DOMPurify.sanitize(String(rawEntry.category || 'General')).slice(0, 64),
+          tags: Array.isArray(rawEntry.tags)
+            ? rawEntry.tags.slice(0, 32).map((tag) => DOMPurify.sanitize(String(tag || '')).slice(0, 64))
+            : [],
+        };
+        const newId = await vaultService.addPassword(entryToCreate);
+        loadPasswords();
+        const created = await findEntryById(Number(newId));
+        return { ok: true, data: created ? sanitizeCliEntry(created) : { id: Number(newId) } };
+      }
+
+      if (normalizedOp === 'update') {
+        const entryId = Number(payload.entryId);
+        const rawEntry = payload.entry && typeof payload.entry === 'object' ? payload.entry as Partial<VaultEntry> : null;
+        if (!Number.isFinite(entryId) || !rawEntry) return { ok: false, error: 'INVALID_ENTRY_PAYLOAD' };
+        const existing = await findEntryById(entryId);
+        if (!existing) return { ok: false, error: 'ENTRY_NOT_FOUND' };
+
+        const merged: Partial<VaultEntry> = {
+          ...existing,
+          ...rawEntry,
+          title: DOMPurify.sanitize(String(rawEntry.title ?? existing.title ?? '')).slice(0, 256),
+          username: DOMPurify.sanitize(String(rawEntry.username ?? existing.username ?? '')).slice(0, 256),
+          website: DOMPurify.sanitize(String(rawEntry.website ?? existing.website ?? '')).slice(0, 512),
+          category: DOMPurify.sanitize(String(rawEntry.category ?? existing.category ?? 'General')).slice(0, 64),
+          pass: String(rawEntry.pass ?? existing.pass ?? '').slice(0, 1024),
+          tags: Array.isArray(rawEntry.tags)
+            ? rawEntry.tags.slice(0, 32).map((tag) => DOMPurify.sanitize(String(tag || '')).slice(0, 64))
+            : (existing.tags || []),
+        };
+        if (!merged.title || !merged.pass) return { ok: false, error: 'TITLE_AND_PASSWORD_REQUIRED' };
+        await vaultService.updatePassword(entryId, merged);
+        loadPasswords();
+        const updated = await findEntryById(entryId);
+        return { ok: true, data: updated ? sanitizeCliEntry(updated) : { id: entryId } };
+      }
+
+      if (normalizedOp === 'delete') {
+        const entryId = Number(payload.entryId);
+        if (!Number.isFinite(entryId)) return { ok: false, error: 'INVALID_ENTRY_ID' };
+        await vaultService.moveToTrash(entryId);
+        loadPasswords();
+        return { ok: true, data: { id: entryId, deleted: true } };
+      }
+
+      if (normalizedOp === 'restore') {
+        const entryId = Number(payload.entryId);
+        if (!Number.isFinite(entryId)) return { ok: false, error: 'INVALID_ENTRY_ID' };
+        await vaultService.restoreFromTrash(entryId);
+        loadPasswords();
+        return { ok: true, data: { id: entryId, restored: true } };
+      }
+
+      if (normalizedOp === 'empty-trash') {
+        await vaultService.emptyTrash();
+        loadPasswords();
+        return { ok: true, data: { emptied: true } };
+      }
+
+      return { ok: false, error: 'UNSUPPORTED_OPERATION' };
+    };
+
     try {
       const electronApi = getElectronApi();
       if (electronApi?.syncVaultState) {
@@ -391,6 +599,12 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
       if (electronApi?.setPasskeyAuthHandler) {
         electronApi.setPasskeyAuthHandler(handlePasskeyAuthRequest);
       }
+      if (electronApi?.setAutosaveCredentialHandler) {
+        electronApi.setAutosaveCredentialHandler(handleAutosaveCredential);
+      }
+      if (electronApi?.setVaultCliHandler) {
+        electronApi.setVaultCliHandler(handleVaultCliOperation);
+      }
     } catch {
       // Electron bridge bu ortamda mevcut olmayabilir
     }
@@ -407,11 +621,17 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
         if (electronApi?.setPasskeyAuthHandler) {
           electronApi.setPasskeyAuthHandler(null);
         }
+        if (electronApi?.setAutosaveCredentialHandler) {
+          electronApi.setAutosaveCredentialHandler(null);
+        }
+        if (electronApi?.setVaultCliHandler) {
+          electronApi.setVaultCliHandler(null);
+        }
       } catch {
         // cleanup hatasi ana akis icin kritik degil
       }
     };
-  }, [getElectronApi, passwords]);
+  }, [getElectronApi, loadPasswords, passwords]);
 
   // ─── Toggles ───
   const toggleVisibility = useCallback((id: number) => {
@@ -437,6 +657,30 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
       website: DOMPurify.sanitize(entry.website || ""),
       category: DOMPurify.sanitize(entry.category || "General"),
       tags: entry.tags?.map(tg => DOMPurify.sanitize(tg)) || [],
+      cardDetails: entry.cardDetails
+        ? {
+            cardholder_name: DOMPurify.sanitize(entry.cardDetails.cardholder_name || ""),
+            card_number: DOMPurify.sanitize(entry.cardDetails.card_number || ""),
+            brand: DOMPurify.sanitize(entry.cardDetails.brand || ""),
+            expiry_month: DOMPurify.sanitize(entry.cardDetails.expiry_month || ""),
+            expiry_year: DOMPurify.sanitize(entry.cardDetails.expiry_year || ""),
+            cvv: DOMPurify.sanitize(entry.cardDetails.cvv || ""),
+            pin: DOMPurify.sanitize(entry.cardDetails.pin || ""),
+            billing_zip: DOMPurify.sanitize(entry.cardDetails.billing_zip || ""),
+            billing_address: DOMPurify.sanitize(entry.cardDetails.billing_address || ""),
+          }
+        : undefined,
+      identityDetails: entry.identityDetails
+        ? {
+            document_type: DOMPurify.sanitize(entry.identityDetails.document_type || ""),
+            identity_number: DOMPurify.sanitize(entry.identityDetails.identity_number || ""),
+            issuing_country: DOMPurify.sanitize(entry.identityDetails.issuing_country || ""),
+            nationality: DOMPurify.sanitize(entry.identityDetails.nationality || ""),
+            date_of_birth: DOMPurify.sanitize(entry.identityDetails.date_of_birth || ""),
+            issued_at: DOMPurify.sanitize(entry.identityDetails.issued_at || ""),
+            expires_at: DOMPurify.sanitize(entry.identityDetails.expires_at || ""),
+          }
+        : undefined,
       sharing: Array.isArray(entry.sharing)
         ? entry.sharing.map((assignment) => ({
             ...assignment,
@@ -652,6 +896,9 @@ export function VaultProvider({ children, onLock, secretKey }: VaultProviderProp
       }
       if (electronApi?.setDomainPasskeyProvider) {
         electronApi.setDomainPasskeyProvider(null);
+      }
+      if (electronApi?.setVaultCliHandler) {
+        electronApi.setVaultCliHandler(null);
       }
       if (electronApi?.lockVault) electronApi.lockVault();
     } catch {

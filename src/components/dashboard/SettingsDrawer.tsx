@@ -18,6 +18,7 @@ import { PasswordGenerator } from "../settings/PasswordGenerator";
 import { SharedSpacesModal } from "./SharedSpacesModal";
 import { SharingAuditPanel } from "./SharingAuditPanel";
 import { SharingOverviewPanel } from "./SharingOverviewPanel";
+import { EmergencyAccessPanel } from "./EmergencyAccessPanel";
 import { PasskeySiteInventoryModal } from "./PasskeySiteInventoryModal";
 import { SecurityCenterPanel } from "./SecurityCenterPanel";
 import { ReleaseTrustPanel } from "./ReleaseTrustPanel";
@@ -49,6 +50,13 @@ import type { PasskeyInventorySiteEntry } from "../../lib/PasskeyInventoryServic
 import { SyncDevicesPanel } from "./SyncDevicesPanel";
 import { SyncConflictModal } from "./SyncConflictModal";
 import { SyncDeviceService } from "../../lib/SyncDeviceService";
+import { EmergencyAccessService } from "../../lib/EmergencyAccessService";
+import type {
+  EmergencyAccessAuditEvent,
+  EmergencyAccessContact,
+  EmergencyAccessPolicy,
+  EmergencyAccessRequest,
+} from "../../lib/SecureAppSettings";
 
 interface DesktopPairingRecord {
   extensionId: string;
@@ -187,6 +195,18 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
   const [showSyncConflictModal, setShowSyncConflictModal] = useState(false);
   const [pendingSyncConflicts, setPendingSyncConflicts] = useState<Array<{ local: VaultEntry, remote: VaultEntry }>>([]);
   const [e2eSyncEnabled, setE2eSyncEnabled] = useState(false);
+  const [emergencyAccessPolicy, setEmergencyAccessPolicy] = useState<EmergencyAccessPolicy>(() =>
+    EmergencyAccessService.getPolicy()
+  );
+  const [emergencyAccessContacts, setEmergencyAccessContacts] = useState<EmergencyAccessContact[]>(() =>
+    EmergencyAccessService.listContacts()
+  );
+  const [emergencyAccessRequests, setEmergencyAccessRequests] = useState<EmergencyAccessRequest[]>(() =>
+    EmergencyAccessService.listRequests()
+  );
+  const [emergencyAccessAudit, setEmergencyAccessAudit] = useState<EmergencyAccessAuditEvent[]>(() =>
+    EmergencyAccessService.listAudit()
+  );
 
   // ReAuth State (P1-3)
   const [reAuthAction, setReAuthAction] = useState<{ name: string; action: () => void } | null>(null);
@@ -297,6 +317,23 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
     SecureAppSettings.setReleaseTrustHistory(next);
     setReleaseTrustHistory(next);
   }, []);
+
+  const refreshEmergencyAccess = useCallback(() => {
+    EmergencyAccessService.evaluateState();
+    const summary = EmergencyAccessService.getSummary();
+    setEmergencyAccessPolicy(summary.policy);
+    setEmergencyAccessContacts(summary.contacts);
+    setEmergencyAccessRequests(summary.requests);
+    setEmergencyAccessAudit(summary.auditEvents);
+  }, []);
+
+  useEffect(() => {
+    refreshEmergencyAccess();
+    const timer = window.setInterval(() => {
+      refreshEmergencyAccess();
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [refreshEmergencyAccess]);
 
   const toggleReleaseTrustChecklist = useCallback((checkKey: string) => {
     const next = { ...SecureAppSettings.getReleaseTrustChecklist() };
@@ -1131,6 +1168,8 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
           website: p.website,
           category: p.category,
           tags: p.tags,
+          cardDetails: p.cardDetails,
+          identityDetails: p.identityDetails,
         })),
         {
           transferCode: syncTransferCode,
@@ -1341,6 +1380,89 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
     } catch {
       toast.error(t('desktopPairingRemoveFailed', 'Failed to remove desktop pairing.'));
     }
+  };
+
+  const handleEmergencyPolicyUpdate = (next: Partial<EmergencyAccessPolicy>) => {
+    EmergencyAccessService.updatePolicy(next);
+    refreshEmergencyAccess();
+    toast.success(t("emergencyAccessPolicyUpdated"));
+  };
+
+  const handleEmergencyContactSave = (input: {
+    id?: string;
+    name: string;
+    email: string;
+    permission: EmergencyAccessContact["permission"];
+    wait_hours: number;
+    enabled: boolean;
+    note?: string;
+  }) => {
+    const saved = EmergencyAccessService.saveContact(input);
+    if (!saved) {
+      toast.error(t("emergencyAccessContactInvalid"));
+      return;
+    }
+    refreshEmergencyAccess();
+    toast.success(t("emergencyAccessContactSaved"));
+  };
+
+  const handleEmergencyContactDelete = (contactId: string) => {
+    if (!window.confirm(t("emergencyAccessDeleteContactConfirm"))) return;
+    const deleted = EmergencyAccessService.deleteContact(contactId);
+    if (!deleted) {
+      toast.error(t("emergencyAccessContactDeleteFailed"));
+      return;
+    }
+    refreshEmergencyAccess();
+    toast.success(t("emergencyAccessContactDeleted"));
+  };
+
+  const handleEmergencyRequestCreate = (contactId: string) => {
+    const reason = window.prompt(t("emergencyAccessRequestReasonPrompt")) || "";
+    const created = EmergencyAccessService.requestAccess({
+      contactId,
+      scope: "vault",
+      requesterNote: reason,
+    });
+    if (!created) {
+      toast.error(t("emergencyAccessRequestCreateFailed"));
+      return;
+    }
+    refreshEmergencyAccess();
+    toast.success(t("emergencyAccessRequestCreated"));
+  };
+
+  const handleEmergencyApprove = (requestId: string) => {
+    const note = window.prompt(t("emergencyAccessOwnerNotePrompt")) || "";
+    const approved = EmergencyAccessService.approveRequest(requestId, note);
+    if (!approved) {
+      toast.error(t("emergencyAccessApproveFailed"));
+      return;
+    }
+    refreshEmergencyAccess();
+    toast.success(t("emergencyAccessApproved"));
+  };
+
+  const handleEmergencyReject = (requestId: string) => {
+    const note = window.prompt(t("emergencyAccessRejectReasonPrompt")) || "";
+    const rejected = EmergencyAccessService.rejectRequest(requestId, note);
+    if (!rejected) {
+      toast.error(t("emergencyAccessRejectFailed"));
+      return;
+    }
+    refreshEmergencyAccess();
+    toast.success(t("emergencyAccessRejected"));
+  };
+
+  const handleEmergencyRevoke = (requestId: string) => {
+    if (!window.confirm(t("emergencyAccessRevokeConfirm"))) return;
+    const revoked = EmergencyAccessService.revokeGrant(requestId);
+    if (!revoked) {
+      toast.error(t("emergencyAccessRevokeFailed"));
+      return;
+    }
+    refreshEmergencyAccess();
+    toast.success(t("emergencyAccessRevoked"));
   };
 
   const switchToTwoFactorVault = () => {
@@ -1565,6 +1687,20 @@ export function SettingsDrawer({ isOpen, onClose, onDonationOpen, onEditEntry }:
               focusLabel={sharingAuditFocus?.title || null}
               onOpenEventTarget={openSharingAuditTarget}
               onFocusEventTarget={focusSharingAuditTarget}
+            />
+
+            <EmergencyAccessPanel
+              policy={emergencyAccessPolicy}
+              contacts={emergencyAccessContacts}
+              requests={emergencyAccessRequests}
+              auditEvents={emergencyAccessAudit}
+              onUpdatePolicy={handleEmergencyPolicyUpdate}
+              onSaveContact={handleEmergencyContactSave}
+              onDeleteContact={handleEmergencyContactDelete}
+              onRequestAccess={handleEmergencyRequestCreate}
+              onApproveRequest={handleEmergencyApprove}
+              onRejectRequest={handleEmergencyReject}
+              onRevokeGrant={handleEmergencyRevoke}
             />
 
             {/* Security & Sessions */}

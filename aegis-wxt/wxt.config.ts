@@ -3,7 +3,7 @@ import path from 'node:path';
 import { defineConfig } from 'wxt';
 import dotenv from 'dotenv';
 
-// .env dosyasını yükle
+// .env dosyasÄ±nÄ± yÃ¼kle
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const chromiumDevKeyPath = path.resolve(__dirname, 'dev', 'chromium-extension-key.txt');
@@ -19,7 +19,7 @@ export default defineConfig({
   manifest: (env) => ({
     name: "Aegis Vault",
     description: "Secure, zero-knowledge password manager and 2FA authenticator extension. Autofill passwords, sync securely across devices with end-to-end encryption in 2026.",
-    version: "4.1.0",
+    version: "4.0.9",
     
     icons: {
       "16": "icon-16.png",

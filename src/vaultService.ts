@@ -48,6 +48,28 @@ export interface VaultAttachmentMeta {
   type_iv?: string;
 }
 
+export interface VaultCardDetails {
+  cardholder_name?: string;
+  card_number?: string;
+  brand?: string;
+  expiry_month?: string;
+  expiry_year?: string;
+  cvv?: string;
+  pin?: string;
+  billing_zip?: string;
+  billing_address?: string;
+}
+
+export interface VaultIdentityDetails {
+  document_type?: string;
+  identity_number?: string;
+  issuing_country?: string;
+  nationality?: string;
+  date_of_birth?: string;
+  issued_at?: string;
+  expires_at?: string;
+}
+
 export interface VaultEntry {
   id: number;
   title: string;
@@ -87,12 +109,18 @@ export interface VaultEntry {
   notes_iv?: string;        // IV for notes encryption
   encrypted_passkey_meta?: string; // AES-GCM encrypted site passkey metadata JSON
   passkey_meta_iv?: string;        // IV for passkey metadata encryption
+  encrypted_card_details?: string; // AES-GCM encrypted credit/debit card details JSON
+  card_details_iv?: string;        // IV for card details encryption
+  encrypted_identity_details?: string; // AES-GCM encrypted identity card details JSON
+  identity_details_iv?: string;        // IV for identity details encryption
 
   // Decrypted fields for UI (never persisted)
   pass?: string;
   totpSecret?: string;     // Decrypted TOTP secret (only in memory)
   notes?: string;          // Decrypted notes content (only in memory)
   passkeyMetadata?: CanonicalPasskeyFields | null; // Decrypted passkey metadata for site-passkey MVP
+  cardDetails?: VaultCardDetails | null; // Decrypted card details (only in memory)
+  identityDetails?: VaultIdentityDetails | null; // Decrypted identity details (only in memory)
   sharing?: CanonicalSharingAssignment[]; // Canonical sharing metadata for UI/export helpers
   ui_focus_context?: 'sharing_issue' | 'sharing_audit'; // Transient UI hint for edit flows
   ui_focus_label?: string; // Transient UI label shown in edit flows
@@ -268,6 +296,42 @@ export class VaultService {
       console.error('DECRYPTION REAL ERROR:', error);
       return null;
     }
+  }
+
+  private normalizeCardDetails(details?: Partial<VaultCardDetails> | null): VaultCardDetails | null {
+    if (!details || typeof details !== 'object') return null;
+
+    const normalized: VaultCardDetails = {
+      cardholder_name: String(details.cardholder_name || '').trim(),
+      card_number: String(details.card_number || '').trim(),
+      brand: String(details.brand || '').trim(),
+      expiry_month: String(details.expiry_month || '').trim(),
+      expiry_year: String(details.expiry_year || '').trim(),
+      cvv: String(details.cvv || '').trim(),
+      pin: String(details.pin || '').trim(),
+      billing_zip: String(details.billing_zip || '').trim(),
+      billing_address: String(details.billing_address || '').trim(),
+    };
+
+    const hasData = Object.values(normalized).some((value) => typeof value === 'string' && value.length > 0);
+    return hasData ? normalized : null;
+  }
+
+  private normalizeIdentityDetails(details?: Partial<VaultIdentityDetails> | null): VaultIdentityDetails | null {
+    if (!details || typeof details !== 'object') return null;
+
+    const normalized: VaultIdentityDetails = {
+      document_type: String(details.document_type || '').trim(),
+      identity_number: String(details.identity_number || '').trim(),
+      issuing_country: String(details.issuing_country || '').trim(),
+      nationality: String(details.nationality || '').trim(),
+      date_of_birth: String(details.date_of_birth || '').trim(),
+      issued_at: String(details.issued_at || '').trim(),
+      expires_at: String(details.expires_at || '').trim(),
+    };
+
+    const hasData = Object.values(normalized).some((value) => typeof value === 'string' && value.length > 0);
+    return hasData ? normalized : null;
   }
 
   private async buildMetadataAtRest(title: string, username: string, website: string, category: string, tags: string[]) {
@@ -1094,6 +1158,42 @@ export class VaultService {
       newEntry.passkey_meta_iv = entry.passkey_meta_iv;
     }
 
+    const normalizedCardDetails = this.normalizeCardDetails(entry.cardDetails);
+    if (normalizedCardDetails) {
+      const cardDetailsIv = generateRandomBytes(12);
+      const cardDetailsCipher = await window.crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: toBufferSource(cardDetailsIv) },
+        this.aesKey!,
+        toBufferSource(enc.encode(JSON.stringify(normalizedCardDetails)))
+      );
+      newEntry.encrypted_card_details = bufferToHex(cardDetailsCipher);
+      newEntry.card_details_iv = bufferToHex(cardDetailsIv);
+    } else if ('cardDetails' in entry) {
+      newEntry.encrypted_card_details = undefined;
+      newEntry.card_details_iv = undefined;
+    } else if (entry.encrypted_card_details) {
+      newEntry.encrypted_card_details = entry.encrypted_card_details;
+      newEntry.card_details_iv = entry.card_details_iv;
+    }
+
+    const normalizedIdentityDetails = this.normalizeIdentityDetails(entry.identityDetails);
+    if (normalizedIdentityDetails) {
+      const identityDetailsIv = generateRandomBytes(12);
+      const identityDetailsCipher = await window.crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: toBufferSource(identityDetailsIv) },
+        this.aesKey!,
+        toBufferSource(enc.encode(JSON.stringify(normalizedIdentityDetails)))
+      );
+      newEntry.encrypted_identity_details = bufferToHex(identityDetailsCipher);
+      newEntry.identity_details_iv = bufferToHex(identityDetailsIv);
+    } else if ('identityDetails' in entry) {
+      newEntry.encrypted_identity_details = undefined;
+      newEntry.identity_details_iv = undefined;
+    } else if (entry.encrypted_identity_details) {
+      newEntry.encrypted_identity_details = entry.encrypted_identity_details;
+      newEntry.identity_details_iv = entry.identity_details_iv;
+    }
+
     if (entry.attachments) {
       newEntry.attachments = await this.encryptAttachmentMetadataList(entry.attachments as VaultAttachmentMeta[]);
     }
@@ -1213,6 +1313,42 @@ export class VaultService {
                   toBufferSource(passkeyMetaCipher)
                 );
                 decryptedEntry.passkeyMetadata = JSON.parse(dec.decode(passkeyMetaPlain)) as CanonicalPasskeyFields;
+              } catch { /* skip */ }
+            }
+
+            if (entry.encrypted_card_details && entry.card_details_iv) {
+              try {
+                const cardDetailsCipher = isLikelyHexUtil(entry.encrypted_card_details)
+                  ? hexToBuffer(entry.encrypted_card_details)
+                  : Uint8Array.from(atob(entry.encrypted_card_details), c => c.charCodeAt(0));
+                const cardDetailsIv = isLikelyHexUtil(entry.card_details_iv)
+                  ? hexToBuffer(entry.card_details_iv)
+                  : Uint8Array.from(atob(entry.card_details_iv), c => c.charCodeAt(0));
+                const cardDetailsPlain = await window.crypto.subtle.decrypt(
+                  { name: "AES-GCM", iv: toBufferSource(cardDetailsIv) },
+                  this.aesKey!,
+                  toBufferSource(cardDetailsCipher)
+                );
+                const parsed = JSON.parse(dec.decode(cardDetailsPlain)) as Partial<VaultCardDetails>;
+                decryptedEntry.cardDetails = this.normalizeCardDetails(parsed);
+              } catch { /* skip */ }
+            }
+
+            if (entry.encrypted_identity_details && entry.identity_details_iv) {
+              try {
+                const identityDetailsCipher = isLikelyHexUtil(entry.encrypted_identity_details)
+                  ? hexToBuffer(entry.encrypted_identity_details)
+                  : Uint8Array.from(atob(entry.encrypted_identity_details), c => c.charCodeAt(0));
+                const identityDetailsIv = isLikelyHexUtil(entry.identity_details_iv)
+                  ? hexToBuffer(entry.identity_details_iv)
+                  : Uint8Array.from(atob(entry.identity_details_iv), c => c.charCodeAt(0));
+                const identityDetailsPlain = await window.crypto.subtle.decrypt(
+                  { name: "AES-GCM", iv: toBufferSource(identityDetailsIv) },
+                  this.aesKey!,
+                  toBufferSource(identityDetailsCipher)
+                );
+                const parsed = JSON.parse(dec.decode(identityDetailsPlain)) as Partial<VaultIdentityDetails>;
+                decryptedEntry.identityDetails = this.normalizeIdentityDetails(parsed);
               } catch { /* skip */ }
             }
             return decryptedEntry;

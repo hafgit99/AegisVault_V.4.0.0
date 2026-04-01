@@ -2,6 +2,9 @@ import { browser } from 'wxt/browser';
 import DOMPurify from 'dompurify';
 
 type PopupI18n = {
+    languageLabel: string;
+    languageTurkish: string;
+    languageEnglish: string;
     connecting: string;
     waiting: string;
     loading: string;
@@ -41,6 +44,14 @@ type PopupI18n = {
     bridgePairingModeSigned: string;
     bridgePairingModeLegacy: string;
     bridgeClientKey: string;
+    autosaveTitle: string;
+    autosaveEmpty: string;
+    autosaveApprove: string;
+    autosaveReject: string;
+    autosaveQueuedAt: string;
+    autosaveSaved: string;
+    autosaveFailed: string;
+    autosaveNoUser: string;
 };
 
 const normalizeUiLanguage = (value: unknown) =>
@@ -49,6 +60,9 @@ const normalizeUiLanguage = (value: unknown) =>
 const buildPopupI18n = (language: 'tr' | 'en'): PopupI18n => {
     const isTurkishLocale = language === 'tr';
     return {
+        languageLabel: isTurkishLocale ? 'Dil' : 'Language',
+        languageTurkish: isTurkishLocale ? 'Turkce' : 'Turkish',
+        languageEnglish: isTurkishLocale ? 'Ingilizce' : 'English',
         connecting: isTurkishLocale ? 'Baglaniyor...' : 'Connecting...',
         waiting: isTurkishLocale ? 'Bekleniyor' : 'Waiting',
         loading: isTurkishLocale ? 'Yukleniyor...' : 'Loading...',
@@ -94,6 +108,14 @@ const buildPopupI18n = (language: 'tr' | 'en'): PopupI18n => {
         bridgePairingModeSigned: isTurkishLocale ? 'Kalici imzali eslesme' : 'Persistent signed pairing',
         bridgePairingModeLegacy: isTurkishLocale ? 'Gecis donemi secret modeli' : 'Legacy secret model',
         bridgeClientKey: isTurkishLocale ? 'Istemci anahtari' : 'Client key',
+        autosaveTitle: isTurkishLocale ? 'Bekleyen Otomatik Kayitlar' : 'Pending Autosave Items',
+        autosaveEmpty: isTurkishLocale ? 'Bekleyen otomatik kayit yok' : 'No pending autosave items',
+        autosaveApprove: isTurkishLocale ? 'Onayla' : 'Approve',
+        autosaveReject: isTurkishLocale ? 'Reddet' : 'Reject',
+        autosaveQueuedAt: isTurkishLocale ? 'Kuyruga alinma' : 'Queued at',
+        autosaveSaved: isTurkishLocale ? 'Kayit uygulandi' : 'Credential saved',
+        autosaveFailed: isTurkishLocale ? 'Kayit basarisiz' : 'Save failed',
+        autosaveNoUser: isTurkishLocale ? 'Kullanici adi yok' : 'No username',
     };
 };
 
@@ -146,6 +168,15 @@ type PopupCredential = {
     username?: string;
     pass?: string;
     website?: string;
+};
+
+type PopupAutosaveItem = {
+    id: string;
+    domain: string;
+    title?: string;
+    username?: string;
+    website?: string;
+    createdAt?: string;
 };
 
 const formatBridgeError = (code: string) => {
@@ -232,6 +263,13 @@ const bootPopup = async () => {
                    <span style="font-size: 10px; font-weight: 700; color: ${t.accent};" id="vault-status">${POPUP_I18N.waiting}</span>
                 </div>
             </header>
+            <section style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:12px;background:${t.panelBg};border:1px solid ${t.border};">
+                <label for="language-select" style="font-size:12px;font-weight:700;color:${t.text};">${POPUP_I18N.languageLabel}</label>
+                <select id="language-select" style="border:1px solid ${t.border};background:${t.inputBg};color:${t.text};border-radius:8px;padding:6px 8px;font-size:11px;font-weight:600;">
+                    <option value="tr" ${popupLanguage === 'tr' ? 'selected' : ''}>${POPUP_I18N.languageTurkish}</option>
+                    <option value="en" ${popupLanguage === 'en' ? 'selected' : ''}>${POPUP_I18N.languageEnglish}</option>
+                </select>
+            </section>
             <section id="bridge-panel" style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;background:${t.panelBg};border:1px solid ${t.border};">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
                     <strong style="font-size:12px;color:${t.text};">${POPUP_I18N.bridgeTitle}</strong>
@@ -243,6 +281,13 @@ const bootPopup = async () => {
                     <button id="unpair-bridge-btn" style="flex:1;border:1px solid ${t.border};border-radius:10px;padding:10px 12px;background:${t.buttonSecondaryBg};color:${t.buttonSecondaryText};font-size:11px;font-weight:700;cursor:pointer;transition:opacity 0.2s;">${POPUP_I18N.bridgeUnpair}</button>
                 </div>
                 <div style="font-size:10px;color:${t.textMuted}; opacity: 0.8;">${POPUP_I18N.bridgePairHint}</div>
+            </section>
+            <section id="autosave-panel" style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;background:${t.panelBg};border:1px solid ${t.border};">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                    <strong style="font-size:12px;color:${t.text};">${POPUP_I18N.autosaveTitle}</strong>
+                    <span id="autosave-status-chip" style="font-size:10px;font-weight:700;color:${t.accent};background:${t.chipBg};padding:3px 8px;border-radius:999px;">0</span>
+                </div>
+                <div id="autosave-list" style="display:flex;flex-direction:column;gap:8px;"></div>
             </section>
             <section id="cards-container" style="display: flex; flex-direction: column; gap: 8px;">
                <div style="text-align: center; padding: 25px 0; color: ${t.textMuted}; font-size: 12px;">${POPUP_I18N.loading}</div>
@@ -264,6 +309,26 @@ const bootPopup = async () => {
         (button as HTMLButtonElement).disabled = busy;
         button.style.opacity = busy ? '0.7' : '1';
         button.style.cursor = busy ? 'wait' : 'pointer';
+    };
+
+    const wireLanguageSelector = () => {
+        const languageSelect = document.getElementById('language-select') as HTMLSelectElement | null;
+        if (!languageSelect) return;
+
+        languageSelect.value = popupLanguage;
+        languageSelect.addEventListener('change', async () => {
+            const nextLanguage = normalizeUiLanguage(languageSelect.value);
+            languageSelect.disabled = true;
+            try {
+                await browser.runtime.sendMessage({ type: 'SET_UI_LANGUAGE', language: nextLanguage });
+                popupLanguage = nextLanguage;
+                POPUP_I18N = buildPopupI18n(popupLanguage);
+                window.location.reload();
+            } catch {
+                languageSelect.disabled = false;
+                languageSelect.value = popupLanguage;
+            }
+        });
     };
 
     const renderBridgeStatus = async () => {
@@ -370,6 +435,102 @@ const bootPopup = async () => {
                 setButtonBusy(unpairBtn, false, POPUP_I18N.bridgeUnpair);
             }
         });
+    };
+
+    const renderAutosaveQueue = async () => {
+        const autosaveListEl = document.getElementById('autosave-list');
+        const autosaveChipEl = document.getElementById('autosave-status-chip');
+        if (!autosaveListEl || !autosaveChipEl) return;
+
+        try {
+            const response = await browser.runtime.sendMessage({ type: 'GET_AUTOSAVE_QUEUE' });
+            const items = Array.isArray(response?.data) ? response.data as PopupAutosaveItem[] : [];
+            autosaveChipEl.textContent = String(items.length);
+            autosaveListEl.textContent = '';
+
+            if (items.length === 0) {
+                const t = getT();
+                const empty = document.createElement('div');
+                empty.style.cssText = `font-size:11px;color:${t.textMuted};padding:6px 0;`;
+                empty.textContent = POPUP_I18N.autosaveEmpty;
+                autosaveListEl.appendChild(empty);
+                return;
+            }
+
+            const t = getT();
+            items.slice(0, 5).forEach((item) => {
+                const row = document.createElement('div');
+                row.style.cssText = `display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:10px;border:1px solid ${t.border};background:${t.itemBg};`;
+
+                const safeTitle = DOMPurify.sanitize(item.title || item.domain || POPUP_I18N.unknownSite);
+                const safeUser = DOMPurify.sanitize(item.username || POPUP_I18N.autosaveNoUser);
+                const safeWebsite = DOMPurify.sanitize(item.website || '');
+                const safeCreatedAt = DOMPurify.sanitize(item.createdAt || '');
+
+                setSanitizedMarkup(row, `
+                  <div style="display:flex;flex-direction:column;gap:2px;">
+                    <div style="font-size:12px;font-weight:700;color:${t.text};">${safeTitle}</div>
+                    <div style="font-size:11px;color:${t.textMuted};">${safeUser}</div>
+                    <div style="font-size:10px;color:${t.textMuted};opacity:0.85;">${safeWebsite}</div>
+                    <div style="font-size:10px;color:${t.textMuted};opacity:0.75;">${POPUP_I18N.autosaveQueuedAt}: ${safeCreatedAt}</div>
+                  </div>
+                `);
+
+                const actions = document.createElement('div');
+                actions.style.cssText = 'display:flex;gap:8px;';
+
+                const approveBtn = document.createElement('button');
+                approveBtn.type = 'button';
+                approveBtn.textContent = POPUP_I18N.autosaveApprove;
+                approveBtn.style.cssText = `flex:1;border:0;border-radius:8px;padding:7px 10px;background:${t.buttonPrimaryBg};color:${t.buttonPrimaryText};font-size:11px;font-weight:700;cursor:pointer;`;
+
+                const rejectBtn = document.createElement('button');
+                rejectBtn.type = 'button';
+                rejectBtn.textContent = POPUP_I18N.autosaveReject;
+                rejectBtn.style.cssText = `flex:1;border:1px solid ${t.border};border-radius:8px;padding:7px 10px;background:${t.buttonSecondaryBg};color:${t.buttonSecondaryText};font-size:11px;font-weight:700;cursor:pointer;`;
+
+                approveBtn.addEventListener('click', async () => {
+                    approveBtn.disabled = true;
+                    rejectBtn.disabled = true;
+                    approveBtn.style.opacity = '0.7';
+                    rejectBtn.style.opacity = '0.7';
+                    try {
+                        const result = await browser.runtime.sendMessage({
+                            type: 'APPROVE_AUTOSAVE_CREDENTIAL',
+                            id: item.id,
+                        });
+                        if (!result?.success) throw new Error(result?.error || 'AUTOSAVE_FAILED');
+                        await renderAutosaveQueue();
+                    } catch {
+                        approveBtn.textContent = POPUP_I18N.autosaveFailed;
+                    }
+                });
+
+                rejectBtn.addEventListener('click', async () => {
+                    rejectBtn.disabled = true;
+                    approveBtn.disabled = true;
+                    rejectBtn.style.opacity = '0.7';
+                    approveBtn.style.opacity = '0.7';
+                    try {
+                        await browser.runtime.sendMessage({
+                            type: 'REJECT_AUTOSAVE_CREDENTIAL',
+                            id: item.id,
+                        });
+                        await renderAutosaveQueue();
+                    } catch {
+                        rejectBtn.textContent = POPUP_I18N.autosaveFailed;
+                    }
+                });
+
+                actions.appendChild(approveBtn);
+                actions.appendChild(rejectBtn);
+                row.appendChild(actions);
+                autosaveListEl.appendChild(row);
+            });
+        } catch {
+            autosaveListEl.textContent = POPUP_I18N.autosaveFailed;
+            autosaveChipEl.textContent = '!';
+        }
     };
 
     const loadPopup = async () => {
@@ -504,8 +665,10 @@ const bootPopup = async () => {
         }
     };
 
+    wireLanguageSelector();
     wireBridgeActions();
     await renderBridgeStatus();
+    await renderAutosaveQueue();
     await loadPopup();
 };
 

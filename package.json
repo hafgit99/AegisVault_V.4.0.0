@@ -6,12 +6,16 @@
   "author": "hafgit99 <contact@aegisvault.pro>",
   "type": "module",
   "main": "electron-main.cjs",
+  "bin": {
+    "aegis": "./scripts/aegis-cli.cjs"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "build:extension": "cd aegis-wxt && npm run build",
     "build:electron": "node scripts/build-electron.cjs",
     "build:native-host-manifest": "node scripts/generate-native-host-manifest.cjs",
+    "cli": "node scripts/aegis-cli.cjs",
     "verify:native-host-manifest": "node scripts/verify-native-host-manifest.cjs",
     "register:native-host": "powershell -ExecutionPolicy Bypass -File scripts/register-native-host.ps1",
     "unregister:native-host": "powershell -ExecutionPolicy Bypass -File scripts/unregister-native-host.ps1",

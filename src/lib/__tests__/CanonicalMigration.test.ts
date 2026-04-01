@@ -16,6 +16,16 @@ describe('CanonicalMigrationService', () => {
       tags: ['ops'],
       pass: 'Sup3rSecret!',
       notes: 'vpn required',
+      cardDetails: {
+        cardholder_name: 'Alice Doe',
+        card_number: '4111111111111111',
+        brand: 'visa',
+      },
+      identityDetails: {
+        document_type: 'national_id',
+        identity_number: '12345678901',
+        issuing_country: 'TR',
+      },
       sharing: [
         {
           space_id: 'space-1',
@@ -33,10 +43,14 @@ describe('CanonicalMigrationService', () => {
 
     expect(canonical.url).toBe('https://portal.example.com');
     expect(canonical.secret?.password).toBe('Sup3rSecret!');
+    expect((canonical.custom_data as Record<string, any>)?.card_details?.card_number).toBe('4111111111111111');
+    expect((canonical.custom_data as Record<string, any>)?.identity_details?.identity_number).toBe('12345678901');
     expect(canonical.sharing?.[0]?.space_id).toBe('space-1');
     expect(restored.website).toBe('https://portal.example.com');
     expect(restored.pass).toBe('Sup3rSecret!');
     expect(restored.notes).toBe('vpn required');
+    expect(restored.cardDetails?.card_number).toBe('4111111111111111');
+    expect(restored.identityDetails?.identity_number).toBe('12345678901');
     expect(restored.sharing?.[0]?.shared_by).toBe('owner@example.com');
   });
 

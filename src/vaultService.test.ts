@@ -44,6 +44,10 @@ describe('VaultService Security & Cryptography', () => {
     encrypted_website?: string;
     encrypted_category?: string;
     encrypted_tags?: string;
+    encrypted_card_details?: string;
+    card_details_iv?: string;
+    encrypted_identity_details?: string;
+    identity_details_iv?: string;
     search_index: string[];
     attachments?: AttachmentCipherRecord[];
     title?: string;
@@ -334,6 +338,60 @@ describe('VaultService Security & Cryptography', () => {
 
     await vaultService.lock();
     db2.close();
+  }, 30000);
+
+  it('6. Card ve Identity ozel tip detaylari sifreli olarak saklanip UI icin desifre edilmelidir', async () => {
+    const dbName = `special_type_vault_${dbNameCounter}`;
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
+
+    const cardEntryId = await vaultService.addPassword({
+      title: 'Company Card',
+      category: 'Cards',
+      pass: '4111111111111111',
+      cardDetails: {
+        cardholder_name: 'Jane Doe',
+        card_number: '4111111111111111',
+        brand: 'visa',
+        expiry_month: '12',
+        expiry_year: '2030',
+        cvv: '123',
+      },
+    });
+
+    const identityEntryId = await vaultService.addPassword({
+      title: 'Kimlik Kartim',
+      category: 'Identities',
+      pass: 'TR12345678901',
+      identityDetails: {
+        document_type: 'national_id',
+        identity_number: '12345678901',
+        issuing_country: 'TR',
+        nationality: 'TR',
+        date_of_birth: '1990-01-01',
+      },
+    });
+
+    const req = indexedDB.open(dbName, 3);
+    const db = await getRequestResult(req);
+    const store = db.transaction('passwords', 'readonly').objectStore('passwords');
+
+    const storedCard = await getRequestResult<RawPasswordRecord>(store.get(cardEntryId));
+    const storedIdentity = await getRequestResult<RawPasswordRecord>(store.get(identityEntryId));
+    expect(storedCard.encrypted_card_details).toBeTypeOf('string');
+    expect(storedCard.card_details_iv).toBeTypeOf('string');
+    expect(storedIdentity.encrypted_identity_details).toBeTypeOf('string');
+    expect(storedIdentity.identity_details_iv).toBeTypeOf('string');
+
+    const uiEntries = await vaultService.getPasswords();
+    const cardUi = uiEntries.find((item) => Number(item.id) === Number(cardEntryId));
+    const identityUi = uiEntries.find((item) => Number(item.id) === Number(identityEntryId));
+    expect(cardUi?.cardDetails?.cardholder_name).toBe('Jane Doe');
+    expect(cardUi?.cardDetails?.brand).toBe('visa');
+    expect(identityUi?.identityDetails?.identity_number).toBe('12345678901');
+    expect(identityUi?.identityDetails?.document_type).toBe('national_id');
+
+    await vaultService.lock();
+    db.close();
   }, 30000);
 
   it('6. Auth Credential Migration: legacy PBKDF2 dogrulamasi Argon2id modeline otomatik tasinmali', async () => {

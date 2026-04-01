@@ -1,7 +1,6 @@
-# Aegis Vault 4.2.0
+# Aegis Vault
 
-**Secure. Private. Professional.**  
-The offline-first, zero-knowledge credential vault for the modern web.
+Secure, offline-first, zero-knowledge credential vault for desktop and browser extensions.
 
 <p align="center">
   <img src="public/icon.png" alt="Aegis Vault icon" width="120">
@@ -12,106 +11,96 @@ The offline-first, zero-knowledge credential vault for the modern web.
 [![Frontend](https://img.shields.io/badge/Frontend-React%2019-61dafb?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript)](https://www.typescriptlang.org)
 [![Security](https://img.shields.io/badge/Security-Zero--Knowledge-0f766e)](SECURITY.md)
-[![Lint](https://img.shields.io/badge/Lint-Zero--Warnings-success)](#quality)
 
----
+## Highlights
 
-## 🚀 What's New in 4.2.0
+- Cross-browser extension support (Chrome, Firefox, Safari via WXT flow)
+- Offline vault with local encryption (Argon2id + AES-GCM)
+- Desktop + extension bridge with pairing secret and strict validation
+- Bilingual experience (Turkish/English) across app and CLI
+- Emergency Access workflow with policy, trusted contacts, approvals, grant TTL, and audit trail
+- Desktop-native CLI for automation and operational workflows
+- Special entry types including credit card and identity card records
 
-Aegis Vault 4.2.0 introduces **Turbo Search** and **High-Scale Performance** optimizations, making it the most fluid offline vault on the market.
+## Recent Updates (2026-04)
 
-- **High-Performance Search:** A decoupled, score-weighted search engine with HMAC-compatible prefix tokenization. Get instant results even in vaults with thousands of entries.
-- **Virtualized Rendering:** Truly virtualized list rendering (60 FPS) that handles 1000+ entries with zero memory overhead or scroll stutter.
-- **Zero-Lint Quality:** A completely clean codebase with 0 warnings, meeting strict enterprise audit and stability requirements.
-- **WebAuthn Runtime:** Full support for Site Passkeys (FIDO2) with seamless extension autofill and cross-device sync.
-- **E2E Encrypted Cloud Sync:** Optional, zero-knowledge cloud synchronization via encrypted relay servers.
+- Added full Emergency Access module with:
+  - trusted contacts
+  - pending/approved/granted/revoked/expired request lifecycle
+  - policy controls (manual approval, wait window, grant TTL)
+  - audit events and bilingual UI messages
+- Improved extension behavior:
+  - smarter field targeting for suggestions (username/password focused)
+  - secure password generation flow improvements
+  - language handling enhancements
+- Added and documented CLI command set and bilingual guide pack
 
----
+For full details, see [CHANGELOG.md](CHANGELOG.md).
 
-## 🔐 Core Security Principles
+## Quick Start
 
-- **Zero-Knowledge Architecture:** Master secrets never leave your device. All encryption/decryption happens locally.
-- **Hardened KDF:** Argon2id-based key derivation with enforced memory limits (64MB) to prevent brute-force attacks.
-- **Modern Cryptography:** AES-256-GCM for all vault data, with unique IVs per entry and field-level encryption.
-- **Secure IPC Bridge:** Strictly validated origin allowlists and one-time nonces for Electron-to-Extension communication.
-- **Supply Chain Integrity:** SBOM (Software Bill of Materials) and SLSA-compliant provenance tracking for every release.
+### Requirements
 
----
-
-## 🛠️ Tech Stack
-
-- **Core:** React 19, TypeScript 5.x, Vite
-- **Desktop:** Electron 40.x (Performance & Security Hardened)
-- **Extension:** WXT (Web Extension Toolbox) for Cross-Browser Support
-- **Database:** WA-SQLite with OPFS & IndexedDB persistence
-- **Crypto:** Web Crypto API, Argon2id, AES-GCM
-
----
-
-## 📦 Getting Started
-
-### Prerequisites
-
-- Node.js 20+ (LTS)
+- Node.js 20+
 - npm 10+
 
-### Installation
+### Install
 
 ```bash
-# Clone the repository
 git clone https://github.com/hafgit99/Aegis-Vault.git
 cd Aegis-Vault
-
-# Install dependencies
 npm install
-
-# Install extension dependencies
-cd aegis-wxt && npm install && cd ..
+npm --prefix aegis-wxt install
 ```
 
-### Development
+### Run
 
 ```bash
-# Start Web UI (Dev Server)
+# Web UI
 npm run dev
 
-# Start Desktop Application (Electron)
+# Desktop (Electron)
 npm run start:electron
 
-# Start Extension (WXT)
+# Extension development
 npm --prefix aegis-wxt run dev
 ```
 
----
+## CLI (TR/EN)
 
-## 🛡️ Security & Auditing
+- Turkish guide: [docs/CLI/2026-04-01_AEGIS_CLI_KULLANIM_KILAVUZU_TR.md](docs/CLI/2026-04-01_AEGIS_CLI_KULLANIM_KILAVUZU_TR.md)
+- English guide: [docs/CLI/2026-04-01_AEGIS_CLI_USAGE_GUIDE_EN.md](docs/CLI/2026-04-01_AEGIS_CLI_USAGE_GUIDE_EN.md)
+- CLI index: [docs/CLI/README.md](docs/CLI/README.md)
 
-Aegis Vault is designed for transparency. You can verify the security posture through our detailed documentation:
+Example:
+
+```bash
+npm run cli -- help
+npm run cli -- status --lang tr
+npm run cli -- list --limit 25
+```
+
+## Security and Governance
 
 - [Security Policy](SECURITY.md)
-- [Security Whitepaper (EN)](guvenlik/SECURITY_WHITEPAPER_EN.md) | [(TR)](guvenlik/SECURITY_WHITEPAPER.md)
-- [Threat Model (EN)](guvenlik/THREAT_MODEL_EN.md) | [(TR)](guvenlik/THREAT_MODEL.md)
-- [Verification Guide](docs/VERIFY_RELEASE_TR.md)
+- [Threat Model (TR)](guvenlik/THREAT_MODEL.md)
+- [Threat Model (EN)](guvenlik/THREAT_MODEL_EN.md)
+- [Security Whitepaper (TR)](guvenlik/SECURITY_WHITEPAPER.md)
+- [Security Whitepaper (EN)](guvenlik/SECURITY_WHITEPAPER_EN.md)
+- [Release Verification Guide](docs/VERIFY_RELEASE_TR.md)
 
----
+## GitHub Safety Note
 
-## ✅ Quality Standards
+Before pushing, run a secret check and verify no local credentials are staged:
 
-We maintain a strict quality gate in our CI/CD pipeline:
+```bash
+git status
+git diff --staged
+rg -n "BEGIN (RSA|OPENSSH) PRIVATE KEY|API_KEY|SECRET|TOKEN|PASSWORD|ACCESS_KEY" .
+```
 
-- **Linting:** 0 warnings / 0 errors.
-- **Coverage:** ~78.2% statement coverage, >92% on critical crypto modules.
-- **Mutation Score:** ~98.7% Kill Rate (Stryker Mutator).
-- **E2E:** Playwright-backed security and regression suites.
+Also keep `.env*`, signing keys, and private certificates out of git (already covered in `.gitignore`).
 
----
+## License
 
-## 📜 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-<p align="center">
-  Built with ❤️ by the Aegis Team.
-</p>
+This project is licensed under the MIT License. See [LICENSE](LICENSE).

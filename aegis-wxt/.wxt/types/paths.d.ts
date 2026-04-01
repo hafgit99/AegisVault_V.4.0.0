@@ -11,6 +11,7 @@ declare module "wxt/browser" {
     | "/icon-48.png"
     | "/icon.png"
     | "/popup.html"
+    | "/webauthn-polyfill.js"
   type HtmlPublicPath = Extract<PublicPath, `${string}.html`>
   export interface WxtRuntime extends Runtime.Static {
     getURL(path: PublicPath): string;

@@ -46,6 +46,42 @@ type JsonImportCandidate = {
   category?: string;
   notes?: string;
   tags?: string[] | string;
+  cardDetails?: {
+    cardholder_name?: string;
+    card_number?: string;
+    brand?: string;
+    expiry_month?: string;
+    expiry_year?: string;
+    cvv?: string;
+    pin?: string;
+    billing_zip?: string;
+    billing_address?: string;
+  };
+  identityDetails?: {
+    document_type?: string;
+    identity_number?: string;
+    issuing_country?: string;
+    nationality?: string;
+    date_of_birth?: string;
+    issued_at?: string;
+    expires_at?: string;
+  };
+  cardholder_name?: string;
+  card_number?: string;
+  brand?: string;
+  expiry_month?: string;
+  expiry_year?: string;
+  cvv?: string;
+  pin?: string;
+  billing_zip?: string;
+  billing_address?: string;
+  document_type?: string;
+  identity_number?: string;
+  issuing_country?: string;
+  nationality?: string;
+  date_of_birth?: string;
+  issued_at?: string;
+  expires_at?: string;
   login?: {
     username?: string;
     password?: string;
@@ -75,6 +111,27 @@ const buildEntry = (candidate: {
   website?: string;
   category?: string;
   tags?: string[];
+  notes?: string;
+  cardDetails?: {
+    cardholder_name?: string;
+    card_number?: string;
+    brand?: string;
+    expiry_month?: string;
+    expiry_year?: string;
+    cvv?: string;
+    pin?: string;
+    billing_zip?: string;
+    billing_address?: string;
+  };
+  identityDetails?: {
+    document_type?: string;
+    identity_number?: string;
+    issuing_country?: string;
+    nationality?: string;
+    date_of_birth?: string;
+    issued_at?: string;
+    expires_at?: string;
+  };
 }): Partial<VaultEntry> | null => {
   const title = String(candidate.title || "").trim();
   const username = String(candidate.username || "").trim();
@@ -90,6 +147,9 @@ const buildEntry = (candidate: {
     website,
     category: normalizeCategory(candidate.category),
     tags: candidate.tags?.filter(Boolean) || [],
+    notes: String(candidate.notes || "").trim() || undefined,
+    cardDetails: candidate.cardDetails,
+    identityDetails: candidate.identityDetails,
   };
 };
 
@@ -101,6 +161,26 @@ const toCanonicalRecord = (candidate: {
   category?: string;
   tags?: string[];
   notes?: string;
+  cardDetails?: {
+    cardholder_name?: string;
+    card_number?: string;
+    brand?: string;
+    expiry_month?: string;
+    expiry_year?: string;
+    cvv?: string;
+    pin?: string;
+    billing_zip?: string;
+    billing_address?: string;
+  };
+  identityDetails?: {
+    document_type?: string;
+    identity_number?: string;
+    issuing_country?: string;
+    nationality?: string;
+    date_of_birth?: string;
+    issued_at?: string;
+    expires_at?: string;
+  };
 }): CanonicalVaultRecord | null => {
   const password = String(candidate.pass || "").trim();
   if (!password) return null;
@@ -125,6 +205,15 @@ const toCanonicalRecord = (candidate: {
       ...(notes ? { notes } : {}),
     },
     attachments: [],
+    custom_data: (() => {
+      const hasCard = candidate.cardDetails && Object.values(candidate.cardDetails).some((value) => String(value || "").trim().length > 0);
+      const hasIdentity = candidate.identityDetails && Object.values(candidate.identityDetails).some((value) => String(value || "").trim().length > 0);
+      if (!hasCard && !hasIdentity) return undefined;
+      return {
+        ...(hasCard ? { card_details: candidate.cardDetails } : {}),
+        ...(hasIdentity ? { identity_details: candidate.identityDetails } : {}),
+      };
+    })(),
   };
 };
 
@@ -298,6 +387,27 @@ export class ImportService {
           website: candidate.website || candidate.url || candidate.uri || candidate.login?.uris?.[0]?.uri || "",
           category: candidate.category,
           tags,
+          notes: candidate.notes,
+          cardDetails: candidate.cardDetails || {
+            cardholder_name: candidate.cardholder_name,
+            card_number: candidate.card_number,
+            brand: candidate.brand,
+            expiry_month: candidate.expiry_month,
+            expiry_year: candidate.expiry_year,
+            cvv: candidate.cvv,
+            pin: candidate.pin,
+            billing_zip: candidate.billing_zip,
+            billing_address: candidate.billing_address,
+          },
+          identityDetails: candidate.identityDetails || {
+            document_type: candidate.document_type,
+            identity_number: candidate.identity_number,
+            issuing_country: candidate.issuing_country,
+            nationality: candidate.nationality,
+            date_of_birth: candidate.date_of_birth,
+            issued_at: candidate.issued_at,
+            expires_at: candidate.expires_at,
+          },
         });
 
         if (entry) {
@@ -347,6 +457,23 @@ export class ImportService {
     const passIdx = findHeaderIndex(headers, "password", "login_password", "pass");
     const categoryIdx = findHeaderIndex(headers, "category", "folder", "group", "vault");
     const tagsIdx = findHeaderIndex(headers, "tags", "tag");
+    const notesIdx = findHeaderIndex(headers, "notes", "note");
+    const cardholderNameIdx = findHeaderIndex(headers, "cardholder name", "cardholder_name");
+    const cardNumberIdx = findHeaderIndex(headers, "card number", "card_number");
+    const cardBrandIdx = findHeaderIndex(headers, "card brand", "brand");
+    const cardExpiryMonthIdx = findHeaderIndex(headers, "card expiry month", "expiry_month");
+    const cardExpiryYearIdx = findHeaderIndex(headers, "card expiry year", "expiry_year");
+    const cardCvvIdx = findHeaderIndex(headers, "card cvv", "cvv");
+    const cardPinIdx = findHeaderIndex(headers, "card pin", "pin");
+    const cardBillingZipIdx = findHeaderIndex(headers, "card billing zip", "billing_zip");
+    const cardBillingAddressIdx = findHeaderIndex(headers, "card billing address", "billing_address");
+    const identityDocumentTypeIdx = findHeaderIndex(headers, "identity document type", "document_type");
+    const identityNumberIdx = findHeaderIndex(headers, "identity number", "identity_number");
+    const identityIssuingCountryIdx = findHeaderIndex(headers, "identity issuing country", "issuing_country");
+    const identityNationalityIdx = findHeaderIndex(headers, "identity nationality", "nationality");
+    const identityDobIdx = findHeaderIndex(headers, "identity date of birth", "date_of_birth");
+    const identityIssuedAtIdx = findHeaderIndex(headers, "identity issued at", "issued_at");
+    const identityExpiresAtIdx = findHeaderIndex(headers, "identity expires at", "expires_at");
 
     if (hasHeader(headers, "login_uri", "login_totp")) report.warnings.push("BITWARDEN_CSV_DETECTED");
     if (hasHeader(headers, "otpauth", "website name")) report.warnings.push("ONEPASSWORD_CSV_DETECTED");
@@ -381,6 +508,27 @@ export class ImportService {
           website,
           category: categoryIdx !== -1 ? cols[categoryIdx] : "General",
           tags,
+          notes: notesIdx !== -1 ? cols[notesIdx] : "",
+          cardDetails: {
+            cardholder_name: cardholderNameIdx !== -1 ? cols[cardholderNameIdx] : "",
+            card_number: cardNumberIdx !== -1 ? cols[cardNumberIdx] : "",
+            brand: cardBrandIdx !== -1 ? cols[cardBrandIdx] : "",
+            expiry_month: cardExpiryMonthIdx !== -1 ? cols[cardExpiryMonthIdx] : "",
+            expiry_year: cardExpiryYearIdx !== -1 ? cols[cardExpiryYearIdx] : "",
+            cvv: cardCvvIdx !== -1 ? cols[cardCvvIdx] : "",
+            pin: cardPinIdx !== -1 ? cols[cardPinIdx] : "",
+            billing_zip: cardBillingZipIdx !== -1 ? cols[cardBillingZipIdx] : "",
+            billing_address: cardBillingAddressIdx !== -1 ? cols[cardBillingAddressIdx] : "",
+          },
+          identityDetails: {
+            document_type: identityDocumentTypeIdx !== -1 ? cols[identityDocumentTypeIdx] : "",
+            identity_number: identityNumberIdx !== -1 ? cols[identityNumberIdx] : "",
+            issuing_country: identityIssuingCountryIdx !== -1 ? cols[identityIssuingCountryIdx] : "",
+            nationality: identityNationalityIdx !== -1 ? cols[identityNationalityIdx] : "",
+            date_of_birth: identityDobIdx !== -1 ? cols[identityDobIdx] : "",
+            issued_at: identityIssuedAtIdx !== -1 ? cols[identityIssuedAtIdx] : "",
+            expires_at: identityExpiresAtIdx !== -1 ? cols[identityExpiresAtIdx] : "",
+          },
         });
 
         if (entry) {
@@ -411,6 +559,9 @@ export class ImportService {
           website: typeof entry.website === "string" ? entry.website : "",
           category: typeof entry.category === "string" ? entry.category : "",
           tags: Array.isArray(entry.tags) ? entry.tags.filter((tag): tag is string => typeof tag === "string") : [],
+          notes: typeof entry.notes === "string" ? entry.notes : "",
+          cardDetails: entry.cardDetails || undefined,
+          identityDetails: entry.identityDetails || undefined,
         })
       )
       .filter((record): record is CanonicalVaultRecord => Boolean(record));
@@ -432,6 +583,9 @@ export class ImportService {
           website: typeof entry.website === "string" ? entry.website : "",
           category: typeof entry.category === "string" ? entry.category : "",
           tags: Array.isArray(entry.tags) ? entry.tags.filter((tag): tag is string => typeof tag === "string") : [],
+          notes: typeof entry.notes === "string" ? entry.notes : "",
+          cardDetails: entry.cardDetails || undefined,
+          identityDetails: entry.identityDetails || undefined,
         })
       )
       .filter((record): record is CanonicalVaultRecord => Boolean(record));

@@ -100,6 +100,70 @@ export interface ReleaseTrustHistoryEvent {
   title?: string;
 }
 
+export type EmergencyAccessPermission = 'read_only' | 'full_access';
+export type EmergencyAccessRequestStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'granted'
+  | 'revoked'
+  | 'expired';
+
+export interface EmergencyAccessContact {
+  id: string;
+  name: string;
+  email: string;
+  permission: EmergencyAccessPermission;
+  wait_hours: number;
+  enabled: boolean;
+  note?: string;
+  created_at: string;
+  updated_at: string;
+  last_requested_at?: string;
+}
+
+export interface EmergencyAccessRequest {
+  id: string;
+  contact_id: string;
+  status: EmergencyAccessRequestStatus;
+  requested_at: string;
+  unlock_at: string;
+  scope: 'vault' | 'selected_entries';
+  entry_ids?: number[];
+  requester_note?: string;
+  owner_note?: string;
+  decided_at?: string;
+  granted_at?: string;
+  revoked_at?: string;
+  expires_at?: string;
+}
+
+export interface EmergencyAccessAuditEvent {
+  id: string;
+  at: string;
+  type:
+    | 'contact_saved'
+    | 'contact_deleted'
+    | 'request_created'
+    | 'request_approved'
+    | 'request_rejected'
+    | 'grant_activated'
+    | 'grant_revoked'
+    | 'grant_expired'
+    | 'request_auto_expired';
+  contactId?: string;
+  requestId?: string;
+  detail?: string;
+  metadata?: Record<string, string | number | boolean | undefined>;
+}
+
+export interface EmergencyAccessPolicy {
+  enabled: boolean;
+  require_manual_approval: boolean;
+  default_wait_hours: number;
+  grant_ttl_hours: number;
+}
+
 interface SecureAppSettingsState {
   securityModeProfile: SecurityModeProfile;
   plaintextExportEnabled: boolean;
@@ -126,6 +190,10 @@ interface SecureAppSettingsState {
   releaseTrustChecklist: Record<string, string>;
   releaseTrustApprovals: Record<string, string>;
   releaseTrustHistory: ReleaseTrustHistoryEvent[];
+  emergencyAccessContacts: EmergencyAccessContact[];
+  emergencyAccessRequests: EmergencyAccessRequest[];
+  emergencyAccessAudit: EmergencyAccessAuditEvent[];
+  emergencyAccessPolicy: EmergencyAccessPolicy;
 }
 
 const DB_NAME = 'aegis-secure-meta-v1';
@@ -157,6 +225,10 @@ const LEGACY_KEYS = {
   releaseTrustChecklist: 'aegis_release_trust_checklist_v1',
   releaseTrustApprovals: 'aegis_release_trust_approvals_v1',
   releaseTrustHistory: 'aegis_release_trust_history_v1',
+  emergencyAccessContacts: 'aegis_emergency_access_contacts_v1',
+  emergencyAccessRequests: 'aegis_emergency_access_requests_v1',
+  emergencyAccessAudit: 'aegis_emergency_access_audit_v1',
+  emergencyAccessPolicy: 'aegis_emergency_access_policy_v1',
 } as const;
 
 const DEFAULT_STATE: SecureAppSettingsState = {
@@ -185,6 +257,15 @@ const DEFAULT_STATE: SecureAppSettingsState = {
   releaseTrustChecklist: {},
   releaseTrustApprovals: {},
   releaseTrustHistory: [],
+  emergencyAccessContacts: [],
+  emergencyAccessRequests: [],
+  emergencyAccessAudit: [],
+  emergencyAccessPolicy: {
+    enabled: true,
+    require_manual_approval: true,
+    default_wait_hours: 48,
+    grant_ttl_hours: 24,
+  },
 };
 
 const cloneCanonicalSharedMember = (member: CanonicalSharedMember): CanonicalSharedMember => ({
@@ -257,7 +338,135 @@ const cloneState = (state: SecureAppSettingsState): SecureAppSettingsState => ({
   releaseTrustChecklist: { ...state.releaseTrustChecklist },
   releaseTrustApprovals: { ...state.releaseTrustApprovals },
   releaseTrustHistory: state.releaseTrustHistory.map((event) => ({ ...event })),
+  emergencyAccessContacts: state.emergencyAccessContacts.map((contact) => ({ ...contact })),
+  emergencyAccessRequests: state.emergencyAccessRequests.map((request) => ({
+    ...request,
+    entry_ids: Array.isArray(request.entry_ids) ? [...request.entry_ids] : undefined,
+  })),
+  emergencyAccessAudit: state.emergencyAccessAudit.map((event) => ({
+    ...event,
+    metadata: event.metadata ? { ...event.metadata } : undefined,
+  })),
+  emergencyAccessPolicy: { ...state.emergencyAccessPolicy },
 });
+
+const normalizeEmergencyAccessContact = (value: unknown): EmergencyAccessContact | null => {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<EmergencyAccessContact>;
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof candidate.name !== 'string' ||
+    typeof candidate.email !== 'string' ||
+    typeof candidate.created_at !== 'string' ||
+    typeof candidate.updated_at !== 'string'
+  ) {
+    return null;
+  }
+
+  const waitHoursRaw = Number(candidate.wait_hours);
+  const wait_hours = Number.isFinite(waitHoursRaw) ? Math.min(720, Math.max(1, Math.round(waitHoursRaw))) : 48;
+
+  return {
+    id: candidate.id,
+    name: candidate.name,
+    email: candidate.email,
+    permission: candidate.permission === 'full_access' ? 'full_access' : 'read_only',
+    wait_hours,
+    enabled: candidate.enabled !== false,
+    note: typeof candidate.note === 'string' ? candidate.note : undefined,
+    created_at: candidate.created_at,
+    updated_at: candidate.updated_at,
+    last_requested_at:
+      typeof candidate.last_requested_at === 'string' ? candidate.last_requested_at : undefined,
+  };
+};
+
+const normalizeEmergencyAccessRequest = (value: unknown): EmergencyAccessRequest | null => {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<EmergencyAccessRequest>;
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof candidate.contact_id !== 'string' ||
+    typeof candidate.status !== 'string' ||
+    typeof candidate.requested_at !== 'string' ||
+    typeof candidate.unlock_at !== 'string'
+  ) {
+    return null;
+  }
+
+  const status: EmergencyAccessRequestStatus =
+    candidate.status === 'approved' ||
+    candidate.status === 'rejected' ||
+    candidate.status === 'granted' ||
+    candidate.status === 'revoked' ||
+    candidate.status === 'expired'
+      ? candidate.status
+      : 'pending';
+
+  return {
+    id: candidate.id,
+    contact_id: candidate.contact_id,
+    status,
+    requested_at: candidate.requested_at,
+    unlock_at: candidate.unlock_at,
+    scope: candidate.scope === 'selected_entries' ? 'selected_entries' : 'vault',
+    entry_ids: Array.isArray(candidate.entry_ids)
+      ? candidate.entry_ids
+          .map((entryId) => Number(entryId))
+          .filter((entryId) => Number.isFinite(entryId) && entryId > 0)
+      : undefined,
+    requester_note:
+      typeof candidate.requester_note === 'string' ? candidate.requester_note : undefined,
+    owner_note: typeof candidate.owner_note === 'string' ? candidate.owner_note : undefined,
+    decided_at: typeof candidate.decided_at === 'string' ? candidate.decided_at : undefined,
+    granted_at: typeof candidate.granted_at === 'string' ? candidate.granted_at : undefined,
+    revoked_at: typeof candidate.revoked_at === 'string' ? candidate.revoked_at : undefined,
+    expires_at: typeof candidate.expires_at === 'string' ? candidate.expires_at : undefined,
+  };
+};
+
+const normalizeEmergencyAccessAuditEvent = (value: unknown): EmergencyAccessAuditEvent | null => {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<EmergencyAccessAuditEvent>;
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof candidate.at !== 'string' ||
+    typeof candidate.type !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    id: candidate.id,
+    at: candidate.at,
+    type:
+      candidate.type === 'contact_saved' ||
+      candidate.type === 'contact_deleted' ||
+      candidate.type === 'request_created' ||
+      candidate.type === 'request_approved' ||
+      candidate.type === 'request_rejected' ||
+      candidate.type === 'grant_activated' ||
+      candidate.type === 'grant_revoked' ||
+      candidate.type === 'grant_expired' ||
+      candidate.type === 'request_auto_expired'
+        ? candidate.type
+        : 'request_created',
+    contactId: typeof candidate.contactId === 'string' ? candidate.contactId : undefined,
+    requestId: typeof candidate.requestId === 'string' ? candidate.requestId : undefined,
+    detail: typeof candidate.detail === 'string' ? candidate.detail : undefined,
+    metadata:
+      candidate.metadata && typeof candidate.metadata === 'object'
+        ? Object.fromEntries(
+            Object.entries(candidate.metadata).filter(([, value]) =>
+              value === undefined ||
+              typeof value === 'string' ||
+              typeof value === 'number' ||
+              typeof value === 'boolean'
+            )
+          )
+        : undefined,
+  };
+};
 
 const normalizeSharedMember = (value: unknown): CanonicalSharedMember | null => {
   if (!value || typeof value !== 'object') return null;
@@ -511,6 +720,38 @@ const normalizeState = (value: unknown): SecureAppSettingsState => {
           )
           .map((event) => ({ ...event }))
       : [];
+  const emergencyAccessContacts =
+    Array.isArray(candidate.emergencyAccessContacts)
+      ? candidate.emergencyAccessContacts
+          .map((contact) => normalizeEmergencyAccessContact(contact))
+          .filter((contact): contact is EmergencyAccessContact => Boolean(contact))
+      : [];
+  const emergencyAccessRequests =
+    Array.isArray(candidate.emergencyAccessRequests)
+      ? candidate.emergencyAccessRequests
+          .map((request) => normalizeEmergencyAccessRequest(request))
+          .filter((request): request is EmergencyAccessRequest => Boolean(request))
+      : [];
+  const emergencyAccessAudit =
+    Array.isArray(candidate.emergencyAccessAudit)
+      ? candidate.emergencyAccessAudit
+          .map((event) => normalizeEmergencyAccessAuditEvent(event))
+          .filter((event): event is EmergencyAccessAuditEvent => Boolean(event))
+      : [];
+  const emergencyAccessPolicyRaw =
+    candidate.emergencyAccessPolicy && typeof candidate.emergencyAccessPolicy === 'object'
+      ? (candidate.emergencyAccessPolicy as Partial<EmergencyAccessPolicy>)
+      : {};
+  const emergencyAccessPolicy: EmergencyAccessPolicy = {
+    enabled: emergencyAccessPolicyRaw.enabled !== false,
+    require_manual_approval: emergencyAccessPolicyRaw.require_manual_approval !== false,
+    default_wait_hours: Number.isFinite(Number(emergencyAccessPolicyRaw.default_wait_hours))
+      ? Math.min(720, Math.max(1, Math.round(Number(emergencyAccessPolicyRaw.default_wait_hours))))
+      : DEFAULT_STATE.emergencyAccessPolicy.default_wait_hours,
+    grant_ttl_hours: Number.isFinite(Number(emergencyAccessPolicyRaw.grant_ttl_hours))
+      ? Math.min(720, Math.max(1, Math.round(Number(emergencyAccessPolicyRaw.grant_ttl_hours))))
+      : DEFAULT_STATE.emergencyAccessPolicy.grant_ttl_hours,
+  };
   return {
     securityModeProfile:
       candidate.securityModeProfile === 'strict' || candidate.securityModeProfile === 'maximum'
@@ -597,6 +838,10 @@ const normalizeState = (value: unknown): SecureAppSettingsState => {
     releaseTrustChecklist,
     releaseTrustApprovals,
     releaseTrustHistory,
+    emergencyAccessContacts,
+    emergencyAccessRequests,
+    emergencyAccessAudit,
+    emergencyAccessPolicy,
   };
 };
 
@@ -728,6 +973,42 @@ const loadLegacyState = (): SecureAppSettingsState => {
           return JSON.parse(raw) as SharingAuditEvent[];
         } catch {
           return [];
+        }
+      })(),
+      emergencyAccessContacts: (() => {
+        const raw = localStorage.getItem(LEGACY_KEYS.emergencyAccessContacts);
+        if (!raw) return [];
+        try {
+          return JSON.parse(raw) as EmergencyAccessContact[];
+        } catch {
+          return [];
+        }
+      })(),
+      emergencyAccessRequests: (() => {
+        const raw = localStorage.getItem(LEGACY_KEYS.emergencyAccessRequests);
+        if (!raw) return [];
+        try {
+          return JSON.parse(raw) as EmergencyAccessRequest[];
+        } catch {
+          return [];
+        }
+      })(),
+      emergencyAccessAudit: (() => {
+        const raw = localStorage.getItem(LEGACY_KEYS.emergencyAccessAudit);
+        if (!raw) return [];
+        try {
+          return JSON.parse(raw) as EmergencyAccessAuditEvent[];
+        } catch {
+          return [];
+        }
+      })(),
+      emergencyAccessPolicy: (() => {
+        const raw = localStorage.getItem(LEGACY_KEYS.emergencyAccessPolicy);
+        if (!raw) return { ...DEFAULT_STATE.emergencyAccessPolicy };
+        try {
+          return JSON.parse(raw) as EmergencyAccessPolicy;
+        } catch {
+          return { ...DEFAULT_STATE.emergencyAccessPolicy };
         }
       })(),
     });
@@ -1114,6 +1395,62 @@ export class SecureAppSettings {
   static setReleaseTrustHistory(events: ReleaseTrustHistoryEvent[]): void {
     ensureMutableState();
     stateCache.releaseTrustHistory = events.map((event) => ({ ...event }));
+    void schedulePersist();
+  }
+
+  static getEmergencyAccessContacts(): EmergencyAccessContact[] {
+    ensureBootstrapped();
+    return stateCache.emergencyAccessContacts.map((contact) => ({ ...contact }));
+  }
+
+  static setEmergencyAccessContacts(contacts: EmergencyAccessContact[]): void {
+    ensureMutableState();
+    stateCache.emergencyAccessContacts = contacts.map((contact) => ({ ...contact }));
+    void schedulePersist();
+  }
+
+  static getEmergencyAccessRequests(): EmergencyAccessRequest[] {
+    ensureBootstrapped();
+    return stateCache.emergencyAccessRequests.map((request) => ({
+      ...request,
+      entry_ids: Array.isArray(request.entry_ids) ? [...request.entry_ids] : undefined,
+    }));
+  }
+
+  static setEmergencyAccessRequests(requests: EmergencyAccessRequest[]): void {
+    ensureMutableState();
+    stateCache.emergencyAccessRequests = requests.map((request) => ({
+      ...request,
+      entry_ids: Array.isArray(request.entry_ids) ? [...request.entry_ids] : undefined,
+    }));
+    void schedulePersist();
+  }
+
+  static getEmergencyAccessAudit(): EmergencyAccessAuditEvent[] {
+    ensureBootstrapped();
+    return stateCache.emergencyAccessAudit.map((event) => ({
+      ...event,
+      metadata: event.metadata ? { ...event.metadata } : undefined,
+    }));
+  }
+
+  static setEmergencyAccessAudit(events: EmergencyAccessAuditEvent[]): void {
+    ensureMutableState();
+    stateCache.emergencyAccessAudit = events.map((event) => ({
+      ...event,
+      metadata: event.metadata ? { ...event.metadata } : undefined,
+    }));
+    void schedulePersist();
+  }
+
+  static getEmergencyAccessPolicy(): EmergencyAccessPolicy {
+    ensureBootstrapped();
+    return { ...stateCache.emergencyAccessPolicy };
+  }
+
+  static setEmergencyAccessPolicy(policy: EmergencyAccessPolicy): void {
+    ensureMutableState();
+    stateCache.emergencyAccessPolicy = { ...policy };
     void schedulePersist();
   }
 

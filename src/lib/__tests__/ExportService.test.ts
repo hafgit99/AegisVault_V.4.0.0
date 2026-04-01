@@ -38,6 +38,9 @@ describe("ExportService regression tests", () => {
         category: "Work",
         website: "https://github.com",
         tags: ["dev"],
+        notes: "",
+        cardDetails: null,
+        identityDetails: null,
       },
     ]);
   });
@@ -76,5 +79,35 @@ describe("ExportService regression tests", () => {
         attachments: [],
       },
     ]);
+  });
+
+  it("preserves card and identity details in structured JSON export", () => {
+    const json = ExportService.buildJson([
+      {
+        title: "Corporate Card",
+        username: "finance",
+        pass: "4111111111111111",
+        category: "Cards",
+        website: "https://bank.example.com",
+        tags: ["card"],
+        cardDetails: {
+          cardholder_name: "Jane Doe",
+          card_number: "4111111111111111",
+          brand: "visa",
+          expiry_month: "12",
+          expiry_year: "2030",
+          cvv: "123",
+        },
+        identityDetails: {
+          document_type: "national_id",
+          identity_number: "12345678901",
+          issuing_country: "TR",
+        },
+      },
+    ]);
+
+    const parsed = JSON.parse(json);
+    expect(parsed[0]?.cardDetails?.card_number).toBe("4111111111111111");
+    expect(parsed[0]?.identityDetails?.identity_number).toBe("12345678901");
   });
 });

@@ -44,6 +44,28 @@ export interface CanonicalPasskeyFields {
   last_auth_at?: string;
 }
 
+export interface CanonicalCardDetails {
+  cardholder_name?: string;
+  card_number?: string;
+  brand?: string;
+  expiry_month?: string;
+  expiry_year?: string;
+  cvv?: string;
+  pin?: string;
+  billing_zip?: string;
+  billing_address?: string;
+}
+
+export interface CanonicalIdentityDetails {
+  document_type?: string;
+  identity_number?: string;
+  issuing_country?: string;
+  nationality?: string;
+  date_of_birth?: string;
+  issued_at?: string;
+  expires_at?: string;
+}
+
 export interface CanonicalSharingAssignment {
   space_id: string;
   role: 'viewer' | 'editor';
