@@ -64,6 +64,7 @@ describe("SecurityCenterService", () => {
   });
 
   it("hides reviewed triage items from the active queue", () => {
+    const recentlyReviewedAt = new Date().toISOString();
     const summary = SecurityCenterService.buildSummary([
       {
         id: 1,
@@ -75,9 +76,9 @@ describe("SecurityCenterService", () => {
         updated_at: "2025-01-01T10:00:00.000Z",
       },
     ] as never, {
-      "missing_second_factor:1": "2026-03-23T18:00:00.000Z",
-      "passkey_ready:1": "2026-03-23T18:00:00.000Z",
-      "aging_credentials:1": "2026-03-23T18:00:00.000Z",
+      "missing_second_factor:1": recentlyReviewedAt,
+      "passkey_ready:1": recentlyReviewedAt,
+      "aging_credentials:1": recentlyReviewedAt,
     });
 
     expect(summary.issues.length).toBeGreaterThan(0);
@@ -86,6 +87,7 @@ describe("SecurityCenterService", () => {
   });
 
   it("shows reviewed items again after the review window expires", () => {
+    const expiredReviewAt = new Date(Date.now() - 1000 * 60 * 60 * 24 * 8).toISOString();
     const summary = SecurityCenterService.buildSummary([
       {
         id: 1,
@@ -97,9 +99,9 @@ describe("SecurityCenterService", () => {
         updated_at: "2025-01-01T10:00:00.000Z",
       },
     ] as never, {
-      "missing_second_factor:1": "2026-03-01T10:00:00.000Z",
-      "passkey_ready:1": "2026-03-01T10:00:00.000Z",
-      "aging_credentials:1": "2026-03-01T10:00:00.000Z",
+      "missing_second_factor:1": expiredReviewAt,
+      "passkey_ready:1": expiredReviewAt,
+      "aging_credentials:1": expiredReviewAt,
     });
 
     expect(summary.triageItems).toHaveLength(3);
