@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 3000,
-    strictPort: false
+    strictPort: false,
   },
   resolve: {
     alias: {
