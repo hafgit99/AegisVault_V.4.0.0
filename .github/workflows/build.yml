@@ -12,10 +12,16 @@ concurrency:
   group: aegis-vault-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-jobs:
-  quality:
-    runs-on: ubuntu-latest
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+  attestations: write
 
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -35,14 +41,37 @@ jobs:
       - name: Install Extension Dependencies
         run: npm --prefix aegis-wxt ci
 
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+      - name: ESLint
+        run: npm run lint
+
+      - name: Prettier Check
+        run: npm run format:check
+
+  test-unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Install Extension Dependencies
+        run: npm --prefix aegis-wxt ci
 
       - name: Prepare CI Artifact Layout
         run: npm run ci:prepare:artifacts
-
-      - name: Lint
-        run: npm run lint
 
       - name: Unit Tests
         run: |
@@ -55,6 +84,9 @@ jobs:
       - name: Security Regression Tests
         run: npm run test:security-regression
 
+      - name: Test Coverage Report
+        run: npm run test:coverage
+
       - name: Debug Test Results
         if: always()
         run: |
@@ -63,7 +95,79 @@ jobs:
           echo "Listing test-results:"
           ls -R test-results || echo "test-results not found"
 
-      - name: Extension Compile
+      - name: Upload Test Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            vitest-results/**
+            test-results/**
+            coverage/**
+          if-no-files-found: warn
+          retention-days: 14
+
+  test-e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: test-unit
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Run E2E Tests
+        run: npm run test:e2e:ci
+
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/**
+            test-results/**
+          if-no-files-found: warn
+          retention-days: 14
+
+  build-extension:
+    name: Build Extensions
+    runs-on: ubuntu-latest
+    needs: lint
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Install Extension Dependencies
+        run: npm --prefix aegis-wxt ci
+
+      - name: Extension Compile Check
         run: npm --prefix aegis-wxt run compile
 
       - name: Build Chrome Extension
@@ -72,49 +176,54 @@ jobs:
       - name: Build Firefox Extension
         run: npm --prefix aegis-wxt run build:firefox
 
+      - name: Upload Extension Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-extensions
+          path: |
+            aegis-wxt/dist/**
+          if-no-files-found: warn
+          retention-days: 14
+
+  build-native-host:
+    name: Build Native Host
+    runs-on: ubuntu-latest
+    needs: lint
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      AEGIS_EXTENSION_ID: iockeheicjcnfoegjjboooljndjcafae
+      AEGIS_FIREFOX_EXTENSION_ID: aegisvault@example.com
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
       - name: Build Native Host Manifest
-        env:
-          AEGIS_EXTENSION_ID: iockeheicjcnfoegjjboooljndjcafae
-          AEGIS_FIREFOX_EXTENSION_ID: aegisvault@example.com
         run: npm run build:native-host-manifest
 
       - name: Verify Native Host Manifest
         run: npm run verify:native-host-manifest
 
-      - name: E2E Tests
-        run: npm run test:e2e:ci
-
-      - name: Generate CI Summary
-        run: npm run ci:report
-
-      - name: Enforce Quality Gate
-        run: npm run ci:enforce:quality
-
-      - name: Publish Quality Summary
-        if: always()
-        shell: bash
-        run: |
-          if [ -f "ci-artifacts/quality-summary.md" ]; then
-            cat ci-artifacts/quality-summary.md >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Upload Quality Artifacts
-        if: always()
+      - name: Upload Native Host Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Aegis-Vault-quality-reports
-          path: |
-            ci-artifacts/**
-            test-results/**
-            vitest-results/**
-            playwright-report/**
-            aegis-wxt/dist/**
-            build/native-host/**
+          name: native-host
+          path: build/native-host/**
           if-no-files-found: warn
           retention-days: 14
 
   release:
-    needs: quality
+    name: Release (${{ matrix.platform }})
+    needs: [test-unit, test-e2e, build-extension, build-native-host]
     runs-on: ${{ matrix.os }}
 
     env:
@@ -132,17 +241,38 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            platform: Windows
+            artifact: windows
+          - os: macos-latest
+            platform: macOS
+            artifact: macos
+          - os: ubuntu-latest
+            platform: Linux
+            artifact: linux
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Download Quality Artifacts
+      - name: Download Test Results
         uses: actions/download-artifact@v4
         with:
-          name: Aegis-Vault-quality-reports
+          name: test-results
           path: .
+
+      - name: Download Extensions
+        uses: actions/download-artifact@v4
+        with:
+          name: browser-extensions
+          path: aegis-wxt/dist
+
+      - name: Download Native Host
+        uses: actions/download-artifact@v4
+        with:
+          name: native-host
+          path: build/native-host
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -168,22 +298,13 @@ jobs:
       - name: Build Application
         run: npm run build
 
-      - name: Build Chrome Extension
-        run: npm --prefix aegis-wxt run build
-
-      - name: Build Firefox Extension
-        run: npm --prefix aegis-wxt run build:firefox
-
       - name: Build Native Host Manifest
         env:
           AEGIS_EXTENSION_ID: iockeheicjcnfoegjjboooljndjcafae
           AEGIS_FIREFOX_EXTENSION_ID: aegisvault@example.com
         run: npm run build:native-host-manifest
 
-      - name: Verify Native Host Manifest
-        run: npm run verify:native-host-manifest
-
-      - name: Build Electron App
+      - name: Build Electron App (${{ matrix.platform }})
         run: npm run build:electron
 
       - name: Verify Platform Signing
@@ -209,11 +330,11 @@ jobs:
             cat ci-artifacts/quality-summary.md >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Upload Release Artifacts
+      - name: Upload Release Artifacts (${{ matrix.artifact }})
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Aegis-Vault-${{ matrix.os }}
+          name: Aegis-Vault-${{ matrix.artifact }}
           path: |
             release/*.exe
             release/*.dmg
@@ -231,8 +352,36 @@ jobs:
           retention-days: 14
 
       - name: Attest Build Provenance
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && matrix.os == 'ubuntu-latest'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && matrix.artifact == 'linux'
         uses: actions/attest-build-provenance@v1
         with:
           subject-path: 'release/*'
           push-to-registry: false
+
+  quality-summary:
+    name: Quality Gate Summary
+    runs-on: ubuntu-latest
+    needs: [lint, test-unit, test-e2e, build-extension, build-native-host, release]
+    if: always()
+
+    steps:
+      - name: Generate Final Summary
+        shell: bash
+        run: |
+          echo "## Aegis Vault - CI/CD Pipeline Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Job | Status | Platform |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----|--------|----------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Lint | \`${{ needs.lint.result }}\` | ubuntu-latest |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Unit Tests | \`${{ needs.test-unit.result }}\` | ubuntu-latest |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| E2E Tests | \`${{ needs.test-e2e.result }}\` | ubuntu-latest |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Build Extensions | \`${{ needs.build-extension.result }}\` | ubuntu-latest |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Build Native Host | \`${{ needs.build-native-host.result }}\` | ubuntu-latest |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Release (Windows) | \`${{ needs.release.result }}\` | windows-latest |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Release (macOS) | \`${{ needs.release.result }}\` | macos-latest |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Release (Linux) | \`${{ needs.release.result }}\` | ubuntu-latest |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Build Triggers" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Branch**: \`${{ github.ref_name }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Event**: \`${{ github.event_name }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Commit**: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
