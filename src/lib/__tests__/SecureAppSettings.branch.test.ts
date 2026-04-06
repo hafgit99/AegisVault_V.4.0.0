@@ -31,5 +31,4 @@ describe('SecureAppSettings Branch Coverage', () => {
       expect(SecureAppSettings.getTotpVaultMode()).toBe('auto-generate');
     });
   });
-
 });

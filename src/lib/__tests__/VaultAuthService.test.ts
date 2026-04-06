@@ -13,12 +13,18 @@ vi.mock('../Argon2WorkerService', () => ({
       }
       return hash;
     }),
-    deriveBinary: vi.fn(async () => { const buf = new Uint8Array(32); crypto.getRandomValues(buf); return buf; }),
+    deriveBinary: vi.fn(async () => {
+      const buf = new Uint8Array(32);
+      crypto.getRandomValues(buf);
+      return buf;
+    }),
   },
 }));
 
 describe('VaultAuthService', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   describe('hashPasswordPBKDF2', () => {
     it('produces base64 hash', async () => {
@@ -63,14 +69,26 @@ describe('VaultAuthService', () => {
     it('verifies correct PBKDF2 password', async () => {
       const salt = new Uint8Array(16);
       const hash = await VaultAuthService.hashPasswordPBKDF2('testpass', salt);
-      const cred = { scheme: 'pbkdf2', verificationHash: hash, salt: btoa(String.fromCharCode(...salt)), iterations: 100000 };
+      const cred = {
+        scheme: 'pbkdf2',
+        verificationHash: hash,
+        salt: btoa(String.fromCharCode(...salt)),
+        iterations: 100000,
+      };
       expect(await VaultAuthService.verifyPassword('testpass', cred as any, mockParams)).toBe(true);
     });
     it('rejects wrong PBKDF2 password', async () => {
       const salt = new Uint8Array(16);
       const hash = await VaultAuthService.hashPasswordPBKDF2('testpass', salt);
-      const cred = { scheme: 'pbkdf2', verificationHash: hash, salt: btoa(String.fromCharCode(...salt)), iterations: 100000 };
-      expect(await VaultAuthService.verifyPassword('wrongpass', cred as any, mockParams)).toBe(false);
+      const cred = {
+        scheme: 'pbkdf2',
+        verificationHash: hash,
+        salt: btoa(String.fromCharCode(...salt)),
+        iterations: 100000,
+      };
+      expect(await VaultAuthService.verifyPassword('wrongpass', cred as any, mockParams)).toBe(
+        false
+      );
     });
   });
 
@@ -81,10 +99,14 @@ describe('VaultAuthService', () => {
       expect(hash.length).toBe(64);
     });
     it('deterministic', async () => {
-      expect(await VaultAuthService.sha256Hex('hello')).toBe(await VaultAuthService.sha256Hex('hello'));
+      expect(await VaultAuthService.sha256Hex('hello')).toBe(
+        await VaultAuthService.sha256Hex('hello')
+      );
     });
     it('different inputs different hashes', async () => {
-      expect(await VaultAuthService.sha256Hex('hello')).not.toBe(await VaultAuthService.sha256Hex('world'));
+      expect(await VaultAuthService.sha256Hex('hello')).not.toBe(
+        await VaultAuthService.sha256Hex('world')
+      );
     });
   });
 });

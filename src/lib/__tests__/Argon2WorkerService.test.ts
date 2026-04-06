@@ -3,7 +3,14 @@ import { describe, it, expect } from 'vitest';
 import { Argon2WorkerService } from '../Argon2WorkerService';
 
 describe('Argon2WorkerService', () => {
-  const tp = { password: 'test-password', salt: new Uint8Array(16), parallelism: 1, iterations: 2, memorySize: 65536, hashLength: 32 };
+  const tp = {
+    password: 'test-password',
+    salt: new Uint8Array(16),
+    parallelism: 1,
+    iterations: 2,
+    memorySize: 65536,
+    hashLength: 32,
+  };
 
   describe('deriveHex', () => {
     it('produces hex string', async () => {

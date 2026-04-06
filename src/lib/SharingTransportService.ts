@@ -115,11 +115,10 @@ export class SharingTransportService {
    * The public key is shared with the recipient; the private key is kept locally.
    */
   static async generateKeyPair(): Promise<SharingKeyPair> {
-    const keyPair = await window.crypto.subtle.generateKey(
-      this.EC_CURVE,
-      true,
-      ['deriveBits', 'deriveKey']
-    );
+    const keyPair = await window.crypto.subtle.generateKey(this.EC_CURVE, true, [
+      'deriveBits',
+      'deriveKey',
+    ]);
 
     const publicKeyJwk = await window.crypto.subtle.exportKey('jwk', keyPair.publicKey);
     const privateKeyJwk = await window.crypto.subtle.exportKey('jwk', keyPair.privateKey);
@@ -230,11 +229,7 @@ export class SharingTransportService {
       hmacData.set(iv, 0);
       hmacData.set(new Uint8Array(ciphertext), iv.length);
 
-      const hmac = await window.crypto.subtle.sign(
-        'HMAC',
-        authKey,
-        toBufferSource(hmacData)
-      );
+      const hmac = await window.crypto.subtle.sign('HMAC', authKey, toBufferSource(hmacData));
 
       // Step 7: Build payload
       const payload: EncryptedSharingPayload = {
@@ -343,7 +338,11 @@ export class SharingTransportService {
       );
 
       if (!isValid) {
-        return { success: false, error: 'HMAC verification failed — payload may be tampered', entryCount: 0 };
+        return {
+          success: false,
+          error: 'HMAC verification failed — payload may be tampered',
+          entryCount: 0,
+        };
       }
 
       // Decrypt
@@ -395,13 +394,9 @@ export class SharingTransportService {
     );
 
     // Import raw shared secret as HKDF base key for subkey derivation
-    const baseKey = await window.crypto.subtle.importKey(
-      'raw',
-      sharedSecretBits,
-      'HKDF',
-      false,
-      ['deriveKey']
-    );
+    const baseKey = await window.crypto.subtle.importKey('raw', sharedSecretBits, 'HKDF', false, [
+      'deriveKey',
+    ]);
 
     const encryptionKey = await window.crypto.subtle.deriveKey(
       {
@@ -435,7 +430,11 @@ export class SharingTransportService {
   /**
    * Validates a payload structure without decrypting.
    */
-  static validatePayload(payloadJson: string): { valid: boolean; error?: string; entryCount?: number } {
+  static validatePayload(payloadJson: string): {
+    valid: boolean;
+    error?: string;
+    entryCount?: number;
+  } {
     try {
       const payload: EncryptedSharingPayload = JSON.parse(payloadJson);
 
@@ -469,9 +468,9 @@ export class SharingTransportService {
    */
   static getPayloadSizeCategory(payloadJson: string): 'small' | 'medium' | 'large' {
     const bytes = new TextEncoder().encode(payloadJson).length;
-    if (bytes < 2000) return 'small';   // QR code friendly
-    if (bytes < 50000) return 'medium';  // Clipboard/email OK
-    return 'large';                       // File export recommended
+    if (bytes < 2000) return 'small'; // QR code friendly
+    if (bytes < 50000) return 'medium'; // Clipboard/email OK
+    return 'large'; // File export recommended
   }
 
   /**
@@ -480,9 +479,12 @@ export class SharingTransportService {
   static getRecommendedTransport(payloadJson: string): 'qr' | 'clipboard' | 'file' {
     const category = this.getPayloadSizeCategory(payloadJson);
     switch (category) {
-      case 'small': return 'qr';
-      case 'medium': return 'clipboard';
-      case 'large': return 'file';
+      case 'small':
+        return 'qr';
+      case 'medium':
+        return 'clipboard';
+      case 'large':
+        return 'file';
     }
   }
 

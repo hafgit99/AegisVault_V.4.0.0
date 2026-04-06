@@ -14,13 +14,7 @@
  * Extension sync + CLI handler bu dosyada kalıyor (passwords
  * bağımlılığı nedeniyle useEffect içinde).
  */
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useCallback,
-  type ReactNode,
-} from 'react';
+import { createContext, useContext, useEffect, useCallback, type ReactNode } from 'react';
 import { type VaultEntry } from '../vaultService';
 import { SecureAppSettings } from '../lib/SecureAppSettings';
 import { SecurityModePolicy } from '../lib/SecurityModePolicy';
@@ -166,12 +160,7 @@ export function VaultProvider({ children, onLock }: VaultProviderProps) {
     setSecurityModeProfile,
   } = security;
 
-  const session = useVaultSession(
-    securityModeProfile,
-    setPasswords,
-    setVisiblePasswords,
-    onLock
-  );
+  const session = useVaultSession(securityModeProfile, setPasswords, setVisiblePasswords, onLock);
   const {
     autoLockTime,
     setAutoLockTime,

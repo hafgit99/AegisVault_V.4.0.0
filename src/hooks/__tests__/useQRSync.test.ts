@@ -42,14 +42,14 @@ describe('useQRSync: generateChunks', () => {
   it('reassembles long data correctly across chunks', () => {
     const original = 'B'.repeat(500);
     const chunks = generateChunks(original);
-    
+
     // Parse and reassemble
     const payloads: string[] = [];
     for (const chunk of chunks) {
       const parts = chunk.split(':');
       payloads.push(parts.slice(4).join(':'));
     }
-    
+
     expect(payloads.join('')).toBe(original);
   });
 });

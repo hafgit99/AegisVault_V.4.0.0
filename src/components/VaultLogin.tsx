@@ -284,10 +284,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
         setIsSetupMode(true);
       } else if (errMsg === 'RATE_LIMITED') {
         toast.error(
-          t(
-            'authRateLimited',
-            `Too many attempts. Try again in ${retryAfterSeconds} seconds.`
-          )
+          t('authRateLimited', `Too many attempts. Try again in ${retryAfterSeconds} seconds.`)
         );
       } else if (errMsg.includes('Invalid credentials')) {
         toast.error(t('wrongPassOrWipe'));

@@ -68,7 +68,11 @@ export class VaultService {
   }
 
   public static async verifyPassword(password: string, stored: StoredCredential): Promise<boolean> {
-    return VaultAuthService.verifyPassword(password, stored, VaultAuthService.calibrateArgon2Params());
+    return VaultAuthService.verifyPassword(
+      password,
+      stored,
+      VaultAuthService.calibrateArgon2Params()
+    );
   }
 
   public async encryptTextField(value: string): Promise<{ encrypted: string; iv: string }> {
@@ -82,16 +86,26 @@ export class VaultService {
   public async verifyCurrentPassword(password: string): Promise<boolean> {
     const stored = await this.getAuthCredential();
     if (!stored) return false;
-    return VaultAuthService.verifyPassword(password, stored, VaultAuthService.calibrateArgon2Params());
+    return VaultAuthService.verifyPassword(
+      password,
+      stored,
+      VaultAuthService.calibrateArgon2Params()
+    );
   }
 
   private async getAuthCredential(): Promise<StoredCredential | null> {
     if (this.useSQLite && this.sqliteDb) {
-      const meta = (this.sqliteDb as unknown as { getMetadata: () => Record<string, unknown> | null }).getMetadata?.();
+      const meta = (
+        this.sqliteDb as unknown as { getMetadata: () => Record<string, unknown> | null }
+      ).getMetadata?.();
       return (meta?.credential as StoredCredential) ?? null;
     }
     if (this.opfsMockDb) {
-      const meta = await (this.opfsMockDb as unknown as { get: (store: string, key: string) => Promise<Record<string, unknown> | undefined> }).get('meta', 'auth');
+      const meta = await (
+        this.opfsMockDb as unknown as {
+          get: (store: string, key: string) => Promise<Record<string, unknown> | undefined>;
+        }
+      ).get('meta', 'auth');
       return (meta?.credential as StoredCredential) ?? null;
     }
     return null;
@@ -124,38 +138,37 @@ export class VaultService {
   ): Promise<string[]> {
     if (!this.aesKey) return [];
     const hmacKey = await this.getHmacKey();
-    return VaultSearchIndexer.buildIndex(
-      { title, username, website, category, tags },
-      async (t) => VaultSearchIndexer.hashToken(t, hmacKey)
+    return VaultSearchIndexer.buildIndex({ title, username, website, category, tags }, async (t) =>
+      VaultSearchIndexer.hashToken(t, hmacKey)
     );
   }
 
   public async prepareEntryMetadataForUse(entry: VaultEntry) {
     const res = await VaultCryptoService.prepareEntryMetadataForUse(entry, this.aesKey);
-    
+
     // Gen search_index if missing during lazy migration
     if (!res.uiEntry.search_index || res.uiEntry.search_index.length === 0) {
       if (res.uiEntry.title) {
         const hmacKey = await this.getHmacKey();
         const rawTokens = [
-            res.uiEntry.title,
-            res.uiEntry.username || '',
-            res.uiEntry.website || '',
-            res.uiEntry.category || '',
-            ...(res.uiEntry.tags || [])
+          res.uiEntry.title,
+          res.uiEntry.username || '',
+          res.uiEntry.website || '',
+          res.uiEntry.category || '',
+          ...(res.uiEntry.tags || []),
         ];
         const tokens = VaultSearchIndexer.tokenize(rawTokens);
         const uniqueTokens = Array.from(new Set(tokens));
         const searchIndex: string[] = [];
         for (const token of uniqueTokens) {
-            const hash = await VaultSearchIndexer.hashToken(token, hmacKey);
-            searchIndex.push(hash);
+          const hash = await VaultSearchIndexer.hashToken(token, hmacKey);
+          searchIndex.push(hash);
         }
         res.uiEntry.search_index = searchIndex;
         if (res.storageEntry) {
-            res.storageEntry.search_index = searchIndex;
+          res.storageEntry.search_index = searchIndex;
         } else {
-            res.storageEntry = { ...res.uiEntry };
+          res.storageEntry = { ...res.uiEntry };
         }
       }
     }
@@ -171,7 +184,11 @@ export class VaultService {
   ): Promise<Record<string, unknown>> {
     if (!this.aesKey) return {};
     return VaultCryptoService.buildMetadataAtRest({
-      title, username, website, category, tags,
+      title,
+      username,
+      website,
+      category,
+      tags,
       aesKey: this.aesKey,
       getSearchIndexHmacKey: () => this.getHmacKey(),
     });
@@ -180,10 +197,15 @@ export class VaultService {
   public async encryptAttachmentMetadataList(
     attachments: Array<{ id: string; name: string; type: string; size: number }>
   ): Promise<VaultAttachmentMeta[]> {
-    if (!EncryptionProfiles.isFieldEncrypted(SecureAppSettings.getEncryptionProfile(), 'attachments')) {
-      return(attachments as unknown) as Array<VaultAttachmentMeta>;
+    if (
+      !EncryptionProfiles.isFieldEncrypted(SecureAppSettings.getEncryptionProfile(), 'attachments')
+    ) {
+      return attachments as unknown as Array<VaultAttachmentMeta>;
     }
-    return VaultCryptoService.encryptAttachmentMetadataList(attachments as VaultAttachmentMeta[], this.aesKey);
+    return VaultCryptoService.encryptAttachmentMetadataList(
+      attachments as VaultAttachmentMeta[],
+      this.aesKey
+    );
   }
 
   public async hydrateRichSensitiveFields(entries: VaultEntry[]): Promise<void> {
@@ -252,7 +274,11 @@ export class VaultService {
       verifyPassword: (pw, stored) =>
         VaultAuthService.verifyPassword(pw, stored, VaultAuthService.calibrateArgon2Params()),
       migrateAuthCredentialToArgon2: (pw, old) =>
-        VaultAuthService.migrateCredentialToArgon2(pw, old, VaultAuthService.calibrateArgon2Params()),
+        VaultAuthService.migrateCredentialToArgon2(
+          pw,
+          old,
+          VaultAuthService.calibrateArgon2Params()
+        ),
       createAuthCredential: (pw) =>
         VaultAuthService.createAuthCredential(pw, VaultAuthService.calibrateArgon2Params()),
       getAesKey: () => this.aesKey,
@@ -266,7 +292,7 @@ export class VaultService {
 
     // Anahtar derivedMasterKey callback'i tarafindan set edildi, ama garanti olsun diye return'den de alak
     if (result.aesKey && !this.aesKey) {
-        this.aesKey = result.aesKey;
+      this.aesKey = result.aesKey;
     }
     this.opfsMockDb = result.opfsMockDb;
     this.sqliteDb = result.sqliteDb;
@@ -314,11 +340,11 @@ export class VaultService {
   async addPassword(entry: Partial<VaultEntry>): Promise<number> {
     return this.withMutationLock(async () => {
       if (!this.aesKey) {
-         console.error('[VaultService] Blocking addPassword: NO KEY AVAILABLE');
-         throw new AegisError('AUTH_VAULT_LOCKED', 'Vault encryption key not initialized', {
-           severity: 'high',
-           context: { source: 'VaultService', operation: 'addPassword' },
-         });
+        console.error('[VaultService] Blocking addPassword: NO KEY AVAILABLE');
+        throw new AegisError('AUTH_VAULT_LOCKED', 'Vault encryption key not initialized', {
+          severity: 'high',
+          context: { source: 'VaultService', operation: 'addPassword' },
+        });
       }
       const id = await VaultEntryService.addPassword({
         entry,
@@ -403,9 +429,14 @@ export class VaultService {
         useSQLite: this.useSQLite,
         aesKey: this.aesKey,
         verifyPassword: (password, stored) =>
-          VaultAuthService.verifyPassword(password, stored, VaultAuthService.calibrateArgon2Params()),
+          VaultAuthService.verifyPassword(
+            password,
+            stored,
+            VaultAuthService.calibrateArgon2Params()
+          ),
         getPasswords: () => this.getPasswords(),
-        deriveMasterKey: async (password, key, salt) => (await this.deriveMasterKey(password, key, salt)).saltB64,
+        deriveMasterKey: async (password, key, salt) =>
+          (await this.deriveMasterKey(password, key, salt)).saltB64,
         createAuthCredential: (password) =>
           VaultAuthService.createAuthCredential(password, VaultAuthService.calibrateArgon2Params()),
         buildMetadataAtRest: (t, u, w, c, tg) => this.buildMetadataAtRest(t, u, w, c, tg),
@@ -453,7 +484,7 @@ export class VaultService {
         entryId,
         attachmentId,
       });
-      this.decryptedEntriesCache = null; 
+      this.decryptedEntriesCache = null;
     });
   }
 
@@ -525,7 +556,7 @@ export class VaultService {
       useSQLite: this.useSQLite,
       duressPin,
       killPin,
-      randomBytes: (len: number) => window.crypto.getRandomValues(new Uint8Array(len))
+      randomBytes: (len: number) => window.crypto.getRandomValues(new Uint8Array(len)),
     });
   }
 
@@ -540,7 +571,8 @@ export class VaultService {
 
   async getSearchIndexHmacKey(): Promise<CryptoKey> {
     if (this.searchIndexHmacKey) return this.searchIndexHmacKey;
-    if (!this.sensitiveMaterial && !this.aesKey) throw new Error('Lock required for HMAC key derivation');
+    if (!this.sensitiveMaterial && !this.aesKey)
+      throw new Error('Lock required for HMAC key derivation');
     const key = await VaultSearchIndexer.getOrCreateHmacKey(this.sensitiveMaterial, null);
     this.searchIndexHmacKey = key;
     return key;

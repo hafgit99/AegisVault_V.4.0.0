@@ -4,11 +4,10 @@ import { VaultCryptoService } from '../vault/VaultCryptoService';
 import type { VaultCardDetails, VaultIdentityDetails } from '../../vaultService';
 
 async function generateAesKey(): Promise<CryptoKey> {
-  return window.crypto.subtle.generateKey(
-    { name: 'AES-GCM', length: 256 },
-    true,
-    ['encrypt', 'decrypt']
-  );
+  return window.crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, [
+    'encrypt',
+    'decrypt',
+  ]);
 }
 
 describe('VaultCryptoService', () => {
@@ -231,19 +230,13 @@ describe('VaultCryptoService', () => {
   describe('hydrateRichSensitiveFields', () => {
     it('does nothing when aesKey is null', async () => {
       const entries: any[] = [{ totpSecret: 'test' }];
-      await VaultCryptoService.hydrateRichSensitiveFields(
-        entries,
-        null
-      );
+      await VaultCryptoService.hydrateRichSensitiveFields(entries, null);
       expect(entries[0].totpSecret).toBe('test');
     });
 
     it('does nothing when entries array is empty', async () => {
       const entries: any[] = [];
-      await VaultCryptoService.hydrateRichSensitiveFields(
-        entries,
-        aesKey
-      );
+      await VaultCryptoService.hydrateRichSensitiveFields(entries, aesKey);
       expect(entries).toHaveLength(0);
     });
 
@@ -254,14 +247,9 @@ describe('VaultCryptoService', () => {
         totpPlain
       );
 
-      const entries: any[] = [
-        { totp_secret: totpSecret, totp_iv: totpIv },
-      ];
+      const entries: any[] = [{ totp_secret: totpSecret, totp_iv: totpIv }];
 
-      await VaultCryptoService.hydrateRichSensitiveFields(
-        entries,
-        aesKey
-      );
+      await VaultCryptoService.hydrateRichSensitiveFields(entries, aesKey);
 
       expect(entries[0].totpSecret).toBe(totpPlain);
     });
@@ -272,36 +260,23 @@ describe('VaultCryptoService', () => {
 
       const entries: any[] = [{ encrypted_notes: encrypted, notes_iv: iv }];
 
-      await VaultCryptoService.hydrateRichSensitiveFields(
-        entries,
-        aesKey
-      );
+      await VaultCryptoService.hydrateRichSensitiveFields(entries, aesKey);
 
       expect(entries[0].notes).toBe(notesPlain);
     });
 
     it('skips already-hydrated fields', async () => {
-      const entries: any[] = [
-        { totpSecret: 'existing', totp_secret: 'encrypted', totp_iv: 'iv' },
-      ];
+      const entries: any[] = [{ totpSecret: 'existing', totp_secret: 'encrypted', totp_iv: 'iv' }];
 
-      await VaultCryptoService.hydrateRichSensitiveFields(
-        entries,
-        aesKey
-      );
+      await VaultCryptoService.hydrateRichSensitiveFields(entries, aesKey);
 
       expect(entries[0].totpSecret).toBe('existing');
     });
 
     it('skips entries with corrupted encrypted data gracefully', async () => {
-      const entries: any[] = [
-        { totp_secret: 'not-valid-hex-data', totp_iv: 'also-invalid' },
-      ];
+      const entries: any[] = [{ totp_secret: 'not-valid-hex-data', totp_iv: 'also-invalid' }];
 
-      await VaultCryptoService.hydrateRichSensitiveFields(
-        entries,
-        aesKey
-      );
+      await VaultCryptoService.hydrateRichSensitiveFields(entries, aesKey);
 
       // Should not throw, just skip
       expect(entries[0].totpSecret).toBeUndefined();
@@ -317,10 +292,7 @@ describe('VaultCryptoService', () => {
 
       const entries: any[] = [{ encrypted_passkey_meta: encrypted, passkey_meta_iv: iv }];
 
-      await VaultCryptoService.hydrateRichSensitiveFields(
-        entries,
-        aesKey
-      );
+      await VaultCryptoService.hydrateRichSensitiveFields(entries, aesKey);
 
       expect(entries[0].passkeyMetadata).toEqual({
         credentialId: 'abc123',
@@ -338,10 +310,7 @@ describe('VaultCryptoService', () => {
 
       const entries: any[] = [{ encrypted_card_details: encrypted, card_details_iv: iv }];
 
-      await VaultCryptoService.hydrateRichSensitiveFields(
-        entries,
-        aesKey
-      );
+      await VaultCryptoService.hydrateRichSensitiveFields(entries, aesKey);
 
       expect(entries[0].cardDetails).not.toBeNull();
       expect(entries[0].cardDetails.card_number).toBe('4111111111111111');
@@ -356,10 +325,7 @@ describe('VaultCryptoService', () => {
 
       const entries: any[] = [{ encrypted_identity_details: encrypted, identity_details_iv: iv }];
 
-      await VaultCryptoService.hydrateRichSensitiveFields(
-        entries,
-        aesKey
-      );
+      await VaultCryptoService.hydrateRichSensitiveFields(entries, aesKey);
 
       expect(entries[0].identityDetails).not.toBeNull();
       expect(entries[0].identityDetails.identity_number).toBe('AB1234567');
@@ -380,10 +346,7 @@ describe('VaultCryptoService', () => {
         { encrypted_notes: enc2, notes_iv: iv2 },
       ];
 
-      await VaultCryptoService.hydrateRichSensitiveFields(
-        entries,
-        aesKey
-      );
+      await VaultCryptoService.hydrateRichSensitiveFields(entries, aesKey);
 
       expect(entries[0].notes).toBe('secret1');
       expect(entries[1].notes).toBe('secret2');

@@ -132,10 +132,7 @@ interface UseVaultExtensionOptions {
   getElectronApi: () => unknown;
 }
 
-export function useVaultExtension({
-  passwords,
-  loadPasswords,
-}: UseVaultExtensionOptions): void {
+export function useVaultExtension({ passwords, loadPasswords }: UseVaultExtensionOptions): void {
   useEffect(() => {
     // ─── Domain Credential Provider ──────────────────────────
     const getMatchesForDomain = (domain: string) => {
@@ -241,7 +238,9 @@ export function useVaultExtension({
 
     // ─── CLI Handler ─────────────────────────────────────────
     const handleVaultCliOperation: VaultCliHandler = async (operation, payload = {}) => {
-      const normalizedOp = String(operation || '').trim().toLowerCase();
+      const normalizedOp = String(operation || '')
+        .trim()
+        .toLowerCase();
 
       if (normalizedOp === 'list') {
         const query = typeof payload.query === 'string' ? payload.query : '';

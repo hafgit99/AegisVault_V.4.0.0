@@ -1032,13 +1032,15 @@ export const resources = {
 
       // E2E Sharing Transport
       shareTransportTitle: 'End-to-End Encrypted Sharing',
-      shareTransportDesc: 'Share vault entries securely using ECDH key exchange + AES-256-GCM encryption. Only the recipient with the matching key can decrypt.',
+      shareTransportDesc:
+        'Share vault entries securely using ECDH key exchange + AES-256-GCM encryption. Only the recipient with the matching key can decrypt.',
       shareTransportSendTab: 'Send',
       shareTransportReceiveTab: 'Receive',
       shareTransportGenerateKeyPair: 'Generate Key Pair',
       shareTransportPublicKeyLabel: 'Your Public Key',
       shareTransportPrivateKeyLabel: 'Your Private Key',
-      shareTransportPublicKeyHint: 'Share this key with the sender so they can encrypt entries for you.',
+      shareTransportPublicKeyHint:
+        'Share this key with the sender so they can encrypt entries for you.',
       shareTransportPrivateKeyHint: 'Keep this key secret. Required to decrypt received entries.',
       shareTransportRecipientKeyLabel: "Recipient's Public Key (JWK)",
       shareTransportRecipientKeyPlaceholder: 'Paste recipient ECDH public key (JWK JSON)...',
@@ -1870,29 +1872,33 @@ export const resources = {
 
       // E2E Şifreli Paylaşım Transportu
       shareTransportTitle: 'Uçtan Uca Şifreli Paylaşım',
-      shareTransportDesc: 'ECDH anahtar değişimi + AES-256-GCM şifrelemesi ile kasa kayıtlarını güvenli paylaşın. Yalnızca eşleşen anahtara sahip alıcı deşifre edebilir.',
+      shareTransportDesc:
+        'ECDH anahtar değişimi + AES-256-GCM şifrelemesi ile kasa kayıtlarını güvenli paylaşın. Yalnızca eşleşen anahtara sahip alıcı deşifre edebilir.',
       shareTransportSendTab: 'Gönder',
       shareTransportReceiveTab: 'Al',
       shareTransportGenerateKeyPair: 'Anahtar Çifti Oluştur',
       shareTransportPublicKeyLabel: 'Açık Anahtarınız',
       shareTransportPrivateKeyLabel: 'Gizli Anahtarınız',
-      shareTransportPublicKeyHint: 'Bu anahtarı göndericiyle paylaşın, kayıtlarınızı şifreleyebilsin.',
-      shareTransportPrivateKeyHint: 'Bu anahtarı gizli tutun. Alınan kayıtları deşifre etmek için gerekli.',
-      shareTransportRecipientKeyLabel: "Alıcının Açık Anahtarı (JWK)",
+      shareTransportPublicKeyHint:
+        'Bu anahtarı göndericiyle paylaşın, kayıtlarınızı şifreleyebilsin.',
+      shareTransportPrivateKeyHint:
+        'Bu anahtarı gizli tutun. Alınan kayıtları deşifre etmek için gerekli.',
+      shareTransportRecipientKeyLabel: 'Alıcının Açık Anahtarı (JWK)',
       shareTransportRecipientKeyPlaceholder: 'Alıcı ECDH açık anahtarını yapıştırın (JWK JSON)...',
       shareTransportSelectEntries: 'Paylaşılacak kayıtları seçin',
       shareTransportSelectedCount: '{{count}} kayıt seçildi',
       shareTransportEncryptBtn: 'Şifrele & Payload Oluştur',
       shareTransportPayloadLabel: 'Şifreli Payload',
-      shareTransportPayloadHint: 'Bu payload\'u alıcıya QR, pano veya dosya ile gönderin.',
-      shareTransportCopyPayload: 'Payload\'u Kopyala',
+      shareTransportPayloadHint: "Bu payload'u alıcıya QR, pano veya dosya ile gönderin.",
+      shareTransportCopyPayload: "Payload'u Kopyala",
       shareTransportDownloadPayload: 'Dosya Olarak İndir',
       shareTransportSizeInfo: 'Payload boyutu: {{size}} bayt ({{method}} önerilen)',
       shareTransportMethodQr: 'QR Kod',
       shareTransportMethodClipboard: 'Pano',
       shareTransportMethodFile: 'Dosya Dışa Aktarım',
       shareTransportReceivePayloadLabel: 'Şifreli Payload Yapıştır',
-      shareTransportReceivePayloadPlaceholder: 'Şifreli paylaşım payload JSON\'ını buraya yapıştırın...',
+      shareTransportReceivePayloadPlaceholder:
+        "Şifreli paylaşım payload JSON'ını buraya yapıştırın...",
       shareTransportReceiveKeyLabel: 'Gizli Anahtarınız (JWK)',
       shareTransportReceiveKeyPlaceholder: 'ECDH gizli anahtarınızı yapıştırın (JWK JSON)...',
       shareTransportDecryptBtn: 'Deşifre Et & İçe Aktar',
@@ -1904,7 +1910,7 @@ export const resources = {
       shareTransportKeyPairGenerated: 'Anahtar çifti başarıyla oluşturuldu.',
       shareTransportFingerprint: 'Parmak izi: {{fp}}',
       shareTransportCreatedAt: 'Oluşturulma: {{date}}',
-      shareTransportExpiredPayload: 'Bu payload\'un süresi dolmuş.',
+      shareTransportExpiredPayload: "Bu payload'un süresi dolmuş.",
       shareTransportDescriptionLabel: 'Açıklama (isteğe bağlı)',
       shareTransportDescriptionPlaceholder: 'örn. Paylaşılan iş kimlik bilgileri',
       shareTransportExpiryLabel: 'Süre sonu (saat)',

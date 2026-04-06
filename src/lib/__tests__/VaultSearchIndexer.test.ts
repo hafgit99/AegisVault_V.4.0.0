@@ -32,7 +32,11 @@ describe('VaultSearchIndexer', () => {
   describe('getOrCreateHmacKey', () => {
     it('returns existing key if provided', async () => {
       const existingKey = await window.crypto.subtle.importKey(
-        'raw', new Uint8Array(32), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+        'raw',
+        new Uint8Array(32),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
       );
       const result = await VaultSearchIndexer.getOrCreateHmacKey(null, existingKey);
       expect(result).toBe(existingKey);
@@ -47,14 +51,20 @@ describe('VaultSearchIndexer', () => {
     });
 
     it('throws when both key and material are null', async () => {
-      await expect(VaultSearchIndexer.getOrCreateHmacKey(null, null)).rejects.toThrow('Search index key unavailable');
+      await expect(VaultSearchIndexer.getOrCreateHmacKey(null, null)).rejects.toThrow(
+        'Search index key unavailable'
+      );
     });
   });
 
   describe('hashToken', () => {
     it('produces a hex string', async () => {
       const key = await window.crypto.subtle.importKey(
-        'raw', new Uint8Array(32), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+        'raw',
+        new Uint8Array(32),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
       );
       const hash = await VaultSearchIndexer.hashToken('test-token', key);
       expect(hash).toMatch(/^[0-9a-f]+$/);
@@ -62,7 +72,11 @@ describe('VaultSearchIndexer', () => {
 
     it('produces different hashes for different tokens', async () => {
       const key = await window.crypto.subtle.importKey(
-        'raw', new Uint8Array(32), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+        'raw',
+        new Uint8Array(32),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
       );
       const h1 = await VaultSearchIndexer.hashToken('a', key);
       const h2 = await VaultSearchIndexer.hashToken('b', key);
@@ -71,7 +85,11 @@ describe('VaultSearchIndexer', () => {
 
     it('produces same hash for same token', async () => {
       const key = await window.crypto.subtle.importKey(
-        'raw', new Uint8Array(32), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+        'raw',
+        new Uint8Array(32),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
       );
       const h1 = await VaultSearchIndexer.hashToken('same', key);
       const h2 = await VaultSearchIndexer.hashToken('same', key);
@@ -83,7 +101,13 @@ describe('VaultSearchIndexer', () => {
     it('builds index from entry fields', async () => {
       const mockHash = vi.fn(async (t: string) => 'h_' + t);
       const result = await VaultSearchIndexer.buildIndex(
-        { title: 'GitHub', username: 'alice', website: 'github.com', category: 'Work', tags: ['dev'] },
+        {
+          title: 'GitHub',
+          username: 'alice',
+          website: 'github.com',
+          category: 'Work',
+          tags: ['dev'],
+        },
         mockHash
       );
       expect(result.length).toBeGreaterThan(0);
@@ -92,7 +116,8 @@ describe('VaultSearchIndexer', () => {
     it('returns empty array when all fields are empty', async () => {
       const mockHash = vi.fn(async (t: string) => 'h');
       const result = await VaultSearchIndexer.buildIndex(
-        { title: '', username: '', website: '', category: '', tags: [] }, mockHash
+        { title: '', username: '', website: '', category: '', tags: [] },
+        mockHash
       );
       expect(result).toEqual([]);
     });
@@ -100,7 +125,8 @@ describe('VaultSearchIndexer', () => {
     it('handles undefined tags gracefully', async () => {
       const mockHash = vi.fn(async (t: string) => 'h');
       const result = await VaultSearchIndexer.buildIndex(
-        { title: 'Test', username: '', website: '', category: '', tags: undefined as any }, mockHash
+        { title: 'Test', username: '', website: '', category: '', tags: undefined as any },
+        mockHash
       );
       expect(result).toBeDefined();
     });

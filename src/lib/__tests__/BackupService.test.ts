@@ -131,9 +131,9 @@ describe('BackupService (Security P1-1)', () => {
     const backup = JSON.parse(backupJson);
     backup.payload = `${backup.payload.slice(0, -4)}AAAA`;
 
-    await expect(BackupService.decryptBackup(JSON.stringify(backup), strongPassword)).rejects.toThrow(
-      'BACKUP_INTEGRITY_FAILED'
-    );
+    await expect(
+      BackupService.decryptBackup(JSON.stringify(backup), strongPassword)
+    ).rejects.toThrow('BACKUP_INTEGRITY_FAILED');
   });
 
   it('should reject backup created with unsupported major app version', async () => {
@@ -141,9 +141,9 @@ describe('BackupService (Security P1-1)', () => {
     const backup = JSON.parse(backupJson);
     backup.version = '99.0.0';
 
-    await expect(BackupService.decryptBackup(JSON.stringify(backup), strongPassword)).rejects.toThrow(
-      'UNSUPPORTED_BACKUP_VERSION'
-    );
+    await expect(
+      BackupService.decryptBackup(JSON.stringify(backup), strongPassword)
+    ).rejects.toThrow('UNSUPPORTED_BACKUP_VERSION');
   });
 
   it('should reject canonical backup with mismatched schema version in envelope', async () => {

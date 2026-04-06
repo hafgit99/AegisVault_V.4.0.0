@@ -22,9 +22,17 @@ vi.mock('../SyncCryptoService', () => ({
 vi.mock('../SyncEnvelope', () => ({
   SyncEnvelopeUtil: {
     create: vi.fn().mockReturnValue({
-      payload: 'p', iv: 'i', hmac: 'h', nonce: 'n',
-      sessionId: 's', sequenceNumber: 1, envelopeMac: '',
-      entryCount: 0, timestamp: '', deviceId: '', deviceName: '',
+      payload: 'p',
+      iv: 'i',
+      hmac: 'h',
+      nonce: 'n',
+      sessionId: 's',
+      sequenceNumber: 1,
+      envelopeMac: '',
+      entryCount: 0,
+      timestamp: '',
+      deviceId: '',
+      deviceName: '',
     }),
     validate: vi.fn().mockReturnValue(true),
   },
@@ -92,11 +100,21 @@ describe('SyncManager: Branch Coverage', () => {
   it('pullAndMerge: with envelopes merges successfully', async () => {
     (globalThis.fetch as any).mockResolvedValue({
       ok: true,
-      json: async () => [{
-        payload: 'p', iv: 'i', hmac: 'h', nonce: 'n',
-        sessionId: 's', sequenceNumber: 5, envelopeMac: 'em',
-        entryCount: 1, timestamp: '', deviceId: '', deviceName: '',
-      }],
+      json: async () => [
+        {
+          payload: 'p',
+          iv: 'i',
+          hmac: 'h',
+          nonce: 'n',
+          sessionId: 's',
+          sequenceNumber: 5,
+          envelopeMac: 'em',
+          entryCount: 1,
+          timestamp: '',
+          deviceId: '',
+          deviceName: '',
+        },
+      ],
     });
     const result = await SyncManager.pullAndMerge('sess1', new Uint8Array(32), [], 0);
     expect(result).not.toBeNull();

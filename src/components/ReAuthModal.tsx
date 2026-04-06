@@ -46,10 +46,7 @@ export function ReAuthModal({ onSuccess, onCancel, actionName }: ReAuthModalProp
 
       if (errMsg === 'RATE_LIMITED') {
         toast.error(
-          t(
-            'authRateLimited',
-            `Too many attempts. Try again in ${retryAfterSeconds} seconds.`
-          )
+          t('authRateLimited', `Too many attempts. Try again in ${retryAfterSeconds} seconds.`)
         );
       } else {
         toast.error(t('verificationError'));

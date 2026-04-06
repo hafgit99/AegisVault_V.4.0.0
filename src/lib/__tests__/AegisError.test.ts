@@ -3,11 +3,7 @@
  * AegisError — Birim Testleri
  */
 import { describe, it, expect } from 'vitest';
-import {
-  AegisError,
-  type AegisErrorCode,
-  type AegisErrorSeverity,
-} from '../AegisError';
+import { AegisError, type AegisErrorCode, type AegisErrorSeverity } from '../AegisError';
 
 describe('AegisError', () => {
   // ─── Temel Yapı ────────────────────────────────────────────────

@@ -134,7 +134,11 @@ class ExtensionBridge {
       false,
       ['sign']
     );
-    const signature = await window.crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+    const signature = await window.crypto.subtle.sign(
+      'HMAC',
+      key,
+      new TextEncoder().encode(payload)
+    );
     return this.toHex(signature);
   }
 
@@ -182,9 +186,15 @@ class ExtensionBridge {
   private normalizeDomain(input: string): string {
     try {
       const parsed = input.includes('://') ? new URL(input) : new URL(`https://${input}`);
-      return parsed.hostname.toLowerCase().replace(/^www\./, '').trim();
+      return parsed.hostname
+        .toLowerCase()
+        .replace(/^www\./, '')
+        .trim();
     } catch {
-      return (input || '').toLowerCase().replace(/^www\./, '').trim();
+      return (input || '')
+        .toLowerCase()
+        .replace(/^www\./, '')
+        .trim();
     }
   }
 
@@ -315,7 +325,7 @@ class ExtensionBridge {
       this.attachPort(incomingExtensionId, port);
     } catch (error) {
       console.error(
-        '[PWA Bridge] Eklenti ile runtime (externally_connectable) baglantisi kurulamadý.',
+        '[PWA Bridge] Eklenti ile runtime (externally_connectable) baglantisi kurulamadï¿½.',
         error
       );
     }
@@ -332,9 +342,7 @@ class ExtensionBridge {
   }
 
   public updateAllowedExtensionIds(ids: string[]): void {
-    const normalized = ids
-      .map((id) => id.trim())
-      .filter(Boolean);
+    const normalized = ids.map((id) => id.trim()).filter(Boolean);
 
     if (normalized.length === 0) {
       this.allowedExtensionIds = new Set(DEFAULT_ALLOWED_EXTENSION_IDS);

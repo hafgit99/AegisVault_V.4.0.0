@@ -26,10 +26,14 @@ describe('ExtensionBridge: Branch Coverage', () => {
       postMessage: vi.fn(),
       disconnect: vi.fn(),
       onMessage: {
-        addListener: vi.fn((l: any) => { onMessageListener = l; }),
+        addListener: vi.fn((l: any) => {
+          onMessageListener = l;
+        }),
       },
       onDisconnect: {
-        addListener: vi.fn((l: any) => { onDisconnectListener = l; }),
+        addListener: vi.fn((l: any) => {
+          onDisconnectListener = l;
+        }),
       },
     };
 
@@ -97,7 +101,9 @@ describe('ExtensionBridge: Branch Coverage', () => {
   });
 
   it('handles runtime.connect throwing error', () => {
-    mockRuntime.connect.mockImplementation(() => { throw new Error('connect failed'); });
+    mockRuntime.connect.mockImplementation(() => {
+      throw new Error('connect failed');
+    });
     const msg = new MessageEvent('message', {
       data: { type: 'AEGIS_EXTENSION_HELLO', extensionId: 'gddgomiecgnihlljfkogfjgakedoielk' },
       origin: window.location.origin,
@@ -123,13 +129,29 @@ describe('ExtensionBridge: Branch Coverage', () => {
     // Sign with valid signature
     const payload = `get_decrypted_creds:example.com:${nonce}:${ts}`;
     const key = await window.crypto.subtle.importKey(
-      'raw', new TextEncoder().encode(token),
-      { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+      'raw',
+      new TextEncoder().encode(token),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
     );
-    const sigBuffer = await window.crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
-    const signature = Array.from(new Uint8Array(sigBuffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    const sigBuffer = await window.crypto.subtle.sign(
+      'HMAC',
+      key,
+      new TextEncoder().encode(payload)
+    );
+    const signature = Array.from(new Uint8Array(sigBuffer))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
 
-    await onMessageListener({ type: 'get_decrypted_creds', token, nonce, ts, signature, domain: 'example.com' });
+    await onMessageListener({
+      type: 'get_decrypted_creds',
+      token,
+      nonce,
+      ts,
+      signature,
+      domain: 'example.com',
+    });
 
     await vi.waitFor(() =>
       expect(mockPort.postMessage).toHaveBeenCalledWith(
@@ -148,7 +170,14 @@ describe('ExtensionBridge: Branch Coverage', () => {
     await vi.waitFor(() => expect(mockRuntime.connect).toHaveBeenCalled());
     const token = mockPort.postMessage.mock.calls[0][0].token;
 
-    await onMessageListener({ type: 'get_decrypted_creds', token, nonce: 'fake', ts: Date.now(), signature: 'badsig', domain: 'example.com' });
+    await onMessageListener({
+      type: 'get_decrypted_creds',
+      token,
+      nonce: 'fake',
+      ts: Date.now(),
+      signature: 'badsig',
+      domain: 'example.com',
+    });
 
     await vi.waitFor(() =>
       expect(mockPort.postMessage).toHaveBeenCalledWith(

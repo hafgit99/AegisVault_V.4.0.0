@@ -12,19 +12,40 @@ describe('SharingTransportService Branch Coverage', () => {
     };
     const json = SharingTransportService.exportKeyPair(keyPair);
     expect(json).toContain('mockFingerprint');
-    
+
     const imported = SharingTransportService.importKeyPair(json);
     expect(imported.publicKeyFingerprint).toBe('mockFingerprint');
   });
 
   it('should validate payloads and return correct errors', () => {
     expect(SharingTransportService.validatePayload('invalid json').valid).toBe(false);
-    expect(SharingTransportService.validatePayload(JSON.stringify({ version: 'wrong' })).valid).toBe(false);
-    expect(SharingTransportService.validatePayload(JSON.stringify({ version: 'aegis-share-v1' })).error).toBe('Missing ephemeral public key');
-    expect(SharingTransportService.validatePayload(JSON.stringify({ version: 'aegis-share-v1', ephemeralPublicKey: {} })).error).toBe('Missing ciphertext');
-    expect(SharingTransportService.validatePayload(JSON.stringify({ version: 'aegis-share-v1', ephemeralPublicKey: {}, ciphertext: 'c' })).error).toBe('Missing IV');
-    expect(SharingTransportService.validatePayload(JSON.stringify({ version: 'aegis-share-v1', ephemeralPublicKey: {}, ciphertext: 'c', iv: 'i' })).error).toBe('Missing HMAC');
-    
+    expect(
+      SharingTransportService.validatePayload(JSON.stringify({ version: 'wrong' })).valid
+    ).toBe(false);
+    expect(
+      SharingTransportService.validatePayload(JSON.stringify({ version: 'aegis-share-v1' })).error
+    ).toBe('Missing ephemeral public key');
+    expect(
+      SharingTransportService.validatePayload(
+        JSON.stringify({ version: 'aegis-share-v1', ephemeralPublicKey: {} })
+      ).error
+    ).toBe('Missing ciphertext');
+    expect(
+      SharingTransportService.validatePayload(
+        JSON.stringify({ version: 'aegis-share-v1', ephemeralPublicKey: {}, ciphertext: 'c' })
+      ).error
+    ).toBe('Missing IV');
+    expect(
+      SharingTransportService.validatePayload(
+        JSON.stringify({
+          version: 'aegis-share-v1',
+          ephemeralPublicKey: {},
+          ciphertext: 'c',
+          iv: 'i',
+        })
+      ).error
+    ).toBe('Missing HMAC');
+
     const pastPayload = {
       version: 'aegis-share-v1',
       ephemeralPublicKey: {},
@@ -33,8 +54,10 @@ describe('SharingTransportService Branch Coverage', () => {
       hmac: 'h',
       expiresAt: new Date(Date.now() - 10000).toISOString(),
     };
-    expect(SharingTransportService.validatePayload(JSON.stringify(pastPayload)).error).toBe('Payload expired');
-    
+    expect(SharingTransportService.validatePayload(JSON.stringify(pastPayload)).error).toBe(
+      'Payload expired'
+    );
+
     const validPayload = {
       ...pastPayload,
       expiresAt: new Date(Date.now() + 10000).toISOString(),
@@ -50,7 +73,7 @@ describe('SharingTransportService Branch Coverage', () => {
     expect(SharingTransportService.getPayloadSizeCategory('a'.repeat(100))).toBe('small');
     expect(SharingTransportService.getPayloadSizeCategory('a'.repeat(3000))).toBe('medium');
     expect(SharingTransportService.getPayloadSizeCategory('a'.repeat(60000))).toBe('large');
-    
+
     expect(SharingTransportService.getRecommendedTransport('a'.repeat(100))).toBe('qr');
     expect(SharingTransportService.getRecommendedTransport('a'.repeat(3000))).toBe('clipboard');
     expect(SharingTransportService.getRecommendedTransport('a'.repeat(60000))).toBe('file');

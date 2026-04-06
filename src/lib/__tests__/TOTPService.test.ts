@@ -42,7 +42,8 @@ describe('TOTPService', () => {
 
   describe('parseOtpauthUri', () => {
     it('parses full otpauth URI', () => {
-      const uri = 'otpauth://totp/TestIssuer:user@test.com?secret=JBSWY3DPEHPK3PXP&issuer=TestIssuer&algorithm=SHA1&digits=6&period=30';
+      const uri =
+        'otpauth://totp/TestIssuer:user@test.com?secret=JBSWY3DPEHPK3PXP&issuer=TestIssuer&algorithm=SHA1&digits=6&period=30';
       const p = parseOtpauthUri(uri);
       expect(p.secret).toBe('JBSWY3DPEHPK3PXP');
       expect(p.issuer).toBe('TestIssuer');
@@ -76,11 +77,15 @@ describe('TOTPService', () => {
     });
 
     it('throws for non-TOTP type', () => {
-      expect(() => parseOtpauthUri('otpauth://hotp/Test:user?secret=ABC')).toThrow('Only TOTP is supported');
+      expect(() => parseOtpauthUri('otpauth://hotp/Test:user?secret=ABC')).toThrow(
+        'Only TOTP is supported'
+      );
     });
 
     it('throws for missing secret', () => {
-      expect(() => parseOtpauthUri('otpauth://totp/Test:user?issuer=Test')).toThrow('Missing secret parameter');
+      expect(() => parseOtpauthUri('otpauth://totp/Test:user?issuer=Test')).toThrow(
+        'Missing secret parameter'
+      );
     });
 
     it('uses defaults for missing optional params', () => {
@@ -195,7 +200,14 @@ describe('TOTPService', () => {
 
   describe('round-trip', () => {
     it('URI → parse → URI round-trip', () => {
-      const original = createTOTPParams('JBSWY3DPEHPK3PXP', 'MyService', 'alice@example.com', 'SHA-256', 8, 60);
+      const original = createTOTPParams(
+        'JBSWY3DPEHPK3PXP',
+        'MyService',
+        'alice@example.com',
+        'SHA-256',
+        8,
+        60
+      );
       const uri = toOtpauthUri(original);
       const parsed = parseOtpauthUri(uri);
       expect(parsed.secret).toBe(original.secret);

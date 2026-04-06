@@ -144,7 +144,7 @@ describe('VaultService: IDB to SQLite Migration', () => {
       sensitiveMaterial: new Uint8Array(32),
     });
 
-    // Mock VaultAuthService.verifyPassword properly  
+    // Mock VaultAuthService.verifyPassword properly
     const { VaultAuthService } = await import('../../lib/vault/VaultAuthService');
     vi.spyOn(VaultAuthService, 'verifyPassword').mockResolvedValue(true);
     vi.spyOn(VaultAuthService, 'calibrateArgon2Params').mockReturnValue({

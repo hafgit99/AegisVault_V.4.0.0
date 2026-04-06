@@ -420,7 +420,10 @@ describe('SharingTransportService', () => {
 
     it('should reject invalid payload JSON during decryption', async () => {
       const kp = await SharingTransportService.generateKeyPair();
-      const result = await SharingTransportService.decryptEntries('not valid json', kp.privateKeyJwk);
+      const result = await SharingTransportService.decryptEntries(
+        'not valid json',
+        kp.privateKeyJwk
+      );
       expect(result.success).toBe(false);
     });
 

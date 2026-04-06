@@ -138,7 +138,11 @@ describe('EmergencyAccessService: Branch Coverage', () => {
     });
 
     it('does not modify terminal-status requests when deleting contact', () => {
-      EmergencyAccessService.updatePolicy({ enabled: true, require_manual_approval: false, grant_ttl_hours: 1 });
+      EmergencyAccessService.updatePolicy({
+        enabled: true,
+        require_manual_approval: false,
+        grant_ttl_hours: 1,
+      });
       const contact = EmergencyAccessService.saveContact({
         name: 'Terminal',
         email: 'terminal@test.com',
@@ -156,14 +160,14 @@ describe('EmergencyAccessService: Branch Coverage', () => {
 
       // The request should already be granted at this point
       let requests = EmergencyAccessService.listRequests();
-      const grantedReq = requests.find(r => r.id === req!.id);
+      const grantedReq = requests.find((r) => r.id === req!.id);
       expect(grantedReq?.status).toBe('granted');
 
       // Now expire it: expires_at was set to ~now + 1h, so evaluating 100 years later will expire it
       EmergencyAccessService.evaluateState(new Date('2099-01-01T00:00:00.000Z'));
 
       requests = EmergencyAccessService.listRequests();
-      const expiredReq = requests.find(r => r.id === req!.id);
+      const expiredReq = requests.find((r) => r.id === req!.id);
       expect(expiredReq?.status).toBe('expired');
 
       EmergencyAccessService.deleteContact(contact!.id);
@@ -344,7 +348,10 @@ describe('EmergencyAccessService: Branch Coverage', () => {
       const requests = EmergencyAccessService.listRequests();
       expect(requests[0]?.status).toBe('granted');
 
-      const revoked = EmergencyAccessService.revokeGrant(requests[0]!.id, 'access revoked by owner');
+      const revoked = EmergencyAccessService.revokeGrant(
+        requests[0]!.id,
+        'access revoked by owner'
+      );
       expect(revoked?.status).toBe('revoked');
       expect(revoked?.owner_note).toBe('access revoked by owner');
       expect(revoked?.revoked_at).toBeTruthy();

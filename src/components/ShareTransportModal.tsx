@@ -31,7 +31,12 @@ interface ShareTransportModalProps {
 
 type Tab = 'send' | 'receive';
 
-export function ShareTransportModal({ isOpen, onClose, entries, onImport }: ShareTransportModalProps) {
+export function ShareTransportModal({
+  isOpen,
+  onClose,
+  entries,
+  onImport,
+}: ShareTransportModalProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>('send');
 
@@ -116,17 +121,14 @@ export function ShareTransportModal({ isOpen, onClose, entries, onImport }: Shar
     try {
       const result = await SharingTransportService.encryptEntries(selectedEntries, recipientJwk, {
         description: description || undefined,
-        expiresAt: expiryHours > 0
-          ? new Date(Date.now() + expiryHours * 3600000).toISOString()
-          : undefined,
+        expiresAt:
+          expiryHours > 0 ? new Date(Date.now() + expiryHours * 3600000).toISOString() : undefined,
         senderKeyPair: keyPair,
       });
 
       if (result.success && result.payload) {
         setEncryptedPayload(result.payload);
-        toast.success(
-          t('shareTransportSelectedCount', { count: result.entryCount })
-        );
+        toast.success(t('shareTransportSelectedCount', { count: result.entryCount }));
       } else {
         toast.error(t('shareTransportEncryptFailed', { error: result.error }));
       }
@@ -211,9 +213,7 @@ export function ShareTransportModal({ isOpen, onClose, entries, onImport }: Shar
 
   if (!isOpen) return null;
 
-  const payloadSize = encryptedPayload
-    ? new TextEncoder().encode(encryptedPayload).length
-    : 0;
+  const payloadSize = encryptedPayload ? new TextEncoder().encode(encryptedPayload).length : 0;
   const transportMethod = encryptedPayload
     ? SharingTransportService.getRecommendedTransport(encryptedPayload)
     : null;
@@ -225,7 +225,10 @@ export function ShareTransportModal({ isOpen, onClose, entries, onImport }: Shar
       aria-modal="true"
       aria-labelledby="share-transport-title"
     >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm dark:bg-black/70" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm dark:bg-black/70"
+        onClick={onClose}
+      />
 
       <div className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[2rem] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl animate-in zoom-in-95 duration-300 slide-in-from-bottom-5">
         {/* Header */}
@@ -243,7 +246,10 @@ export function ShareTransportModal({ isOpen, onClose, entries, onImport }: Shar
               <Shield className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <h2 id="share-transport-title" className="text-lg font-bold text-gray-900 dark:text-white">
+              <h2
+                id="share-transport-title"
+                className="text-lg font-bold text-gray-900 dark:text-white"
+              >
                 {t('shareTransportTitle')}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
@@ -300,7 +306,11 @@ export function ShareTransportModal({ isOpen, onClose, entries, onImport }: Shar
                       className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                     >
                       <span>{t('shareTransportPublicKeyLabel')}</span>
-                      {showPublicKey ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      {showPublicKey ? (
+                        <ChevronUp className="w-3 h-3" />
+                      ) : (
+                        <ChevronDown className="w-3 h-3" />
+                      )}
                     </button>
                     {showPublicKey && (
                       <div className="p-3">
@@ -327,7 +337,11 @@ export function ShareTransportModal({ isOpen, onClose, entries, onImport }: Shar
                         <Lock className="w-3 h-3" />
                         {t('shareTransportPrivateKeyLabel')}
                       </span>
-                      {showPrivateKey ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      {showPrivateKey ? (
+                        <ChevronUp className="w-3 h-3" />
+                      ) : (
+                        <ChevronDown className="w-3 h-3" />
+                      )}
                     </button>
                     {showPrivateKey && (
                       <div className="p-3">
@@ -454,11 +468,12 @@ export function ShareTransportModal({ isOpen, onClose, entries, onImport }: Shar
                     <span className="text-[10px] text-gray-400 dark:text-gray-500">
                       {t('shareTransportSizeInfo', {
                         size: payloadSize.toLocaleString(),
-                        method: transportMethod === 'qr'
-                          ? t('shareTransportMethodQr')
-                          : transportMethod === 'clipboard'
-                            ? t('shareTransportMethodClipboard')
-                            : t('shareTransportMethodFile'),
+                        method:
+                          transportMethod === 'qr'
+                            ? t('shareTransportMethodQr')
+                            : transportMethod === 'clipboard'
+                              ? t('shareTransportMethodClipboard')
+                              : t('shareTransportMethodFile'),
                       })}
                     </span>
                   </div>
@@ -529,7 +544,9 @@ export function ShareTransportModal({ isOpen, onClose, entries, onImport }: Shar
               {/* Decrypt Button */}
               <button
                 onClick={handleDecrypt}
-                disabled={isDecrypting || !receivePayloadJson.trim() || !receivePrivateKeyJson.trim()}
+                disabled={
+                  isDecrypting || !receivePayloadJson.trim() || !receivePrivateKeyJson.trim()
+                }
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-md transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isDecrypting ? (

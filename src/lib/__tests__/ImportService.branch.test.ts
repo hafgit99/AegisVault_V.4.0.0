@@ -25,9 +25,7 @@ describe('ImportService: Branch Coverage', () => {
 
   it('parseJson: items with .entries wrapper', () => {
     const json = JSON.stringify({
-      entries: [
-        { title: 'X', username: 'u', password: 'pass123', url: 'https://x.com' },
-      ],
+      entries: [{ title: 'X', username: 'u', password: 'pass123', url: 'https://x.com' }],
     });
     const result = svc.parseJson(json);
     expect(result.entries.length).toBe(1);
@@ -41,7 +39,9 @@ describe('ImportService: Branch Coverage', () => {
 
   it('parseJson: too many rows throws', () => {
     const items = Array.from({ length: 25001 }, (_, i) => ({
-      title: `T${i}`, username: `u${i}`, password: `p${i}`,
+      title: `T${i}`,
+      username: `u${i}`,
+      password: `p${i}`,
     }));
     expect(() => svc.parseJson(JSON.stringify(items))).toThrow('too large');
   });
@@ -58,18 +58,14 @@ describe('ImportService: Branch Coverage', () => {
   });
 
   it('parseJson: tags as semicolon-separated string', () => {
-    const json = JSON.stringify([
-      { title: 'Tagged', password: 'p', tags: 'work;finance' },
-    ]);
+    const json = JSON.stringify([{ title: 'Tagged', password: 'p', tags: 'work;finance' }]);
     const result = svc.parseJson(json);
     expect(result.entries[0].tags).toContain('work');
     expect(result.entries[0].tags).toContain('finance');
   });
 
   it('parseJson: no password entry is skipped', () => {
-    const json = JSON.stringify([
-      { title: 'NoPass', username: 'u', website: 'https://a.com' },
-    ]);
+    const json = JSON.stringify([{ title: 'NoPass', username: 'u', website: 'https://a.com' }]);
     expect(() => svc.parseJson(json)).toThrow('No valid passwords');
   });
 
@@ -84,17 +80,13 @@ describe('ImportService: Branch Coverage', () => {
   });
 
   it('parseJson: uses .name as title fallback', () => {
-    const json = JSON.stringify([
-      { name: 'NamedEntry', password: 'p123', username: 'u' },
-    ]);
+    const json = JSON.stringify([{ name: 'NamedEntry', password: 'p123', username: 'u' }]);
     const result = svc.parseJson(json);
     expect(result.entries[0].title).toBe('NamedEntry');
   });
 
   it('parseJson: uses .pass field', () => {
-    const json = JSON.stringify([
-      { title: 'PassField', pass: 'mypass123', username: 'u' },
-    ]);
+    const json = JSON.stringify([{ title: 'PassField', pass: 'mypass123', username: 'u' }]);
     const result = svc.parseJson(json);
     expect(result.entries[0].pass).toBe('mypass123');
   });
@@ -108,11 +100,17 @@ describe('ImportService: Branch Coverage', () => {
   });
 
   it('parseJson: flat card + identity fields', () => {
-    const json = JSON.stringify([{
-      title: 'Card', password: 'p', username: 'u',
-      cardholder_name: 'John', card_number: '4111111111111111',
-      document_type: 'passport', identity_number: 'AB123',
-    }]);
+    const json = JSON.stringify([
+      {
+        title: 'Card',
+        password: 'p',
+        username: 'u',
+        cardholder_name: 'John',
+        card_number: '4111111111111111',
+        document_type: 'passport',
+        identity_number: 'AB123',
+      },
+    ]);
     const result = svc.parseJson(json);
     expect(result.entries[0].cardDetails.cardholder_name).toBe('John');
     expect(result.entries[0].identityDetails.document_type).toBe('passport');
@@ -233,7 +231,9 @@ describe('ImportService: Branch Coverage', () => {
   });
 
   it('parseFile: file too large rejects', async () => {
-    const bigFile = new File(['x'.repeat(10 * 1024 * 1024 + 1)], 'big.json', { type: 'application/json' });
+    const bigFile = new File(['x'.repeat(10 * 1024 * 1024 + 1)], 'big.json', {
+      type: 'application/json',
+    });
     const onProgress = vi.fn();
     await expect(ImportService.parseFile(bigFile, onProgress)).rejects.toThrow('exceeds');
     expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ status: 'error' }));
@@ -263,11 +263,15 @@ describe('ImportService: Branch Coverage', () => {
   });
 
   it('parseJsonCanonical: produces canonical records with card + identity', () => {
-    const json = JSON.stringify([{
-      title: 'Full', username: 'u', password: 'p12345678',
-      cardDetails: { cardholder_name: 'Jane', card_number: '4222' },
-      identityDetails: { document_type: 'id', identity_number: 'X1' },
-    }]);
+    const json = JSON.stringify([
+      {
+        title: 'Full',
+        username: 'u',
+        password: 'p12345678',
+        cardDetails: { cardholder_name: 'Jane', card_number: '4222' },
+        identityDetails: { document_type: 'id', identity_number: 'X1' },
+      },
+    ]);
     const result = svc.parseJsonCanonical(json);
     expect(result.records.length).toBe(1);
     expect(result.records[0].custom_data.card_details.cardholder_name).toBe('Jane');

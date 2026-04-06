@@ -260,7 +260,6 @@ export interface VaultIdentityDetails {
 
 import type { CanonicalPasskeyFields } from './canonical-schema';
 
-
 export interface VaultEntry {
   id: number;
   title: string;
@@ -288,27 +287,27 @@ export interface VaultEntry {
   deletedAt?: string; // ISO String indicating when it was moved to trash
 
   // TOTP (2FA) — encrypted at rest
-  totp_secret?: string;    // AES-GCM encrypted Base32 secret
-  totp_iv?: string;        // IV for TOTP encryption
-  totp_issuer?: string;    // Issuer label (stored plain — not sensitive)
+  totp_secret?: string; // AES-GCM encrypted Base32 secret
+  totp_iv?: string; // IV for TOTP encryption
+  totp_issuer?: string; // Issuer label (stored plain — not sensitive)
   totp_algorithm?: 'SHA-1' | 'SHA-256' | 'SHA-512';
-  totp_digits?: number;    // 6 or 8
-  totp_period?: number;    // Usually 30
+  totp_digits?: number; // 6 or 8
+  totp_period?: number; // Usually 30
 
   // Secure Notes — encrypted at rest
   encrypted_notes?: string; // AES-GCM encrypted notes content
-  notes_iv?: string;        // IV for notes encryption
+  notes_iv?: string; // IV for notes encryption
   encrypted_passkey_meta?: string; // AES-GCM encrypted site passkey metadata JSON
-  passkey_meta_iv?: string;        // IV for passkey metadata encryption
+  passkey_meta_iv?: string; // IV for passkey metadata encryption
   encrypted_card_details?: string; // AES-GCM encrypted credit/debit card details JSON
-  card_details_iv?: string;        // IV for card details encryption
+  card_details_iv?: string; // IV for card details encryption
   encrypted_identity_details?: string; // AES-GCM encrypted identity card details JSON
-  identity_details_iv?: string;        // IV for identity details encryption
+  identity_details_iv?: string; // IV for identity details encryption
 
   // Decrypted fields for UI (never persisted)
   pass?: string;
-  totpSecret?: string;     // Decrypted TOTP secret (only in memory)
-  notes?: string;          // Decrypted notes content (only in memory)
+  totpSecret?: string; // Decrypted TOTP secret (only in memory)
+  notes?: string; // Decrypted notes content (only in memory)
   passkeyMetadata?: CanonicalPasskeyFields | null; // Decrypted passkey metadata for site-passkey MVP
   cardDetails?: VaultCardDetails | null; // Decrypted card details (only in memory)
   identityDetails?: VaultIdentityDetails | null; // Decrypted identity details (only in memory)

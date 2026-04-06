@@ -3,16 +3,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { VaultPinService } from '../vault/VaultPinService';
 
 async function createAesKey(): Promise<CryptoKey> {
-  return window.crypto.subtle.importKey(
-    'raw', new Uint8Array(32), { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']
-  );
+  return window.crypto.subtle.importKey('raw', new Uint8Array(32), { name: 'AES-GCM' }, false, [
+    'encrypt',
+    'decrypt',
+  ]);
 }
 
 function createMockIDB() {
   const store = new Map<string, any>();
   const mockStore: any = {
     get: vi.fn(async (id: string) => store.get(id)),
-    put: vi.fn(async (v: any) => { store.set(v.id, v); }),
+    put: vi.fn(async (v: any) => {
+      store.set(v.id, v);
+    }),
   };
   const mockTx: any = { objectStore: vi.fn(() => mockStore), done: Promise.resolve() };
   return {
@@ -29,7 +32,9 @@ function createMockSQLite() {
   return {
     store,
     mockDb: {
-      putMetadata: vi.fn((key: string, val: any) => { store.set(key, val); }),
+      putMetadata: vi.fn((key: string, val: any) => {
+        store.set(key, val);
+      }),
       getMetadata: vi.fn((key: string) => store.get(key) || null),
     } as any,
   };
@@ -55,8 +60,13 @@ describe('VaultPinService', () => {
   describe('saveSecurityPins', () => {
     it('saves pins to IDB', async () => {
       await VaultPinService.saveSecurityPins({
-        aesKey, opfsMockDb: idb.mockDb, sqliteDb: null, useSQLite: false,
-        duressPin: '1111', killPin: '9999', randomBytes: mockRandomBytes,
+        aesKey,
+        opfsMockDb: idb.mockDb,
+        sqliteDb: null,
+        useSQLite: false,
+        duressPin: '1111',
+        killPin: '9999',
+        randomBytes: mockRandomBytes,
       });
       expect(idb.store.has('security_pins')).toBe(true);
       const record = idb.store.get('security_pins');
@@ -66,39 +76,69 @@ describe('VaultPinService', () => {
 
     it('saves pins to SQLite', async () => {
       await VaultPinService.saveSecurityPins({
-        aesKey, opfsMockDb: null, sqliteDb: sqlite.mockDb, useSQLite: true,
-        duressPin: '2222', killPin: '8888', randomBytes: mockRandomBytes,
+        aesKey,
+        opfsMockDb: null,
+        sqliteDb: sqlite.mockDb,
+        useSQLite: true,
+        duressPin: '2222',
+        killPin: '8888',
+        randomBytes: mockRandomBytes,
       });
-      expect(sqlite.mockDb.putMetadata).toHaveBeenCalledWith('security_pins', expect.objectContaining({
-        id: 'security_pins',
-        encrypted_data: expect.any(String),
-        iv: expect.any(String),
-      }));
+      expect(sqlite.mockDb.putMetadata).toHaveBeenCalledWith(
+        'security_pins',
+        expect.objectContaining({
+          id: 'security_pins',
+          encrypted_data: expect.any(String),
+          iv: expect.any(String),
+        })
+      );
     });
 
     it('throws when aesKey is null', async () => {
-      await expect(VaultPinService.saveSecurityPins({
-        aesKey: null, opfsMockDb: idb.mockDb, sqliteDb: null, useSQLite: false,
-        duressPin: '1111', killPin: '9999', randomBytes: mockRandomBytes,
-      })).rejects.toThrow('Vault not initialized');
+      await expect(
+        VaultPinService.saveSecurityPins({
+          aesKey: null,
+          opfsMockDb: idb.mockDb,
+          sqliteDb: null,
+          useSQLite: false,
+          duressPin: '1111',
+          killPin: '9999',
+          randomBytes: mockRandomBytes,
+        })
+      ).rejects.toThrow('Vault not initialized');
     });
 
     it('throws when both dbs are null', async () => {
-      await expect(VaultPinService.saveSecurityPins({
-        aesKey, opfsMockDb: null, sqliteDb: null, useSQLite: false,
-        duressPin: '1111', killPin: '9999', randomBytes: mockRandomBytes,
-      })).rejects.toThrow('Vault not initialized');
+      await expect(
+        VaultPinService.saveSecurityPins({
+          aesKey,
+          opfsMockDb: null,
+          sqliteDb: null,
+          useSQLite: false,
+          duressPin: '1111',
+          killPin: '9999',
+          randomBytes: mockRandomBytes,
+        })
+      ).rejects.toThrow('Vault not initialized');
     });
   });
 
   describe('getSecurityPins', () => {
     it('round-trips pins through IDB', async () => {
       await VaultPinService.saveSecurityPins({
-        aesKey, opfsMockDb: idb.mockDb, sqliteDb: null, useSQLite: false,
-        duressPin: '1234', killPin: '5678', randomBytes: mockRandomBytes,
+        aesKey,
+        opfsMockDb: idb.mockDb,
+        sqliteDb: null,
+        useSQLite: false,
+        duressPin: '1234',
+        killPin: '5678',
+        randomBytes: mockRandomBytes,
       });
       const result = await VaultPinService.getSecurityPins({
-        aesKey, opfsMockDb: idb.mockDb, sqliteDb: null, useSQLite: false,
+        aesKey,
+        opfsMockDb: idb.mockDb,
+        sqliteDb: null,
+        useSQLite: false,
       });
       expect(result.duressPin).toBe('1234');
       expect(result.killPin).toBe('5678');
@@ -106,11 +146,19 @@ describe('VaultPinService', () => {
 
     it('round-trips pins through SQLite', async () => {
       await VaultPinService.saveSecurityPins({
-        aesKey, opfsMockDb: null, sqliteDb: sqlite.mockDb, useSQLite: true,
-        duressPin: '4321', killPin: '8765', randomBytes: mockRandomBytes,
+        aesKey,
+        opfsMockDb: null,
+        sqliteDb: sqlite.mockDb,
+        useSQLite: true,
+        duressPin: '4321',
+        killPin: '8765',
+        randomBytes: mockRandomBytes,
       });
       const result = await VaultPinService.getSecurityPins({
-        aesKey, opfsMockDb: null, sqliteDb: sqlite.mockDb, useSQLite: true,
+        aesKey,
+        opfsMockDb: null,
+        sqliteDb: sqlite.mockDb,
+        useSQLite: true,
       });
       expect(result.duressPin).toBe('4321');
       expect(result.killPin).toBe('8765');
@@ -118,37 +166,58 @@ describe('VaultPinService', () => {
 
     it('returns empty when no pins saved', async () => {
       const result = await VaultPinService.getSecurityPins({
-        aesKey, opfsMockDb: idb.mockDb, sqliteDb: null, useSQLite: false,
+        aesKey,
+        opfsMockDb: idb.mockDb,
+        sqliteDb: null,
+        useSQLite: false,
       });
       expect(result).toEqual({ duressPin: '', killPin: '' });
     });
 
     it('returns empty when aesKey is null', async () => {
       const result = await VaultPinService.getSecurityPins({
-        aesKey: null, opfsMockDb: idb.mockDb, sqliteDb: null, useSQLite: false,
+        aesKey: null,
+        opfsMockDb: idb.mockDb,
+        sqliteDb: null,
+        useSQLite: false,
       });
       expect(result).toEqual({ duressPin: '', killPin: '' });
     });
 
     it('returns empty when both dbs are null', async () => {
       const result = await VaultPinService.getSecurityPins({
-        aesKey, opfsMockDb: null, sqliteDb: null, useSQLite: false,
+        aesKey,
+        opfsMockDb: null,
+        sqliteDb: null,
+        useSQLite: false,
       });
       expect(result).toEqual({ duressPin: '', killPin: '' });
     });
 
     it('returns empty when decrypting with wrong key', async () => {
       await VaultPinService.saveSecurityPins({
-        aesKey, opfsMockDb: idb.mockDb, sqliteDb: null, useSQLite: false,
-        duressPin: '9999', killPin: '0000', randomBytes: mockRandomBytes,
+        aesKey,
+        opfsMockDb: idb.mockDb,
+        sqliteDb: null,
+        useSQLite: false,
+        duressPin: '9999',
+        killPin: '0000',
+        randomBytes: mockRandomBytes,
       });
       const wrongKeyMaterial = new Uint8Array(32);
       crypto.getRandomValues(wrongKeyMaterial);
       const wrongKey = await window.crypto.subtle.importKey(
-        'raw', wrongKeyMaterial, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']
+        'raw',
+        wrongKeyMaterial,
+        { name: 'AES-GCM' },
+        false,
+        ['encrypt', 'decrypt']
       );
       const result = await VaultPinService.getSecurityPins({
-        aesKey: wrongKey, opfsMockDb: idb.mockDb, sqliteDb: null, useSQLite: false,
+        aesKey: wrongKey,
+        opfsMockDb: idb.mockDb,
+        sqliteDb: null,
+        useSQLite: false,
       });
       expect(result).toEqual({ duressPin: '', killPin: '' });
     });

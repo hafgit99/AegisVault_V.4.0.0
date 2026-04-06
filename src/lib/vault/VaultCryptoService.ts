@@ -305,7 +305,7 @@ export class VaultCryptoService {
     aesKey: CryptoKey | null
   ): Promise<VaultAttachmentMeta[]> {
     if (!attachments || attachments.length === 0 || !aesKey) return [];
-    
+
     return Promise.all(
       attachments.map(async (att) => {
         const nameEnc = await this.encryptTextField(aesKey, att.name || '');
@@ -346,29 +346,29 @@ export class VaultCryptoService {
         uiEntry.encrypted_category = cEnc.encrypted;
         uiEntry.category_iv = cEnc.iv;
       }
-      
+
       const tagsString = Array.isArray(entry.tags) ? entry.tags.join(',') : '';
       if (tagsString) {
         const tgEnc = await fieldEnc(tagsString);
         uiEntry.encrypted_tags = tgEnc.encrypted;
         uiEntry.tags_iv = tgEnc.iv;
       }
-      
+
       if (entry.username) {
-         const uEnc = await fieldEnc(entry.username);
-         uiEntry.encrypted_username = uEnc.encrypted;
-         uiEntry.username_iv = uEnc.iv;
+        const uEnc = await fieldEnc(entry.username);
+        uiEntry.encrypted_username = uEnc.encrypted;
+        uiEntry.username_iv = uEnc.iv;
       }
-      
+
       if (entry.website) {
-         const wEnc = await fieldEnc(entry.website);
-         uiEntry.encrypted_website = wEnc.encrypted;
-         uiEntry.website_iv = wEnc.iv;
+        const wEnc = await fieldEnc(entry.website);
+        uiEntry.encrypted_website = wEnc.encrypted;
+        uiEntry.website_iv = wEnc.iv;
       }
 
       // We don't generate search_index here because we don't have searchIndexHmacKey.
       // In VaultService, the search index logic handles the lazy migration separately if missing,
-      // or the calling logic will dispatch addPassword to rebuild everything. 
+      // or the calling logic will dispatch addPassword to rebuild everything.
 
       storageEntry = uiEntry;
     }

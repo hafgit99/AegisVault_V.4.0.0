@@ -60,7 +60,13 @@ describe('VaultService coverage helpers', () => {
       32
     ).fill(7);
 
-    const hashes = await service.buildSearchIndex('Aegis Vault', 'alice', 'https://example.com', 'Finance', ['critical']);
+    const hashes = await service.buildSearchIndex(
+      'Aegis Vault',
+      'alice',
+      'https://example.com',
+      'Finance',
+      ['critical']
+    );
 
     // buildSearchIndex now returns HMAC hashes; just verify we got results
     expect(hashes.length).toBeGreaterThan(0);
@@ -320,7 +326,9 @@ describe('VaultService coverage helpers', () => {
       'decrypt',
     ]);
     (service as unknown as { aesKey: CryptoKey }).aesKey = aesKey;
-    (service as unknown as { sensitiveMaterial: Uint8Array }).sensitiveMaterial = new Uint8Array(32);
+    (service as unknown as { sensitiveMaterial: Uint8Array }).sensitiveMaterial = new Uint8Array(
+      32
+    );
     expect(service.isUnlocked()).toBe(true);
 
     const mockSqlite = {

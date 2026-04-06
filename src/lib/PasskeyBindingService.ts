@@ -741,7 +741,7 @@ export class PasskeyBindingService {
     const map = new Map<string, PasskeyRevocationRecord>();
     let changedCount = 0;
 
-    local.forEach(rev => map.set(rev.credentialId, rev));
+    local.forEach((rev) => map.set(rev.credentialId, rev));
 
     external.forEach((rev) => {
       const existing = map.get(rev.credentialId);

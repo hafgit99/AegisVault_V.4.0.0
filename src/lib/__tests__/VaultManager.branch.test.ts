@@ -38,7 +38,9 @@ describe('VaultManager: Branch Coverage', () => {
   });
 
   it('getProfiles: initializes default when settings throws', () => {
-    mockSettings.getVaultProfiles.mockImplementation(() => { throw new Error('fail'); });
+    mockSettings.getVaultProfiles.mockImplementation(() => {
+      throw new Error('fail');
+    });
     const profiles = VaultManager.getProfiles();
     expect(profiles.length).toBe(1);
     expect(profiles[0].id).toBe('default');
@@ -73,7 +75,14 @@ describe('VaultManager: Branch Coverage', () => {
 
   it('getActiveProfile: returns active profile matching id', () => {
     mockSettings.getVaultProfiles.mockReturnValue([
-      { id: 'default', name: 'Personal', color: '#72886f', createdAt: '', dbName: 'db1', isDefault: true },
+      {
+        id: 'default',
+        name: 'Personal',
+        color: '#72886f',
+        createdAt: '',
+        dbName: 'db1',
+        isDefault: true,
+      },
       { id: 'v2', name: 'Work', color: '#4f7cac', createdAt: '', dbName: 'db2', isDefault: false },
     ]);
     VaultManager.setActiveVaultId('v2');
@@ -84,7 +93,14 @@ describe('VaultManager: Branch Coverage', () => {
 
   it('getActiveProfile: falls back to first profile when active id not found', () => {
     mockSettings.getVaultProfiles.mockReturnValue([
-      { id: 'default', name: 'Personal', color: '#72886f', createdAt: '', dbName: 'db1', isDefault: true },
+      {
+        id: 'default',
+        name: 'Personal',
+        color: '#72886f',
+        createdAt: '',
+        dbName: 'db1',
+        isDefault: true,
+      },
     ]);
     VaultManager.setActiveVaultId('nonexistent');
     const profile = VaultManager.getActiveProfile();
@@ -93,7 +109,14 @@ describe('VaultManager: Branch Coverage', () => {
 
   it('createProfile: creates with correct color index', () => {
     mockSettings.getVaultProfiles.mockReturnValue([
-      { id: 'default', name: 'Personal', color: '#72886f', createdAt: '', dbName: 'db1', isDefault: true },
+      {
+        id: 'default',
+        name: 'Personal',
+        color: '#72886f',
+        createdAt: '',
+        dbName: 'db1',
+        isDefault: true,
+      },
     ]);
     const profile = VaultManager.createProfile('Work Vault');
     expect(profile.name).toBe('Work Vault');
@@ -115,7 +138,14 @@ describe('VaultManager: Branch Coverage', () => {
 
   it('deleteProfile: cannot delete when only one profile', () => {
     mockSettings.getVaultProfiles.mockReturnValue([
-      { id: 'default', name: 'Personal', color: '#72886f', createdAt: '', dbName: 'db1', isDefault: true },
+      {
+        id: 'default',
+        name: 'Personal',
+        color: '#72886f',
+        createdAt: '',
+        dbName: 'db1',
+        isDefault: true,
+      },
     ]);
     VaultManager.getProfiles();
     expect(VaultManager.deleteProfile('default')).toBe(false);
@@ -123,7 +153,14 @@ describe('VaultManager: Branch Coverage', () => {
 
   it('deleteProfile: cannot delete default profile', () => {
     mockSettings.getVaultProfiles.mockReturnValue([
-      { id: 'default', name: 'Personal', color: '#72886f', createdAt: '', dbName: 'db1', isDefault: true },
+      {
+        id: 'default',
+        name: 'Personal',
+        color: '#72886f',
+        createdAt: '',
+        dbName: 'db1',
+        isDefault: true,
+      },
       { id: 'v2', name: 'Work', color: '#4f7cac', createdAt: '', dbName: 'db2', isDefault: false },
     ]);
     VaultManager.getProfiles();
@@ -132,7 +169,14 @@ describe('VaultManager: Branch Coverage', () => {
 
   it('deleteProfile: cannot delete non-existent profile', () => {
     mockSettings.getVaultProfiles.mockReturnValue([
-      { id: 'default', name: 'Personal', color: '#72886f', createdAt: '', dbName: 'db1', isDefault: true },
+      {
+        id: 'default',
+        name: 'Personal',
+        color: '#72886f',
+        createdAt: '',
+        dbName: 'db1',
+        isDefault: true,
+      },
       { id: 'v2', name: 'Work', color: '#4f7cac', createdAt: '', dbName: 'db2', isDefault: false },
     ]);
     VaultManager.getProfiles();
@@ -141,7 +185,14 @@ describe('VaultManager: Branch Coverage', () => {
 
   it('deleteProfile: switches to default when active vault deleted', () => {
     mockSettings.getVaultProfiles.mockReturnValue([
-      { id: 'default', name: 'Personal', color: '#72886f', createdAt: '', dbName: 'db1', isDefault: true },
+      {
+        id: 'default',
+        name: 'Personal',
+        color: '#72886f',
+        createdAt: '',
+        dbName: 'db1',
+        isDefault: true,
+      },
       { id: 'v2', name: 'Work', color: '#4f7cac', createdAt: '', dbName: 'db2', isDefault: false },
     ]);
     VaultManager.getProfiles();
@@ -152,7 +203,14 @@ describe('VaultManager: Branch Coverage', () => {
 
   it('renameProfile: renames existing profile', () => {
     mockSettings.getVaultProfiles.mockReturnValue([
-      { id: 'default', name: 'Personal', color: '#72886f', createdAt: '', dbName: 'db1', isDefault: true },
+      {
+        id: 'default',
+        name: 'Personal',
+        color: '#72886f',
+        createdAt: '',
+        dbName: 'db1',
+        isDefault: true,
+      },
     ]);
     VaultManager.getProfiles();
     VaultManager.renameProfile('default', 'Renamed Vault');
@@ -162,7 +220,14 @@ describe('VaultManager: Branch Coverage', () => {
 
   it('renameProfile: no-op for non-existent profile', () => {
     mockSettings.getVaultProfiles.mockReturnValue([
-      { id: 'default', name: 'Personal', color: '#72886f', createdAt: '', dbName: 'db1', isDefault: true },
+      {
+        id: 'default',
+        name: 'Personal',
+        color: '#72886f',
+        createdAt: '',
+        dbName: 'db1',
+        isDefault: true,
+      },
     ]);
     VaultManager.getProfiles();
     VaultManager.renameProfile('nonexistent', 'New Name');
@@ -173,7 +238,14 @@ describe('VaultManager: Branch Coverage', () => {
 
   it('setProfileColor: updates color of existing profile', () => {
     mockSettings.getVaultProfiles.mockReturnValue([
-      { id: 'default', name: 'Personal', color: '#72886f', createdAt: '', dbName: 'db1', isDefault: true },
+      {
+        id: 'default',
+        name: 'Personal',
+        color: '#72886f',
+        createdAt: '',
+        dbName: 'db1',
+        isDefault: true,
+      },
     ]);
     VaultManager.getProfiles();
     VaultManager.setProfileColor('default', '#ff0000');
@@ -183,7 +255,14 @@ describe('VaultManager: Branch Coverage', () => {
 
   it('setProfileColor: no-op for non-existent profile', () => {
     mockSettings.getVaultProfiles.mockReturnValue([
-      { id: 'default', name: 'Personal', color: '#72886f', createdAt: '', dbName: 'db1', isDefault: true },
+      {
+        id: 'default',
+        name: 'Personal',
+        color: '#72886f',
+        createdAt: '',
+        dbName: 'db1',
+        isDefault: true,
+      },
     ]);
     VaultManager.getProfiles();
     VaultManager.setProfileColor('nonexistent', '#ff0000');
@@ -207,8 +286,22 @@ describe('VaultManager: Branch Coverage', () => {
 
   it('getProfiles: returns stored profiles when available', () => {
     const stored = [
-      { id: 'v1', name: 'V1', color: '#fff', createdAt: '2024-01-01', dbName: 'db1', isDefault: true },
-      { id: 'v2', name: 'V2', color: '#000', createdAt: '2024-01-02', dbName: 'db2', isDefault: false },
+      {
+        id: 'v1',
+        name: 'V1',
+        color: '#fff',
+        createdAt: '2024-01-01',
+        dbName: 'db1',
+        isDefault: true,
+      },
+      {
+        id: 'v2',
+        name: 'V2',
+        color: '#000',
+        createdAt: '2024-01-02',
+        dbName: 'db2',
+        isDefault: false,
+      },
     ];
     mockSettings.getVaultProfiles.mockReturnValue(stored);
     const profiles = VaultManager.getProfiles();

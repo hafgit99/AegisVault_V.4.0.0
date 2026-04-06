@@ -166,7 +166,10 @@ export class WebAuthnService {
 
     // Note: When attachment is 'cross-platform', browsers usually offer QR code (hybrid).
     // We allow the user to specify it via options, defaulting to 'platform'.
-    if (options.authenticatorAttachment === 'cross-platform' && publicKeyOptions.authenticatorSelection) {
+    if (
+      options.authenticatorAttachment === 'cross-platform' &&
+      publicKeyOptions.authenticatorSelection
+    ) {
       publicKeyOptions.authenticatorSelection.authenticatorAttachment = 'cross-platform';
     }
 

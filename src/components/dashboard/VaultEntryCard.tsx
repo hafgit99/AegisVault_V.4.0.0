@@ -71,7 +71,8 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
   const sharedSpaceName = sharingSpace?.name || null;
   const sharingRole = p.sharing?.[0]?.role || null;
   const isExportAllowed = sharingSpace ? sharingSpace.allow_export !== false : true;
-  const canEdit = !sharingRole || sharingRole === 'editor' || sharingRole === 'admin' || sharingRole === 'owner';
+  const canEdit =
+    !sharingRole || sharingRole === 'editor' || sharingRole === 'admin' || sharingRole === 'owner';
   const canDelete = !sharingRole || sharingRole === 'admin' || sharingRole === 'owner';
   const isSitePasskeyRecord = p.category === 'Passkeys' || Boolean(p.passkeyMetadata);
   const isCardRecord = p.category === 'Cards' && Boolean(p.cardDetails);
@@ -316,7 +317,10 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                   <Edit2 className="w-5 h-5" />
                 </button>
               ) : (
-                <span className="p-3 rounded-xl opacity-30 cursor-not-allowed" title={t('sharingNoEditPermission', 'View only — no edit permission')}>
+                <span
+                  className="p-3 rounded-xl opacity-30 cursor-not-allowed"
+                  title={t('sharingNoEditPermission', 'View only — no edit permission')}
+                >
                   <Edit2 className="w-5 h-5" />
                 </span>
               )}
@@ -324,7 +328,9 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                 <button
                   onClick={() => {
                     if (!isExportAllowed) {
-                      toast.warning(t('sharingExportBlocked', 'Export is disabled for this shared space'));
+                      toast.warning(
+                        t('sharingExportBlocked', 'Export is disabled for this shared space')
+                      );
                       return;
                     }
                     handleCopyItem(p.id, p.pass || '');
@@ -336,7 +342,11 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                         ? 'bg-[var(--color-sage-green)] text-[var(--color-deep-navy)] shadow-[0_0_15px_rgba(135,159,132,0.4)] scale-110'
                         : 'vault-action-btn hover:shadow-md'
                   }`}
-                  title={!isExportAllowed ? t('sharingExportBlocked', 'Export is disabled for this shared space') : t('copyPassword', 'Copy password')}
+                  title={
+                    !isExportAllowed
+                      ? t('sharingExportBlocked', 'Export is disabled for this shared space')
+                      : t('copyPassword', 'Copy password')
+                  }
                 >
                   {isCopied ? (
                     <Check className="w-5 h-5 text-[var(--color-sage-green)] drop-shadow-[0_0_8px_rgba(135,159,132,0.8)]" />
@@ -384,7 +394,10 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                       <X className="w-5 h-5" />
                     </button>
                   ) : (
-                    <span className="p-3 rounded-xl opacity-30 cursor-not-allowed" title={t('sharingNoDeletePermission', 'No delete permission')}>
+                    <span
+                      className="p-3 rounded-xl opacity-30 cursor-not-allowed"
+                      title={t('sharingNoDeletePermission', 'No delete permission')}
+                    >
                       <X className="w-5 h-5" />
                     </span>
                   )}
@@ -398,7 +411,10 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                   <Trash2 className="w-5 h-5" />
                 </button>
               ) : (
-                <span className="p-3 rounded-xl opacity-30 cursor-not-allowed" title={t('sharingNoDeletePermission', 'No delete permission')}>
+                <span
+                  className="p-3 rounded-xl opacity-30 cursor-not-allowed"
+                  title={t('sharingNoDeletePermission', 'No delete permission')}
+                >
                   <Trash2 className="w-5 h-5" />
                 </span>
               )}
