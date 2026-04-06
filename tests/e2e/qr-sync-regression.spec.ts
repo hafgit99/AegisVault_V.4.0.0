@@ -50,6 +50,14 @@ test.describe('QR Sync Regression', () => {
     await expect(settingsBtn).toBeVisible({ timeout: 10000 });
     await settingsBtn.click();
 
+    // After modularization, we MUST click the Sync tab to see QR controls
+    const syncTab = page
+      .locator('button')
+      .filter({ hasText: /Import\/Export & Sync|İçe\/Dışa Aktarım & Sync/i })
+      .first();
+    await expect(syncTab).toBeVisible({ timeout: 5000 });
+    await syncTab.click();
+
     // Verify the QR Sync section title is visible (EN or TR) using regex
     const qrTitle = page
       .getByText(/Cross-Device QR Sync|Cihazlar Arası QR Senkronizasyonu/i)
@@ -68,6 +76,14 @@ test.describe('QR Sync Regression', () => {
     const settingsBtn = page.locator('button[aria-label="Settings"]').first();
     await expect(settingsBtn).toBeVisible({ timeout: 10000 });
     await settingsBtn.click();
+
+    // After modularization, we MUST click the Sync tab to see QR controls
+    const syncTab = page
+      .locator('button')
+      .filter({ hasText: /Import\/Export & Sync|İçe\/Dışa Aktarım & Sync/i })
+      .first();
+    await expect(syncTab).toBeVisible({ timeout: 5000 });
+    await syncTab.click();
 
     // Verify the QR Sync section title using regex
     const qrTitle = page
