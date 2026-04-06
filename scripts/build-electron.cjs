@@ -60,7 +60,9 @@ function run(command, args, extraEnv = {}) {
   }
 
   if (result.status !== 0) {
-    console.error(`[build:electron] Command failed with exit code ${result.status}: ${command} ${args.join(' ')}`);
+    console.error(
+      `[build:electron] Command failed with exit code ${result.status}: ${command} ${args.join(' ')}`
+    );
     process.exit(result.status || 1);
   }
 }
@@ -85,7 +87,9 @@ async function main() {
   await prepareOutputDirs();
 
   if (effectiveOutputDir !== releaseDir) {
-    console.log(`[build:electron] OneDrive workspace detected. Using local build output: ${effectiveOutputDir}`);
+    console.log(
+      `[build:electron] OneDrive workspace detected. Using local build output: ${effectiveOutputDir}`
+    );
   }
 
   let buildFlag = '-w';
@@ -104,9 +108,13 @@ async function main() {
   }
 
   run(resolveCommand('npm'), ['run', 'build']);
-  run(resolveCommand('electron-builder'), [buildFlag, '--config', 'electron-builder.config.cjs', '--publish', 'never'], {
-    AEGIS_ELECTRON_OUTPUT_DIR: effectiveOutputDir,
-  });
+  run(
+    resolveCommand('electron-builder'),
+    [buildFlag, '--config', 'electron-builder.config.cjs', '--publish', 'never'],
+    {
+      AEGIS_ELECTRON_OUTPUT_DIR: effectiveOutputDir,
+    }
+  );
 
   await syncArtifactsBack();
   run(process.execPath, ['scripts/generate-hashes.js']);

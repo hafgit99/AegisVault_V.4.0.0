@@ -14,9 +14,12 @@ export class HIBPService {
       // 1. Calculate SHA-1 hash of the password
       const encoder = new TextEncoder();
       const data = encoder.encode(password);
-      const hashBuffer = await window.crypto.subtle.digest("SHA-1", data);
+      const hashBuffer = await window.crypto.subtle.digest('SHA-1', data);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+      const hashHex = hashArray
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
+        .toUpperCase();
 
       // 2. Implement k-anonymity: Split hash into prefix (5 chars) and suffix
       const prefix = hashHex.substring(0, 5);
@@ -24,7 +27,7 @@ export class HIBPService {
 
       // 3. Query HIBP API with only the prefix
       const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
-      
+
       if (!response.ok) {
         console.warn(`HIBP API returned status: ${response.status}`);
         return null;
@@ -43,7 +46,7 @@ export class HIBPService {
 
       return 0; // Not found
     } catch (error) {
-      console.error("Error checking HIBP API:", error);
+      console.error('Error checking HIBP API:', error);
       return null;
     }
   }

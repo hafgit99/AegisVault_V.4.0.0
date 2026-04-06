@@ -30,7 +30,8 @@ const normalizeUiLanguage = (value: unknown) =>
 const buildContentI18n = (language: 'tr' | 'en'): ContentI18n => ({
   noUsername: language === 'tr' ? 'Kullanıcı adı yok' : 'No username',
   recordsLabel: language === 'tr' ? 'kayıt' : 'record(s)',
-  noRecordForSite: language === 'tr' ? 'Bu site için kayıt bulunamadı' : 'No records found for this site',
+  noRecordForSite:
+    language === 'tr' ? 'Bu site için kayıt bulunamadı' : 'No records found for this site',
   filledSuccess: language === 'tr' ? 'Başarıyla dolduruldu' : 'Filled successfully',
   authSuccess: language === 'tr' ? 'Kimlik doğrulama başarılı' : 'Authentication successful',
   errorTitle: language === 'tr' ? 'Bir hata oluştu' : 'An error occurred',
@@ -39,14 +40,19 @@ const buildContentI18n = (language: 'tr' | 'en'): ContentI18n => ({
   generatePassword: language === 'tr' ? 'Güvenli şifre oluştur' : 'Generate secure password',
   passwordGenerated: language === 'tr' ? 'Güvenli şifre oluşturuldu' : 'Secure password generated',
   passwordPreviewTitle: language === 'tr' ? 'Olusturulan sifre' : 'Generated password',
-  passwordPreviewHint: language === 'tr' ? 'Sifreyi inceleyip onayladiktan sonra forma doldurulur.' : 'The password is filled only after your approval.',
+  passwordPreviewHint:
+    language === 'tr'
+      ? 'Sifreyi inceleyip onayladiktan sonra forma doldurulur.'
+      : 'The password is filled only after your approval.',
   passwordApply: language === 'tr' ? 'Onayla ve doldur' : 'Approve and fill',
   passwordRegenerate: language === 'tr' ? 'Yeniden olustur' : 'Regenerate',
   passwordCancel: language === 'tr' ? 'Iptal' : 'Cancel',
   passwordCopy: language === 'tr' ? 'Kopyala' : 'Copy',
 });
 
-let extensionLanguage: 'tr' | 'en' = normalizeUiLanguage(typeof navigator !== 'undefined' ? navigator.language : 'en');
+let extensionLanguage: 'tr' | 'en' = normalizeUiLanguage(
+  typeof navigator !== 'undefined' ? navigator.language : 'en'
+);
 let EXT_I18N = buildContentI18n(extensionLanguage);
 
 type CredentialMatch = {
@@ -97,9 +103,10 @@ type AutosaveCredentialCandidate = {
   source: 'browser_form';
 };
 
-type WindowWithAegisAutosaveGuard = Window & typeof globalThis & {
-  __aegisAutosaveListenerInstalled?: boolean;
-};
+type WindowWithAegisAutosaveGuard = Window &
+  typeof globalThis & {
+    __aegisAutosaveListenerInstalled?: boolean;
+  };
 
 const syncLanguageState = (language: unknown) => {
   extensionLanguage = normalizeUiLanguage(language);
@@ -127,12 +134,10 @@ const STYLES = {
     zIndex: 2147483647,
     borderRadius: 16,
     overflow: 'hidden',
-    boxShadow: isDark 
-      ? '0 20px 60px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3)' 
+    boxShadow: isDark
+      ? '0 20px 60px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3)'
       : '0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.10)',
-    border: isDark 
-       ? '1.5px solid rgba(255,255,255,0.1)' 
-       : '1.5px solid rgba(114,136,111,0.22)',
+    border: isDark ? '1.5px solid rgba(255,255,255,0.1)' : '1.5px solid rgba(114,136,111,0.22)',
     background: isDark
       ? 'linear-gradient(135deg, rgba(20,24,33,0.96) 0%, rgba(15,18,24,0.98) 100%)'
       : 'linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(245,248,244,0.98) 100%)',
@@ -145,7 +150,7 @@ const STYLES = {
     display: 'flex' as const,
     alignItems: 'center' as const,
     gap: 8,
-    background: isDark 
+    background: isDark
       ? 'linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)'
       : 'linear-gradient(90deg, rgba(114,136,111,0.08) 0%, rgba(114,136,111,0.04) 100%)',
   }),
@@ -192,11 +197,19 @@ const STYLES = {
     cursor: 'pointer' as const,
     transition: 'all 0.15s ease',
     background: hovered
-      ? (isDark ? 'rgba(255,255,255,0.05)' : 'linear-gradient(90deg, rgba(114,136,111,0.13) 0%, rgba(114,136,111,0.07) 100%)')
-      : (isDark ? 'transparent' : 'rgba(114,136,111,0.04)'),
-    border: hovered 
-      ? (isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(114,136,111,0.25)') 
-      : (isDark ? '1px solid transparent' : '1px solid rgba(114,136,111,0.08)'),
+      ? isDark
+        ? 'rgba(255,255,255,0.05)'
+        : 'linear-gradient(90deg, rgba(114,136,111,0.13) 0%, rgba(114,136,111,0.07) 100%)'
+      : isDark
+        ? 'transparent'
+        : 'rgba(114,136,111,0.04)',
+    border: hovered
+      ? isDark
+        ? '1px solid rgba(255,255,255,0.1)'
+        : '1px solid rgba(114,136,111,0.25)'
+      : isDark
+        ? '1px solid transparent'
+        : '1px solid rgba(114,136,111,0.08)',
     transform: hovered ? 'translateX(2px)' : 'none',
   }),
   avatar: (isDark: boolean) => ({
@@ -288,7 +301,10 @@ function triggerFill(el: HTMLInputElement, value: string) {
   el.focus();
 
   // 2) Native setter ile değer ata (React controlled input için zorunlu)
-  const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+  const nativeSetter = Object.getOwnPropertyDescriptor(
+    window.HTMLInputElement.prototype,
+    'value'
+  )?.set;
   if (nativeSetter) {
     nativeSetter.call(el, value);
   } else {
@@ -296,18 +312,19 @@ function triggerFill(el: HTMLInputElement, value: string) {
   }
 
   // 3) Tüm gerekli eventleri sırayla at
-  el.dispatchEvent(new Event('focus',  { bubbles: true }));
-  el.dispatchEvent(new Event('input',  { bubbles: true }));
+  el.dispatchEvent(new Event('focus', { bubbles: true }));
+  el.dispatchEvent(new Event('input', { bubbles: true }));
   el.dispatchEvent(new Event('change', { bubbles: true }));
-  el.dispatchEvent(new KeyboardEvent('keydown',  { bubbles: true }));
+  el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
   el.dispatchEvent(new KeyboardEvent('keypress', { bubbles: true }));
-  el.dispatchEvent(new KeyboardEvent('keyup',    { bubbles: true }));
-  el.dispatchEvent(new Event('blur',   { bubbles: true }));
+  el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+  el.dispatchEvent(new Event('blur', { bubbles: true }));
 }
 
 function fillInputs(inputEl: HTMLInputElement, entry: CredentialMatch) {
-  const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input'))
-    .filter(i => i.offsetParent !== null); // sadece görünür input'lar
+  const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input')).filter(
+    (i) => i.offsetParent !== null
+  ); // sadece görünür input'lar
   const idx = inputs.indexOf(inputEl);
 
   if (inputEl.type === 'password') {
@@ -335,7 +352,8 @@ function fillInputs(inputEl: HTMLInputElement, entry: CredentialMatch) {
 
 const normalizeCardFieldMarker = (field: HTMLInputElement) => {
   const autocomplete = (field.getAttribute('autocomplete') || '').toLowerCase();
-  const marker = `${field.name || ''} ${field.id || ''} ${field.placeholder || ''} ${autocomplete}`.toLowerCase();
+  const marker =
+    `${field.name || ''} ${field.id || ''} ${field.placeholder || ''} ${autocomplete}`.toLowerCase();
   return { autocomplete, marker };
 };
 
@@ -345,7 +363,8 @@ const isLikelyCardField = (field: HTMLInputElement) => {
   if (field.disabled || field.readOnly) return false;
   const { autocomplete, marker } = normalizeCardFieldMarker(field);
   if (autocomplete.startsWith('cc-')) return true;
-  if (/card|credit|debit|cc-|kart|iban|cvc|cvv|expiry|exp|holder|name on card/.test(marker)) return true;
+  if (/card|credit|debit|cc-|kart|iban|cvc|cvv|expiry|exp|holder|name on card/.test(marker))
+    return true;
   return false;
 };
 
@@ -354,10 +373,16 @@ const pickCardFieldValue = (
   details: NonNullable<CredentialMatch['cardDetails']>
 ): string => {
   const { autocomplete, marker } = normalizeCardFieldMarker(field);
-  if (autocomplete.includes('cc-name') || /cardholder|holder|name on card|kart sahibi/.test(marker)) {
+  if (
+    autocomplete.includes('cc-name') ||
+    /cardholder|holder|name on card|kart sahibi/.test(marker)
+  ) {
     return details.cardholder_name || '';
   }
-  if (autocomplete.includes('cc-number') || /card number|kart numara|kart no|cc-number/.test(marker)) {
+  if (
+    autocomplete.includes('cc-number') ||
+    /card number|kart numara|kart no|cc-number/.test(marker)
+  ) {
     return details.card_number || '';
   }
   if (autocomplete.includes('cc-csc') || /cvv|cvc|security code|guvenlik kodu/.test(marker)) {
@@ -391,7 +416,9 @@ function fillCardInputs(inputEl: HTMLInputElement, entry: CredentialMatch) {
   const scope = inputEl.form
     ? Array.from(inputEl.form.querySelectorAll<HTMLInputElement>('input'))
     : Array.from(document.querySelectorAll<HTMLInputElement>('input'));
-  const visibleFields = scope.filter((field) => field.offsetParent !== null && isLikelyCardField(field));
+  const visibleFields = scope.filter(
+    (field) => field.offsetParent !== null && isLikelyCardField(field)
+  );
   for (const field of visibleFields) {
     const nextValue = pickCardFieldValue(field, details);
     if (!nextValue) continue;
@@ -400,7 +427,17 @@ function fillCardInputs(inputEl: HTMLInputElement, entry: CredentialMatch) {
 }
 
 // ─── Entry Row Component ───
-const EntryRow = ({ entry, onFill, isPasskey, isDark }: { entry: CredentialMatch | PasskeyMatch; onFill: () => void; isPasskey?: boolean; isDark: boolean }) => {
+const EntryRow = ({
+  entry,
+  onFill,
+  isPasskey,
+  isDark,
+}: {
+  entry: CredentialMatch | PasskeyMatch;
+  onFill: () => void;
+  isPasskey?: boolean;
+  isDark: boolean;
+}) => {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -412,7 +449,16 @@ const EntryRow = ({ entry, onFill, isPasskey, isDark }: { entry: CredentialMatch
     >
       <div style={STYLES.avatar(isDark)}>
         {isPasskey ? (
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
           </svg>
@@ -456,9 +502,12 @@ const AegisOverlay = () => {
   useEffect(() => {
     // Detect dark mode from system preference or body/html class
     const checkDark = () => {
-       const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-       const hostClasses = document.documentElement.classList.contains('dark') || document.body.classList.contains('dark') || document.documentElement.getAttribute('data-theme') === 'dark';
-       setIsDarkMode(systemDark || hostClasses);
+      const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const hostClasses =
+        document.documentElement.classList.contains('dark') ||
+        document.body.classList.contains('dark') ||
+        document.documentElement.getAttribute('data-theme') === 'dark';
+      setIsDarkMode(systemDark || hostClasses);
     };
     checkDark();
     const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -506,7 +555,8 @@ const AegisOverlay = () => {
   };
 
   const generateSecurePassword = (length: number = 20) => {
-    const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+[]{};:,.?/|';
+    const charset =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+[]{};:,.?/|';
     const bytes = new Uint32Array(length);
     window.crypto.getRandomValues(bytes);
     return Array.from(bytes, (value) => charset[value % charset.length]).join('');
@@ -517,8 +567,9 @@ const AegisOverlay = () => {
 
     const form = focusedInput.form;
     if (!form) return;
-    const passwordFields = Array.from(form.querySelectorAll<HTMLInputElement>('input'))
-      .filter((field) => isVisiblePasswordField(field));
+    const passwordFields = Array.from(form.querySelectorAll<HTMLInputElement>('input')).filter(
+      (field) => isVisiblePasswordField(field)
+    );
     const focusedIndex = passwordFields.indexOf(focusedInput);
     if (focusedIndex < 0) return;
 
@@ -526,7 +577,8 @@ const AegisOverlay = () => {
     for (let i = focusedIndex + 1; i < passwordFields.length; i++) {
       const candidate = passwordFields[i];
       if (!candidate || candidate.value.trim()) continue;
-      const marker = `${candidate.name || ''} ${candidate.id || ''} ${candidate.placeholder || ''} ${(candidate.getAttribute('autocomplete') || '')}`.toLowerCase();
+      const marker =
+        `${candidate.name || ''} ${candidate.id || ''} ${candidate.placeholder || ''} ${candidate.getAttribute('autocomplete') || ''}`.toLowerCase();
       const looksLikeConfirm = /confirm|repeat|tekrar|dogrula/.test(marker);
       if (looksLikeConfirm || filledExtra === 0) {
         triggerFill(candidate, password);
@@ -541,7 +593,8 @@ const AegisOverlay = () => {
       const target = e.target as HTMLInputElement;
       if (!target || target.tagName !== 'INPUT') return;
 
-      const isWebAuthn = target.autocomplete === 'webauthn' || target.getAttribute('autocomplete') === 'webauthn';
+      const isWebAuthn =
+        target.autocomplete === 'webauthn' || target.getAttribute('autocomplete') === 'webauthn';
       const isPasswordFocus = target.type === 'password';
       const isUsernameFocus = isLikelyUsernameField(target);
       const isCardFocus = isLikelyCardField(target);
@@ -551,14 +604,21 @@ const AegisOverlay = () => {
 
       try {
         const status = await browser.runtime.sendMessage({ type: 'GET_VAULT_STATUS' });
-        if (!status?.isUnlocked) { hide(); return; }
+        if (!status?.isUnlocked) {
+          hide();
+          return;
+        }
 
         const domain = window.location.hostname.replace(/^www\./, '').toLowerCase();
-        if (!domain) { hide(); return; }
+        if (!domain) {
+          hide();
+          return;
+        }
 
-        const requestNonce = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random()}`;
+        const requestNonce =
+          typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random()}`;
 
         // Fetch both credentials and passkeys in parallel
         const [credsResponse, passkeysResponse] = await Promise.all([
@@ -566,11 +626,18 @@ const AegisOverlay = () => {
           browser.runtime.sendMessage({ type: 'GET_DOMAIN_PASSKEYS', domain, requestNonce }),
         ]);
 
-        const matches = Array.isArray(credsResponse?.data) ? credsResponse.data as CredentialMatch[] : [];
-        const passkeyMatches = Array.isArray(passkeysResponse?.data) ? passkeysResponse.data as PasskeyMatch[] : [];
-        
+        const matches = Array.isArray(credsResponse?.data)
+          ? (credsResponse.data as CredentialMatch[])
+          : [];
+        const passkeyMatches = Array.isArray(passkeysResponse?.data)
+          ? (passkeysResponse.data as PasskeyMatch[])
+          : [];
+
         const shouldShowGenerator = isPasswordFocus;
-        if (matches.length === 0 && passkeyMatches.length === 0 && !shouldShowGenerator) { hide(); return; }
+        if (matches.length === 0 && passkeyMatches.length === 0 && !shouldShowGenerator) {
+          hide();
+          return;
+        }
 
         inputRef.current = target;
         setActiveRect(target.getBoundingClientRect());
@@ -625,223 +692,245 @@ const AegisOverlay = () => {
 
   return (
     <div style={STYLES.container}>
-        <div style={STYLES.popup(activeRect.bottom, activeRect.left, isDarkMode)}>
-          {/* Header */}
-          <div style={STYLES.header(isDarkMode)}>
-            <div style={STYLES.logo}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z" fill="white" opacity="0.9"/>
-              </svg>
-            </div>
-            <span style={STYLES.headerTitle(isDarkMode)}>Aegis Vault</span>
-            <span style={STYLES.headerSub(isDarkMode)}>{(matchingPasswords.length + matchingPasskeys.length)} {EXT_I18N.recordsLabel}</span>
+      <div style={STYLES.popup(activeRect.bottom, activeRect.left, isDarkMode)}>
+        {/* Header */}
+        <div style={STYLES.header(isDarkMode)}>
+          <div style={STYLES.logo}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z"
+                fill="white"
+                opacity="0.9"
+              />
+            </svg>
           </div>
+          <span style={STYLES.headerTitle(isDarkMode)}>Aegis Vault</span>
+          <span style={STYLES.headerSub(isDarkMode)}>
+            {matchingPasswords.length + matchingPasskeys.length} {EXT_I18N.recordsLabel}
+          </span>
+        </div>
 
-          {/* Body */}
-          <div style={STYLES.body}>
-            {!filled ? (
-              (matchingPasswords.length > 0 || matchingPasskeys.length > 0 || showPasswordGenerator) ? (
-                <>
-                  {showPasswordGenerator ? (
-                    <EntryRow
-                      key="pw-generate"
-                      entry={{
-                        title: EXT_I18N.generatePassword,
-                        username: '',
-                      }}
-                      isDark={isDarkMode}
-                      onFill={() => {
-                        clearHideTimer();
-                        if (!inputRef.current || inputRef.current.type !== 'password') return;
-                        const generated = generateSecurePassword(20);
-                        setGeneratedPasswordDraft(generated);
-                      }}
-                    />
-                  ) : null}
-                  {generatedPasswordDraft ? (
+        {/* Body */}
+        <div style={STYLES.body}>
+          {!filled ? (
+            matchingPasswords.length > 0 || matchingPasskeys.length > 0 || showPasswordGenerator ? (
+              <>
+                {showPasswordGenerator ? (
+                  <EntryRow
+                    key="pw-generate"
+                    entry={{
+                      title: EXT_I18N.generatePassword,
+                      username: '',
+                    }}
+                    isDark={isDarkMode}
+                    onFill={() => {
+                      clearHideTimer();
+                      if (!inputRef.current || inputRef.current.type !== 'password') return;
+                      const generated = generateSecurePassword(20);
+                      setGeneratedPasswordDraft(generated);
+                    }}
+                  />
+                ) : null}
+                {generatedPasswordDraft ? (
+                  <div
+                    style={{
+                      border: isDarkMode
+                        ? '1px solid rgba(255,255,255,0.14)'
+                        : '1px solid rgba(114,136,111,0.25)',
+                      borderRadius: 10,
+                      background: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(114,136,111,0.06)',
+                      padding: '10px 9px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8,
+                    }}
+                  >
                     <div
                       style={{
-                        border: isDarkMode ? '1px solid rgba(255,255,255,0.14)' : '1px solid rgba(114,136,111,0.25)',
-                        borderRadius: 10,
-                        background: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(114,136,111,0.06)',
-                        padding: '10px 9px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 8,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: isDarkMode ? '#e5e7eb' : '#0f172a',
                       }}
                     >
-                      <div style={{ fontSize: 11, fontWeight: 700, color: isDarkMode ? '#e5e7eb' : '#0f172a' }}>
-                        {EXT_I18N.passwordPreviewTitle}
-                      </div>
-                      <div style={{ fontSize: 10, color: isDarkMode ? '#9ca3af' : '#64748b' }}>
-                        {EXT_I18N.passwordPreviewHint}
-                      </div>
-                      <div
+                      {EXT_I18N.passwordPreviewTitle}
+                    </div>
+                    <div style={{ fontSize: 10, color: isDarkMode ? '#9ca3af' : '#64748b' }}>
+                      {EXT_I18N.passwordPreviewHint}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: isDarkMode ? '#f9fafb' : '#111827',
+                        background: isDarkMode ? 'rgba(17,24,39,0.95)' : 'rgba(255,255,255,0.95)',
+                        border: isDarkMode
+                          ? '1px solid rgba(255,255,255,0.14)'
+                          : '1px solid rgba(15,23,42,0.08)',
+                        borderRadius: 8,
+                        padding: '7px 8px',
+                        wordBreak: 'break-all',
+                      }}
+                    >
+                      {generatedPasswordDraft}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        type="button"
                         style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: isDarkMode ? '#f9fafb' : '#111827',
-                          background: isDarkMode ? 'rgba(17,24,39,0.95)' : 'rgba(255,255,255,0.95)',
-                          border: isDarkMode ? '1px solid rgba(255,255,255,0.14)' : '1px solid rgba(15,23,42,0.08)',
+                          flex: 1,
+                          border: 0,
                           borderRadius: 8,
                           padding: '7px 8px',
-                          wordBreak: 'break-all',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          background: isDarkMode ? '#89a88c' : '#101828',
+                          color: isDarkMode ? '#101828' : '#ffffff',
+                        }}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => {
+                          if (!inputRef.current || inputRef.current.type !== 'password') return;
+                          fillGeneratedPassword(inputRef.current, generatedPasswordDraft);
+                          toast?.success?.(EXT_I18N.passwordGenerated);
+                          setFilled(true);
+                          setGeneratedPasswordDraft('');
+                          setTimeout(() => hide(), 900);
                         }}
                       >
-                        {generatedPasswordDraft}
-                      </div>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          type="button"
-                          style={{
-                            flex: 1,
-                            border: 0,
-                            borderRadius: 8,
-                            padding: '7px 8px',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            background: isDarkMode ? '#89a88c' : '#101828',
-                            color: isDarkMode ? '#101828' : '#ffffff',
-                          }}
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => {
-                            if (!inputRef.current || inputRef.current.type !== 'password') return;
-                            fillGeneratedPassword(inputRef.current, generatedPasswordDraft);
-                            toast?.success?.(EXT_I18N.passwordGenerated);
-                            setFilled(true);
-                            setGeneratedPasswordDraft('');
-                            setTimeout(() => hide(), 900);
-                          }}
-                        >
-                          {EXT_I18N.passwordApply}
-                        </button>
-                        <button
-                          type="button"
-                          style={{
-                            border: isDarkMode ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(15,23,42,0.15)',
-                            borderRadius: 8,
-                            padding: '7px 8px',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            background: 'transparent',
-                            color: isDarkMode ? '#e2e8f0' : '#334155',
-                          }}
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => setGeneratedPasswordDraft(generateSecurePassword(20))}
-                        >
-                          {EXT_I18N.passwordRegenerate}
-                        </button>
-                        <button
-                          type="button"
-                          style={{
-                            border: isDarkMode ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(15,23,42,0.15)',
-                            borderRadius: 8,
-                            padding: '7px 8px',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            background: 'transparent',
-                            color: isDarkMode ? '#e2e8f0' : '#334155',
-                          }}
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => {
-                            navigator.clipboard?.writeText(generatedPasswordDraft).catch(() => null);
-                          }}
-                        >
-                          {EXT_I18N.passwordCopy}
-                        </button>
-                        <button
-                          type="button"
-                          style={{
-                            border: isDarkMode ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(15,23,42,0.15)',
-                            borderRadius: 8,
-                            padding: '7px 8px',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            background: 'transparent',
-                            color: isDarkMode ? '#e2e8f0' : '#334155',
-                          }}
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => setGeneratedPasswordDraft('')}
-                        >
-                          {EXT_I18N.passwordCancel}
-                        </button>
-                      </div>
+                        {EXT_I18N.passwordApply}
+                      </button>
+                      <button
+                        type="button"
+                        style={{
+                          border: isDarkMode
+                            ? '1px solid rgba(255,255,255,0.2)'
+                            : '1px solid rgba(15,23,42,0.15)',
+                          borderRadius: 8,
+                          padding: '7px 8px',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          background: 'transparent',
+                          color: isDarkMode ? '#e2e8f0' : '#334155',
+                        }}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => setGeneratedPasswordDraft(generateSecurePassword(20))}
+                      >
+                        {EXT_I18N.passwordRegenerate}
+                      </button>
+                      <button
+                        type="button"
+                        style={{
+                          border: isDarkMode
+                            ? '1px solid rgba(255,255,255,0.2)'
+                            : '1px solid rgba(15,23,42,0.15)',
+                          borderRadius: 8,
+                          padding: '7px 8px',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          background: 'transparent',
+                          color: isDarkMode ? '#e2e8f0' : '#334155',
+                        }}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => {
+                          navigator.clipboard?.writeText(generatedPasswordDraft).catch(() => null);
+                        }}
+                      >
+                        {EXT_I18N.passwordCopy}
+                      </button>
+                      <button
+                        type="button"
+                        style={{
+                          border: isDarkMode
+                            ? '1px solid rgba(255,255,255,0.2)'
+                            : '1px solid rgba(15,23,42,0.15)',
+                          borderRadius: 8,
+                          padding: '7px 8px',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          background: 'transparent',
+                          color: isDarkMode ? '#e2e8f0' : '#334155',
+                        }}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => setGeneratedPasswordDraft('')}
+                      >
+                        {EXT_I18N.passwordCancel}
+                      </button>
                     </div>
-                  ) : null}
-                  {matchingPasskeys.map((passkey, idx) => (
-                    <EntryRow
-                      key={`pk-${idx}`}
-                      entry={passkey}
-                      isPasskey={true}
-                      isDark={isDarkMode}
-                      onFill={async () => {
-                        clearHideTimer();
-                        // Passkey selection logic - Trigger WebAuthn
-                        console.log('[Aegis Vault] Passkey selected:', passkey.title);
-                        
-                        if (!pendingWebAuthnOptions) {
-                          toast?.error?.(EXT_I18N.errorTitle || 'WebAuthn request not found');
-                          return;
-                        }
+                  </div>
+                ) : null}
+                {matchingPasskeys.map((passkey, idx) => (
+                  <EntryRow
+                    key={`pk-${idx}`}
+                    entry={passkey}
+                    isPasskey={true}
+                    isDark={isDarkMode}
+                    onFill={async () => {
+                      clearHideTimer();
+                      // Passkey selection logic - Trigger WebAuthn
+                      console.log('[Aegis Vault] Passkey selected:', passkey.title);
 
-                        try {
-                          const response = await browser.runtime.sendMessage({
-                            type: 'AUTH_PASSKEY',
-                            domain: window.location.hostname,
-                            options: pendingWebAuthnOptions,
-                            passkeyMetadata: passkey.passkeyMetadata
-                          });
+                      if (!pendingWebAuthnOptions) {
+                        toast?.error?.(EXT_I18N.errorTitle || 'WebAuthn request not found');
+                        return;
+                      }
 
-                          if (response?.success) {
-                            console.log('[Aegis Vault] Passkey Auth Success:', response.authResult);
-                            toast?.success?.(EXT_I18N.authSuccess);
-                            setFilled(true);
-                            setTimeout(() => hide(), 900);
-                          } else {
-                            console.error('[Aegis Vault] Passkey Auth Failed:', response?.error);
-                            toast?.error?.(response?.error || EXT_I18N.errorTitle);
-                          }
-                        } catch (err) {
-                           console.error('[Aegis Vault] Auth error:', err);
+                      try {
+                        const response = await browser.runtime.sendMessage({
+                          type: 'AUTH_PASSKEY',
+                          domain: window.location.hostname,
+                          options: pendingWebAuthnOptions,
+                          passkeyMetadata: passkey.passkeyMetadata,
+                        });
+
+                        if (response?.success) {
+                          console.log('[Aegis Vault] Passkey Auth Success:', response.authResult);
+                          toast?.success?.(EXT_I18N.authSuccess);
+                          setFilled(true);
+                          setTimeout(() => hide(), 900);
+                        } else {
+                          console.error('[Aegis Vault] Passkey Auth Failed:', response?.error);
+                          toast?.error?.(response?.error || EXT_I18N.errorTitle);
                         }
-                      }}
-                    />
-                  ))}
-                  {matchingPasswords.map((entry, idx) => (
-                    <EntryRow
-                      key={`pw-${idx}`}
-                      entry={entry}
-                      isDark={isDarkMode}
-                      onFill={() => {
-                        clearHideTimer();
-                        if (inputRef.current) {
-                          if (isLikelyCardField(inputRef.current) && entry.cardDetails) {
-                            fillCardInputs(inputRef.current, entry);
-                          } else {
-                            fillInputs(inputRef.current, entry);
-                          }
+                      } catch (err) {
+                        console.error('[Aegis Vault] Auth error:', err);
+                      }
+                    }}
+                  />
+                ))}
+                {matchingPasswords.map((entry, idx) => (
+                  <EntryRow
+                    key={`pw-${idx}`}
+                    entry={entry}
+                    isDark={isDarkMode}
+                    onFill={() => {
+                      clearHideTimer();
+                      if (inputRef.current) {
+                        if (isLikelyCardField(inputRef.current) && entry.cardDetails) {
+                          fillCardInputs(inputRef.current, entry);
+                        } else {
+                          fillInputs(inputRef.current, entry);
                         }
-                        setFilled(true);
-                        setTimeout(() => hide(), 900);
-                      }}
-                    />
-                  ))}
-                </>
-              ) : (
-                <div style={STYLES.emptyText(isDarkMode)}>{EXT_I18N.noRecordForSite}</div>
-              )
+                      }
+                      setFilled(true);
+                      setTimeout(() => hide(), 900);
+                    }}
+                  />
+                ))}
+              </>
             ) : (
-              <div style={STYLES.filledView}>
-                <div style={STYLES.successIcon}>✓</div>
-                <div style={STYLES.successText(isDarkMode)}>{EXT_I18N.filledSuccess}</div>
-              </div>
-            )}
-          </div>
+              <div style={STYLES.emptyText(isDarkMode)}>{EXT_I18N.noRecordForSite}</div>
+            )
+          ) : (
+            <div style={STYLES.filledView}>
+              <div style={STYLES.successIcon}>✓</div>
+              <div style={STYLES.successText(isDarkMode)}>{EXT_I18N.filledSuccess}</div>
+            </div>
+          )}
         </div>
+      </div>
     </div>
   );
 };
@@ -885,23 +974,33 @@ export default defineContentScript({
         return autocomplete.includes('username') || autocomplete.includes('email');
       });
       if (preferred) return preferred;
-      return fields.find((field) => {
-        const marker = `${field.name || ''} ${field.id || ''} ${field.placeholder || ''}`.toLowerCase();
-        return /user|email|mail|login|account/.test(marker);
-      }) || null;
+      return (
+        fields.find((field) => {
+          const marker =
+            `${field.name || ''} ${field.id || ''} ${field.placeholder || ''}`.toLowerCase();
+          return /user|email|mail|login|account/.test(marker);
+        }) || null
+      );
     };
 
     const buildAutosaveCandidate = (form: HTMLFormElement): AutosaveCredentialCandidate | null => {
       const host = normalizeHost(window.location.hostname);
       if (!host) return null;
 
-      const allInputs = Array.from(form.querySelectorAll<HTMLInputElement>('input'))
-        .filter((field) => isAutosaveFieldVisible(field));
+      const allInputs = Array.from(form.querySelectorAll<HTMLInputElement>('input')).filter(
+        (field) => isAutosaveFieldVisible(field)
+      );
       if (allInputs.length === 0) return null;
 
-      const passwordInputs = allInputs.filter((field) => field.type === 'password' && field.value.trim().length > 0);
+      const passwordInputs = allInputs.filter(
+        (field) => field.type === 'password' && field.value.trim().length > 0
+      );
       if (passwordInputs.length === 0) return null;
-      if (passwordInputs.some((field) => (field.getAttribute('autocomplete') || '').toLowerCase().includes('new-password'))) {
+      if (
+        passwordInputs.some((field) =>
+          (field.getAttribute('autocomplete') || '').toLowerCase().includes('new-password')
+        )
+      ) {
         return null;
       }
       if (passwordInputs.length > 1) {
@@ -911,7 +1010,10 @@ export default defineContentScript({
 
       const usernameFields = allInputs.filter((field) => {
         const type = (field.type || '').toLowerCase();
-        return (type === 'text' || type === 'email' || type === 'username') && field.value.trim().length > 0;
+        return (
+          (type === 'text' || type === 'email' || type === 'username') &&
+          field.value.trim().length > 0
+        );
       });
       const usernameField = pickUsernameField(usernameFields);
       const passwordField = passwordInputs[passwordInputs.length - 1];
@@ -942,15 +1044,18 @@ export default defineContentScript({
       if (now - existing < AUTOSAVE_DEDUP_WINDOW_MS) return;
       autosaveDedupMap.set(dedupKey, now);
 
-      const requestNonce = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random()}`;
-      await browser.runtime.sendMessage({
-        type: 'AUTOSAVE_CREDENTIAL',
-        domain,
-        requestNonce,
-        credential: candidate,
-      }).catch(() => null);
+      const requestNonce =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random()}`;
+      await browser.runtime
+        .sendMessage({
+          type: 'AUTOSAVE_CREDENTIAL',
+          domain,
+          requestNonce,
+          credential: candidate,
+        })
+        .catch(() => null);
     };
 
     let sessionNonce = crypto.randomUUID();
@@ -964,7 +1069,11 @@ export default defineContentScript({
 
     window.addEventListener('message', (event) => {
       if (event.source !== window || !event.data) return;
-      if (!TRUSTED_ORIGINS.includes(event.origin) && !event.origin.startsWith('chrome-extension://')) return;
+      if (
+        !TRUSTED_ORIGINS.includes(event.origin) &&
+        !event.origin.startsWith('chrome-extension://')
+      )
+        return;
 
       if (event.data.type === 'AEGIS_SYNC_VAULT') {
         if (!event.data.nonce || event.data.nonce !== sessionNonce) {
@@ -973,7 +1082,9 @@ export default defineContentScript({
         }
         sessionNonce = crypto.randomUUID();
         window.postMessage({ type: 'AEGIS_NONCE_UPDATE', nonce: sessionNonce }, event.origin);
-        browser.runtime.sendMessage({ type: 'SAVE_VAULT', data: event.data.payload }).catch(() => {});
+        browser.runtime
+          .sendMessage({ type: 'SAVE_VAULT', data: event.data.payload })
+          .catch(() => {});
       }
 
       if (event.data.type === 'AEGIS_LOCK_VAULT') {
@@ -989,7 +1100,9 @@ export default defineContentScript({
       if (event.data.type === 'AEGIS_UI_LANGUAGE') {
         const normalizedLanguage = normalizeUiLanguage(event.data.language);
         syncLanguageState(normalizedLanguage);
-        browser.runtime.sendMessage({ type: 'SET_UI_LANGUAGE', language: normalizedLanguage }).catch(() => {});
+        browser.runtime
+          .sendMessage({ type: 'SET_UI_LANGUAGE', language: normalizedLanguage })
+          .catch(() => {});
       }
     });
 
@@ -1002,7 +1115,10 @@ export default defineContentScript({
           '';
         const normalizedLanguage = normalizeUiLanguage(pageLanguage);
         syncLanguageState(normalizedLanguage);
-        await browser.runtime.sendMessage({ type: 'SET_UI_LANGUAGE', language: normalizedLanguage });
+        await browser.runtime.sendMessage({
+          type: 'SET_UI_LANGUAGE',
+          language: normalizedLanguage,
+        });
       } catch {
         // localStorage veya background bridge her ortamda erisilebilir olmayabilir
       }

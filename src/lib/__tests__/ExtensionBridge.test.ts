@@ -6,10 +6,12 @@ import { vaultService } from '../../vaultService';
 // Mock vaultService
 vi.mock('../../vaultService', () => ({
   vaultService: {
-    isConnected: true,
-    getPasswords: vi.fn().mockResolvedValue([
-      { title: 'Test', username: 'user', pass: 'p123', website: 'example.com' }
-    ]),
+    isUnlocked: vi.fn(() => true),
+    getPasswords: vi
+      .fn()
+      .mockResolvedValue([
+        { title: 'Test', username: 'user', pass: 'p123', website: 'example.com' },
+      ]),
   },
 }));
 
@@ -20,6 +22,7 @@ describe('ExtensionBridge', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.removeItem('aegis_extension_allowlist_v1');
     onMessageListener = null;
     extensionBridge.reset();
 
@@ -27,7 +30,9 @@ describe('ExtensionBridge', () => {
       postMessage: vi.fn(),
       disconnect: vi.fn(),
       onMessage: {
-        addListener: vi.fn((l) => { onMessageListener = l; }),
+        addListener: vi.fn((l) => {
+          onMessageListener = l;
+        }),
       },
       onDisconnect: {
         addListener: vi.fn(),
@@ -45,73 +50,84 @@ describe('ExtensionBridge', () => {
     extensionBridge.init();
   });
 
-  it('1. Hello mesajı ile bağlantı kurar ve Token paylaşır (Allowlist)', async () => {
+  it('1. Hello mesaji ile baglanti kurar ve token paylasir (allowlist)', async () => {
     const helloMsg = new MessageEvent('message', {
       data: {
         type: 'AEGIS_EXTENSION_HELLO',
-        extensionId: 'gddgomiecgnihlljfkogfjgakedoielk' // Allowlist default
+        extensionId: 'gddgomiecgnihlljfkogfjgakedoielk',
       },
-      origin: window.location.origin
+      origin: window.location.origin,
     });
 
     window.dispatchEvent(helloMsg);
 
-    expect(mockRuntime.connect).toHaveBeenCalledWith('gddgomiecgnihlljfkogfjgakedoielk', { name: "aegis-pwa-vault-port" });
-    expect(mockPort.postMessage).toHaveBeenCalledWith(expect.objectContaining({ 
+    expect(mockRuntime.connect).toHaveBeenCalledWith('gddgomiecgnihlljfkogfjgakedoielk', {
+      name: 'aegis-pwa-vault-port',
+    });
+    expect(mockPort.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
         type: 'SYNC_TOKEN',
-        token: expect.any(String)
-    }));
+        token: expect.any(String),
+      })
+    );
   });
 
-  it('2. Yetkisiz Extension ID reddedilir', async () => {
+  it('2. Yetkisiz extension id reddedilir', async () => {
     const evilMsg = new MessageEvent('message', {
       data: {
         type: 'AEGIS_EXTENSION_HELLO',
-        extensionId: 'malicious_id'
+        extensionId: 'malicious_id',
       },
-      origin: window.location.origin
+      origin: window.location.origin,
     });
 
     window.dispatchEvent(evilMsg);
     expect(mockRuntime.connect).not.toHaveBeenCalled();
   });
 
-  it('3. CHALLENGE isteğine yanıt verir', async () => {
-    // Önce handshake yapalım
-    window.dispatchEvent(new MessageEvent('message', {
-      data: { type: 'AEGIS_EXTENSION_HELLO', extensionId: 'kjbdjkfijeflhhbnkjgkmccljifidpcc' },
-      origin: window.location.origin
-    }));
+  it('3. CHALLENGE istegine yanit verir', async () => {
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { type: 'AEGIS_EXTENSION_HELLO', extensionId: 'kjbdjkfijeflhhbnkjgkmccljifidpcc' },
+        origin: window.location.origin,
+      })
+    );
 
     await vi.waitFor(() => expect(mockRuntime.connect).toHaveBeenCalled());
     const token = mockPort.postMessage.mock.calls[0][0].token;
 
-    // Challenge isteği gönder
     await onMessageListener({ type: 'REQUEST_CHALLENGE', token });
 
-    expect(mockPort.postMessage).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'CHALLENGE_RESPONSE',
-      nonce: expect.any(String)
-    }));
+    expect(mockPort.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'CHALLENGE_RESPONSE',
+        nonce: expect.any(String),
+      })
+    );
   });
 
-  it('4. Yanlış Token ile gelen istekleri reddeder', async () => {
-    window.dispatchEvent(new MessageEvent('message', {
-      data: { type: 'AEGIS_EXTENSION_HELLO', extensionId: 'kjbdjkfijeflhhbnkjgkmccljifidpcc' },
-      origin: window.location.origin
-    }));
+  it('4. Yanlis token ile gelen istekleri reddeder', async () => {
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { type: 'AEGIS_EXTENSION_HELLO', extensionId: 'kjbdjkfijeflhhbnkjgkmccljifidpcc' },
+        origin: window.location.origin,
+      })
+    );
 
     await vi.waitFor(() => expect(mockRuntime.connect).toHaveBeenCalled());
     await onMessageListener({ type: 'REQUEST_CHALLENGE', token: 'wrong-token' });
-    expect(mockPort.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'ERROR', error: 'UNAUTHORIZED_TOKEN' }));
+    expect(mockPort.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'ERROR', error: 'UNAUTHORIZED_TOKEN' })
+    );
   });
 
-  it('5. lockAndDisconnect portu kapatır ve temizlik yapar', async () => {
-    // Bağlantı kuralım
-    window.dispatchEvent(new MessageEvent('message', {
-      data: { type: 'AEGIS_EXTENSION_HELLO', extensionId: 'kjbdjkfijeflhhbnkjgkmccljifidpcc' },
-      origin: window.location.origin
-    }));
+  it('5. lockAndDisconnect portu kapatir ve temizlik yapar', async () => {
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { type: 'AEGIS_EXTENSION_HELLO', extensionId: 'kjbdjkfijeflhhbnkjgkmccljifidpcc' },
+        origin: window.location.origin,
+      })
+    );
 
     await vi.waitFor(() => expect(mockRuntime.connect).toHaveBeenCalled());
     extensionBridge.lockAndDisconnect();
@@ -119,21 +135,20 @@ describe('ExtensionBridge', () => {
     expect(mockPort.disconnect).toHaveBeenCalled();
   });
 
-  it('6. get_decrypted_creds: İmzalı isteği doğrular ve verileri döner', async () => {
-    // 1. Handshake
-    window.dispatchEvent(new MessageEvent('message', {
-      data: { type: 'AEGIS_EXTENSION_HELLO', extensionId: 'kjbdjkfijeflhhbnkjgkmccljifidpcc' },
-      origin: window.location.origin
-    }));
+  it('6. get_decrypted_creds: imzali istegi dogrular ve verileri doner', async () => {
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { type: 'AEGIS_EXTENSION_HELLO', extensionId: 'kjbdjkfijeflhhbnkjgkmccljifidpcc' },
+        origin: window.location.origin,
+      })
+    );
     await vi.waitFor(() => expect(mockRuntime.connect).toHaveBeenCalled());
     const token = mockPort.postMessage.mock.calls[0][0].token;
 
-    // 2. Request Challenge
     await onMessageListener({ type: 'REQUEST_CHALLENGE', token });
     const nonce = mockPort.postMessage.mock.calls[1][0].nonce;
     const ts = Date.now();
 
-    // 3. İmza oluştur
     const payload = `get_decrypted_creds:example.com:${nonce}:${ts}`;
     const key = await window.crypto.subtle.importKey(
       'raw',
@@ -142,25 +157,103 @@ describe('ExtensionBridge', () => {
       false,
       ['sign']
     );
-    const sigBuffer = await window.crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
-    const signature = Array.from(new Uint8Array(sigBuffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    const sigBuffer = await window.crypto.subtle.sign(
+      'HMAC',
+      key,
+      new TextEncoder().encode(payload)
+    );
+    const signature = Array.from(new Uint8Array(sigBuffer))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
 
-    // 4. İmzalı isteği gönder
     await onMessageListener({
       type: 'get_decrypted_creds',
       token,
       nonce,
       ts,
       signature,
-      domain: 'example.com'
+      domain: 'example.com',
     });
 
-    await vi.waitFor(() => expect(mockPort.postMessage).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'DECRYPTED_CREDS_RESPONSE',
-      data: expect.any(Array)
-    })));
-    
-    const response = mockPort.postMessage.mock.calls.find(c => c[0].type === 'DECRYPTED_CREDS_RESPONSE')[0];
+    await vi.waitFor(() =>
+      expect(mockPort.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'DECRYPTED_CREDS_RESPONSE',
+          data: expect.any(Array),
+        })
+      )
+    );
+
+    const response = mockPort.postMessage.mock.calls.find(
+      (c) => c[0].type === 'DECRYPTED_CREDS_RESPONSE'
+    )[0];
     expect(response.data.length).toBe(1);
+  });
+
+  it('7. Runtime allowlist update permits new extension id', async () => {
+    extensionBridge.updateAllowedExtensionIds(['runtime_ext_1']);
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { type: 'AEGIS_EXTENSION_HELLO', extensionId: 'runtime_ext_1' },
+        origin: window.location.origin,
+      })
+    );
+
+    await vi.waitFor(() =>
+      expect(mockRuntime.connect).toHaveBeenCalledWith('runtime_ext_1', {
+        name: 'aegis-pwa-vault-port',
+      })
+    );
+  });
+
+  it('8. Supports multiple active ports and disconnects all on lock', async () => {
+    const mockPortA = {
+      postMessage: vi.fn(),
+      disconnect: vi.fn(),
+      onMessage: {
+        addListener: vi.fn(),
+      },
+      onDisconnect: {
+        addListener: vi.fn(),
+      },
+    };
+    const mockPortB = {
+      postMessage: vi.fn(),
+      disconnect: vi.fn(),
+      onMessage: {
+        addListener: vi.fn(),
+      },
+      onDisconnect: {
+        addListener: vi.fn(),
+      },
+    };
+
+    mockRuntime.connect
+      .mockReset()
+      .mockReturnValueOnce(mockPortA as any)
+      .mockReturnValueOnce(mockPortB as any);
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { type: 'AEGIS_EXTENSION_HELLO', extensionId: 'gddgomiecgnihlljfkogfjgakedoielk' },
+        origin: window.location.origin,
+      })
+    );
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { type: 'AEGIS_EXTENSION_HELLO', extensionId: 'kjbdjkfijeflhhbnkjgkmccljifidpcc' },
+        origin: window.location.origin,
+      })
+    );
+
+    await vi.waitFor(() => expect(mockRuntime.connect).toHaveBeenCalledTimes(2));
+
+    extensionBridge.lockAndDisconnect();
+
+    expect(mockPortA.postMessage).toHaveBeenCalledWith({ type: 'VAULT_LOCKED' });
+    expect(mockPortB.postMessage).toHaveBeenCalledWith({ type: 'VAULT_LOCKED' });
+    expect(mockPortA.disconnect).toHaveBeenCalledTimes(1);
+    expect(mockPortB.disconnect).toHaveBeenCalledTimes(1);
   });
 });

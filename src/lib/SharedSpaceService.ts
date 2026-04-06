@@ -106,9 +106,9 @@ export class SharedSpaceService {
     const normalizedId = (spaceId || '').trim();
     if (!normalizedId) return false;
 
-    const nextSpaces = SecureAppSettings
-      .getSharedSpaces()
-      .filter((space) => space.id !== normalizedId);
+    const nextSpaces = SecureAppSettings.getSharedSpaces().filter(
+      (space) => space.id !== normalizedId
+    );
     SecureAppSettings.setSharedSpaces(nextSpaces);
     const removedAssignments = VaultSharingLinkService.removeAssignmentsForSpace(normalizedId);
     SharingAuditService.recordEvent({
@@ -119,6 +119,51 @@ export class SharedSpaceService {
       },
     });
     return true;
+  }
+
+  /**
+   * Transaction-like alan silme: Önce snapshot alır, silme işlemi yapılır.
+   * Hata durumunda rollback ile geri yüklenebilir.
+   */
+  static deleteSpaceTransactional(spaceId: string): { success: boolean; rollback: () => void } {
+    const normalizedId = (spaceId || '').trim();
+    if (!normalizedId) return { success: false, rollback: () => {} };
+
+    const spacesSnapshot = SecureAppSettings.getSharedSpaces();
+    const assignmentsSnapshot = VaultSharingLinkService.getAllAssignments();
+
+    try {
+      const nextSpaces = spacesSnapshot.filter((space) => space.id !== normalizedId);
+      SecureAppSettings.setSharedSpaces(nextSpaces);
+      const removedAssignments = VaultSharingLinkService.removeAssignmentsForSpace(normalizedId);
+      SharingAuditService.recordEvent({
+        type: 'space_deleted',
+        spaceId: normalizedId,
+        metadata: { removedAssignments, transactional: true },
+      });
+
+      return {
+        success: true,
+        rollback: () => {
+          SecureAppSettings.setSharedSpaces(spacesSnapshot);
+          VaultSharingLinkService.restoreAssignments(assignmentsSnapshot);
+          SharingAuditService.recordEvent({
+            type: 'space_restored',
+            spaceId: normalizedId,
+            metadata: { rollback: true },
+          });
+        },
+      };
+    } catch (error) {
+      SecureAppSettings.setSharedSpaces(spacesSnapshot);
+      VaultSharingLinkService.restoreAssignments(assignmentsSnapshot);
+      SharingAuditService.recordEvent({
+        type: 'space_deletion_failed',
+        spaceId: normalizedId,
+        metadata: { error: String(error), rolledBack: true },
+      });
+      return { success: false, rollback: () => {} };
+    }
   }
 
   static updateMemberStatus(
@@ -157,7 +202,9 @@ export class SharedSpaceService {
     previousSpace: CanonicalSharedSpace | undefined,
     nextSpace: CanonicalSharedSpace
   ): void {
-    const previousMembers = new Map((previousSpace?.members || []).map((member) => [member.id, member]));
+    const previousMembers = new Map(
+      (previousSpace?.members || []).map((member) => [member.id, member])
+    );
     const nextMembers = new Map(nextSpace.members.map((member) => [member.id, member]));
 
     nextSpace.members.forEach((member) => {

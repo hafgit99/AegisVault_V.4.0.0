@@ -11,6 +11,7 @@ describe('EmergencyAccessService', () => {
   });
 
   it('creates trusted contact and request lifecycle works', () => {
+    const requestedAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
     const contact = EmergencyAccessService.saveContact({
       name: 'Ada',
       email: 'ada@example.com',
@@ -24,7 +25,7 @@ describe('EmergencyAccessService', () => {
       contactId: contact!.id,
       scope: 'vault',
       requesterNote: 'urgent',
-      requestedAt: '2026-04-01T00:00:00.000Z',
+      requestedAt,
     });
     expect(request?.status).toBe('pending');
 
@@ -82,8 +83,8 @@ describe('EmergencyAccessService', () => {
 
     const target = EmergencyAccessService.listRequests().find((item) => item.id === request?.id);
     expect(target?.status).toBe('expired');
-    expect(
-      EmergencyAccessService.listAudit().some((event) => event.type === 'grant_expired')
-    ).toBe(true);
+    expect(EmergencyAccessService.listAudit().some((event) => event.type === 'grant_expired')).toBe(
+      true
+    );
   });
 });

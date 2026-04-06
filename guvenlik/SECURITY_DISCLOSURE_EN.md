@@ -16,6 +16,7 @@ Temporary pre-audit channel:
 - Email: security@aegisvault.local (placeholder)
 
 Note:
+
 - A production channel and PGP key will be published in a later revision.
 
 ## 3) Scope

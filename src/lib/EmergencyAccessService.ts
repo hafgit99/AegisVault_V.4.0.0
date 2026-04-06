@@ -27,14 +27,14 @@ const clampHours = (value: number, fallback: number) => {
   return Math.min(720, Math.max(1, Math.round(value)));
 };
 
-const sortByDateDesc = <T extends { requested_at?: string; created_at?: string; at?: string }>(items: T[]) =>
-  items
-    .slice()
-    .sort((left, right) => {
-      const leftAt = left.requested_at || left.created_at || left.at || '';
-      const rightAt = right.requested_at || right.created_at || right.at || '';
-      return Date.parse(rightAt) - Date.parse(leftAt);
-    });
+const sortByDateDesc = <T extends { requested_at?: string; created_at?: string; at?: string }>(
+  items: T[]
+) =>
+  items.slice().sort((left, right) => {
+    const leftAt = left.requested_at || left.created_at || left.at || '';
+    const rightAt = right.requested_at || right.created_at || right.at || '';
+    return Date.parse(rightAt) - Date.parse(leftAt);
+  });
 
 const isTerminalStatus = (status: EmergencyAccessRequestStatus) =>
   status === 'rejected' || status === 'revoked' || status === 'expired';
@@ -48,6 +48,38 @@ const withStatus = (
 });
 
 export class EmergencyAccessService {
+  private static timerHandle: ReturnType<typeof setInterval> | null = null;
+  private static readonly TIMER_INTERVAL_MS = 30_000; // 30 saniyede bir kontrol
+
+  /**
+   * Background timer'ı başlatır. Her 30 saniyede bir pending/approved/granted
+   * isteklerin durumunu değerlendirir ve süresi dolanları otomatik günceller.
+   */
+  static startBackgroundTimer(): void {
+    if (this.timerHandle) return;
+    this.evaluateState();
+    this.timerHandle = setInterval(() => {
+      this.evaluateState();
+    }, this.TIMER_INTERVAL_MS);
+  }
+
+  /**
+   * Background timer'ı durdurur.
+   */
+  static stopBackgroundTimer(): void {
+    if (this.timerHandle) {
+      clearInterval(this.timerHandle);
+      this.timerHandle = null;
+    }
+  }
+
+  /**
+   * Timer'ın çalışıp çalışmadığını döndürür.
+   */
+  static isTimerRunning(): boolean {
+    return this.timerHandle !== null;
+  }
+
   static getPolicy(): EmergencyAccessPolicy {
     return SecureAppSettings.getEmergencyAccessPolicy();
   }
@@ -128,7 +160,9 @@ export class EmergencyAccessService {
     const target = contacts.find((contact) => contact.id === normalizedId);
     if (!target) return false;
 
-    SecureAppSettings.setEmergencyAccessContacts(contacts.filter((contact) => contact.id !== normalizedId));
+    SecureAppSettings.setEmergencyAccessContacts(
+      contacts.filter((contact) => contact.id !== normalizedId)
+    );
     const requests = SecureAppSettings.getEmergencyAccessRequests();
     const now = new Date().toISOString();
     const nextRequests: EmergencyAccessRequest[] = requests.map((request) => {
@@ -183,7 +217,8 @@ export class EmergencyAccessService {
 
     const requestedAt = input.requestedAt || new Date().toISOString();
     const unlockAt = new Date(
-      Date.parse(requestedAt) + clampHours(contact.wait_hours, policy.default_wait_hours) * 60 * 60 * 1000
+      Date.parse(requestedAt) +
+        clampHours(contact.wait_hours, policy.default_wait_hours) * 60 * 60 * 1000
     ).toISOString();
     const entryIds =
       input.scope === 'selected_entries' && Array.isArray(input.entryIds)
@@ -208,7 +243,9 @@ export class EmergencyAccessService {
 
     SecureAppSettings.setEmergencyAccessContacts(
       contacts.map((candidate) =>
-        candidate.id === contactId ? { ...candidate, last_requested_at: requestedAt, updated_at: requestedAt } : candidate
+        candidate.id === contactId
+          ? { ...candidate, last_requested_at: requestedAt, updated_at: requestedAt }
+          : candidate
       )
     );
 
@@ -432,7 +469,9 @@ export class EmergencyAccessService {
       detail: event.detail,
       metadata: event.metadata ? { ...event.metadata } : undefined,
     };
-    SecureAppSettings.setEmergencyAccessAudit([...current, nextEvent].slice(-EMERGENCY_ACCESS_AUDIT_LIMIT));
+    SecureAppSettings.setEmergencyAccessAudit(
+      [...current, nextEvent].slice(-EMERGENCY_ACCESS_AUDIT_LIMIT)
+    );
     return nextEvent;
   }
 }

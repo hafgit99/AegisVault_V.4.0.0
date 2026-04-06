@@ -1,33 +1,41 @@
-import { useState, useEffect, lazy, Suspense, useRef } from "react";
-import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
-import { Plus, Trash2 } from "lucide-react";
+import { useState, useEffect, lazy, Suspense, useRef } from 'react';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { Plus, Trash2 } from 'lucide-react';
 import { vaultService, type VaultEntry } from '../vaultService';
-import { useTranslation } from "react-i18next";
-import { toast } from "react-toastify";
-import { SecureAppSettings } from "../lib/SecureAppSettings";
+import { useTranslation } from 'react-i18next';
+import { toast } from 'react-toastify';
+import { SecureAppSettings } from '../lib/SecureAppSettings';
 
 // Context
-import { VaultProvider, useVault } from "../contexts/VaultContext";
+import { VaultProvider, useVault } from '../contexts/VaultContext';
 
 // Always-visible components (loaded eagerly)
-import { DashboardHeader } from "./dashboard/DashboardHeader";
-import { WatchtowerPanel } from "./dashboard/WatchtowerPanel";
-import { CategorySidebar } from "./dashboard/CategorySidebar";
-import { VaultEntryCard } from "./dashboard/VaultEntryCard";
-import { VirtualizedVaultList } from "./dashboard/VirtualizedVaultList";
-import { GlowCard } from "./ui/GlowCard";
+import { DashboardHeader } from './dashboard/DashboardHeader';
+import { WatchtowerPanel } from './dashboard/WatchtowerPanel';
+import { CategorySidebar } from './dashboard/CategorySidebar';
+import { VaultEntryCard } from './dashboard/VaultEntryCard';
+import { VirtualizedVaultList } from './dashboard/VirtualizedVaultList';
+import { GlowCard } from './ui/GlowCard';
 
 // Heavy/conditional components (lazy loaded — only fetched when needed)
-const EntryForm = lazy(() => import("./dashboard/EntryForm").then(m => ({ default: m.EntryForm })));
-const SettingsDrawer = lazy(() => import("./dashboard/SettingsDrawer").then(m => ({ default: m.SettingsDrawer })));
-const SpotlightWalkthrough = lazy(() => import("./SpotlightWalkthrough").then(m => ({ default: m.SpotlightWalkthrough })));
-const DonationModal = lazy(() => import("./DonationModal").then(m => ({ default: m.DonationModal })));
+const EntryForm = lazy(() =>
+  import('./dashboard/EntryForm').then((m) => ({ default: m.EntryForm }))
+);
+const SettingsDrawer = lazy(() =>
+  import('./dashboard/SettingsDrawer').then((m) => ({ default: m.SettingsDrawer }))
+);
+const SpotlightWalkthrough = lazy(() =>
+  import('./SpotlightWalkthrough').then((m) => ({ default: m.SpotlightWalkthrough }))
+);
+const DonationModal = lazy(() =>
+  import('./DonationModal').then((m) => ({ default: m.DonationModal }))
+);
 
 // ─────────────────────────────────────────────────────────────────
 // Dashboard İç Bileşeni (VaultContext tüketen)
 // ─────────────────────────────────────────────────────────────────
 
-function DashboardInner({ secretKey }: { secretKey?: string }) {
+function DashboardInner() {
   const { t } = useTranslation();
   const {
     passwords,
@@ -49,10 +57,10 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
   const [showDonation, setShowDonation] = useState(false);
   const [showEmergencyKit, setShowEmergencyKit] = useState(false);
   const [, setLogoClicks] = useState(0);
-  const [themeMode, setThemeMode] = useState<"light" | "dark">(() => {
+  const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => {
     const saved = SecureAppSettings.getThemeMode();
-    if (saved === "light" || saved === "dark") return saved;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    if (saved === 'light' || saved === 'dark') return saved;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
   useKeyboardShortcuts({
@@ -61,31 +69,35 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
     onNewEntry: () => {
       setEditEntry({
         category:
-          categoryFilter && categoryFilter !== "Trash" && !categoryFilter.startsWith("#")
+          categoryFilter && categoryFilter !== 'Trash' && !categoryFilter.startsWith('#')
             ? categoryFilter
-            : "General",
+            : 'General',
       });
       setIsAdding(true);
     },
     onEscape: () => {
       setIsAdding(false);
       setShowSettings(false);
-    }
+    },
   });
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", themeMode);
+    document.documentElement.setAttribute('data-theme', themeMode);
     SecureAppSettings.setThemeMode(themeMode);
-    
+
     try {
-      const globalNav = window as unknown as { 
-        browser?: { runtime?: { sendMessage: (m: unknown) => Promise<void> } }; 
-        chrome?: { runtime?: { sendMessage: (m: unknown) => Promise<void> } }; 
+      const globalNav = window as unknown as {
+        browser?: { runtime?: { sendMessage: (m: unknown) => Promise<void> } };
+        chrome?: { runtime?: { sendMessage: (m: unknown) => Promise<void> } };
       };
       if (typeof window !== 'undefined' && globalNav.browser?.runtime?.sendMessage) {
-        globalNav.browser.runtime.sendMessage({ type: "SET_THEME", theme: themeMode }).catch(() => {});
+        globalNav.browser.runtime
+          .sendMessage({ type: 'SET_THEME', theme: themeMode })
+          .catch(() => {});
       } else if (typeof window !== 'undefined' && globalNav.chrome?.runtime?.sendMessage) {
-        globalNav.chrome.runtime.sendMessage({ type: "SET_THEME", theme: themeMode }).catch(() => {});
+        globalNav.chrome.runtime
+          .sendMessage({ type: 'SET_THEME', theme: themeMode })
+          .catch(() => {});
       }
     } catch {
       // ignore
@@ -95,7 +107,7 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
   useEffect(() => {
     void SecureAppSettings.initialize().then(() => {
       const storedTheme = SecureAppSettings.getThemeMode();
-      setThemeMode(storedTheme === "light" || storedTheme === "dark" ? storedTheme : "light");
+      setThemeMode(storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : 'light');
     });
   }, []);
 
@@ -104,7 +116,7 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
       const next = prev + 1;
       if (next === 5) {
         setShowSettings(true);
-        toast.info(t("secretMenuActive"));
+        toast.info(t('secretMenuActive'));
         return 0;
       }
       return next;
@@ -124,27 +136,27 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
   const downloadEmergencyKit = async () => {
     setShowEmergencyKit(true);
     const [{ jsPDF }, { default: autoTable }] = await Promise.all([
-      import("jspdf"),
-      import("jspdf-autotable"),
+      import('jspdf'),
+      import('jspdf-autotable'),
     ]);
-    
+
     setTimeout(() => {
-      const doc = new jsPDF("p", "pt", "a4");
-      const primaryColor = "#101828";
-      const accentColor = "#72886f";
-      const lightBg = "#F9FAFB";
+      const doc = new jsPDF('p', 'pt', 'a4');
+      const primaryColor = '#101828';
+      const accentColor = '#72886f';
+      const lightBg = '#F9FAFB';
 
       doc.setFillColor(lightBg);
-      doc.rect(0, 0, doc.internal.pageSize.getWidth(), doc.internal.pageSize.getHeight(), "F");
+      doc.rect(0, 0, doc.internal.pageSize.getWidth(), doc.internal.pageSize.getHeight(), 'F');
 
       doc.setTextColor(primaryColor);
-      doc.setFont("helvetica", "bold");
+      doc.setFont('helvetica', 'bold');
       doc.setFontSize(28);
-      doc.text("Aegis Vault", 40, 60);
+      doc.text('Aegis Vault', 40, 60);
 
       doc.setFontSize(14);
       doc.setTextColor(accentColor);
-      doc.text("Emergency Recovery Kit", 40, 80);
+      doc.text('Emergency Recovery Kit', 40, 80);
 
       doc.setDrawColor(accentColor);
       doc.setLineWidth(1);
@@ -152,89 +164,125 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
 
       doc.setFontSize(10);
       doc.setTextColor(primaryColor);
-      doc.setFont("helvetica", "normal");
-      doc.text("Keep this document in a safe, offline location. This kit contains your Vault's master recovery contents.", 40, 110);
-      doc.setFont("helvetica", "bold");
-      doc.text("NEVER share this file. Do not upload it to the cloud without encryption.", 40, 125);
+      doc.setFont('helvetica', 'normal');
+      doc.text(
+        "Keep this document in a safe, offline location. This kit contains your Vault's master recovery contents.",
+        40,
+        110
+      );
+      doc.setFont('helvetica', 'bold');
+      doc.text('NEVER share this file. Do not upload it to the cloud without encryption.', 40, 125);
 
-      doc.setFillColor("#ffffff");
-      doc.setDrawColor("#E5E7EB");
-      doc.roundedRect(40, 140, 510, 50, 4, 4, "FD");
+      doc.setFillColor('#ffffff');
+      doc.setDrawColor('#E5E7EB');
+      doc.roundedRect(40, 140, 510, 50, 4, 4, 'FD');
 
-      doc.setFont("courier", "bold");
+      doc.setFont('courier', 'bold');
       doc.setFontSize(12);
-      doc.setTextColor("#374151");
-      const realSecretKey = secretKey || "NO-SECRET-KEY-PROVIDED";
-      doc.text(`Account Secret Key: ${realSecretKey}`, 60, 170);
+      doc.setTextColor('#374151');
+      doc.text(
+        t('emergencyKitSecretKeyHidden', 'Session secret key is hidden for security.'),
+        60,
+        170
+      );
 
       const tableData = passwords.map((p, i) => [
         (i + 1).toString(),
         p.title,
-        p.username || "-",
-        p.pass || "-",
+        p.username || '-',
+        p.pass || '-',
         p.category,
       ]);
 
       autoTable(doc, {
         startY: 210,
-        head: [["#", "Vault Item", "Identity (User/Email)", "Secure Password", "Category"]],
+        head: [['#', 'Vault Item', 'Identity (User/Email)', 'Secure Password', 'Category']],
         body: tableData,
-        theme: "grid",
-        styles: { font: "helvetica", fontSize: 9, textColor: "#374151", lineColor: "#E5E7EB", lineWidth: 0.5, cellPadding: 8 },
-        headStyles: { fillColor: primaryColor, textColor: "#FFFFFF", fontStyle: "bold", halign: "left" },
-        alternateRowStyles: { fillColor: "#F3F4F6" },
-        columnStyles: { 0: { cellWidth: 30 }, 1: { fontStyle: "bold", cellWidth: 100 }, 2: { cellWidth: 130 }, 3: { font: "courier" } },
+        theme: 'grid',
+        styles: {
+          font: 'helvetica',
+          fontSize: 9,
+          textColor: '#374151',
+          lineColor: '#E5E7EB',
+          lineWidth: 0.5,
+          cellPadding: 8,
+        },
+        headStyles: {
+          fillColor: primaryColor,
+          textColor: '#FFFFFF',
+          fontStyle: 'bold',
+          halign: 'left',
+        },
+        alternateRowStyles: { fillColor: '#F3F4F6' },
+        columnStyles: {
+          0: { cellWidth: 30 },
+          1: { fontStyle: 'bold', cellWidth: 100 },
+          2: { cellWidth: 130 },
+          3: { font: 'courier' },
+        },
         didDrawPage: function (data: { settings: { margin: { left: number } } }) {
-          const str = "Page " + doc.getCurrentPageInfo().pageNumber;
+          const str = 'Page ' + doc.getCurrentPageInfo().pageNumber;
           doc.setFontSize(8);
           doc.text(str, data.settings.margin.left, doc.internal.pageSize.getHeight() - 20);
-          doc.text("Generated by Aegis Offline Environment", 400, doc.internal.pageSize.getHeight() - 20);
+          doc.text(
+            'Generated by Aegis Offline Environment',
+            400,
+            doc.internal.pageSize.getHeight() - 20
+          );
         },
       });
 
-      doc.save("Aegis_Emergency_Kit_v2.pdf");
+      doc.save('Aegis_Emergency_Kit_v2.pdf');
       setShowEmergencyKit(false);
     }, 500);
   };
 
   return (
     <div className="w-full min-h-screen overflow-visible bg-[var(--color-cloud-dancer)] text-[var(--color-deep-navy)] px-4 pb-4 pt-8 md:px-8 md:pb-8 md:pt-10 font-[var(--font-geist)] animate-in fade-in duration-700">
-      <Suspense fallback={null}><SpotlightWalkthrough /></Suspense>
+      <Suspense fallback={null}>
+        <SpotlightWalkthrough />
+      </Suspense>
 
       <DashboardHeader
         onSettingsOpen={() => setShowSettings(true)}
         onDonationOpen={() => setShowDonation(true)}
         onLogoClick={handleLogoClick}
         themeMode={themeMode}
-        onThemeToggle={() => setThemeMode((prev) => (prev === "light" ? "dark" : "light"))}
+        onThemeToggle={() => setThemeMode((prev) => (prev === 'light' ? 'dark' : 'light'))}
         searchRef={searchRef}
       />
 
-      <main role="main" aria-label="Vault entries" className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 px-4 xl:px-8">
+      <main
+        role="main"
+        aria-label="Vault entries"
+        className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 px-4 xl:px-8"
+      >
         <GlowCard className="lg:col-span-8 xl:col-span-9 glass-card p-6 md:p-8 flex flex-col gap-6 relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--color-sage-green)] opacity-[0.03] blur-3xl rounded-full pointer-events-none group-hover/glow:opacity-10 transition-opacity duration-1000" />
 
           <div className="flex justify-between items-end">
             <div>
-              <h2 className="text-2xl font-semibold mb-1">{categoryFilter === "Trash" ? t("trash") : t("yourVault")}</h2>
+              <h2 className="text-2xl font-semibold mb-1">
+                {categoryFilter === 'Trash' ? t('trash') : t('yourVault')}
+              </h2>
               <p className="text-sm opacity-60 flex items-center gap-2">
-                {t("zeroKnowledge")}
+                {t('zeroKnowledge')}
                 {!isDecrypting && (
                   <span className="bg-black/10 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                    {passwords.length} {t("entries")}
+                    {passwords.length} {t('entries')}
                   </span>
                 )}
               </p>
             </div>
-            {categoryFilter === "Trash" ? (
+            {categoryFilter === 'Trash' ? (
               <button
                 onClick={() => {
-                  if (confirm(t("confirmEmptyTrash"))) handleEmptyTrash();
+                  if (confirm(t('confirmEmptyTrash'))) handleEmptyTrash();
                 }}
                 disabled={passwords.length === 0}
                 className="flex items-center gap-2 bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 disabled:opacity-50"
               >
-                <Trash2 className="w-4 h-4" /> {t("emptyTrash")}
+                <Trash2 className="w-4 h-4" /> {t('emptyTrash')}
               </button>
             ) : (
               !isAdding && (
@@ -242,15 +290,17 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
                   onClick={() => {
                     setEditEntry({
                       category:
-                        categoryFilter && categoryFilter !== "Trash" && !categoryFilter.startsWith("#")
+                        categoryFilter &&
+                        categoryFilter !== 'Trash' &&
+                        !categoryFilter.startsWith('#')
                           ? categoryFilter
-                          : "General",
+                          : 'General',
                     });
                     setIsAdding(true);
                   }}
                   className="btn-ink flex items-center gap-2 bg-[var(--color-deep-navy)] text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md hover:bg-opacity-90 transition-all active:scale-95"
                 >
-                  <Plus className="w-4 h-4" /> {t("newEntry")}
+                  <Plus className="w-4 h-4" /> {t('newEntry')}
                 </button>
               )
             )}
@@ -260,7 +310,10 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
             {isDecrypting ? (
               <div className="flex flex-col gap-4 mt-4">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/30 border border-white/20 relative overflow-hidden">
+                  <div
+                    key={i}
+                    className="flex items-center justify-between p-4 rounded-2xl bg-white/30 border border-white/20 relative overflow-hidden"
+                  >
                     <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent" />
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-xl bg-black/5" />
@@ -275,18 +328,18 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
               </div>
             ) : passwords.length === 0 ? (
               <div className="text-center py-20 opacity-40 text-sm italic mt-4">
-                {categoryFilter === "Trash" ? t("noTrashItems") : t("noPasswordsFound")}
+                {categoryFilter === 'Trash' ? t('noTrashItems') : t('noPasswordsFound')}
               </div>
             ) : (
               <div className="h-[65vh] mt-4">
-                <VirtualizedVaultList 
-                    entries={passwords} 
-                    onEdit={handleEditEntry} 
-                    viewDensity={viewDensity} 
+                <VirtualizedVaultList
+                  entries={passwords}
+                  onEdit={handleEditEntry}
+                  viewDensity={viewDensity}
                 />
               </div>
             )}
-            
+
             {isAdding && (
               <div className="absolute inset-0 z-[60] bg-[var(--color-cloud-dancer)] p-6 md:p-8 animate-in slide-in-from-bottom-5 duration-300 rounded-[2.5rem]">
                 <Suspense fallback={<div className="p-8 text-center opacity-50">Loading...</div>}>
@@ -297,9 +350,15 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
           </div>
         </GlowCard>
 
-        <nav aria-label="Categories and security" className="lg:col-span-4 xl:col-span-3 flex flex-col gap-6 xl:gap-8">
+        <nav
+          aria-label="Categories and security"
+          className="lg:col-span-4 xl:col-span-3 flex flex-col gap-6 xl:gap-8"
+        >
           <WatchtowerPanel />
-          <CategorySidebar onDownloadEmergencyKit={downloadEmergencyKit} isGeneratingKit={showEmergencyKit} />
+          <CategorySidebar
+            onDownloadEmergencyKit={downloadEmergencyKit}
+            isGeneratingKit={showEmergencyKit}
+          />
         </nav>
       </main>
 
@@ -312,20 +371,21 @@ function DashboardInner({ secretKey }: { secretKey?: string }) {
         />
       </Suspense>
 
-      <Suspense fallback={null}><DonationModal isOpen={showDonation} onClose={() => setShowDonation(false)} /></Suspense>
+      <Suspense fallback={null}>
+        <DonationModal isOpen={showDonation} onClose={() => setShowDonation(false)} />
+      </Suspense>
     </div>
   );
 }
 
 interface DashboardProps {
   onLock: () => void;
-  secretKey?: string;
 }
 
-export function Dashboard({ onLock, secretKey }: DashboardProps) {
+export function Dashboard({ onLock }: DashboardProps) {
   return (
-    <VaultProvider onLock={onLock} secretKey={secretKey}>
-      <DashboardInner secretKey={secretKey} />
+    <VaultProvider onLock={onLock}>
+      <DashboardInner />
     </VaultProvider>
   );
 }

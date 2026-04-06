@@ -82,14 +82,17 @@ export const toCanonicalSharedSpace = (
   name: space.name || 'Untitled Shared Space',
   kind: normalizeSharedKind(space.kind),
   description: space.description || '',
-  default_role: normalizeSharedRole(space.defaultRole) === 'owner'
-    ? 'viewer'
-    : (normalizeSharedRole(space.defaultRole) as Exclude<CanonicalSharedRole, 'owner'>),
+  default_role:
+    normalizeSharedRole(space.defaultRole) === 'owner'
+      ? 'viewer'
+      : (normalizeSharedRole(space.defaultRole) as Exclude<CanonicalSharedRole, 'owner'>),
   allow_export: Boolean(space.allowExport),
   require_review: Boolean(space.requireReview),
   created_at: space.createdAt || new Date().toISOString(),
   updated_at: space.updatedAt || new Date().toISOString(),
-  members: Array.isArray(space.members) ? space.members.map((member) => toCanonicalSharedMember(member)) : [],
+  members: Array.isArray(space.members)
+    ? space.members.map((member) => toCanonicalSharedMember(member))
+    : [],
 });
 
 export const toCanonicalSharedSpaces = (

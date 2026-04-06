@@ -8,18 +8,18 @@ import { vaultService } from '../../vaultService';
 vi.mock('../../vaultService', () => ({
   vaultService: {
     verifyCurrentPassword: vi.fn(),
-  }
+  },
 }));
 
 vi.mock('react-toastify', () => ({
   toast: {
     error: vi.fn(),
     success: vi.fn(),
-  }
+  },
 }));
 
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key })
+  useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 describe('ReAuthModal Security Flow (P1-3)', () => {
@@ -49,9 +49,7 @@ describe('ReAuthModal Security Flow (P1-3)', () => {
     // Mock the vault service to approve the password
     vi.mocked(vaultService.verifyCurrentPassword).mockResolvedValue(true);
 
-    render(
-      <ReAuthModal onSuccess={mockOnSuccess} onCancel={mockOnCancel} actionName="Export" />
-    );
+    render(<ReAuthModal onSuccess={mockOnSuccess} onCancel={mockOnCancel} actionName="Export" />);
 
     const input = screen.getByLabelText(/Master Password/i);
     const button = screen.getByRole('button', { name: /Verify/i });
@@ -74,9 +72,7 @@ describe('ReAuthModal Security Flow (P1-3)', () => {
     vi.mocked(vaultService.verifyCurrentPassword).mockResolvedValue(false);
     const { toast } = await import('react-toastify');
 
-    render(
-      <ReAuthModal onSuccess={mockOnSuccess} onCancel={mockOnCancel} actionName="Export" />
-    );
+    render(<ReAuthModal onSuccess={mockOnSuccess} onCancel={mockOnCancel} actionName="Export" />);
 
     const input = screen.getByLabelText(/Master Password/i);
     const button = screen.getByRole('button', { name: /Verify/i });
@@ -95,9 +91,7 @@ describe('ReAuthModal Security Flow (P1-3)', () => {
   });
 
   it('closes on Escape key or Cancel click', async () => {
-    render(
-      <ReAuthModal onSuccess={mockOnSuccess} onCancel={mockOnCancel} actionName="Export" />
-    );
+    render(<ReAuthModal onSuccess={mockOnSuccess} onCancel={mockOnCancel} actionName="Export" />);
 
     // Simulate clicking close logic
     const closeButton = screen.getAllByLabelText(/close/i)[0];

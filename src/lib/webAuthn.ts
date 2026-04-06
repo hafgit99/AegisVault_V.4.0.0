@@ -35,7 +35,9 @@ type RequestOptionsWithPrf = PublicKeyCredentialRequestOptions & {
 };
 
 const toArrayBuffer = (value: BufferSource): ArrayBuffer =>
-  value instanceof ArrayBuffer ? value : value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
+  value instanceof ArrayBuffer
+    ? value
+    : value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
 
 export const bufferToBase64url = (buffer: ArrayBuffer): string => {
   const bytes = new Uint8Array(buffer);
@@ -60,146 +62,167 @@ export const base64urlToBuffer = (base64url: string): ArrayBuffer => {
 };
 
 // WebAuthn PRF Encrypt Payload (True Zero-Knowledge Passkey Vault)
-export const encryptWithPRF = async (prfKeyBuffer: ArrayBuffer, plaintext: string): Promise<string> => {
-    const key = await window.crypto.subtle.importKey(
-        "raw",
-        toBufferSource(new Uint8Array(prfKeyBuffer)),
-        { name: "AES-GCM", length: 256 },
-        false,
-        ["encrypt"]
-    );
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
-    const encodedPlaintext = new TextEncoder().encode(plaintext);
-    
-    const ciphertext = await window.crypto.subtle.encrypt(
-        { name: "AES-GCM", iv: toBufferSource(iv) },
-        key,
-        toBufferSource(encodedPlaintext)
-    );
-    
-    // Concat IV + Ciphertext and save as Base64url
-    const combined = new Uint8Array(iv.length + ciphertext.byteLength);
-    combined.set(iv, 0);
-    combined.set(new Uint8Array(ciphertext), iv.length);
-    
-    return bufferToBase64url(toBufferSource(combined) as ArrayBuffer);
+export const encryptWithPRF = async (
+  prfKeyBuffer: ArrayBuffer,
+  plaintext: string
+): Promise<string> => {
+  const key = await window.crypto.subtle.importKey(
+    'raw',
+    toBufferSource(new Uint8Array(prfKeyBuffer)),
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt']
+  );
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const encodedPlaintext = new TextEncoder().encode(plaintext);
+
+  const ciphertext = await window.crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: toBufferSource(iv) },
+    key,
+    toBufferSource(encodedPlaintext)
+  );
+
+  // Concat IV + Ciphertext and save as Base64url
+  const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(ciphertext), iv.length);
+
+  return bufferToBase64url(toBufferSource(combined) as ArrayBuffer);
 };
 
-export const decryptWithPRF = async (prfKeyBuffer: ArrayBuffer, encryptedDataB64: string): Promise<string> => {
-    const key = await window.crypto.subtle.importKey(
-        "raw",
-        toBufferSource(new Uint8Array(prfKeyBuffer)),
-        { name: "AES-GCM", length: 256 },
-        false,
-        ["decrypt"]
-    );
-    
-    const combined = new Uint8Array(base64urlToBuffer(encryptedDataB64));
-    const iv = combined.slice(0, 12);
-    const ciphertext = combined.slice(12);
-    
-    const decrypted = await window.crypto.subtle.decrypt(
-        { name: "AES-GCM", iv: toBufferSource(iv) },
-        key,
-        toBufferSource(ciphertext)
-    );
-    
-    return new TextDecoder().decode(decrypted);
+export const decryptWithPRF = async (
+  prfKeyBuffer: ArrayBuffer,
+  encryptedDataB64: string
+): Promise<string> => {
+  const key = await window.crypto.subtle.importKey(
+    'raw',
+    toBufferSource(new Uint8Array(prfKeyBuffer)),
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['decrypt']
+  );
+
+  const combined = new Uint8Array(base64urlToBuffer(encryptedDataB64));
+  const iv = combined.slice(0, 12);
+  const ciphertext = combined.slice(12);
+
+  const decrypted = await window.crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: toBufferSource(iv) },
+    key,
+    toBufferSource(ciphertext)
+  );
+
+  return new TextDecoder().decode(decrypted);
 };
 
-export const registerPasskeyWithPRF = async (): Promise<{id: string, salt: string, prfKey: ArrayBuffer} | null> => {
+export const registerPasskeyWithPRF = async (): Promise<{
+  id: string;
+  salt: string;
+  prfKey: ArrayBuffer;
+} | null> => {
   if (!window.PublicKeyCredential) {
-    throw new Error("WebAuthn is not supported in this browser.");
+    throw new Error('WebAuthn is not supported in this browser.');
   }
-  
+
   const challenge = window.crypto.getRandomValues(new Uint8Array(32));
   const userId = window.crypto.getRandomValues(new Uint8Array(16));
   const prfSalt = window.crypto.getRandomValues(new Uint8Array(32));
-  
+
   const publicKey: CreationOptionsWithPrf = {
     challenge,
-    rp: { name: "Aegis Vault Local" },
-    user: { id: userId, name: "vault_user", displayName: "Aegis Vault Owner" },
+    rp: { name: 'Aegis Vault Local' },
+    user: { id: userId, name: 'vault_user', displayName: 'Aegis Vault Owner' },
     pubKeyCredParams: [
-      { type: "public-key", alg: -7 }, // ES256
-      { type: "public-key", alg: -257 } // RS256
+      { type: 'public-key', alg: -7 }, // ES256
+      { type: 'public-key', alg: -257 }, // RS256
     ],
-    authenticatorSelection: { userVerification: "preferred" },
+    authenticatorSelection: { userVerification: 'preferred' },
     timeout: 60000,
-    attestation: "none",
+    attestation: 'none',
     extensions: {
       prf: {
         eval: {
-            first: prfSalt
-        }
-      }
-    }
+          first: prfSalt,
+        },
+      },
+    },
   };
 
   try {
-    const credential = await navigator.credentials.create({ publicKey }) as PublicKeyCredentialWithExtensions | null;
+    const credential = (await navigator.credentials.create({
+      publicKey,
+    })) as PublicKeyCredentialWithExtensions | null;
     if (credential) {
       const extensionResults = credential.getClientExtensionResults();
       if (extensionResults.prf && extensionResults.prf.enabled) {
-         // Some authenticators return results on creation, some don't.
-         // If we don't have .results.first here, we need to assert immediately to get the PRF key.
-         if (extensionResults.prf.results && extensionResults.prf.results.first) {
-            return {
-               id: credential.id,
-                salt: bufferToBase64url(prfSalt.buffer),
-               prfKey: toArrayBuffer(extensionResults.prf.results.first)
-            };
-         } else {
-            // Re-authenticate immediately to fetch the PRF key
-            return null; // For simplicity in this demo, we expect it during creation (Chromium 116+) or we will fall back on the caller side.
-         }
+        // Some authenticators return results on creation, some don't.
+        // If we don't have .results.first here, we need to assert immediately to get the PRF key.
+        if (extensionResults.prf.results && extensionResults.prf.results.first) {
+          return {
+            id: credential.id,
+            salt: bufferToBase64url(prfSalt.buffer),
+            prfKey: toArrayBuffer(extensionResults.prf.results.first),
+          };
+        } else {
+          // Re-authenticate immediately to fetch the PRF key
+          return null; // For simplicity in this demo, we expect it during creation (Chromium 116+) or we will fall back on the caller side.
+        }
       }
     }
   } catch (error) {
-    console.error("Passkey PRF registration failed:", error);
+    console.error('Passkey PRF registration failed:', error);
   }
   return null;
 };
 
-export const authenticatePasskeyWithPRF = async (credentialId: string, saltB64: string): Promise<ArrayBuffer | null> => {
+export const authenticatePasskeyWithPRF = async (
+  credentialId: string,
+  saltB64: string
+): Promise<ArrayBuffer | null> => {
   if (!window.PublicKeyCredential) {
-    throw new Error("WebAuthn is not supported.");
+    throw new Error('WebAuthn is not supported.');
   }
 
   const challenge = window.crypto.getRandomValues(new Uint8Array(32));
   const prfSalt = base64urlToBuffer(saltB64);
-  
+
   const allowCredentials: PublicKeyCredentialDescriptor[] = [
     {
-      type: "public-key",
-      id: base64urlToBuffer(credentialId)
-    }
+      type: 'public-key',
+      id: base64urlToBuffer(credentialId),
+    },
   ];
 
   const publicKey: RequestOptionsWithPrf = {
     challenge,
     allowCredentials,
-    userVerification: "required",
+    userVerification: 'required',
     timeout: 60000,
     extensions: {
       prf: {
         eval: {
-            first: prfSalt
-        }
-      }
-    }
+          first: prfSalt,
+        },
+      },
+    },
   };
 
   try {
-    const assertion = await navigator.credentials.get({ publicKey }) as PublicKeyCredentialWithExtensions | null;
+    const assertion = (await navigator.credentials.get({
+      publicKey,
+    })) as PublicKeyCredentialWithExtensions | null;
     if (assertion) {
       const extensionResults = assertion.getClientExtensionResults();
-      if (extensionResults.prf && extensionResults.prf.results && extensionResults.prf.results.first) {
-         return toArrayBuffer(extensionResults.prf.results.first);
+      if (
+        extensionResults.prf &&
+        extensionResults.prf.results &&
+        extensionResults.prf.results.first
+      ) {
+        return toArrayBuffer(extensionResults.prf.results.first);
       }
     }
   } catch (error) {
-    console.error("Passkey PRF authentication failed:", error);
+    console.error('Passkey PRF authentication failed:', error);
   }
   return null;
 };

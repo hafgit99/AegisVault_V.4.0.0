@@ -1,6 +1,6 @@
 /**
  * Aegis Vault - UI & Accessibility E2E Tests
- * 
+ *
  * Bu test suite, kullanıcı arayüzü ve erişilebilirlik özelliklerini test eder:
  * - Keyboard navigation
  * - ARIA labels ve roles
@@ -68,7 +68,7 @@ test.describe('UI & Accessibility', () => {
   test('should submit form with Enter key', async ({ page }) => {
     const passwordInput = page.locator('input.vault-login-input').first();
     await passwordInput.fill('TestPassword123!');
-    
+
     // Enter tuşu ile submit
     await passwordInput.press('Enter');
 
@@ -92,7 +92,7 @@ test.describe('UI & Accessibility', () => {
   test('should have meaningful placeholders on all inputs', async ({ page }) => {
     const inputs = page.locator('input.vault-login-input');
     const count = await inputs.count();
-    
+
     expect(count).toBeGreaterThan(0);
 
     for (let i = 0; i < count; i++) {
@@ -165,11 +165,11 @@ test.describe('UI & Accessibility', () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // TEST 12: JS hataları yok (console.error kontrolü)  
+  // TEST 12: JS hataları yok (console.error kontrolü)
   // ─────────────────────────────────────────────────────────────────────────────
   test('should load without critical JavaScript errors', async ({ page }) => {
     const jsErrors: string[] = [];
-    
+
     page.on('pageerror', (err) => {
       jsErrors.push(err.message);
     });
@@ -179,10 +179,11 @@ test.describe('UI & Accessibility', () => {
     await page.waitForTimeout(2000);
 
     // Kritik JS hatası olmamalı
-    const criticalErrors = jsErrors.filter(e =>
-      !e.includes('ResizeObserver') && // ResizeObserver hatası önemsiz
-      !e.includes('Non-Error') &&
-      !e.includes('ChunkLoadError') // dev mode'da normaldir
+    const criticalErrors = jsErrors.filter(
+      (e) =>
+        !e.includes('ResizeObserver') && // ResizeObserver hatası önemsiz
+        !e.includes('Non-Error') &&
+        !e.includes('ChunkLoadError') // dev mode'da normaldir
     );
 
     expect(criticalErrors).toHaveLength(0);

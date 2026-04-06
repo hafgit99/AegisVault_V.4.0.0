@@ -1,6 +1,6 @@
 /**
  * Aegis Vault - Security E2E Tests
- * 
+ *
  * Bu test suite güvenlik özelliklerini test eder:
  * - LocalStorage'da plaintext şifre olmadığını doğrulama
  * - XSS koruması - input sanitization
@@ -26,9 +26,9 @@ test.describe('Vault Security Features', () => {
 
     // localStorage kontrolü
     const localStorageContent = await page.evaluate(() =>
-      JSON.stringify(Object.fromEntries(
-        Object.entries(localStorage).filter(([k]) => !k.startsWith('i18next'))
-      ))
+      JSON.stringify(
+        Object.fromEntries(Object.entries(localStorage).filter(([k]) => !k.startsWith('i18next')))
+      )
     );
 
     expect(localStorageContent).not.toContain('MySensitivePassword123!');
@@ -68,8 +68,7 @@ test.describe('Vault Security Features', () => {
 
     // window.crypto mevcut olmalı (SubtleCrypto API)
     const hasCrypto = await page.evaluate(() => {
-      return typeof window.crypto !== 'undefined' &&
-        typeof window.crypto.subtle !== 'undefined';
+      return typeof window.crypto !== 'undefined' && typeof window.crypto.subtle !== 'undefined';
     });
     expect(hasCrypto).toBe(true);
   });
@@ -98,9 +97,7 @@ test.describe('Vault Security Features', () => {
     await page.waitForSelector('.vault-login-root', { timeout: 10000 });
 
     // sessionStorage içeriği
-    const sessionContent = await page.evaluate(() =>
-      JSON.stringify(sessionStorage)
-    );
+    const sessionContent = await page.evaluate(() => JSON.stringify(sessionStorage));
 
     // Açık şifre veya anahtar olmamalı
     expect(sessionContent).not.toMatch(/password/i);
@@ -144,7 +141,7 @@ test.describe('Vault Security Features', () => {
 
     // Login ekranı hâlâ görünmeli (vault açılmamış)
     await expect(passwordInput).toBeVisible();
-    
+
     // Dashboard görünmemeli (vault açılmamış)
     const dashboard = page.locator('[data-testid="dashboard"], .dashboard-main');
     expect(await dashboard.isVisible().catch(() => false)).toBe(false);
@@ -173,7 +170,9 @@ test.describe('Vault Security Features', () => {
     await page.waitForTimeout(1000);
 
     // Hassas console log'ları olmamalı
-    expect(sensitiveInConsole.filter(t => t.toLowerCase().includes('testmasterpassword'))).toHaveLength(0);
+    expect(
+      sensitiveInConsole.filter((t) => t.toLowerCase().includes('testmasterpassword'))
+    ).toHaveLength(0);
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -199,7 +198,7 @@ test.describe('Vault Security Features', () => {
 
     // Secret key içeriği
     const secretKeyText = await secretBox.textContent();
-    
+
     // 32 karakter (128-bit hex) veya daha uzun olmalı
     expect(secretKeyText?.trim().length).toBeGreaterThanOrEqual(32);
 
@@ -258,8 +257,10 @@ test.describe('Vault Security Features', () => {
     await initTab.click();
 
     // Factory reset butonu görünmeli
-    const resetBtn = page.locator('button.text-red-500, button:has-text("Factory"), button:has-text("Sıfırla"), button:has-text("Reset")');
-    
+    const resetBtn = page.locator(
+      'button.text-red-500, button:has-text("Factory"), button:has-text("Sıfırla"), button:has-text("Reset")'
+    );
+
     // Bileşen render olduktan kısa süre sonra görünür
     await expect(resetBtn.first()).toBeVisible({ timeout: 5000 });
   });

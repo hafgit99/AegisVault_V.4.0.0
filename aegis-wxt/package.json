@@ -11,7 +11,9 @@
     "build": "wxt build",
     "build:firefox": "wxt build -b firefox",
     "build:safari": "wxt build -b safari",
-    "compile": "tsc --noEmit"
+    "compile": "tsc --noEmit",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
@@ -32,6 +34,7 @@
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.24",
     "postcss": "^8.5.6",
+    "prettier": "^3.6.2",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
     "wxt": "^0.18.0",

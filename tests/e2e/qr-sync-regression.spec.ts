@@ -13,7 +13,10 @@ test.describe('QR Sync Regression', () => {
 
     // CI always starts fresh — go through Initialize flow
     // Find the "Initialize" or "Kurulum" tab
-    const initTab = page.locator('.login-tab-btn').filter({ hasText: /Initialize|Kurulum/i }).first();
+    const initTab = page
+      .locator('.login-tab-btn')
+      .filter({ hasText: /Initialize|Kurulum/i })
+      .first();
     await expect(initTab).toBeVisible({ timeout: 5000 });
     await initTab.click();
 
@@ -48,11 +51,15 @@ test.describe('QR Sync Regression', () => {
     await settingsBtn.click();
 
     // Verify the QR Sync section title is visible (EN or TR) using regex
-    const qrTitle = page.getByText(/Cross-Device QR Sync|Cihazlar Arası QR Senkronizasyonu/i).first();
+    const qrTitle = page
+      .getByText(/Cross-Device QR Sync|Cihazlar Arası QR Senkronizasyonu/i)
+      .first();
     await expect(qrTitle).toBeVisible({ timeout: 15000 });
 
     // Verify the QR Export button exists (EN or TR)
-    const exportBtn = page.getByRole('button', { name: /Generate QR \(Export\)|QR Oluştur \(Dışa Aktar\)/i }).first();
+    const exportBtn = page
+      .getByRole('button', { name: /Generate QR \(Export\)|QR Oluştur \(Dışa Aktar\)/i })
+      .first();
     await expect(exportBtn).toBeVisible({ timeout: 5000 });
   });
 
@@ -63,11 +70,15 @@ test.describe('QR Sync Regression', () => {
     await settingsBtn.click();
 
     // Verify the QR Sync section title using regex
-    const qrTitle = page.getByText(/Cross-Device QR Sync|Cihazlar Arası QR Senkronizasyonu/i).first();
+    const qrTitle = page
+      .getByText(/Cross-Device QR Sync|Cihazlar Arası QR Senkronizasyonu/i)
+      .first();
     await expect(qrTitle).toBeVisible({ timeout: 15000 });
 
     // Verify the QR Import button exists (EN or TR)
-    const importBtn = page.getByRole('button', { name: /Scan with Camera \(Import\)|Kamerayla Tara \(İçe Aktar\)/i }).first();
+    const importBtn = page
+      .getByRole('button', { name: /Scan with Camera \(Import\)|Kamerayla Tara \(İçe Aktar\)/i })
+      .first();
     await expect(importBtn).toBeVisible({ timeout: 5000 });
   });
 });

@@ -7,10 +7,10 @@
  */
 
 // ─── Base32 Decode ───
-const BASE32_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+const BASE32_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
 function base32Decode(input: string): Uint8Array {
-  const cleaned = input.replace(/[\s=-]/g, "").toUpperCase();
+  const cleaned = input.replace(/[\s=-]/g, '').toUpperCase();
   const bits: number[] = [];
 
   for (const char of cleaned) {
@@ -37,18 +37,18 @@ function base32Decode(input: string): Uint8Array {
 import { toBufferSource } from './crypto-types';
 
 async function hmacSha(
-  algorithm: "SHA-1" | "SHA-256" | "SHA-512",
+  algorithm: 'SHA-1' | 'SHA-256' | 'SHA-512',
   key: Uint8Array,
   message: Uint8Array
 ): Promise<Uint8Array> {
   const cryptoKey = await crypto.subtle.importKey(
-    "raw",
+    'raw',
     toBufferSource(key),
-    { name: "HMAC", hash: { name: algorithm } },
+    { name: 'HMAC', hash: { name: algorithm } },
     false,
-    ["sign"]
+    ['sign']
   );
-  const sig = await crypto.subtle.sign("HMAC", cryptoKey, toBufferSource(message));
+  const sig = await crypto.subtle.sign('HMAC', cryptoKey, toBufferSource(message));
   return new Uint8Array(sig);
 }
 
@@ -70,17 +70,17 @@ function dynamicTruncation(hmacResult: Uint8Array, digits: number): string {
     (hmacResult[offset + 3] & 0xff);
 
   const otp = code % Math.pow(10, digits);
-  return otp.toString().padStart(digits, "0");
+  return otp.toString().padStart(digits, '0');
 }
 
 // ─── Parsed TOTP URI ───
 export interface TOTPParams {
-  secret: string;      // Base32 encoded secret
-  issuer: string;      // Service name (e.g. "Google")
-  account: string;     // Account identifier (e.g. "user@gmail.com")
-  algorithm: "SHA-1" | "SHA-256" | "SHA-512";
-  digits: number;      // Usually 6
-  period: number;      // Usually 30 seconds
+  secret: string; // Base32 encoded secret
+  issuer: string; // Service name (e.g. "Google")
+  account: string; // Account identifier (e.g. "user@gmail.com")
+  algorithm: 'SHA-1' | 'SHA-256' | 'SHA-512';
+  digits: number; // Usually 6
+  period: number; // Usually 30 seconds
 }
 
 /**
@@ -89,34 +89,34 @@ export interface TOTPParams {
  */
 export function parseOtpauthUri(uri: string): TOTPParams {
   const url = new URL(uri);
-  if (url.protocol !== "otpauth:") throw new Error("Invalid OTP URI protocol");
-  if (url.hostname !== "totp") throw new Error("Only TOTP is supported");
+  if (url.protocol !== 'otpauth:') throw new Error('Invalid OTP URI protocol');
+  if (url.hostname !== 'totp') throw new Error('Only TOTP is supported');
 
-  const pathParts = decodeURIComponent(url.pathname.replace(/^\//, ""));
-  let issuer = "";
+  const pathParts = decodeURIComponent(url.pathname.replace(/^\//, ''));
+  let issuer = '';
   let account = pathParts;
 
-  if (pathParts.includes(":")) {
-    const [iss, acc] = pathParts.split(":", 2);
+  if (pathParts.includes(':')) {
+    const [iss, acc] = pathParts.split(':', 2);
     issuer = iss;
     account = acc;
   }
 
   const params = url.searchParams;
-  const secret = params.get("secret") || "";
-  if (!secret) throw new Error("Missing secret parameter");
+  const secret = params.get('secret') || '';
+  if (!secret) throw new Error('Missing secret parameter');
 
   // Normalize algorithm: SHA1→SHA-1, SHA256→SHA-256, SHA512→SHA-512
-  const rawAlgo = (params.get("algorithm") || "SHA-1").toUpperCase();
-  const normalizedAlgo = rawAlgo.replace(/^SHA(\d)/, "SHA-$1") as TOTPParams["algorithm"];
+  const rawAlgo = (params.get('algorithm') || 'SHA-1').toUpperCase();
+  const normalizedAlgo = rawAlgo.replace(/^SHA(\d)/, 'SHA-$1') as TOTPParams['algorithm'];
 
   return {
     secret: secret.toUpperCase(),
-    issuer: params.get("issuer") || issuer || "Unknown",
-    account: account || "Unknown",
-    algorithm: normalizedAlgo || "SHA-1",
-    digits: parseInt(params.get("digits") || "6", 10),
-    period: parseInt(params.get("period") || "30", 10),
+    issuer: params.get('issuer') || issuer || 'Unknown',
+    account: account || 'Unknown',
+    algorithm: normalizedAlgo || 'SHA-1',
+    digits: parseInt(params.get('digits') || '6', 10),
+    period: parseInt(params.get('period') || '30', 10),
   };
 }
 
@@ -125,14 +125,14 @@ export function parseOtpauthUri(uri: string): TOTPParams {
  */
 export function createTOTPParams(
   secret: string,
-  issuer: string = "",
-  account: string = "",
-  algorithm: TOTPParams["algorithm"] = "SHA-1",
+  issuer: string = '',
+  account: string = '',
+  algorithm: TOTPParams['algorithm'] = 'SHA-1',
   digits: number = 6,
   period: number = 30
 ): TOTPParams {
   return {
-    secret: secret.replace(/\s/g, "").toUpperCase(),
+    secret: secret.replace(/\s/g, '').toUpperCase(),
     issuer,
     account,
     algorithm,

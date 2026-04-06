@@ -59,6 +59,7 @@ Bu sürümde henüz tamamlanmayan ama sıradaki adımlar:
 ## Durum Özeti (Check İşaretli)
 
 ### Tamamlanan Maddeler
+
 - ✅ Madde 1: Loopback bridge sertleştirme (challenge/HMAC/replay koruması)
 - ✅ Madde 2: Full vault plaintext sync kaldırma (domain-scoped veri modeli)
 - ✅ Madde 3: Metadata encryption + private search index katmanı
@@ -67,6 +68,7 @@ Bu sürümde henüz tamamlanmayan ama sıradaki adımlar:
 - ✅ Ek: Search index benchmark script/test altyapısı
 
 ### Kısmen Başlanan / Bekleyen Maddeler
+
 - ✅ Madde 5: Passkey ve local recovery model sertleştirmesi (recovery transfer + profil-bazli revoke dahil)
 - ✅ Madde 6: TOTP güvenlik profilleri (ayrı 2FA vault modu + migration uyarıları)
 - ✅ Madde 7: HIBP privacy-first iyileştirmeleri (opt-in + unknown fallback + bildirim)
@@ -74,6 +76,7 @@ Bu sürümde henüz tamamlanmayan ama sıradaki adımlar:
 - ✅ Madde 10: Whitepaper + threat model + disclosure + external audit prep dokumanlari hazirlandi
 
 ### Madde 10 Durum Notu
+
 - ✅ Whitepaper hazirlandi: `guvenlik/SECURITY_WHITEPAPER.md`
 - ✅ Threat model dokumani: `guvenlik/THREAT_MODEL.md`
 - ✅ Disclosure policy dokumani: `guvenlik/SECURITY_DISCLOSURE.md`
@@ -92,9 +95,11 @@ Bu sürümde henüz tamamlanmayan ama sıradaki adımlar:
 ## 1. Loopback Bridge'i Kapat veya Native Messaging'e Geç
 
 ### Neden
+
 Mevcut localhost bridge, uygulamanın en riskli bölgelerinden biri.
 
 ### Ne yapılmalı
+
 - Birincil hedef: native messaging
 - Alternatif:
   - session secret
@@ -105,12 +110,15 @@ Mevcut localhost bridge, uygulamanın en riskli bölgelerinden biri.
   - endpoint minimization
 
 ### Etki
+
 Çok yüksek
 
 ### Zorluk
+
 Yüksek
 
 ### Öncelik Puanı
+
 10/10
 
 ---
@@ -118,21 +126,26 @@ Yüksek
 ## 2. Full Vault Plaintext Sync'i Sonlandır
 
 ### Neden
+
 Unlock sonrası tüm kasa plaintext olarak farklı süreçlere taşınıyor.
 
 ### Ne yapılmalı
+
 - Tüm vault yerine seçili domain kayıtları
 - Kullanıcı aksiyonlu decrypt
 - Kısa ömürlü cache
 - Fill sonrası anında wipe
 
 ### Etki
+
 Çok yüksek
 
 ### Zorluk
+
 Orta-yüksek
 
 ### Öncelik Puanı
+
 10/10
 
 ---
@@ -140,20 +153,25 @@ Orta-yüksek
 ## 3. Metadata Encryption Katmanı Ekle
 
 ### Neden
+
 Bugün saldırgan storage dump alırsa site listesi ve kullanıcı adı gibi çok şey öğrenebilir.
 
 ### Ne yapılmalı
+
 - title, username, website, tags, category, attachment metadata şifrele
 - arama için blind index kur
 - private search mode ekle
 
 ### Etki
+
 Çok yüksek
 
 ### Zorluk
+
 Yüksek
 
 ### Öncelik Puanı
+
 9.5/10
 
 ---
@@ -161,20 +179,25 @@ Yüksek
 ## 4. Auth Verifier'ı Argon2id'e Taş
 
 ### Neden
+
 Vault key derivation güçlü ama verifier katmanında PBKDF2 kalıyorsa seviye dengesiz oluyor.
 
 ### Ne yapılmalı
+
 - Yeni vault'larda Argon2id verifier
 - Eski vault'lar için migration
 - Versioned credential format
 
 ### Etki
+
 Yüksek
 
 ### Zorluk
+
 Orta
 
 ### Öncelik Puanı
+
 8/10
 
 ---
@@ -182,21 +205,26 @@ Orta
 ## 5. Passkey ve Local Recovery Modelini Sertleştir
 
 ### Neden
+
 PRF tabanlı model çok iyi fikir ama operational güvenlik ve recovery tarafı daha net olmalı.
 
 ### Ne yapılmalı
+
 - passkey binding modelini belgelemek
 - localStorage'da tutulan passkey related state'i minimuma indirmek
 - revoke / reset akışı eklemek
 - multi-device passkey senaryolarını netleştirmek
 
 ### Etki
+
 Yüksek
 
 ### Zorluk
+
 Orta
 
 ### Öncelik Puanı
+
 7.5/10
 
 ---
@@ -204,20 +232,25 @@ Orta
 ## 6. TOTP Güvenlik Profilleri Ekle
 
 ### Neden
+
 Aynı kasada parola + TOTP saklamak kullanışlı ama maksimum ayrışma sağlamaz.
 
 ### Ne yapılmalı
+
 - standard mode: aynı kasada tut
 - paranoid mode: ayrı 2FA vault öner
 - kullanıcıya risk açıklaması sun
 
 ### Etki
+
 Orta
 
 ### Zorluk
+
 Düşük
 
 ### Öncelik Puanı
+
 6.5/10
 
 ---
@@ -225,21 +258,26 @@ Düşük
 ## 7. HIBP ve Network Özelliklerini Privacy-First Hale Getir
 
 ### Neden
+
 K-anonymity iyi ama hata, izin ve kullanıcı farkındalığı akışları daha iyi olabilir.
 
 ### Ne yapılmalı
+
 - varsayılan opt-in
 - "safe" yerine "unknown" fallback
 - kullanıcıya net privacy metni
 - manuel/otomatik scan ayrımı
 
 ### Etki
+
 Orta
 
 ### Zorluk
+
 Düşük-orta
 
 ### Öncelik Puanı
+
 6/10
 
 ---
@@ -247,20 +285,25 @@ Düşük-orta
 ## 8. localStorage ve Plain UI State'i Gözden Geçir
 
 ### Neden
+
 Bazı profil ve durum bilgileri plaintext UI storage'da kalıyor.
 
 ### Ne yapılmalı
+
 - localStorage'daki tüm Aegis anahtarlarını audit et
 - hassas/yarım hassas alanları sıfırla veya şifrele
 - güvenlik ayarları için daha net veri sınıflandırması yap
 
 ### Etki
+
 Orta
 
 ### Zorluk
+
 Düşük-orta
 
 ### Öncelik Puanı
+
 6/10
 
 ---
@@ -268,9 +311,11 @@ Düşük-orta
 ## 9. Security Regression ve Abuse Test Paketi Yaz
 
 ### Neden
+
 Güvenlik özellikleri sadece implement edilmekle kalmamalı, kırılmadıkları sürekli test edilmeli.
 
 ### Ne yapılmalı
+
 - malicious origin tests
 - replay attack tests
 - loopback abuse tests
@@ -279,12 +324,15 @@ Güvenlik özellikleri sadece implement edilmekle kalmamalı, kırılmadıkları
 - corrupted migration tests
 
 ### Etki
+
 Yüksek
 
 ### Zorluk
+
 Orta
 
 ### Öncelik Puanı
+
 5.5/10
 
 ---
@@ -292,9 +340,11 @@ Orta
 ## 10. Audit, Whitepaper ve Disclosure Programı Başlat
 
 ### Neden
+
 Teknik kaliteyi güvenilirlik ve pazar algısına çevirmek için dış doğrulama gerekir.
 
 ### Ne yapılmalı
+
 - security whitepaper
 - public threat model
 - responsible disclosure policy
@@ -302,12 +352,15 @@ Teknik kaliteyi güvenilirlik ve pazar algısına çevirmek için dış doğrula
 - dış audit planlaması
 
 ### Etki
+
 Çok yüksek
 
 ### Zorluk
+
 Orta-yüksek
 
 ### Öncelik Puanı
+
 8/10
 
 ---
@@ -315,17 +368,20 @@ Orta-yüksek
 # Uygulama Sırası
 
 ## Faz 1
+
 1. Bridge redesign
 2. Full-vault plaintext sync removal
 3. Metadata encryption tasarımı
 
 ## Faz 2
+
 4. Argon2id verifier migration
 5. Passkey sertleştirme
 6. localStorage audit
 7. HIBP privacy refinements
 
 ## Faz 3
+
 8. Security regression suite
 9. Whitepaper + threat model
 10. External audit hazırlığı
@@ -342,12 +398,14 @@ Bu plan uygulanırsa Aegis Vault:
 - offline-first kategorisinde güçlü bir fark yaratır
 
 Bugünkü en büyük kazançlar:
+
 - attack surface daralması
 - metadata gizliliği
 - plaintext yayılımın azalması
 - ürün güvenilirliğinin artması
 
 Uzun vadeli en büyük kazançlar:
+
 - audit hazırlığı
 - pazar güveni
 - profesyonel ürün seviyesine geçiş

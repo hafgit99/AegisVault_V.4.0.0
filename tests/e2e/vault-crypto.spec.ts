@@ -1,6 +1,6 @@
 /**
  * Aegis Vault - Password Generator E2E Tests
- * 
+ *
  * Bu test suite şifre üretici özelliklerini test eder:
  * - Rastgele şifre üretimi
  * - Şifre uzunluğu ayarı
@@ -8,7 +8,7 @@
  * - Üretilen şifrenin kopyalanması
  * - Şifre gücü hesaplaması
  * - Passphrase (kolay okunur şifre) üretimi
- * 
+ *
  * NOT: Bu testler Dashboard'a giriş yapılmadan da test edilebilen
  * standalone password generator fonksiyonlarını da kapsar.
  */
@@ -29,10 +29,10 @@ test.describe('Password Generator', () => {
     );
 
     // Varsa görünür olmalı
-    if (await generatorLink.count() > 0) {
+    if ((await generatorLink.count()) > 0) {
       await expect(generatorLink.first()).toBeVisible();
     }
-    
+
     // Test her durumda geçer (feature yoksa da)
     expect(true).toBe(true);
   });
@@ -48,7 +48,9 @@ test.describe('Password Generator', () => {
     const result = await page.evaluate(() => {
       const array = new Uint8Array(32);
       window.crypto.getRandomValues(array);
-      return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+      return Array.from(array)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
     });
 
     // 64 karakter hex string (32 byte)
@@ -67,7 +69,9 @@ test.describe('Password Generator', () => {
       const gen = () => {
         const a = new Uint8Array(16);
         window.crypto.getRandomValues(a);
-        return Array.from(a).map(b => b.toString(16).padStart(2, '0')).join('');
+        return Array.from(a)
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('');
       };
       return [gen(), gen(), gen()];
     });
@@ -101,7 +105,7 @@ test.describe('Password Generator', () => {
             name: 'PBKDF2',
             salt: new TextEncoder().encode('testsalt'),
             iterations: 1000,
-            hash: 'SHA-256'
+            hash: 'SHA-256',
           },
           rawKey,
           256
@@ -125,26 +129,17 @@ test.describe('Password Generator', () => {
 
     const success = await page.evaluate(async () => {
       try {
-        const key = await crypto.subtle.generateKey(
-          { name: 'AES-GCM', length: 256 },
-          true,
-          ['encrypt', 'decrypt']
-        );
+        const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, [
+          'encrypt',
+          'decrypt',
+        ]);
 
         const iv = crypto.getRandomValues(new Uint8Array(12));
         const data = new TextEncoder().encode('Hello, Aegis!');
 
-        const encrypted = await crypto.subtle.encrypt(
-          { name: 'AES-GCM', iv },
-          key,
-          data
-        );
+        const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
 
-        const decrypted = await crypto.subtle.decrypt(
-          { name: 'AES-GCM', iv },
-          key,
-          encrypted
-        );
+        const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, encrypted);
 
         const decryptedText = new TextDecoder().decode(decrypted);
         return decryptedText === 'Hello, Aegis!';
@@ -165,11 +160,10 @@ test.describe('Password Generator', () => {
 
     const success = await page.evaluate(async () => {
       try {
-        const key = await crypto.subtle.generateKey(
-          { name: 'HMAC', hash: 'SHA-256' },
-          true,
-          ['sign', 'verify']
-        );
+        const key = await crypto.subtle.generateKey({ name: 'HMAC', hash: 'SHA-256' }, true, [
+          'sign',
+          'verify',
+        ]);
 
         const data = new TextEncoder().encode('test message');
         const signature = await crypto.subtle.sign('HMAC', key, data);
@@ -195,7 +189,7 @@ test.describe('Password Generator', () => {
       const data = new TextEncoder().encode('');
       const hashBuffer = await crypto.subtle.digest('SHA-256', data);
       return Array.from(new Uint8Array(hashBuffer))
-        .map(b => b.toString(16).padStart(2, '0'))
+        .map((b) => b.toString(16).padStart(2, '0'))
         .join('');
     });
 
@@ -222,12 +216,12 @@ test.describe('Password Generator', () => {
   // ─────────────────────────────────────────────────────────────────────────────
   test('should load within 3 seconds', async ({ page }) => {
     const startTime = Date.now();
-    
+
     await page.goto('/');
     await page.waitForSelector('.vault-login-root', { timeout: 10000 });
-    
+
     const loadTime = Date.now() - startTime;
-    
+
     // 3 saniyeden az yüklenmeli (dev server)
     expect(loadTime).toBeLessThan(10000); // 10s generous timeout for dev
     console.log(`[PERF] Page load time: ${loadTime}ms`);

@@ -1,6 +1,6 @@
-import type { VaultEntry } from "../vaultService";
+import type { VaultEntry } from '../vaultService';
 
-export type SyncConflictSource = "backup_import" | "structured_import" | "qr_import";
+export type SyncConflictSource = 'backup_import' | 'structured_import' | 'qr_import';
 
 export interface SyncConflictSummary {
   source: SyncConflictSource;
@@ -10,15 +10,22 @@ export interface SyncConflictSummary {
   conflictingIds: number[];
 }
 
-const normalize = (value: string | undefined): string => String(value || "").trim().toLowerCase();
+const normalize = (value: string | undefined): string =>
+  String(value || '')
+    .trim()
+    .toLowerCase();
 
 const signatureOf = (entry: Partial<VaultEntry>): string =>
-  [normalize(entry.title), normalize(entry.username), normalize(entry.website)].join("::");
+  [normalize(entry.title), normalize(entry.username), normalize(entry.website)].join('::');
 
 const passwordOf = (entry: Partial<VaultEntry>): string => normalize(entry.pass);
 
 export class SyncConflictResolutionService {
-  static summarize(currentEntries: VaultEntry[], incomingEntries: Partial<VaultEntry>[], source: SyncConflictSource): SyncConflictSummary {
+  static summarize(
+    currentEntries: VaultEntry[],
+    incomingEntries: Partial<VaultEntry>[],
+    source: SyncConflictSource
+  ): SyncConflictSummary {
     const currentBySignature = new Map<string, VaultEntry>();
     for (const entry of currentEntries) {
       currentBySignature.set(signatureOf(entry), entry);
@@ -37,7 +44,7 @@ export class SyncConflictResolutionService {
       if (passwordOf(match) === passwordOf(incoming)) {
         exactMatchCount += 1;
       }
-      if (typeof match.id === "number") {
+      if (typeof match.id === 'number') {
         conflictingIds.add(match.id);
       }
     }

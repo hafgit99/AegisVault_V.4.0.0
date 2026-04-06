@@ -6,15 +6,19 @@ const CHUNK_PREFIX = 'aegis:';
 const CHUNK_SIZE = 150; // adjust based on QR density preference
 
 export function generateChunks(data: string): string[] {
-  const sessionId = Math.random().toString(36).substring(2, 8);
+  const bytes = crypto.getRandomValues(new Uint8Array(4));
+  const sessionId = Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 8);
   const chunks: string[] = [];
-  
+
   for (let i = 0; i < data.length; i += CHUNK_SIZE) {
     chunks.push(data.substring(i, i + CHUNK_SIZE));
   }
-  
-  return chunks.map((chunk, idx) => 
-    `${CHUNK_PREFIX}${sessionId}:${idx + 1}:${chunks.length}:${chunk}`
+
+  return chunks.map(
+    (chunk, idx) => `${CHUNK_PREFIX}${sessionId}:${idx + 1}:${chunks.length}:${chunk}`
   );
 }
 
@@ -24,10 +28,10 @@ export function useQRScanner(onComplete: (data: string) => void) {
   const [receivedChunks, setReceivedChunks] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
-  
+
   // State for chunk collection
   const chunksMap = useRef<Map<number, string>>(new Map());
   const currentSessionId = useRef<string | null>(null);
@@ -36,7 +40,7 @@ export function useQRScanner(onComplete: (data: string) => void) {
     if (!videoRef.current) return;
     setError(null);
     setIsScanning(true);
-    
+
     // Reset state
     chunksMap.current.clear();
     currentSessionId.current = null;
@@ -45,7 +49,7 @@ export function useQRScanner(onComplete: (data: string) => void) {
     setTotalChunks(0);
 
     const codeReader = new BrowserQRCodeReader();
-    
+
     try {
       controlsRef.current = await codeReader.decodeFromVideoDevice(
         undefined, // automatically find back camera if possible
@@ -55,12 +59,12 @@ export function useQRScanner(onComplete: (data: string) => void) {
             handleScanResult(result.getText());
           }
           if (error && error.name !== 'NotFoundException') {
-             // Ignore not found, normal during continuous scanning
+            // Ignore not found, normal during continuous scanning
           }
         }
       );
     } catch {
-      setError("Kamera erişimi reddedildi veya bulunamadı.");
+      setError('Kamera erişimi reddedildi veya bulunamadı.');
       setIsScanning(false);
     }
   };
@@ -75,7 +79,7 @@ export function useQRScanner(onComplete: (data: string) => void) {
 
   const handleScanResult = (text: string) => {
     if (!text.startsWith(CHUNK_PREFIX)) return;
-    
+
     const parts = text.split(':');
     if (parts.length < 5) return; // aegis:session_id:idx:total:data
 
@@ -100,13 +104,13 @@ export function useQRScanner(onComplete: (data: string) => void) {
       if (newReceivedCount === total) {
         // Complete!
         stopScanning();
-        
+
         // Reassemble
         const sortedChunks = [];
         for (let i = 1; i <= total; i++) {
           sortedChunks.push(chunksMap.current.get(i));
         }
-        
+
         const fullData = sortedChunks.join('');
         onComplete(fullData);
       }
@@ -127,6 +131,6 @@ export function useQRScanner(onComplete: (data: string) => void) {
     progress,
     totalChunks,
     receivedChunks,
-    error
+    error,
   };
 }

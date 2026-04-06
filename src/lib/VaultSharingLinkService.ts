@@ -13,9 +13,7 @@ export interface SharingCleanupReport {
 
 const normalizeEntryKey = (entryId: number | string): string => String(entryId || '').trim();
 
-const cloneAssignment = (
-  assignment: CanonicalSharingAssignment
-): CanonicalSharingAssignment => ({
+const cloneAssignment = (assignment: CanonicalSharingAssignment): CanonicalSharingAssignment => ({
   ...assignment,
 });
 
@@ -126,7 +124,9 @@ export class VaultSharingLinkService {
     const nextAssignments: Record<string, CanonicalSharingAssignment[]> = {};
 
     Object.entries(currentAssignments).forEach(([entryKey, assignments]) => {
-      const remaining = assignments.filter((assignment) => assignment.space_id !== normalizedSpaceId);
+      const remaining = assignments.filter(
+        (assignment) => assignment.space_id !== normalizedSpaceId
+      );
       removedCount += assignments.length - remaining.length;
       if (remaining.length > 0) {
         nextAssignments[entryKey] = remaining.map((assignment) => cloneAssignment(assignment));
@@ -174,6 +174,20 @@ export class VaultSharingLinkService {
         ...entry,
         sharing,
       };
+    });
+  }
+
+  static getAllAssignments(): Record<string, CanonicalSharingAssignment[]> {
+    return cloneAssignmentsMap(SecureAppSettings.getSharedItemAssignments());
+  }
+
+  static restoreAssignments(snapshot: Record<string, CanonicalSharingAssignment[]>): void {
+    SecureAppSettings.setSharedItemAssignments(cloneAssignmentsMap(snapshot));
+    SharingAuditService.recordEvent({
+      type: 'assignments_restored',
+      metadata: {
+        entryCount: Object.keys(snapshot).length,
+      },
     });
   }
 

@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import { vaultService } from './vaultService';
+import { VaultService, vaultService as singletonVaultService } from './vaultService';
 import 'fake-indexeddb/auto';
 
 // Mock sql.js and opfs availability to force IDB fallback immediately
 vi.mock('sql.js', () => ({
-  default: vi.fn().mockRejectedValue(new Error('sql.js not available in test'))
+  default: vi.fn().mockRejectedValue(new Error('sql.js not available in test')),
 }));
 vi.mock('./lib/SQLiteOPFS', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./lib/SQLiteOPFS')>();
@@ -18,6 +18,15 @@ vi.mock('./lib/SQLiteOPFS', async (importOriginal) => {
 // No need to mock them - they're provided by the test environment
 
 describe('VaultService Security & Cryptography', () => {
+  let vaultService: VaultService;
+  let dbNameCounter = 0;
+
+  beforeEach(async () => {
+    localStorage.clear();
+    vaultService = new VaultService(); // Fresh instance
+    dbNameCounter++;
+  });
+
   type VaultSaltRecord = {
     salt: string;
     version: number;
@@ -64,8 +73,6 @@ describe('VaultService Security & Cryptography', () => {
 
   const TEST_PASSWORD = 'strong_password_123';
   const SEC_KEY = 'device_secret_xyz';
-  let dbNameCounter = 0;
-
   const getRequestResult = <T>(request: IDBRequest<T>) =>
     new Promise<T>((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
@@ -75,7 +82,13 @@ describe('VaultService Security & Cryptography', () => {
   const deriveLegacyPBKDF2Hash = async (password: string, saltB64: string, iterations: number) => {
     const salt = Uint8Array.from(atob(saltB64), (c) => c.charCodeAt(0));
     const enc = new TextEncoder();
-    const keyMaterial = await window.crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+    const keyMaterial = await window.crypto.subtle.importKey(
+      'raw',
+      enc.encode(password),
+      'PBKDF2',
+      false,
+      ['deriveBits']
+    );
     const hash = await window.crypto.subtle.deriveBits(
       { name: 'PBKDF2', salt: salt.buffer as ArrayBuffer, iterations, hash: 'SHA-256' },
       keyMaterial,
@@ -92,7 +105,7 @@ describe('VaultService Security & Cryptography', () => {
 
   it('1. Yeni Kasa Oluşturma: Benzersiz Dinamik Salt Üretilmelidir', async () => {
     const dbName = `test_vault_${dbNameCounter}`;
-    
+
     // DB'yi ilk defa init ediyoruz
     await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
 
@@ -102,9 +115,9 @@ describe('VaultService Security & Cryptography', () => {
 
     const tx = db.transaction('vault_metadata', 'readonly');
     const store = tx.objectStore('vault_metadata');
-    
+
     const mainSaltData = await getRequestResult<VaultSaltRecord>(store.get('main_salt'));
-    
+
     const authCredData = await getRequestResult<AuthCredentialRecord>(store.get('auth_credential'));
 
     expect(mainSaltData).toBeDefined();
@@ -116,20 +129,23 @@ describe('VaultService Security & Cryptography', () => {
     expect(authCredData).toBeDefined();
     expect(authCredData.credential.verificationHash).toBeDefined();
     expect(authCredData.credential.scheme).toBe('argon2id-v1');
-    
+
     await vaultService.lock();
     db.close();
   }, 30000);
 
   it('2. Mevcut Kasa Açma: Eski Salt ve Şifre Modelleri ile Uyumluluk (Legacy Fallback)', async () => {
     const dbName = `legacy_vault_${dbNameCounter}`;
-    
+
     // Yapay olarak eski sistemdeki gibi "sadece passwords store'u var, metadata yok" yaratıyoruz
     const request = indexedDB.open(dbName, 1);
     const db = await new Promise<IDBDatabase>((resolve) => {
       request.onupgradeneeded = () => {
-        const store = request.result.createObjectStore('passwords', { keyPath: 'id', autoIncrement: true });
-        store.put({ id: 999, title: "Test Legacy", pass: "something_encrypted" }); // Simulate old data
+        const store = request.result.createObjectStore('passwords', {
+          keyPath: 'id',
+          autoIncrement: true,
+        });
+        store.put({ id: 999, title: 'Test Legacy', pass: 'something_encrypted' }); // Simulate old data
       };
       request.onsuccess = () => resolve(request.result);
     });
@@ -145,32 +161,45 @@ describe('VaultService Security & Cryptography', () => {
     // Kontrol: Metadata 2. versiyona taşınmış ve main_salt olarak eski statik kilit dinamik kayda geçmiş mi?
     const checkReq = indexedDB.open(dbName, 3);
     const checkDb = await getRequestResult(checkReq);
-    
+
     const checkTx = checkDb.transaction('vault_metadata', 'readonly');
-    const mainSaltData = await getRequestResult<VaultSaltRecord>(checkTx.objectStore('vault_metadata').get('main_salt'));
+    const mainSaltData = await getRequestResult<VaultSaltRecord>(
+      checkTx.objectStore('vault_metadata').get('main_salt')
+    );
 
     // It should have migrated the old string "aegis-premium-salt-v4" into a base64 encoded string format
-    const oldSaltBytes = new TextEncoder().encode("aegis-premium-salt-v4");
+    const oldSaltBytes = new TextEncoder().encode('aegis-premium-salt-v4');
     const oldSaltB64 = btoa(String.fromCharCode(...oldSaltBytes));
-    
+
     expect(mainSaltData.salt).toBe(oldSaltB64);
-    
+
     await vaultService.lock();
     checkDb.close();
   }, 30000);
 
   it('3. Parola Değiştirme: Yeni Salt, Anahtar Üretimi ve De-şifreleme (Re-encryption)', async () => {
     const dbName = `change_pw_vault_${dbNameCounter}`;
-    
+
     // 1. Kasayı oluştur ve bir giriş at
     await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
-    const addedEntryId = await vaultService.addPassword({ title: 'Github', pass: 'token_123', category: 'Work' });
+    const addedEntryId = await vaultService.addPassword({
+      title: 'Github',
+      pass: 'token_123',
+      category: 'Work',
+    });
 
     // Önceki Metadata Salt'ını al
     const request1 = indexedDB.open(dbName, 3);
     const db1 = await getRequestResult(request1);
-    const oldMainSaltData = await getRequestResult<VaultSaltRecord>(db1.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('main_salt'));
-    const oldAuthData = await getRequestResult<AuthCredentialRecord>(db1.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('auth_credential'));
+    const oldMainSaltData = await getRequestResult<VaultSaltRecord>(
+      db1.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('main_salt')
+    );
+    const oldAuthData = await getRequestResult<AuthCredentialRecord>(
+      db1
+        .transaction('vault_metadata', 'readonly')
+        .objectStore('vault_metadata')
+        .get('auth_credential')
+    );
     db1.close();
 
     // 2. Parolayı değiştir
@@ -180,24 +209,33 @@ describe('VaultService Security & Cryptography', () => {
     // 3. Yeni Metadata'yı kontrol et
     const request2 = indexedDB.open(dbName, 3);
     const db2 = await getRequestResult(request2);
-    
-    const newMainSaltData = await getRequestResult<VaultSaltRecord>(db2.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('main_salt'));
-    const newAuthData = await getRequestResult<AuthCredentialRecord>(db2.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('auth_credential'));
+
+    const newMainSaltData = await getRequestResult<VaultSaltRecord>(
+      db2.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('main_salt')
+    );
+    const newAuthData = await getRequestResult<AuthCredentialRecord>(
+      db2
+        .transaction('vault_metadata', 'readonly')
+        .objectStore('vault_metadata')
+        .get('auth_credential')
+    );
     db2.close();
 
     // Kıyas: Yeni Tuz eskisi ile EŞİT OLMAMALIDIR!
     expect(newMainSaltData.salt).not.toBe(oldMainSaltData.salt);
     expect(newAuthData.credential.salt).not.toBe(oldAuthData.credential.salt);
-    expect(newAuthData.credential.verificationHash).not.toBe(oldAuthData.credential.verificationHash);
+    expect(newAuthData.credential.verificationHash).not.toBe(
+      oldAuthData.credential.verificationHash
+    );
     expect(newAuthData.credential.scheme).toBe('argon2id-v1');
-    
+
     // 4. Yeni parola ile şifreleri hala deşifre edebiliyor mu kontrol et
     const passwords = await vaultService.getPasswords();
-    
+
     // Auto-seed from demo might add 2 items + 1 item we added = 3 items total
     expect(passwords.length).toBeGreaterThanOrEqual(1);
-    
-    const githubEntry = passwords.find(p => Number(p.id) === Number(addedEntryId));
+
+    const githubEntry = passwords.find((p) => Number(p.id) === Number(addedEntryId));
     expect(githubEntry).toBeDefined();
     // Bazı ortamlarda re-encryption sonrası entry decrypt alanı anlık undefined dönebilir,
     // kritik olan kaydın varlığı ve encrypted payload'ın bütünlüğüdür.
@@ -207,11 +245,13 @@ describe('VaultService Security & Cryptography', () => {
     // Encrypted payload kontrolünü doğrudan at-rest kayıttan yap
     const reqRaw = indexedDB.open(dbName, 3);
     const dbRaw = await getRequestResult(reqRaw);
-    const rawGithub = await getRequestResult<RawPasswordRecord>(dbRaw.transaction('passwords', 'readonly').objectStore('passwords').get(addedEntryId));
+    const rawGithub = await getRequestResult<RawPasswordRecord>(
+      dbRaw.transaction('passwords', 'readonly').objectStore('passwords').get(addedEntryId)
+    );
     expect(rawGithub).toBeDefined();
     expect(rawGithub?.encrypted_password).toBeTypeOf('string');
     dbRaw.close();
-    
+
     await vaultService.lock();
   }, 30000);
 
@@ -234,7 +274,9 @@ describe('VaultService Security & Cryptography', () => {
     const req = indexedDB.open(dbName, 3);
     const db = await getRequestResult(req);
 
-    const stored = await getRequestResult<RawPasswordRecord>(db.transaction('passwords', 'readonly').objectStore('passwords').get(entryId));
+    const stored = await getRequestResult<RawPasswordRecord>(
+      db.transaction('passwords', 'readonly').objectStore('passwords').get(entryId)
+    );
 
     expect(stored).toBeDefined();
     expect(stored.encrypted_title).toBeTypeOf('string');
@@ -261,8 +303,10 @@ describe('VaultService Security & Cryptography', () => {
     if (uiEntry?.title) expect(uiEntry.title).toBe('MetaEnc Entry');
     if (uiEntry?.category) expect(uiEntry.category).toBe('Finance');
     if (uiEntry?.tags?.length) expect(uiEntry.tags).toContain('bank');
-    if (uiEntry?.attachments?.[0]?.name) expect(uiEntry.attachments[0].name).toBe('secret-statement.pdf');
-    if (uiEntry?.attachments?.[0]?.type) expect(uiEntry.attachments[0].type).toBe('application/pdf');
+    if (uiEntry?.attachments?.[0]?.name)
+      expect(uiEntry.attachments[0].name).toBe('secret-statement.pdf');
+    if (uiEntry?.attachments?.[0]?.type)
+      expect(uiEntry.attachments[0].type).toBe('application/pdf');
 
     await vaultService.lock();
     db.close();
@@ -328,7 +372,9 @@ describe('VaultService Security & Cryptography', () => {
     const req2 = indexedDB.open(dbName, 3);
     const db2 = await getRequestResult(req2);
 
-    const migratedRaw = await getRequestResult<RawPasswordRecord>(db2.transaction('passwords', 'readonly').objectStore('passwords').get(entryId));
+    const migratedRaw = await getRequestResult<RawPasswordRecord>(
+      db2.transaction('passwords', 'readonly').objectStore('passwords').get(entryId)
+    );
 
     expect(migratedRaw.encrypted_title).toBeTypeOf('string');
     expect(migratedRaw.encrypted_category).toBeTypeOf('string');
@@ -405,7 +451,9 @@ describe('VaultService Security & Cryptography', () => {
       req1.onerror = () => reject(req1.error);
     });
 
-    const legacySalt = btoa(String.fromCharCode(...window.crypto.getRandomValues(new Uint8Array(16))));
+    const legacySalt = btoa(
+      String.fromCharCode(...window.crypto.getRandomValues(new Uint8Array(16)))
+    );
     const legacyIterations = 100000;
     const legacyHash = await deriveLegacyPBKDF2Hash(TEST_PASSWORD, legacySalt, legacyIterations);
 
@@ -444,7 +492,12 @@ describe('VaultService Security & Cryptography', () => {
 
     const req2 = indexedDB.open(dbName, 3);
     const db2 = await getRequestResult(req2);
-    const migratedAuth = await getRequestResult<AuthCredentialRecord>(db2.transaction('vault_metadata', 'readonly').objectStore('vault_metadata').get('auth_credential'));
+    const migratedAuth = await getRequestResult<AuthCredentialRecord>(
+      db2
+        .transaction('vault_metadata', 'readonly')
+        .objectStore('vault_metadata')
+        .get('auth_credential')
+    );
 
     expect(migratedAuth.credential.scheme).toBe('argon2id-v1');
     expect(migratedAuth.credential.argon2).toBeDefined();
@@ -461,7 +514,7 @@ describe('VaultService Security & Cryptography', () => {
 
     const exportData = await vaultService.exportVault();
     const parsed = JSON.parse(exportData);
-    
+
     expect(Array.isArray(parsed)).toBe(true);
     // At least 1 entry is present
     expect(parsed.length).toBeGreaterThanOrEqual(1);
@@ -477,13 +530,13 @@ describe('VaultService Security & Cryptography', () => {
     const entries = [
       { title: 'Entry 1', pass: 'pass1' },
       { title: 'Entry 2', pass: 'pass2' },
-      { title: 'Short', pass: '123' } // weak password
+      { title: 'Short', pass: '123' }, // weak password
     ];
 
     const result = await vaultService.bulkAddPasswords(entries);
     expect(result.total).toBe(3);
     expect(result.weak).toBe(3);
-    
+
     const all = await vaultService.getPasswords();
     expect(all.length).toBeGreaterThanOrEqual(3);
 
@@ -497,13 +550,13 @@ describe('VaultService Security & Cryptography', () => {
 
     await vaultService.moveToTrash(Number(entryId));
     // getPasswords filters out deleted items by default. Pass true to see trash.
-    let all = await vaultService.getPasswords("", "", true);
-    const trashItems = all.filter(p => p.deletedAt);
+    let all = await vaultService.getPasswords('', '', true);
+    const trashItems = all.filter((p) => p.deletedAt);
     expect(trashItems.length).toBe(1);
 
     await vaultService.restoreFromTrash(Number(entryId));
     all = await vaultService.getPasswords();
-    expect(all.find(p => Number(p.id) === Number(entryId))?.deletedAt).toBeUndefined();
+    expect(all.find((p) => Number(p.id) === Number(entryId))?.deletedAt).toBeUndefined();
 
     await vaultService.lock();
   });
@@ -515,8 +568,8 @@ describe('VaultService Security & Cryptography', () => {
 
     await vaultService.updatePassword(Number(entryId), { title: 'Updated', pass: 'new' });
     const all = await vaultService.getPasswords();
-    const updated = all.find(p => Number(p.id) === Number(entryId));
-    
+    const updated = all.find((p) => Number(p.id) === Number(entryId));
+
     expect(updated?.title).toBe('Updated');
     expect(updated?.pass).toBe('new');
 
@@ -527,17 +580,17 @@ describe('VaultService Security & Cryptography', () => {
     const dbName = `attach_mgt_vault_${dbNameCounter}`;
     await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
     const entryId = await vaultService.addPassword({ title: 'Attach Mgt', pass: 'p' });
-    
+
     const file = new File(['data'], 'test.txt', { type: 'text/plain' });
     const meta = await vaultService.addAttachment(Number(entryId), file);
-    
+
     const decrypted = await vaultService.getDecryptedAttachment(meta.id);
     const text = await decrypted.text();
     expect(text).toBe('data');
 
     await vaultService.deleteAttachment(Number(entryId), meta.id);
     const all = await vaultService.getPasswords();
-    const entry = all.find(p => Number(p.id) === Number(entryId));
+    const entry = all.find((p) => Number(p.id) === Number(entryId));
     expect(entry?.attachments?.length || 0).toBe(0);
 
     await vaultService.lock();
@@ -545,31 +598,34 @@ describe('VaultService Security & Cryptography', () => {
 
   it('12. Anahtar Türetimi (PBKDF2/Argon2id Logic Verification)', async () => {
     // deriveMasterKey normal bir vault açılışında çağrılır.
-    // Direkt çağırıp tutarlı hex dönüp dönmediğini kontrol edelim.
+    // Direkt çağırıp tutarlı dönüp dönmediğini kontrol edelim.
     const saltB64 = btoa('dummy_salt_for_derivation');
-    const key1 = await vaultService.deriveMasterKey(TEST_PASSWORD, SEC_KEY, saltB64);
-    const key2 = await vaultService.deriveMasterKey(TEST_PASSWORD, SEC_KEY, saltB64);
-    
-    expect(key1).toBeTypeOf('string');
-    expect(key1.length).toBeGreaterThan(16); // Base64 salt result
-    expect(key1).toBe(key2); // Deterministic
+    const result1 = await vaultService.deriveMasterKey(TEST_PASSWORD, SEC_KEY, saltB64);
+    const result2 = await vaultService.deriveMasterKey(TEST_PASSWORD, SEC_KEY, saltB64);
 
-    const diffKeyRet = await vaultService.deriveMasterKey('different_pw', SEC_KEY, saltB64);
-    expect(diffKeyRet).toBe(key1); // Salt is the same
-    
-    // We can't easily check aesKey without making it public or using an entry
-    // but the determinism of the salt return is now verified.
+    expect(result1).toBeTypeOf('object');
+    expect(result1.saltB64).toBeTypeOf('string');
+    expect(result1.saltB64.length).toBeGreaterThan(10);
+    expect(result1.aesKey).toBeDefined();
+    expect(result1.sensitiveMaterial).toBeInstanceOf(Uint8Array);
+
+    // Same password + salt should produce the same saltB64
+    expect(result1.saltB64).toBe(result2.saltB64);
+
+    const diffResult = await vaultService.deriveMasterKey('different_pw', SEC_KEY, saltB64);
+    // Same salt input should return same saltB64
+    expect(diffResult.saltB64).toBe(result1.saltB64);
   });
 
   it('13. Kalıcı Silme: Artıklarıyla birlikte yok etme', async () => {
     const dbName = `perm_del_vault_${dbNameCounter}`;
     await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
     const entryId = await vaultService.addPassword({ title: 'Perm Del', pass: 'p' });
-    
+
     await vaultService.deletePermanently(Number(entryId));
-    const all = await vaultService.getPasswords("", "", true); // Trash included check
-    expect(all.find(p => Number(p.id) === Number(entryId))).toBeUndefined();
-    
+    const all = await vaultService.getPasswords('', '', true); // Trash included check
+    expect(all.find((p) => Number(p.id) === Number(entryId))).toBeUndefined();
+
     await vaultService.lock();
   });
 
@@ -582,11 +638,11 @@ describe('VaultService Security & Cryptography', () => {
     await vaultService.moveToTrash(Number(id1));
     await vaultService.emptyTrash();
 
-    const trash = await vaultService.getPasswords("", "", true);
+    const trash = await vaultService.getPasswords('', '', true);
     expect(trash.length).toBe(0);
-    
-    const normal = await vaultService.getPasswords("", "", false);
-    expect(normal.find(p => Number(p.id) === Number(id2))).toBeDefined();
+
+    const normal = await vaultService.getPasswords('', '', false);
+    expect(normal.find((p) => Number(p.id) === Number(id2))).toBeDefined();
 
     await vaultService.lock();
   });
@@ -595,7 +651,7 @@ describe('VaultService Security & Cryptography', () => {
     const dbName = `cleanup_trash_vault_${dbNameCounter}`;
     await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
     const idOld = await vaultService.addPassword({ title: 'Old Trash', pass: 'p' });
-    
+
     // Inject a very old deletedAt date directly into IDB
     const request = indexedDB.open(dbName, 3);
     const db = await new Promise<IDBDatabase>((resolve) => {
@@ -607,7 +663,7 @@ describe('VaultService Security & Cryptography', () => {
       const getReq = store.get(idOld);
       getReq.onsuccess = () => resolve(getReq.result);
     });
-    
+
     const thirtyOneDaysAgo = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
     entry.deletedAt = thirtyOneDaysAgo;
     await new Promise<void>((resolve) => {
@@ -620,10 +676,10 @@ describe('VaultService Security & Cryptography', () => {
     db.close();
 
     await vaultService.cleanupTrash();
-    
+
     // Should be gone
-    const all = await vaultService.getPasswords("", "", true);
-    expect(all.find(p => Number(p.id) === Number(idOld))).toBeUndefined();
+    const all = await vaultService.getPasswords('', '', true);
+    expect(all.find((p) => Number(p.id) === Number(idOld))).toBeUndefined();
 
     await vaultService.lock();
   });
@@ -632,12 +688,12 @@ describe('VaultService Security & Cryptography', () => {
     const dbName = `wipe_vault_${dbNameCounter}`;
     await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
     await vaultService.addPassword({ title: 'Important Secret', pass: 'p' });
-    
+
     // Simulate some local storage data
     localStorage.setItem('aegis_active_vault', dbName);
-    
+
     await vaultService.wipeAllData();
-    
+
     expect(vaultService['isConnected']).toBe(false);
     expect(localStorage.getItem('aegis_active_vault')).toBeNull();
   });
@@ -645,8 +701,16 @@ describe('VaultService Security & Cryptography', () => {
   it('17. Arama Filtreleme: Token bazlı ve Scope özelinde arama', async () => {
     const dbName = `search_vault_${dbNameCounter}`;
     await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
-    await vaultService.addPassword({ title: 'Github Work', username: 'antigravity', category: 'General' });
-    await vaultService.addPassword({ title: 'Personal Email', username: 'user123', tags: ['private'] });
+    await vaultService.addPassword({
+      title: 'Github Work',
+      username: 'antigravity',
+      category: 'General',
+    });
+    await vaultService.addPassword({
+      title: 'Personal Email',
+      username: 'user123',
+      tags: ['private'],
+    });
 
     // 1. Basit arama
     let results = await vaultService.getPasswords('Github');
@@ -660,7 +724,7 @@ describe('VaultService Security & Cryptography', () => {
     // 3. Username scope
     results = await vaultService.getPasswords('antigravity', '', false, 'username');
     expect(results.length).toBe(1);
-    
+
     // 4. Bulunamayan arama
     results = await vaultService.getPasswords('NonExistent');
     expect(results.length).toBe(0);
@@ -690,16 +754,16 @@ describe('VaultService Security & Cryptography', () => {
   it('19. TOTP ve Notes Deşifreleme Doğrulaması', async () => {
     const dbName = `totp_notes_vault_${dbNameCounter}`;
     await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
-    const entryId = await vaultService.addPassword({ 
-      title: 'Secret Entry', 
-      pass: 'p', 
-      totpSecret: 'JBSWY3DPEHPK3PXP', 
-      notes: 'This is a secure note.' 
+    const entryId = await vaultService.addPassword({
+      title: 'Secret Entry',
+      pass: 'p',
+      totpSecret: 'JBSWY3DPEHPK3PXP',
+      notes: 'This is a secure note.',
     });
 
     const results = await vaultService.getPasswords();
-    const entry = results.find(p => Number(p.id) === Number(entryId));
-    
+    const entry = results.find((p) => Number(p.id) === Number(entryId));
+
     expect(entry?.totpSecret).toBe('JBSWY3DPEHPK3PXP');
     expect(entry?.notes).toBe('This is a secure note.');
 
@@ -713,19 +777,19 @@ describe('VaultService Security & Cryptography', () => {
       credentialId: 'id123',
       publicKey: 'key123',
       userHandle: 'user123',
-      rpId: 'example.com'
+      rpId: 'example.com',
     };
-    
-    const entryId = await vaultService.addPassword({ 
-      title: 'Passkey Entry', 
-      pass: 'p', 
+
+    const entryId = await vaultService.addPassword({
+      title: 'Passkey Entry',
+      pass: 'p',
       // @ts-ignore
-      passkeyMetadata: passkeyMeta 
+      passkeyMetadata: passkeyMeta,
     });
 
     const results = await vaultService.getPasswords();
-    const entry = results.find(p => Number(p.id) === Number(entryId));
-    
+    const entry = results.find((p) => Number(p.id) === Number(entryId));
+
     expect(entry?.passkeyMetadata).toBeDefined();
     expect(entry?.passkeyMetadata?.rpId).toBe('example.com');
 

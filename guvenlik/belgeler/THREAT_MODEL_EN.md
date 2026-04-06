@@ -51,41 +51,49 @@ Covered components:
 ### Scenario A: Bridge abuse and identity spoofing
 
 Controls:
+
 - Extension allowlist checks
 - Challenge-response and request validation
 - Pairing constraints and limited-scope data responses
 
 Residual risk:
+
 - Compromised host environment can still increase risk.
 
 ### Scenario B: Import/export data loss or corruption
 
 Controls:
+
 - Canonical schema mapping for all record types
 - Regression tests for import/export/sync transformations
 - Conflict and migration reporting
 
 Residual risk:
+
 - User-side manual file handling errors remain possible.
 
 ### Scenario C: At-rest metadata leakage
 
 Controls:
+
 - Encrypted metadata fields
 - Blind/private search indexing strategy
 - Reduced plaintext handling in runtime paths
 
 Residual risk:
+
 - Access pattern metadata cannot be fully eliminated.
 
 ### Scenario D: Credential aging and weak second-factor posture
 
 Controls:
+
 - Security Center scoring and triage model
 - Reviewed-item workflow and risk resurfacing rules
 - Policy guidance for second-factor adoption
 
 Residual risk:
+
 - User decisions still influence final posture.
 
 ## 7. Assumptions

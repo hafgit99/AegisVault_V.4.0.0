@@ -55,66 +55,81 @@ Each boundary crossing is protected by policy, verification, and minimum-data co
 ### S1: Loopback endpoint abuse
 
 Risk:
+
 - Unauthorized local process attempts to fetch vault data via loopback API
 
 Controls:
+
 - Challenge endpoint + HMAC signature validation
 - Nonce/TTL replay protection
 - Extension ID allowlist
 - Domain-scoped minimal response model
 
 Residual risk:
+
 - Host-level compromise can still enable advanced process-level abuse
 
 ### S2: Full-vault plaintext spread
 
 Risk:
+
 - Unnecessary bulk plaintext transfer to extension/popup paths
 
 Controls:
+
 - GET_DOMAIN_CREDS contract
 - Legacy full-vault behavior disabled by default
 - Cross-domain fallback listing removed
 
 Residual risk:
+
 - Minimal active-domain credentials may still exist in runtime memory briefly
 
 ### S3: Metadata disclosure at rest
 
 Risk:
+
 - Site/username/tag intelligence leakage without decrypting passwords
 
 Controls:
+
 - Metadata encryption (title/username/website/category/tags)
 - Attachment metadata encryption (name/type)
 - Blind search index
 
 Residual risk:
+
 - Timing and usage pattern metadata cannot be fully removed
 
 ### S4: Auth verifier brute-force economics
 
 Risk:
+
 - Legacy PBKDF2 verifier with weaker cost profile
 
 Controls:
+
 - `argon2id-v1` verifier model
 - Automatic PBKDF2 -> Argon2id migration on successful unlock
 
 Residual risk:
+
 - Weak user-chosen master passwords remain a user-side risk
 
 ### S5: Wrong-profile TOTP write
 
 Risk:
+
 - 2FA secrets stored in primary vault by mistake
 
 Controls:
+
 - TOTP vault policy mode (`same_vault` / `separate_2fa_vault`)
 - Policy enforcement blocks writes in separate mode
 - Migration warning + guided profile switch action
 
 Residual risk:
+
 - Data may remain split across profiles until migration is completed
 
 ## 7) Assumptions
@@ -138,11 +153,13 @@ Residual risk:
 ## 10) Mitigation Roadmap
 
 Short term:
+
 - Finalize disclosure policy and channels
 - Freeze audit scope and evidence bundle
 - Introduce periodic threat-model review cadence
 
 Mid term:
+
 - Execute external audit
 - Publish remediation matrix
 - Define security SLA and incident playbooks

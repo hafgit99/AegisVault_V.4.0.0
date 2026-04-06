@@ -12,7 +12,10 @@ export class CanonicalMigrationService {
     currentPassword: string,
     nextPassword: string = currentPassword
   ): Promise<string> {
-    const legacyEntries = await BackupService.decryptBackup<Partial<VaultEntry>>(backupContent, currentPassword);
+    const legacyEntries = await BackupService.decryptBackup<Partial<VaultEntry>>(
+      backupContent,
+      currentPassword
+    );
     const canonicalRecords = toCanonicalVaultRecords(legacyEntries as VaultEntry[]);
     return BackupService.encryptCanonicalBackup(canonicalRecords, nextPassword);
   }
@@ -21,7 +24,10 @@ export class CanonicalMigrationService {
     backupContent: string,
     password: string
   ): Promise<Partial<VaultEntry>[]> {
-    const payload: CanonicalBackupPayload = await BackupService.decryptCanonicalBackup(backupContent, password);
+    const payload: CanonicalBackupPayload = await BackupService.decryptCanonicalBackup(
+      backupContent,
+      password
+    );
     return fromCanonicalVaultRecords(payload.records);
   }
 
@@ -30,7 +36,10 @@ export class CanonicalMigrationService {
     password: string,
     currentEntries: VaultEntry[] = []
   ): Promise<{ entries: Partial<VaultEntry>[]; report: MigrationReport }> {
-    const payload: CanonicalBackupPayload = await BackupService.decryptCanonicalBackup(backupContent, password);
+    const payload: CanonicalBackupPayload = await BackupService.decryptCanonicalBackup(
+      backupContent,
+      password
+    );
     const entries = fromCanonicalVaultRecords(payload.records);
     const conflictSummary = SyncConflictResolutionService.summarize(
       currentEntries,
@@ -62,7 +71,10 @@ export class CanonicalMigrationService {
     nextPassword: string = currentPassword,
     currentEntries: VaultEntry[] = []
   ): Promise<{ backup: string; report: MigrationReport }> {
-    const legacyEntries = await BackupService.decryptBackup<Partial<VaultEntry>>(backupContent, currentPassword);
+    const legacyEntries = await BackupService.decryptBackup<Partial<VaultEntry>>(
+      backupContent,
+      currentPassword
+    );
     const canonicalRecords = toCanonicalVaultRecords(legacyEntries as VaultEntry[]);
     const backup = await BackupService.encryptCanonicalBackup(canonicalRecords, nextPassword);
     const conflictSummary = SyncConflictResolutionService.summarize(

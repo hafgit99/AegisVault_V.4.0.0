@@ -51,7 +51,12 @@ const DEFAULT_ALLOWLIST_EXTENSION_IDS = [
   'aegisvault@example.com',
   'aegisvault-cli@local',
 ];
-const chromiumDevExtensionIdPath = path.join(__dirname, 'aegis-wxt', 'dev', 'chromium-extension-id.txt');
+const chromiumDevExtensionIdPath = path.join(
+  __dirname,
+  'aegis-wxt',
+  'dev',
+  'chromium-extension-id.txt'
+);
 if (fs.existsSync(chromiumDevExtensionIdPath)) {
   const devExtensionId = fs.readFileSync(chromiumDevExtensionIdPath, 'utf8').trim();
   if (devExtensionId && !DEFAULT_ALLOWLIST_EXTENSION_IDS.includes(devExtensionId)) {
@@ -84,28 +89,30 @@ const PAIRING_TTL_MS = 10000;
 function isValidExtensionIdFormat(id) {
   // Chrome extension ID: 32 karakter lowercase alphanumeric
   // Firefox extension ID: {uuid} veya email formatı
-  return typeof id === 'string' && (
-    /^[a-z0-9]{32}$/.test(id) ||                           // Chrome format (lowercase alphanumeric)
-    /^[a-zA-Z0-9_.-]+@[a-zA-Z0-9_.-]+$/.test(id) ||      // Firefox email format
-    /^\{[0-9a-f-]{36}\}$/.test(id)                         // Firefox UUID format
+  return (
+    typeof id === 'string' &&
+    (/^[a-z0-9]{32}$/.test(id) || // Chrome format (lowercase alphanumeric)
+      /^[a-zA-Z0-9_.-]+@[a-zA-Z0-9_.-]+$/.test(id) || // Firefox email format
+      /^\{[0-9a-f-]{36}\}$/.test(id)) // Firefox UUID format
   );
 }
-
 
 const CHALLENGE_TTL_MS = 15000;
 const challengeStore = new Map();
 
 // 🔒 DEV MODE: Sadece belirli localhost originlerine izin ver (wildcard YOK)
-const DEV_ALLOWED_ORIGINS = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173'
-];
+const DEV_ALLOWED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
 function isOriginAllowed(origin) {
   if (!origin) return false;
 
   // Yerel Dashboard (PWA) originleri
-  if (origin === 'http://localhost:5173' || origin === 'http://127.0.0.1:5173' || origin === 'file://' || origin === 'app://localhost') {
+  if (
+    origin === 'http://localhost:5173' ||
+    origin === 'http://127.0.0.1:5173' ||
+    origin === 'file://' ||
+    origin === 'app://localhost'
+  ) {
     return true;
   }
 
@@ -118,7 +125,9 @@ function isOriginAllowed(origin) {
     }
     // Dev modda unknown extension ID'yi logla ama reddet
     if (!app.isPackaged) {
-      console.warn(`[Aegis Sync] ⚠️ Dev modda bilinmeyen extension ID reddedildi: ${id.substring(0, 8)}...`);
+      console.warn(
+        `[Aegis Sync] ⚠️ Dev modda bilinmeyen extension ID reddedildi: ${id.substring(0, 8)}...`
+      );
     }
     return false;
   }
@@ -170,7 +179,11 @@ function isDomainMatch(entryWebsite, requestedDomain) {
   const entryDomain = normalizeDomain(entryWebsite);
   const wanted = normalizeDomain(requestedDomain);
   if (!entryDomain || !wanted) return false;
-  return entryDomain === wanted || entryDomain.endsWith(`.${wanted}`) || wanted.endsWith(`.${entryDomain}`);
+  return (
+    entryDomain === wanted ||
+    entryDomain.endsWith(`.${wanted}`) ||
+    wanted.endsWith(`.${entryDomain}`)
+  );
 }
 
 function sanitizeCredentialArray(data) {
@@ -184,30 +197,32 @@ function sanitizeCredentialArray(data) {
       pass: String(item.pass || ''),
       website: String(item.website || ''),
       category: String(item.category || ''),
-      cardDetails: item.cardDetails && typeof item.cardDetails === 'object'
-        ? {
-            cardholder_name: String(item.cardDetails.cardholder_name || ''),
-            card_number: String(item.cardDetails.card_number || ''),
-            brand: String(item.cardDetails.brand || ''),
-            expiry_month: String(item.cardDetails.expiry_month || ''),
-            expiry_year: String(item.cardDetails.expiry_year || ''),
-            cvv: String(item.cardDetails.cvv || ''),
-            pin: String(item.cardDetails.pin || ''),
-            billing_zip: String(item.cardDetails.billing_zip || ''),
-            billing_address: String(item.cardDetails.billing_address || ''),
-          }
-        : null,
-      identityDetails: item.identityDetails && typeof item.identityDetails === 'object'
-        ? {
-            document_type: String(item.identityDetails.document_type || ''),
-            identity_number: String(item.identityDetails.identity_number || ''),
-            issuing_country: String(item.identityDetails.issuing_country || ''),
-            nationality: String(item.identityDetails.nationality || ''),
-            date_of_birth: String(item.identityDetails.date_of_birth || ''),
-            issued_at: String(item.identityDetails.issued_at || ''),
-            expires_at: String(item.identityDetails.expires_at || ''),
-          }
-        : null,
+      cardDetails:
+        item.cardDetails && typeof item.cardDetails === 'object'
+          ? {
+              cardholder_name: String(item.cardDetails.cardholder_name || ''),
+              card_number: String(item.cardDetails.card_number || ''),
+              brand: String(item.cardDetails.brand || ''),
+              expiry_month: String(item.cardDetails.expiry_month || ''),
+              expiry_year: String(item.cardDetails.expiry_year || ''),
+              cvv: String(item.cardDetails.cvv || ''),
+              pin: String(item.cardDetails.pin || ''),
+              billing_zip: String(item.cardDetails.billing_zip || ''),
+              billing_address: String(item.cardDetails.billing_address || ''),
+            }
+          : null,
+      identityDetails:
+        item.identityDetails && typeof item.identityDetails === 'object'
+          ? {
+              document_type: String(item.identityDetails.document_type || ''),
+              identity_number: String(item.identityDetails.identity_number || ''),
+              issuing_country: String(item.identityDetails.issuing_country || ''),
+              nationality: String(item.identityDetails.nationality || ''),
+              date_of_birth: String(item.identityDetails.date_of_birth || ''),
+              issued_at: String(item.identityDetails.issued_at || ''),
+              expires_at: String(item.identityDetails.expires_at || ''),
+            }
+          : null,
     }))
     .filter((item) => item.pass && item.website);
 }
@@ -221,11 +236,13 @@ function sanitizePasskeyArray(data) {
       title: String(item.title || ''),
       username: String(item.username || ''),
       website: String(item.website || ''),
-      passkeyMetadata: item.passkeyMetadata ? {
-        credential_id: String(item.passkeyMetadata.credential_id || ''),
-        rp_id: String(item.passkeyMetadata.rp_id || ''),
-        mode: String(item.passkeyMetadata.mode || ''),
-      } : null,
+      passkeyMetadata: item.passkeyMetadata
+        ? {
+            credential_id: String(item.passkeyMetadata.credential_id || ''),
+            rp_id: String(item.passkeyMetadata.rp_id || ''),
+            mode: String(item.passkeyMetadata.mode || ''),
+          }
+        : null,
     }))
     .filter((item) => item.passkeyMetadata && item.website);
 }
@@ -242,7 +259,8 @@ function sanitizeAutosaveCredential(value) {
     username: String(candidate.username || '').slice(0, 256),
     pass: pass.slice(0, 1024),
     website: website.slice(0, 512),
-    submittedAt: typeof candidate.submittedAt === 'string' ? candidate.submittedAt : new Date().toISOString(),
+    submittedAt:
+      typeof candidate.submittedAt === 'string' ? candidate.submittedAt : new Date().toISOString(),
     source: typeof candidate.source === 'string' ? candidate.source : 'browser_form',
   };
 }
@@ -259,7 +277,9 @@ function sanitizeVaultEntryForBridge(value) {
     pass: String(item.pass || '').slice(0, 1024),
     website: String(item.website || '').slice(0, 512),
     category: String(item.category || 'General').slice(0, 64),
-    tags: Array.isArray(item.tags) ? item.tags.slice(0, 32).map((tag) => String(tag || '').slice(0, 64)) : [],
+    tags: Array.isArray(item.tags)
+      ? item.tags.slice(0, 32).map((tag) => String(tag || '').slice(0, 64))
+      : [],
     updated_at: typeof item.updated_at === 'string' ? item.updated_at : '',
     deletedAt: typeof item.deletedAt === 'string' ? item.deletedAt : undefined,
   };
@@ -275,7 +295,9 @@ function sanitizeVaultEntryInput(value) {
     pass: pass.slice(0, 1024),
     website: String(candidate.website || '').slice(0, 512),
     category: String(candidate.category || 'General').slice(0, 64),
-    tags: Array.isArray(candidate.tags) ? candidate.tags.slice(0, 32).map((tag) => String(tag || '').slice(0, 64)) : [],
+    tags: Array.isArray(candidate.tags)
+      ? candidate.tags.slice(0, 32).map((tag) => String(tag || '').slice(0, 64))
+      : [],
   };
 }
 
@@ -363,7 +385,7 @@ function requestPasskeyAuthFromRenderer(options) {
       reject: (err) => {
         clearTimeout(timeout);
         reject(err);
-      }
+      },
     });
 
     try {
@@ -457,24 +479,22 @@ function requestVaultCliOperationFromRenderer(operation, payload = {}) {
           const list = Array.isArray(result.data) ? result.data : [];
           resolve({
             ok,
-            error: ok ? undefined : (error || 'LIST_FAILED'),
-            data: list
-              .map((entry) => sanitizeVaultEntryForBridge(entry))
-              .filter(Boolean),
+            error: ok ? undefined : error || 'LIST_FAILED',
+            data: list.map((entry) => sanitizeVaultEntryForBridge(entry)).filter(Boolean),
           });
           return;
         }
         if (normalizedOperation === 'get') {
           resolve({
             ok,
-            error: ok ? undefined : (error || 'GET_FAILED'),
+            error: ok ? undefined : error || 'GET_FAILED',
             data: sanitizeVaultEntryForBridge(result.data),
           });
           return;
         }
         resolve({
           ok,
-          error: ok ? undefined : (error || 'CLI_OPERATION_FAILED'),
+          error: ok ? undefined : error || 'CLI_OPERATION_FAILED',
           data: result.data,
         });
       },
@@ -634,7 +654,9 @@ function getStartupDiagnostics() {
         label: 'loopback sync',
         status: LOOPBACK_SYNC_ENABLED ? (isLoopbackSyncReady() ? 'warn' : 'warn') : 'ok',
         detail: LOOPBACK_SYNC_ENABLED
-          ? (isLoopbackSyncReady() ? 'ENABLED_EXPLICITLY' : 'ENABLED_BUT_NOT_READY')
+          ? isLoopbackSyncReady()
+            ? 'ENABLED_EXPLICITLY'
+            : 'ENABLED_BUT_NOT_READY'
           : 'DISABLED_BY_DEFAULT',
       },
       {
@@ -653,7 +675,8 @@ function getStartupDiagnosticText(language) {
   if (lang === 'tr') {
     return {
       title: 'Aegis Vault kurtarma ekrani',
-      subtitle: 'Uygulama acilisi sirasinda bir sorun algilandi. Asagidaki tani ozeti ile yeniden yuklemeyi deneyebilirsiniz.',
+      subtitle:
+        'Uygulama acilisi sirasinda bir sorun algilandi. Asagidaki tani ozeti ile yeniden yuklemeyi deneyebilirsiniz.',
       summaryTitle: 'Tani ozeti',
       eventsTitle: 'Son olaylar',
       reload: 'Uygulamayi yeniden yukle',
@@ -668,7 +691,8 @@ function getStartupDiagnosticText(language) {
 
   return {
     title: 'Aegis Vault recovery screen',
-    subtitle: 'A startup problem was detected. Review the diagnostics below and try reloading the app.',
+    subtitle:
+      'A startup problem was detected. Review the diagnostics below and try reloading the app.',
     summaryTitle: 'Diagnostic summary',
     eventsTitle: 'Recent events',
     reload: 'Reload app',
@@ -687,7 +711,12 @@ function showStartupDiagnosticPage(reason, detail) {
   }
 
   startupDiagnosticMode = true;
-  recordStartupDiagnosticEvent('error', reason || 'STARTUP_DIAGNOSTIC', reason || 'Startup diagnostic page opened', detail);
+  recordStartupDiagnosticEvent(
+    'error',
+    reason || 'STARTUP_DIAGNOSTIC',
+    reason || 'Startup diagnostic page opened',
+    detail
+  );
 
   const diagnostics = getStartupDiagnostics();
   const text = getStartupDiagnosticText(desktopUiLanguage);
@@ -701,7 +730,10 @@ function showStartupDiagnosticPage(reason, detail) {
 
   const eventItems = diagnostics.recentEvents.length
     ? diagnostics.recentEvents
-        .map((event) => `<li><strong>${escapeHtml(event.code)}</strong> - ${escapeHtml(event.message)}<br/><small>${escapeHtml(event.at)}${event.detail ? ` - ${escapeHtml(event.detail)}` : ''}</small></li>`)
+        .map(
+          (event) =>
+            `<li><strong>${escapeHtml(event.code)}</strong> - ${escapeHtml(event.message)}<br/><small>${escapeHtml(event.at)}${event.detail ? ` - ${escapeHtml(event.detail)}` : ''}</small></li>`
+        )
         .join('')
     : `<li>${escapeHtml(text.noEvents)}</li>`;
 
@@ -805,7 +837,8 @@ function loadDesktopBridgeIdentity() {
       const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
       const publicJwk = normalizeDesktopBridgePublicJwk(parsed?.publicJwk);
       const privateJwk = normalizeDesktopBridgePrivateJwk(parsed?.privateJwk);
-      const keyId = typeof parsed?.keyId === 'string' ? parsed.keyId : computeDesktopBridgeKeyId(publicJwk);
+      const keyId =
+        typeof parsed?.keyId === 'string' ? parsed.keyId : computeDesktopBridgeKeyId(publicJwk);
       if (publicJwk && privateJwk && keyId) {
         desktopBridgeIdentity = { publicJwk, privateJwk, keyId };
         return desktopBridgeIdentity;
@@ -826,7 +859,7 @@ function loadDesktopBridgeIdentity() {
     fs.writeFileSync(
       getDesktopBridgeIdentityPath(),
       JSON.stringify(desktopBridgeIdentity, null, 2),
-      'utf8',
+      'utf8'
     );
   } catch {}
   return desktopBridgeIdentity;
@@ -848,16 +881,24 @@ function loadPersistentPairings() {
       if (!isAllowlistedExtensionId(extensionId)) continue;
       const secret = typeof record?.secret === 'string' ? record.secret.trim() : '';
       if (secret.length < 32) continue;
-      const pairedAt = typeof record?.pairedAt === 'string' ? record.pairedAt : new Date().toISOString();
+      const pairedAt =
+        typeof record?.pairedAt === 'string' ? record.pairedAt : new Date().toISOString();
       const browserName = typeof record?.browserName === 'string' ? record.browserName : '';
-      const deviceFingerprint = typeof record?.deviceFingerprint === 'string' ? record.deviceFingerprint : '';
+      const deviceFingerprint =
+        typeof record?.deviceFingerprint === 'string' ? record.deviceFingerprint : '';
       const installId = typeof record?.installId === 'string' ? record.installId : '';
       const clientLabel = typeof record?.clientLabel === 'string' ? record.clientLabel : '';
       const clientKeyId = typeof record?.clientKeyId === 'string' ? record.clientKeyId : '';
       const clientPublicJwk = normalizeClientPublicJwk(record?.clientPublicJwk);
-      const pairingMode = typeof record?.pairingMode === 'string' ? record.pairingMode : (clientPublicJwk ? 'signed-p256-v1' : 'legacy-secret-v1');
+      const pairingMode =
+        typeof record?.pairingMode === 'string'
+          ? record.pairingMode
+          : clientPublicJwk
+            ? 'signed-p256-v1'
+            : 'legacy-secret-v1';
       const lastUsedAt = typeof record?.lastUsedAt === 'string' ? record.lastUsedAt : '';
-      const lastApprovedAt = typeof record?.lastApprovedAt === 'string' ? record.lastApprovedAt : pairedAt;
+      const lastApprovedAt =
+        typeof record?.lastApprovedAt === 'string' ? record.lastApprovedAt : pairedAt;
       const currentRiskFlags = Array.isArray(record?.currentRiskFlags)
         ? record.currentRiskFlags.filter((item) => typeof item === 'string').slice(0, 6)
         : [];
@@ -907,7 +948,8 @@ function savePersistentPairings() {
       clientLabel: record.clientLabel || '',
       clientKeyId: record.clientKeyId || '',
       clientPublicJwk: normalizeClientPublicJwk(record.clientPublicJwk),
-      pairingMode: record.pairingMode || (record.clientPublicJwk ? 'signed-p256-v1' : 'legacy-secret-v1'),
+      pairingMode:
+        record.pairingMode || (record.clientPublicJwk ? 'signed-p256-v1' : 'legacy-secret-v1'),
       lastUsedAt: record.lastUsedAt || '',
       lastApprovedAt: record.lastApprovedAt || '',
       currentRiskFlags: Array.isArray(record.currentRiskFlags) ? record.currentRiskFlags : [],
@@ -924,7 +966,7 @@ function savePersistentPairings() {
 
 function getPairingSecretForExtension(extensionId) {
   const persistent = persistentPairings.get(extensionId);
-  
+
   // Loopback-fallback eşleşmesi varsa: eklenti env secret'ı kullandığından,
   // masaüstü de aynı env secret'ı döndürmeli (HMAC proof uyuşması için).
   // signed-p256-v1 modunda ise oluşturulan özel secret kullanılır.
@@ -932,9 +974,10 @@ function getPairingSecretForExtension(extensionId) {
     const mode = persistent.pairingMode || '';
     if (mode === 'loopback-fallback-v1') {
       // Env secret'ı tercih et (eklenti de bunu kullanıyor)
-      const envSecret = (process.env.AEGIS_EXTENSION_PAIRING_SECRET || '').trim()
-        || (process.env.AEGIS_NATIVE_HOST_PAIRING_SECRET || '').trim()
-        || PAIRING_SECRET;
+      const envSecret =
+        (process.env.AEGIS_EXTENSION_PAIRING_SECRET || '').trim() ||
+        (process.env.AEGIS_NATIVE_HOST_PAIRING_SECRET || '').trim() ||
+        PAIRING_SECRET;
       if (envSecret.length >= 32) {
         return envSecret;
       }
@@ -1005,14 +1048,18 @@ function rememberNativeBridgeNonce(extensionId, nonce, now = Date.now()) {
 }
 
 function normalizeClientInfo(clientInfo, extensionId = '') {
-  const browserName = typeof clientInfo?.browserName === 'string' ? clientInfo.browserName.trim() : '';
-  const browserVersion = typeof clientInfo?.browserVersion === 'string' ? clientInfo.browserVersion.trim() : '';
+  const browserName =
+    typeof clientInfo?.browserName === 'string' ? clientInfo.browserName.trim() : '';
+  const browserVersion =
+    typeof clientInfo?.browserVersion === 'string' ? clientInfo.browserVersion.trim() : '';
   const platform = typeof clientInfo?.platform === 'string' ? clientInfo.platform.trim() : '';
   const locale = typeof clientInfo?.locale === 'string' ? clientInfo.locale.trim() : '';
   const installId = typeof clientInfo?.installId === 'string' ? clientInfo.installId.trim() : '';
-  const extensionVersion = typeof clientInfo?.extensionVersion === 'string' ? clientInfo.extensionVersion.trim() : '';
+  const extensionVersion =
+    typeof clientInfo?.extensionVersion === 'string' ? clientInfo.extensionVersion.trim() : '';
   const userAgent = typeof clientInfo?.userAgent === 'string' ? clientInfo.userAgent.trim() : '';
-  const clientKeyId = typeof clientInfo?.clientKeyId === 'string' ? clientInfo.clientKeyId.trim() : '';
+  const clientKeyId =
+    typeof clientInfo?.clientKeyId === 'string' ? clientInfo.clientKeyId.trim() : '';
   const normalizedPayload = JSON.stringify({
     extensionId,
     browserName,
@@ -1023,7 +1070,11 @@ function normalizeClientInfo(clientInfo, extensionId = '') {
     extensionVersion,
     userAgent,
   });
-  const deviceFingerprint = crypto.createHash('sha256').update(normalizedPayload).digest('hex').slice(0, 16);
+  const deviceFingerprint = crypto
+    .createHash('sha256')
+    .update(normalizedPayload)
+    .digest('hex')
+    .slice(0, 16);
   const clientLabelParts = [browserName, browserVersion, platform].filter(Boolean);
   return {
     browserName,
@@ -1042,16 +1093,32 @@ function normalizeClientInfo(clientInfo, extensionId = '') {
 function buildPairingRiskFlags(existingRecord, clientInfo) {
   const flags = [];
   if (!existingRecord) return flags;
-  if (existingRecord.deviceFingerprint && clientInfo.deviceFingerprint && existingRecord.deviceFingerprint !== clientInfo.deviceFingerprint) {
+  if (
+    existingRecord.deviceFingerprint &&
+    clientInfo.deviceFingerprint &&
+    existingRecord.deviceFingerprint !== clientInfo.deviceFingerprint
+  ) {
     flags.push('fingerprint_changed');
   }
-  if (existingRecord.installId && clientInfo.installId && existingRecord.installId !== clientInfo.installId) {
+  if (
+    existingRecord.installId &&
+    clientInfo.installId &&
+    existingRecord.installId !== clientInfo.installId
+  ) {
     flags.push('install_id_changed');
   }
-  if (existingRecord.browserName && clientInfo.browserName && existingRecord.browserName !== clientInfo.browserName) {
+  if (
+    existingRecord.browserName &&
+    clientInfo.browserName &&
+    existingRecord.browserName !== clientInfo.browserName
+  ) {
     flags.push('browser_changed');
   }
-  if (existingRecord.clientKeyId && clientInfo.clientKeyId && existingRecord.clientKeyId !== clientInfo.clientKeyId) {
+  if (
+    existingRecord.clientKeyId &&
+    clientInfo.clientKeyId &&
+    existingRecord.clientKeyId !== clientInfo.clientKeyId
+  ) {
     flags.push('client_key_changed');
   }
   const lastApprovalTs = Date.parse(existingRecord.lastApprovedAt || existingRecord.pairedAt || '');
@@ -1069,7 +1136,8 @@ function appendPairingHistory(record, event) {
 
 function getRiskLevel(riskFlags) {
   if (!Array.isArray(riskFlags) || riskFlags.length === 0) return 'low';
-  if (riskFlags.includes('fingerprint_changed') || riskFlags.includes('install_id_changed')) return 'high';
+  if (riskFlags.includes('fingerprint_changed') || riskFlags.includes('install_id_changed'))
+    return 'high';
   return 'medium';
 }
 
@@ -1092,7 +1160,12 @@ function touchPairingUsage(extensionId, clientInfo, eventType) {
   savePersistentPairings();
 }
 
-async function approvePairingRequest(extensionId, browserName = '', clientInfo = null, riskFlags = []) {
+async function approvePairingRequest(
+  extensionId,
+  browserName = '',
+  clientInfo = null,
+  riskFlags = []
+) {
   const existing = persistentPairings.get(extensionId);
   const detailLines = [
     `Extension ID: ${extensionId}`,
@@ -1108,7 +1181,8 @@ async function approvePairingRequest(extensionId, browserName = '', clientInfo =
   if (Array.isArray(riskFlags) && riskFlags.length > 0) {
     detailLines.push('Risk warnings:');
     for (const flag of riskFlags) {
-      if (flag === 'fingerprint_changed') detailLines.push('- Device fingerprint changed since last pairing');
+      if (flag === 'fingerprint_changed')
+        detailLines.push('- Device fingerprint changed since last pairing');
       if (flag === 'install_id_changed') detailLines.push('- Installation identifier changed');
       if (flag === 'browser_changed') detailLines.push('- Browser identity changed');
       if (flag === 'client_key_changed') detailLines.push('- Client signing key changed');
@@ -1175,14 +1249,18 @@ async function handleNativeBridgeRequest(message) {
       browserName: existing?.browserName || null,
       clientLabel: existing?.clientLabel || null,
       clientKeyId: existing?.clientKeyId || null,
-      pairingMode: existing?.pairingMode || (existing?.clientPublicJwk ? 'signed-p256-v1' : (existing ? 'legacy-secret-v1' : 'none')),
+      pairingMode:
+        existing?.pairingMode ||
+        (existing?.clientPublicJwk ? 'signed-p256-v1' : existing ? 'legacy-secret-v1' : 'none'),
       deviceFingerprint: existing?.deviceFingerprint || null,
       lastUsedAt: existing?.lastUsedAt || null,
       lastApprovedAt: existing?.lastApprovedAt || null,
       riskFlags: Array.isArray(existing?.currentRiskFlags) ? existing.currentRiskFlags : [],
       riskLevel: getRiskLevel(existing?.currentRiskFlags),
-      pairingHistory: Array.isArray(existing?.pairingHistory) ? existing.pairingHistory.slice(-5).reverse() : [],
-      secretSource: existing ? 'persistent' : (PAIRING_SECRET.length >= 32 ? 'env' : 'none'),
+      pairingHistory: Array.isArray(existing?.pairingHistory)
+        ? existing.pairingHistory.slice(-5).reverse()
+        : [],
+      secretSource: existing ? 'persistent' : PAIRING_SECRET.length >= 32 ? 'env' : 'none',
     };
   }
 
@@ -1197,9 +1275,12 @@ async function handleNativeBridgeRequest(message) {
       return { ok: false, error: pairingProofResult.error };
     }
 
-    const browserName = clientInfo.browserName || (typeof message?.browserName === 'string' ? message.browserName.trim() : '');
+    const browserName =
+      clientInfo.browserName ||
+      (typeof message?.browserName === 'string' ? message.browserName.trim() : '');
     const existing = persistentPairings.get(extensionId);
-    clientInfo.clientKeyId = pairingProofResult.clientKeyId || computeClientKeyId(pairingProofResult.clientPublicJwk);
+    clientInfo.clientKeyId =
+      pairingProofResult.clientKeyId || computeClientKeyId(pairingProofResult.clientPublicJwk);
     const riskFlags = buildPairingRiskFlags(existing, clientInfo);
     const approved = await approvePairingRequest(extensionId, browserName, clientInfo, riskFlags);
     if (!approved) {
@@ -1221,7 +1302,9 @@ async function handleNativeBridgeRequest(message) {
       lastUsedAt: existing?.lastUsedAt || '',
       lastApprovedAt: pairedAt,
       currentRiskFlags: riskFlags,
-      pairingHistory: Array.isArray(existing?.pairingHistory) ? existing.pairingHistory.slice(-PAIRING_HISTORY_LIMIT + 1) : [],
+      pairingHistory: Array.isArray(existing?.pairingHistory)
+        ? existing.pairingHistory.slice(-PAIRING_HISTORY_LIMIT + 1)
+        : [],
     };
     appendPairingHistory(nextRecord, {
       at: pairedAt,
@@ -1258,7 +1341,9 @@ async function handleNativeBridgeRequest(message) {
 
   const proofResult = verifyNativeBridgeProof(message);
   if (!proofResult.ok) {
-    console.warn(`[Aegis Native Bridge] ❌ Proof verification failed for ${type}: ${proofResult.error}`);
+    console.warn(
+      `[Aegis Native Bridge] ❌ Proof verification failed for ${type}: ${proofResult.error}`
+    );
     return { ok: false, error: proofResult.error };
   }
 
@@ -1273,7 +1358,9 @@ async function handleNativeBridgeRequest(message) {
   }
 
   if (type === 'GET_DOMAIN_CREDS') {
-    const requestDomain = normalizeDomain(typeof message?.domain === 'string' ? message.domain : '');
+    const requestDomain = normalizeDomain(
+      typeof message?.domain === 'string' ? message.domain : ''
+    );
     if (!requestDomain) {
       return { ok: false, error: 'INVALID_DOMAIN', data: [] };
     }
@@ -1288,7 +1375,9 @@ async function handleNativeBridgeRequest(message) {
   }
 
   if (type === 'GET_DOMAIN_PASSKEYS') {
-    const requestDomain = normalizeDomain(typeof message?.domain === 'string' ? message.domain : '');
+    const requestDomain = normalizeDomain(
+      typeof message?.domain === 'string' ? message.domain : ''
+    );
     if (!requestDomain) {
       return { ok: false, error: 'INVALID_DOMAIN', data: [] };
     }
@@ -1303,7 +1392,9 @@ async function handleNativeBridgeRequest(message) {
   }
 
   if (type === 'AUTOSAVE_CREDENTIAL') {
-    const requestDomain = normalizeDomain(typeof message?.domain === 'string' ? message.domain : '');
+    const requestDomain = normalizeDomain(
+      typeof message?.domain === 'string' ? message.domain : ''
+    );
     const credential = sanitizeAutosaveCredential(message?.credential);
     if (!requestDomain || !credential) {
       return { ok: false, error: 'INVALID_AUTOSAVE_PAYLOAD' };
@@ -1324,7 +1415,7 @@ async function handleNativeBridgeRequest(message) {
       saved: Boolean(result.saved),
       action: typeof result.action === 'string' ? result.action : 'none',
       entryId: Number.isFinite(Number(result.entryId)) ? Number(result.entryId) : undefined,
-      error: result.saved ? undefined : (result.error || 'AUTOSAVE_REJECTED'),
+      error: result.saved ? undefined : result.error || 'AUTOSAVE_REJECTED',
     };
   }
 
@@ -1503,10 +1594,7 @@ function registerNativeHostWindows() {
 
     fs.mkdirSync(nativeHostDir, { recursive: true });
 
-    const combinedAllowlist = [...new Set([
-      ...ALLOWLIST_EXTENSION_IDS,
-      'aegisvault@example.com',
-    ])];
+    const combinedAllowlist = [...new Set([...ALLOWLIST_EXTENSION_IDS, 'aegisvault@example.com'])];
     const allowedExtensionIdsJson = JSON.stringify(combinedAllowlist);
     const allowedExtensionIdsCsv = combinedAllowlist.join(',');
 
@@ -1540,9 +1628,7 @@ function registerNativeHostWindows() {
       description: 'Aegis Vault native messaging bridge',
       path: launcherPath,
       type: 'stdio',
-      allowed_extensions: [
-        'aegisvault@example.com',
-      ],
+      allowed_extensions: ['aegisvault@example.com'],
     };
     fs.writeFileSync(firefoxManifestPath, JSON.stringify(firefoxManifest, null, 2), 'utf8');
 
@@ -1576,13 +1662,20 @@ function registerNativeHostWindows() {
     try {
       execSync(`powershell.exe -NoProfile -Command "${psCommand.replace(/"/g, '\\"')}"`, {
         timeout: 10000,
-        stdio: 'pipe'
+        stdio: 'pipe',
       });
       console.log('[Aegis Auto-Register] Native host registry entries updated');
-      fs.writeFileSync(regCheckPath, JSON.stringify({ version: currentVersion, registeredAt: new Date().toISOString() }), 'utf8');
+      fs.writeFileSync(
+        regCheckPath,
+        JSON.stringify({ version: currentVersion, registeredAt: new Date().toISOString() }),
+        'utf8'
+      );
       console.log(`[Aegis Auto-Register] Native host launcher: ${launcherPath}`);
     } catch (execErr) {
-      console.warn('[Aegis Auto-Register] PowerShell execution warning:', execErr.message.substring(0, 100));
+      console.warn(
+        '[Aegis Auto-Register] PowerShell execution warning:',
+        execErr.message.substring(0, 100)
+      );
     }
   } catch (err) {
     console.warn('[Aegis Auto-Register] Native host registration error:', err.message);
@@ -1595,9 +1688,9 @@ function registerNativeHostWindows() {
  */
 function ensureNativeHostPairingSecret() {
   const secretPath = path.join(app.getPath('userData'), 'native-host-pairing-secret.json');
-  
+
   console.log(`[Aegis Pairing] Secret file path: ${secretPath}`);
-  
+
   try {
     // Eğer secret zaten mevcutsa, kullan
     if (fs.existsSync(secretPath)) {
@@ -1608,26 +1701,26 @@ function ensureNativeHostPairingSecret() {
         return;
       }
     }
-    
+
     // Yeni secret oluştur: 64 karakter hex string (256-bit entropy)
     const secret = crypto.randomBytes(32).toString('hex');
     console.log(`[Aegis Pairing] Generated new secret: ${secret.substring(0, 16)}...`);
-    
+
     const secretData = {
       secret,
       createdAt: new Date().toISOString(),
-      version: '1.0'
+      version: '1.0',
     };
-    
+
     fs.writeFileSync(secretPath, JSON.stringify(secretData, null, 2), 'utf8');
     fs.chmodSync(secretPath, 0o600); // Sadece owner okuyabilir
-    
+
     process.env.AEGIS_NATIVE_HOST_PAIRING_SECRET = secret;
     console.log('[Aegis Pairing] ✅ New pairing secret generated and stored');
   } catch (err) {
     console.error('[Aegis Pairing] ❌ Failed to initialize pairing secret:', err.message);
     console.error('[Aegis Pairing] Error details:', err);
-    
+
     // Fallback: Bellekte geçici secret oluştur
     const tempSecret = crypto.randomBytes(32).toString('hex');
     process.env.AEGIS_NATIVE_HOST_PAIRING_SECRET = tempSecret;
@@ -1668,7 +1761,7 @@ function startNativeBridgeServer() {
           response.desktopAuth = signDesktopBridgeResponse(
             response,
             parsedMessage,
-            parsedMessage?.type === 'INIT_PAIRING' || parsedMessage?.type === 'GET_PAIRING_STATUS',
+            parsedMessage?.type === 'INIT_PAIRING' || parsedMessage?.type === 'GET_PAIRING_STATUS'
           );
         } catch {}
 
@@ -1726,26 +1819,39 @@ function buildPairingPayload(method, path, ts, extensionId) {
 }
 
 function buildNativeBridgePayload(message) {
-  const clientInfo = normalizeClientInfo(message?.clientInfo, typeof message?.extensionId === 'string' ? message.extensionId.trim() : '');
+  const clientInfo = normalizeClientInfo(
+    message?.clientInfo,
+    typeof message?.extensionId === 'string' ? message.extensionId.trim() : ''
+  );
   const clientPublicJwk = normalizeClientPublicJwk(message?.clientPublicJwk);
-  const credential = message?.credential && typeof message.credential === 'object'
-    ? {
-        title: typeof message.credential.title === 'string' ? message.credential.title : '',
-        username: typeof message.credential.username === 'string' ? message.credential.username : '',
-        pass: typeof message.credential.pass === 'string' ? message.credential.pass : '',
-        website: typeof message.credential.website === 'string' ? message.credential.website : '',
-        submittedAt: typeof message.credential.submittedAt === 'string' ? message.credential.submittedAt : '',
-        source: typeof message.credential.source === 'string' ? message.credential.source : 'browser_form',
-      }
-    : null;
-  const entry = message?.entry && typeof message.entry === 'object'
-    ? sanitizeVaultEntryInput(message.entry)
-    : null;
+  const credential =
+    message?.credential && typeof message.credential === 'object'
+      ? {
+          title: typeof message.credential.title === 'string' ? message.credential.title : '',
+          username:
+            typeof message.credential.username === 'string' ? message.credential.username : '',
+          pass: typeof message.credential.pass === 'string' ? message.credential.pass : '',
+          website: typeof message.credential.website === 'string' ? message.credential.website : '',
+          submittedAt:
+            typeof message.credential.submittedAt === 'string'
+              ? message.credential.submittedAt
+              : '',
+          source:
+            typeof message.credential.source === 'string'
+              ? message.credential.source
+              : 'browser_form',
+        }
+      : null;
+  const entry =
+    message?.entry && typeof message.entry === 'object'
+      ? sanitizeVaultEntryInput(message.entry)
+      : null;
   const entryId = Number.isFinite(Number(message?.entryId)) ? Number(message.entryId) : null;
   const listQuery = typeof message?.query === 'string' ? message.query.slice(0, 256) : '';
   const listCategory = typeof message?.category === 'string' ? message.category.slice(0, 64) : '';
   const listScope = typeof message?.scope === 'string' ? message.scope.slice(0, 16) : '';
-  const listSearchScope = typeof message?.searchScope === 'string' ? message.searchScope.slice(0, 16) : '';
+  const listSearchScope =
+    typeof message?.searchScope === 'string' ? message.searchScope.slice(0, 16) : '';
   const listLimit = Number.isFinite(Number(message?.limit)) ? Number(message.limit) : 0;
   return JSON.stringify({
     type: typeof message?.type === 'string' ? message.type : '',
@@ -1753,7 +1859,8 @@ function buildNativeBridgePayload(message) {
     domain: normalizeDomain(typeof message?.domain === 'string' ? message.domain : ''),
     requestNonce: typeof message?.requestNonce === 'string' ? message.requestNonce.trim() : '',
     clientKeyId: typeof message?.clientKeyId === 'string' ? message.clientKeyId.trim() : '',
-    clientTimestamp: typeof message?.clientTimestamp === 'string' ? message.clientTimestamp.trim() : '',
+    clientTimestamp:
+      typeof message?.clientTimestamp === 'string' ? message.clientTimestamp.trim() : '',
     clientNonce: typeof message?.clientNonce === 'string' ? message.clientNonce.trim() : '',
     clientInfo: {
       browserName: clientInfo.browserName,
@@ -1779,9 +1886,12 @@ function buildNativeBridgePayload(message) {
 function buildDesktopBridgeResponsePayload(response, requestMessage, timestamp) {
   const payload = JSON.stringify({
     type: typeof requestMessage?.type === 'string' ? requestMessage.type : '',
-    extensionId: typeof requestMessage?.extensionId === 'string' ? requestMessage.extensionId.trim() : '',
-    requestNonce: typeof requestMessage?.requestNonce === 'string' ? requestMessage.requestNonce.trim() : '',
-    clientNonce: typeof requestMessage?.clientNonce === 'string' ? requestMessage.clientNonce.trim() : '',
+    extensionId:
+      typeof requestMessage?.extensionId === 'string' ? requestMessage.extensionId.trim() : '',
+    requestNonce:
+      typeof requestMessage?.requestNonce === 'string' ? requestMessage.requestNonce.trim() : '',
+    clientNonce:
+      typeof requestMessage?.clientNonce === 'string' ? requestMessage.clientNonce.trim() : '',
     timestamp,
     response,
   });
@@ -1803,8 +1913,10 @@ function signDesktopBridgeResponse(response, requestMessage, includePublicJwk = 
   return {
     keyId: identity.keyId,
     timestamp,
-    requestNonce: typeof requestMessage?.requestNonce === 'string' ? requestMessage.requestNonce.trim() : '',
-    clientNonce: typeof requestMessage?.clientNonce === 'string' ? requestMessage.clientNonce.trim() : '',
+    requestNonce:
+      typeof requestMessage?.requestNonce === 'string' ? requestMessage.requestNonce.trim() : '',
+    clientNonce:
+      typeof requestMessage?.clientNonce === 'string' ? requestMessage.clientNonce.trim() : '',
     signature,
     ...(includePublicJwk ? { publicJwk: identity.publicJwk } : {}),
   };
@@ -1818,9 +1930,11 @@ function verifyNativeBridgeProof(message) {
 
   const type = typeof message?.type === 'string' ? message.type : '';
   const existing = persistentPairings.get(extensionId);
-  const clientTimestamp = typeof message?.clientTimestamp === 'string' ? message.clientTimestamp.trim() : '';
+  const clientTimestamp =
+    typeof message?.clientTimestamp === 'string' ? message.clientTimestamp.trim() : '';
   const clientNonce = typeof message?.clientNonce === 'string' ? message.clientNonce.trim() : '';
-  const clientSignature = typeof message?.clientSignature === 'string' ? message.clientSignature.trim() : '';
+  const clientSignature =
+    typeof message?.clientSignature === 'string' ? message.clientSignature.trim() : '';
   const clientKeyId = typeof message?.clientKeyId === 'string' ? message.clientKeyId.trim() : '';
   const providedClientPublicJwk = normalizeClientPublicJwk(message?.clientPublicJwk);
 
@@ -1846,7 +1960,11 @@ function verifyNativeBridgeProof(message) {
       return { ok: false, error: 'INVALID_CLIENT_PUBLIC_KEY' };
     }
     const derivedKeyId = computeClientKeyId(normalizedPublicJwk);
-    if (!clientKeyId || (expectedKeyId && clientKeyId !== expectedKeyId) || clientKeyId !== derivedKeyId) {
+    if (
+      !clientKeyId ||
+      (expectedKeyId && clientKeyId !== expectedKeyId) ||
+      clientKeyId !== derivedKeyId
+    ) {
       return { ok: false, error: 'CLIENT_KEY_ID_MISMATCH' };
     }
     try {
@@ -1859,7 +1977,12 @@ function verifyNativeBridgeProof(message) {
       if (!ok) {
         return { ok: false, error: 'INVALID_NATIVE_BRIDGE_SIGNATURE' };
       }
-      return { ok: true, mode: 'signed-p256-v1', clientKeyId: derivedKeyId, clientPublicJwk: normalizedPublicJwk };
+      return {
+        ok: true,
+        mode: 'signed-p256-v1',
+        clientKeyId: derivedKeyId,
+        clientPublicJwk: normalizedPublicJwk,
+      };
     } catch {
       return { ok: false, error: 'INVALID_NATIVE_BRIDGE_SIGNATURE' };
     }
@@ -1936,7 +2059,10 @@ function verifyPairingProof(req) {
 
   const path = parseRequestPath(req);
   const payload = buildPairingPayload(req.method, path, ts, extensionId);
-  const expected = crypto.createHmac('sha256', Buffer.from(pairingSecret, 'utf8')).update(payload).digest('hex');
+  const expected = crypto
+    .createHmac('sha256', Buffer.from(pairingSecret, 'utf8'))
+    .update(payload)
+    .digest('hex');
 
   if (!safeCompareHex(proof, expected)) {
     return { ok: false, code: 'INVALID_PAIRING_PROOF' };
@@ -2019,321 +2145,342 @@ const syncServer = http.createServer(async (req, res) => {
     const requestPath = parseRequestPath(req);
     const aegisClientHdr = req.headers['x-aegis-client'] || '';
     const isExtensionRequest = aegisClientHdr === 'extension';
+    const extensionIdHeader = req.headers['x-aegis-extension-id'] || '';
 
-
-  // ─────────────────────────────────────────────────────────────
-  // 🔒 CORS & Private Network Access
-  // Chrome Extension Service Worker'dan gelen fetch isteklerinde
-  // 'origin' header'ı tarayıcı tarafından EKLENMEYEBİLİR.
-  // Bu nedenle:
-  //  - origin varsa → allowlist kontrolü yap
-  //  - origin yoksa + X-Aegis-Client: extension varsa → loopback güvenli, kabul et
-  // ─────────────────────────────────────────────────────────────
-  if (isExtensionRequest && !origin) {
-    // Extension SW → origin yok, loopback + header kombinasyonu yeterli
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  } else if (origin && isOriginAllowed(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else if (!origin && !isExtensionRequest) {
-    // Origin yok, extension da değil → reddet
-    res.setHeader('Access-Control-Allow-Origin', 'null');
-  } else {
-    // Bilinmeyen origin → reddet
-    res.setHeader('Access-Control-Allow-Origin', 'null');
-  }
-
-  res.setHeader('Access-Control-Allow-Private-Network', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Aegis-Token, X-Aegis-Client, X-Aegis-Extension-Id, X-Aegis-Pairing-Proof, X-Aegis-Pairing-Ts, X-Aegis-Request-Domain, X-Aegis-Challenge-Nonce, X-Aegis-Challenge-Ts, X-Aegis-Challenge-Signature');
-  res.setHeader('Access-Control-Max-Age', '86400');
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate'); // ⚡ KESİNLİKLE CACHE YAKALAMA
-
-  // Private Network Access Preflight: tarayıcı önce OPTIONS atar
-  if (req.method === 'OPTIONS') {
-    const pnaHeader = req.headers['access-control-request-private-network'];
-    if (pnaHeader === 'true') {
-      res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    // ─────────────────────────────────────────────────────────────
+    // 🔒 CORS & Private Network Access
+    // Chrome Extension Service Worker'dan gelen fetch isteklerinde
+    // 'origin' header'ı tarayıcı tarafından EKLENMEYEBİLİR.
+    // Bu nedenle:
+    //  - origin varsa → allowlist kontrolü yap
+    //  - origin yoksa + X-Aegis-Client: extension varsa → loopback güvenli, kabul et
+    // ─────────────────────────────────────────────────────────────
+    if (isExtensionRequest && !origin && isAllowlistedExtensionId(extensionIdHeader)) {
+      // Origin header eksikse bile allowlist'teki extension id'ye sabit origin döndür.
+      res.setHeader('Access-Control-Allow-Origin', `chrome-extension://${extensionIdHeader}`);
+    } else if (origin && isOriginAllowed(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else if (!origin && !isExtensionRequest) {
+      // Origin yok, extension da değil → reddet
+      res.setHeader('Access-Control-Allow-Origin', 'null');
+    } else {
+      // Bilinmeyen origin → reddet
+      res.setHeader('Access-Control-Allow-Origin', 'null');
     }
-    res.writeHead(204);
-    res.end();
-    return;
-  }
 
-  // ─────────────────────────────────────────────────────────────
-  // ── Kimlik Doğrulama (P0-1 HARDENED) ──
-  // Extension service worker'dan gelen fetch isteklerinde origin header olmayabilir.
-  // isExtensionRequest zaten yukarıda tanımlandı.
-  // ─────────────────────────────────────────────────────────────
-  const extensionIdHeader = req.headers['x-aegis-extension-id'] || '';
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Content-Type, X-Aegis-Token, X-Aegis-Client, X-Aegis-Extension-Id, X-Aegis-Pairing-Proof, X-Aegis-Pairing-Ts, X-Aegis-Request-Domain, X-Aegis-Challenge-Nonce, X-Aegis-Challenge-Ts, X-Aegis-Challenge-Signature'
+    );
+    res.setHeader('Access-Control-Max-Age', '86400');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate'); // ⚡ KESİNLİKLE CACHE YAKALAMA
 
-  if (isExtensionRequest && !isAllowlistedExtensionId(extensionIdHeader)) {
-    console.warn(`[Aegis API] ❌ Extension ID not in allowlist: "${extensionIdHeader}"`);
-    res.writeHead(403, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'FORBIDDEN_EXTENSION_ID' }));
-    return;
-  }
-
-  if (isExtensionRequest && requestPath !== '/api/pairing-secret' && requestPath !== '/api/status') {
-    const pairingResult = verifyPairingProof(req);
-    if (!pairingResult.ok) {
-      console.warn(`[Aegis API] ❌ Pairing proof rejected: ${pairingResult.code}`);
-      const status = pairingResult.code === 'LOOPBACK_SYNC_DISABLED' ? 503 : 401;
-      res.writeHead(status, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: pairingResult.code }));
-      return;
-    }
-  }
-
-  if (!isExtensionRequest && origin && !isOriginAllowed(origin)) {
-    // Tanınan olmayan origin → reddet
-    res.writeHead(403, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'FORBIDDEN_ORIGIN' }));
-    return;
-  }
-
-  if (!isExtensionRequest && !origin) {
-    // Origin yok, extension değil → reddet
-    res.writeHead(403, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'FORBIDDEN_ORIGIN' }));
-    return;
-  }
-
-  // ─── Challenge Endpoint (P0-1/P0-2) ───
-  // Extension loopback istekleri için tek-kullanimlik challenge token üretir.
-  if (requestPath === '/api/challenge' && req.method === 'GET') {
-    if (!isExtensionRequest) {
-      console.warn(`[Aegis API] ❌ /api/challenge blocked: CHALLENGE_EXTENSION_ONLY (Headers: ${JSON.stringify(req.headers)})`);
-      res.writeHead(403, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'CHALLENGE_EXTENSION_ONLY' }));
+    // Private Network Access Preflight: tarayıcı önce OPTIONS atar
+    if (req.method === 'OPTIONS') {
+      const pnaHeader = req.headers['access-control-request-private-network'];
+      if (pnaHeader === 'true') {
+        res.setHeader('Access-Control-Allow-Private-Network', 'true');
+      }
+      res.writeHead(204);
+      res.end();
       return;
     }
 
-    const challenge = createChallenge(extensionIdHeader);
-    console.log(`[Aegis API] ✅ /api/challenge successful for ${extensionIdHeader.substring(0, 8)}...`);
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      nonce: challenge.nonce,
-      token: challenge.token,
-      expiresAt: challenge.expiresAt,
-    }));
-    return;
-  }
-
-  // Extension isteklerinde challenge doğrulaması zorunlu.
-  // AMA /api/pairing-secret endpoint'i için challenge zorunlu değil (henüz paired değil)
-  if (isExtensionRequest && requestPath !== '/api/pairing-secret') {
-    const challengeResult = verifyExtensionChallenge(req);
-    if (!challengeResult.ok) {
-      console.warn(`[Aegis API] ❌ Challenge rejected: ${challengeResult.code}`);
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: challengeResult.code }));
-      return;
-    }
-  }
-  
-  if (requestPath === '/api/status' && req.method === 'GET') {
-    // Status endpoint — Kasa durumu
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    const responseData = { 
-      isUnlocked: vaultState.unlocked,
-      entryCount: vaultState.entryCount,
-      version: '4.0.0'
-    };
-    console.log(`[Aegis API] /api/status requested. Returning unlocked: ${responseData.isUnlocked}, entryCount: ${responseData.entryCount}`);
-    res.end(JSON.stringify(responseData));
-    return;
-  }
-
-  if (requestPath === '/api/vault' && req.method === 'GET') {
-    res.writeHead(410, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'FULL_VAULT_SYNC_DISABLED' }));
-    return;
-  }
-
-  if (requestPath === '/api/pairing-secret' && req.method === 'GET') {
-    // 🔐 Pairing secret endpoint — Loopback Fallback Eşleşme
-    const requestUrl = parseRequestUrl(req);
-    const extensionId = requestUrl?.searchParams.get('extensionId') || '';
-    
-    console.log(`[Aegis API] /api/pairing-secret request from extensionId: ${extensionId.substring(0, 8) || 'EMPTY'}...`);
-    
-    // Extension ID doğrulama
-    if (!isValidExtensionIdFormat(extensionId)) {
-      console.warn(`[Aegis API] ❌ Invalid extension ID format: "${extensionId}"`);
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'INVALID_EXTENSION_ID' }));
-      return;
-    }
-    
-    // Allowlist kontrol
-    if (!isAllowlistedExtensionId(extensionId)) {
-      console.warn(`[Aegis API] ❌ Extension ID not in allowlist: ${extensionId}`);
+    // ─────────────────────────────────────────────────────────────
+    // ── Kimlik Doğrulama (P0-1 HARDENED) ──
+    // Extension service worker'dan gelen fetch isteklerinde origin header olmayabilir.
+    // isExtensionRequest zaten yukarıda tanımlandı.
+    // ─────────────────────────────────────────────────────────────
+    if (isExtensionRequest && !isAllowlistedExtensionId(extensionIdHeader)) {
+      console.warn(`[Aegis API] ❌ Extension ID not in allowlist: "${extensionIdHeader}"`);
       res.writeHead(403, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'FORBIDDEN_EXTENSION_ID' }));
       return;
     }
 
-    // ── KRITIK: Her iki tarafın da aynı secret'ı kullanması zorunlu ──
-    // Extension bu secret'ı alır → HMAC challenge proof üretmek için kullanır.
-    // Desktop, getPairingSecretForExtension() ile doğrulama yapar.
-    // Dolayısıyla burada dönen secret, doğrulamada kullanılan secret ile AYNI olmalı.
-    // Loopback-fallback modunda bu secret = PAIRING_SECRET (env'den).
-    const sharedSecret = PAIRING_SECRET
-      || (process.env.AEGIS_NATIVE_HOST_PAIRING_SECRET || '').trim()
-      || (process.env.AEGIS_EXTENSION_PAIRING_SECRET || '').trim();
+    if (
+      isExtensionRequest &&
+      requestPath !== '/api/pairing-secret' &&
+      requestPath !== '/api/status'
+    ) {
+      const pairingResult = verifyPairingProof(req);
+      if (!pairingResult.ok) {
+        console.warn(`[Aegis API] ❌ Pairing proof rejected: ${pairingResult.code}`);
+        const status = pairingResult.code === 'LOOPBACK_SYNC_DISABLED' ? 503 : 401;
+        res.writeHead(status, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: pairingResult.code }));
+        return;
+      }
+    }
 
-    if (sharedSecret.length < 32) {
-      console.error(`[Aegis API] ❌ No valid env pairing secret configured.`);
-      res.writeHead(503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'PAIRING_SECRET_UNAVAILABLE' }));
+    if (!isExtensionRequest && origin && !isOriginAllowed(origin)) {
+      // Tanınan olmayan origin → reddet
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'FORBIDDEN_ORIGIN' }));
       return;
     }
 
-    // ── Mevcut loopback eşleşmesi varsa dialog gösterme, sadece secret döndür ──
-    const existing = persistentPairings.get(extensionId);
-    if (existing && existing.pairingMode === 'loopback-fallback-v1') {
-      // Kaydı env secret ile güncelle (eski random secret olabilir)
-      existing.secret = sharedSecret;
+    if (!isExtensionRequest && !origin) {
+      // Origin yok, extension değil → reddet
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'FORBIDDEN_ORIGIN' }));
+      return;
+    }
+
+    // ─── Challenge Endpoint (P0-1/P0-2) ───
+    // Extension loopback istekleri için tek-kullanimlik challenge token üretir.
+    if (requestPath === '/api/challenge' && req.method === 'GET') {
+      if (!isExtensionRequest) {
+        console.warn(
+          `[Aegis API] ❌ /api/challenge blocked: CHALLENGE_EXTENSION_ONLY (Headers: ${JSON.stringify(req.headers)})`
+        );
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'CHALLENGE_EXTENSION_ONLY' }));
+        return;
+      }
+
+      const challenge = createChallenge(extensionIdHeader);
+      console.log(
+        `[Aegis API] ✅ /api/challenge successful for ${extensionIdHeader.substring(0, 8)}...`
+      );
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          nonce: challenge.nonce,
+          token: challenge.token,
+          expiresAt: challenge.expiresAt,
+        })
+      );
+      return;
+    }
+
+    // Extension isteklerinde challenge doğrulaması zorunlu.
+    // AMA /api/pairing-secret endpoint'i için challenge zorunlu değil (henüz paired değil)
+    if (isExtensionRequest && requestPath !== '/api/pairing-secret') {
+      const challengeResult = verifyExtensionChallenge(req);
+      if (!challengeResult.ok) {
+        console.warn(`[Aegis API] ❌ Challenge rejected: ${challengeResult.code}`);
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: challengeResult.code }));
+        return;
+      }
+    }
+
+    if (requestPath === '/api/status' && req.method === 'GET') {
+      // Status endpoint — Kasa durumu
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      const responseData = {
+        isUnlocked: vaultState.unlocked,
+        entryCount: vaultState.entryCount,
+        version: '4.0.0',
+      };
+      console.log(
+        `[Aegis API] /api/status requested. Returning unlocked: ${responseData.isUnlocked}, entryCount: ${responseData.entryCount}`
+      );
+      res.end(JSON.stringify(responseData));
+      return;
+    }
+
+    if (requestPath === '/api/vault' && req.method === 'GET') {
+      res.writeHead(410, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'FULL_VAULT_SYNC_DISABLED' }));
+      return;
+    }
+
+    if (requestPath === '/api/pairing-secret' && req.method === 'GET') {
+      // 🔐 Pairing secret endpoint — Loopback Fallback Eşleşme
+      const requestUrl = parseRequestUrl(req);
+      const extensionId = requestUrl?.searchParams.get('extensionId') || '';
+
+      console.log(
+        `[Aegis API] /api/pairing-secret request from extensionId: ${extensionId.substring(0, 8) || 'EMPTY'}...`
+      );
+
+      // Extension ID doğrulama
+      if (!isValidExtensionIdFormat(extensionId)) {
+        console.warn(`[Aegis API] ❌ Invalid extension ID format: "${extensionId}"`);
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'INVALID_EXTENSION_ID' }));
+        return;
+      }
+
+      // Allowlist kontrol
+      if (!isAllowlistedExtensionId(extensionId)) {
+        console.warn(`[Aegis API] ❌ Extension ID not in allowlist: ${extensionId}`);
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'FORBIDDEN_EXTENSION_ID' }));
+        return;
+      }
+
+      // ── KRITIK: Her iki tarafın da aynı secret'ı kullanması zorunlu ──
+      // Extension bu secret'ı alır → HMAC challenge proof üretmek için kullanır.
+      // Desktop, getPairingSecretForExtension() ile doğrulama yapar.
+      // Dolayısıyla burada dönen secret, doğrulamada kullanılan secret ile AYNI olmalı.
+      // Loopback-fallback modunda bu secret = PAIRING_SECRET (env'den).
+      const sharedSecret =
+        PAIRING_SECRET ||
+        (process.env.AEGIS_NATIVE_HOST_PAIRING_SECRET || '').trim() ||
+        (process.env.AEGIS_EXTENSION_PAIRING_SECRET || '').trim();
+
+      if (sharedSecret.length < 32) {
+        console.error(`[Aegis API] ❌ No valid env pairing secret configured.`);
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'PAIRING_SECRET_UNAVAILABLE' }));
+        return;
+      }
+
+      // ── Mevcut loopback eşleşmesi varsa dialog gösterme, sadece secret döndür ──
+      const existing = persistentPairings.get(extensionId);
+      if (existing && existing.pairingMode === 'loopback-fallback-v1') {
+        // Kaydı env secret ile güncelle (eski random secret olabilir)
+        existing.secret = sharedSecret;
+        savePersistentPairings();
+        console.log(
+          `[Aegis API] ✅ Existing loopback pairing refreshed for ${extensionId.substring(0, 8)}...`
+        );
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ secret: sharedSecret }));
+        return;
+      }
+
+      // ── İlk eşleşme: Kullanıcıdan onay al ──
+      const loopbackClientInfo = normalizeClientInfo({}, extensionId);
+      const riskFlags = buildPairingRiskFlags(existing, loopbackClientInfo);
+
+      let approved = false;
+      try {
+        const detailLines = [
+          `Extension ID: ${extensionId}`,
+          'Bağlantı türü: Loopback HTTP Fallback',
+          existing
+            ? 'Bu işlem mevcut eşleşmeyi yenileyecek.'
+            : 'Bu işlem yeni bir masaüstü-eklenti eşleşmesi oluşturacaktır.',
+        ];
+        if (Array.isArray(riskFlags) && riskFlags.length > 0) {
+          detailLines.push('Risk uyarıları:');
+          for (const flag of riskFlags) {
+            if (flag === 'fingerprint_changed') detailLines.push('- Cihaz parmak izi değişti');
+            if (flag === 'install_id_changed') detailLines.push('- Kurulum kimliği değişti');
+            if (flag === 'rapid_repair')
+              detailLines.push('- Eşleşme alışılmadık hızda yenileniyor');
+          }
+        }
+        const result = await dialog.showMessageBox(mainWindow || undefined, {
+          type: 'question',
+          buttons: ['Reddet', 'Onayla'],
+          defaultId: 1,
+          cancelId: 0,
+          noLink: true,
+          title: 'Aegis Extension Eşleşme İsteği',
+          message: 'Tarayıcı eklentisi masaüstü kasanıza bağlanmak istiyor.',
+          detail: detailLines.join('\n'),
+        });
+        approved = result.response === 1;
+      } catch (dialogErr) {
+        console.error('[Aegis API] Dialog error:', dialogErr.message);
+        approved = false;
+      }
+
+      if (!approved) {
+        console.warn(
+          `[Aegis API] ❌ Pairing rejected by user for ${extensionId.substring(0, 8)}...`
+        );
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'PAIRING_REJECTED' }));
+        return;
+      }
+
+      // ── Eşleşme kaydını env secret ile oluştur ──
+      const pairedAt = new Date().toISOString();
+      const nextRecord = {
+        secret: sharedSecret, // ← env secret, extension ile aynı
+        pairedAt,
+        browserName: 'Loopback Fallback',
+        deviceFingerprint: loopbackClientInfo.deviceFingerprint,
+        installId: loopbackClientInfo.installId,
+        clientLabel: 'Loopback Extension',
+        clientKeyId: '',
+        clientPublicJwk: null,
+        pairingMode: 'loopback-fallback-v1',
+        lastUsedAt: '',
+        lastApprovedAt: pairedAt,
+        currentRiskFlags: riskFlags,
+        pairingHistory: Array.isArray(existing?.pairingHistory)
+          ? existing.pairingHistory.slice(-PAIRING_HISTORY_LIMIT + 1)
+          : [],
+      };
+      appendPairingHistory(nextRecord, {
+        at: pairedAt,
+        type: existing ? 're-paired' : 'paired',
+        detail: `Loopback Fallback (${extensionId.substring(0, 8)}...)`,
+        riskFlags,
+      });
+      persistentPairings.set(extensionId, nextRecord);
       savePersistentPairings();
-      console.log(`[Aegis API] ✅ Existing loopback pairing refreshed for ${extensionId.substring(0, 8)}...`);
+
+      console.log(
+        `[Aegis API] ✅ Pairing registered & secret sent for ${extensionId.substring(0, 8)}... (persistentPairings size: ${persistentPairings.size})`
+      );
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ secret: sharedSecret }));
       return;
     }
 
-    // ── İlk eşleşme: Kullanıcıdan onay al ──
-    const loopbackClientInfo = normalizeClientInfo({}, extensionId);
-    const riskFlags = buildPairingRiskFlags(existing, loopbackClientInfo);
+    if (requestPath === '/api/domain-credentials' && req.method === 'GET') {
+      const requestUrl = parseRequestUrl(req);
+      const requestDomain = normalizeDomain(
+        req.headers['x-aegis-request-domain'] || '' || requestUrl?.searchParams.get('domain') || ''
+      );
 
-    let approved = false;
-    try {
-      const detailLines = [
-        `Extension ID: ${extensionId}`,
-        'Bağlantı türü: Loopback HTTP Fallback',
-        existing
-          ? 'Bu işlem mevcut eşleşmeyi yenileyecek.'
-          : 'Bu işlem yeni bir masaüstü-eklenti eşleşmesi oluşturacaktır.',
-      ];
-      if (Array.isArray(riskFlags) && riskFlags.length > 0) {
-        detailLines.push('Risk uyarıları:');
-        for (const flag of riskFlags) {
-          if (flag === 'fingerprint_changed') detailLines.push('- Cihaz parmak izi değişti');
-          if (flag === 'install_id_changed') detailLines.push('- Kurulum kimliği değişti');
-          if (flag === 'rapid_repair') detailLines.push('- Eşleşme alışılmadık hızda yenileniyor');
-        }
+      if (!requestDomain) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'INVALID_DOMAIN' }));
+        return;
       }
-      const result = await dialog.showMessageBox(mainWindow || undefined, {
-        type: 'question',
-        buttons: ['Reddet', 'Onayla'],
-        defaultId: 1,
-        cancelId: 0,
-        noLink: true,
-        title: 'Aegis Extension Eşleşme İsteği',
-        message: 'Tarayıcı eklentisi masaüstü kasanıza bağlanmak istiyor.',
-        detail: detailLines.join('\n'),
-      });
-      approved = result.response === 1;
-    } catch (dialogErr) {
-      console.error('[Aegis API] Dialog error:', dialogErr.message);
-      approved = false;
-    }
 
-    if (!approved) {
-      console.warn(`[Aegis API] ❌ Pairing rejected by user for ${extensionId.substring(0, 8)}...`);
-      res.writeHead(403, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'PAIRING_REJECTED' }));
-      return;
-    }
+      if (!vaultState.unlocked) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
+        return;
+      }
 
-    // ── Eşleşme kaydını env secret ile oluştur ──
-    const pairedAt = new Date().toISOString();
-    const nextRecord = {
-      secret: sharedSecret,  // ← env secret, extension ile aynı
-      pairedAt,
-      browserName: 'Loopback Fallback',
-      deviceFingerprint: loopbackClientInfo.deviceFingerprint,
-      installId: loopbackClientInfo.installId,
-      clientLabel: 'Loopback Extension',
-      clientKeyId: '',
-      clientPublicJwk: null,
-      pairingMode: 'loopback-fallback-v1',
-      lastUsedAt: '',
-      lastApprovedAt: pairedAt,
-      currentRiskFlags: riskFlags,
-      pairingHistory: Array.isArray(existing?.pairingHistory) ? existing.pairingHistory.slice(-PAIRING_HISTORY_LIMIT + 1) : [],
-    };
-    appendPairingHistory(nextRecord, {
-      at: pairedAt,
-      type: existing ? 're-paired' : 'paired',
-      detail: `Loopback Fallback (${extensionId.substring(0, 8)}...)`,
-      riskFlags,
-    });
-    persistentPairings.set(extensionId, nextRecord);
-    savePersistentPairings();
+      const matches = await requestDomainCredentialsFromRenderer(requestDomain);
 
-    console.log(`[Aegis API] ✅ Pairing registered & secret sent for ${extensionId.substring(0, 8)}... (persistentPairings size: ${persistentPairings.size})`);
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ secret: sharedSecret }));
-    return;
-  }
-
-  if (requestPath === '/api/domain-credentials' && req.method === 'GET') {
-    const requestUrl = parseRequestUrl(req);
-    const requestDomain = normalizeDomain(
-      (req.headers['x-aegis-request-domain'] || '') ||
-      requestUrl?.searchParams.get('domain') ||
-      ''
-    );
-
-    if (!requestDomain) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'INVALID_DOMAIN' }));
-      return;
-    }
-
-    if (!vaultState.unlocked) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify([]));
+      res.end(JSON.stringify(matches));
       return;
     }
 
-    const matches = await requestDomainCredentialsFromRenderer(requestDomain);
+    if (requestPath === '/api/domain-passkeys' && req.method === 'GET') {
+      const requestUrl = parseRequestUrl(req);
+      const requestDomain = normalizeDomain(
+        req.headers['x-aegis-request-domain'] || '' || requestUrl?.searchParams.get('domain') || ''
+      );
 
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(matches));
-    return;
-  }
+      if (!requestDomain) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'INVALID_DOMAIN' }));
+        return;
+      }
 
-  if (requestPath === '/api/domain-passkeys' && req.method === 'GET') {
-    const requestUrl = parseRequestUrl(req);
-    const requestDomain = normalizeDomain(
-      (req.headers['x-aegis-request-domain'] || '') ||
-      requestUrl?.searchParams.get('domain') ||
-      ''
-    );
+      if (!vaultState.unlocked) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
+        return;
+      }
 
-    if (!requestDomain) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'INVALID_DOMAIN' }));
-      return;
-    }
+      const matches = await requestDomainPasskeysFromRenderer(requestDomain);
 
-    if (!vaultState.unlocked) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify([]));
+      res.end(JSON.stringify(matches));
       return;
     }
 
-    const matches = await requestDomainPasskeysFromRenderer(requestDomain);
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(matches));
-    return;
-  }
-
-  res.writeHead(404);
-  res.end();
-  
+    res.writeHead(404);
+    res.end();
   } catch (err) {
     console.error(`[Aegis API] 💥 Unhandled Server Error: ${err.message}`, err);
     res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -2345,7 +2492,9 @@ if (LOOPBACK_SYNC_ENABLED) {
   // Sadece loopback'e bağlan (dış ağ erişimini engelle)
   syncServer.listen(23456, '127.0.0.1', () => {
     if (!isLoopbackSyncReady()) {
-      console.warn('[Aegis] Loopback sync explicitly enabled but not ready. Configure a strong AEGIS_EXTENSION_PAIRING_SECRET.');
+      console.warn(
+        '[Aegis] Loopback sync explicitly enabled but not ready. Configure a strong AEGIS_EXTENSION_PAIRING_SECRET.'
+      );
     } else {
       console.log('[Aegis] Güvenli yerel sync server: 127.0.0.1:23456');
     }
@@ -2368,8 +2517,10 @@ ipcMain.on('sync-vault-state', (event, state) => {
   vaultState.entryCount = Number.isFinite(Number(state?.entryCount))
     ? Math.max(0, Number(state.entryCount))
     : 0;
-    
-  console.log(`[Aegis] 🔓 Vault state updated: ${vaultState.unlocked ? 'UNLOCKED' : 'LOCKED'} (${vaultState.entryCount} entries)`);
+
+  console.log(
+    `[Aegis] 🔓 Vault state updated: ${vaultState.unlocked ? 'UNLOCKED' : 'LOCKED'} (${vaultState.entryCount} entries)`
+  );
 });
 
 ipcMain.on('lock-vault', (event) => {
@@ -2479,17 +2630,24 @@ ipcMain.handle('list-extension-pairings', (event) => {
       browserName: record.browserName || '',
       clientLabel: record.clientLabel || '',
       clientKeyId: record.clientKeyId || '',
-      pairingMode: record.pairingMode || (record.clientPublicJwk ? 'signed-p256-v1' : 'legacy-secret-v1'),
+      pairingMode:
+        record.pairingMode || (record.clientPublicJwk ? 'signed-p256-v1' : 'legacy-secret-v1'),
       deviceFingerprint: record.deviceFingerprint || '',
       pairedAt: record.pairedAt || '',
       lastUsedAt: record.lastUsedAt || '',
       lastApprovedAt: record.lastApprovedAt || '',
       riskFlags: Array.isArray(record.currentRiskFlags) ? record.currentRiskFlags : [],
       riskLevel: getRiskLevel(record.currentRiskFlags),
-      pairingHistory: Array.isArray(record.pairingHistory) ? record.pairingHistory.slice(-5).reverse() : [],
+      pairingHistory: Array.isArray(record.pairingHistory)
+        ? record.pairingHistory.slice(-5).reverse()
+        : [],
       secretSource: 'persistent',
     }))
-    .sort((left, right) => Date.parse(right.lastUsedAt || right.pairedAt || '') - Date.parse(left.lastUsedAt || left.pairedAt || ''));
+    .sort(
+      (left, right) =>
+        Date.parse(right.lastUsedAt || right.pairedAt || '') -
+        Date.parse(left.lastUsedAt || left.pairedAt || '')
+    );
 });
 
 ipcMain.handle('remove-extension-pairing', (event, extensionId) => {
@@ -2548,9 +2706,16 @@ ipcMain.handle('reload-app', (event) => {
   }
 
   startupDiagnosticMode = false;
-  recordStartupDiagnosticEvent('info', 'RELOAD_REQUESTED', 'Application reload requested from diagnostic UI');
+  recordStartupDiagnosticEvent(
+    'info',
+    'RELOAD_REQUESTED',
+    'Application reload requested from diagnostic UI'
+  );
   void mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html')).catch((error) => {
-    showStartupDiagnosticPage('LOAD_FILE_FAILED', error instanceof Error ? error.message : String(error));
+    showStartupDiagnosticPage(
+      'LOAD_FILE_FAILED',
+      error instanceof Error ? error.message : String(error)
+    );
   });
   return { success: true };
 });
@@ -2575,21 +2740,24 @@ function createWindow() {
     height: 800,
     webPreferences: {
       // 🔒 GÜVENLİK HARDENİNG
-      nodeIntegration: false,           // ❌ Node.js API'sine erişimi kapat
-      contextIsolation: true,           // ✅ Renderer ve preload arasında güvenli izolasyon
+      nodeIntegration: false, // ❌ Node.js API'sine erişimi kapat
+      contextIsolation: true, // ✅ Renderer ve preload arasında güvenli izolasyon
       preload: path.join(__dirname, 'preload.cjs'), // ✅ Güvenli köprü
-      sandbox: true,                    // ✅ Renderer sürecini sandbox'la
-      webSecurity: true,                // ✅ Same-origin policy aktif
-      allowRunningInsecureContent: false // ✅ Mixed content engelle
-    }
+      sandbox: true, // ✅ Renderer sürecini sandbox'la
+      webSecurity: true, // ✅ Same-origin policy aktif
+      allowRunningInsecureContent: false, // ✅ Mixed content engelle
+    },
   });
 
   // Dist klasöründen yükle
   recordStartupDiagnosticEvent('info', 'WINDOW_CREATED', 'Main BrowserWindow created', mainAppPath);
   void mainWindow.loadFile(mainAppPath).catch((error) => {
-    showStartupDiagnosticPage('LOAD_FILE_FAILED', error instanceof Error ? error.message : String(error));
+    showStartupDiagnosticPage(
+      'LOAD_FILE_FAILED',
+      error instanceof Error ? error.message : String(error)
+    );
   });
-  
+
   // Menü çubuğunu gizle
   mainWindow.setMenuBarVisibility(false);
 
@@ -2599,13 +2767,16 @@ function createWindow() {
     }
   });
 
-  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
-    if (!isMainFrame || startupDiagnosticMode) return;
-    showStartupDiagnosticPage(
-      'WEBCONTENTS_DID_FAIL_LOAD',
-      `${errorCode} ${errorDescription} ${validatedURL || ''}`.trim()
-    );
-  });
+  mainWindow.webContents.on(
+    'did-fail-load',
+    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      if (!isMainFrame || startupDiagnosticMode) return;
+      showStartupDiagnosticPage(
+        'WEBCONTENTS_DID_FAIL_LOAD',
+        `${errorCode} ${errorDescription} ${validatedURL || ''}`.trim()
+      );
+    }
+  );
 
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
     if (startupDiagnosticMode) return;
@@ -2627,13 +2798,16 @@ function createWindow() {
     if (response.response === 0) {
       startupDiagnosticMode = false;
       void mainWindow.loadFile(mainAppPath).catch((error) => {
-        showStartupDiagnosticPage('LOAD_FILE_FAILED', error instanceof Error ? error.message : String(error));
+        showStartupDiagnosticPage(
+          'LOAD_FILE_FAILED',
+          error instanceof Error ? error.message : String(error)
+        );
       });
     } else {
       app.quit();
     }
   });
-  
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -2643,17 +2817,28 @@ function createWindow() {
 // 🔒 Content Security Policy (CSP) — Global header enjeksiyonu
 // ─────────────────────────────────────────────────────────────────
 process.on('uncaughtException', (error) => {
-  recordStartupDiagnosticEvent('error', 'UNCAUGHT_EXCEPTION', error?.message || 'Uncaught exception', error?.stack || '');
+  recordStartupDiagnosticEvent(
+    'error',
+    'UNCAUGHT_EXCEPTION',
+    error?.message || 'Uncaught exception',
+    error?.stack || ''
+  );
 });
 
 process.on('unhandledRejection', (reason) => {
-  const detail = reason instanceof Error ? `${reason.message}\n${reason.stack || ''}` : String(reason);
-  recordStartupDiagnosticEvent('error', 'UNHANDLED_REJECTION', 'Unhandled promise rejection', detail);
+  const detail =
+    reason instanceof Error ? `${reason.message}\n${reason.stack || ''}` : String(reason);
+  recordStartupDiagnosticEvent(
+    'error',
+    'UNHANDLED_REJECTION',
+    'Unhandled promise rejection',
+    detail
+  );
 });
 
 app.whenReady().then(() => {
   recordStartupDiagnosticEvent('info', 'APP_READY', 'Electron app ready');
-  
+
   // 1. Minimum initialization for Window
   loadUiPreferences();
   createWindow();
@@ -2662,9 +2847,13 @@ app.whenReady().then(() => {
   process.nextTick(() => {
     loadPersistentPairings();
     if (!LOOPBACK_SYNC_ENABLED) {
-      recordStartupDiagnosticEvent('info', 'LOOPBACK_DISABLED', 'Loopback sync disabled by default');
+      recordStartupDiagnosticEvent(
+        'info',
+        'LOOPBACK_DISABLED',
+        'Loopback sync disabled by default'
+      );
     }
-  
+
     // 🖥️ Auto-register native host and initialize pairing secret
     // Defer heavy PowerShell hit slightly
     setTimeout(() => {
@@ -2672,7 +2861,7 @@ app.whenReady().then(() => {
       ensureNativeHostPairingSecret();
       startNativeBridgeServer();
     }, 1500);
-    
+
     // Global CSP HeaderInjection
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       callback({
@@ -2680,16 +2869,16 @@ app.whenReady().then(() => {
           ...details.responseHeaders,
           'Content-Security-Policy': [
             "default-src 'self'; " +
-            "script-src 'self' 'wasm-unsafe-eval'; " +
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-            "font-src 'self' https://fonts.gstatic.com; " +
-            "img-src 'self' data: blob:; " +
-            `connect-src 'self' https://api.pwnedpasswords.com${LOOPBACK_SYNC_ENABLED ? " http://127.0.0.1:23456" : ""}; ` +
-            "worker-src 'self' blob:; " +
-            "object-src 'none'; " +
-            "base-uri 'self'"
-          ]
-        }
+              "script-src 'self' 'wasm-unsafe-eval'; " +
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+              "font-src 'self' https://fonts.gstatic.com; " +
+              "img-src 'self' data: blob:; " +
+              `connect-src 'self' https://api.pwnedpasswords.com${LOOPBACK_SYNC_ENABLED ? ' http://127.0.0.1:23456' : ''}; ` +
+              "worker-src 'self' blob:; " +
+              "object-src 'none'; " +
+              "base-uri 'self'",
+          ],
+        },
       });
     });
   });

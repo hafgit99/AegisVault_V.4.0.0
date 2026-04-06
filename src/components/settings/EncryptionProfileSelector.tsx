@@ -18,13 +18,13 @@ export const EncryptionProfileSelector: React.FC = () => {
     const newProfile = e.target.value as EncryptionProfile;
     setProfile(newProfile);
     setSaving(true);
-    
+
     // Değişikliği kaydet
     SecureAppSettings.setEncryptionProfile(newProfile);
-    
+
     // NOT: Gerçek bir uygulamada varolan kayıtları yeni profile göre tekrar şifrelemek (migration) gerekir.
     // Şimdilik sadece yeni eklenen/güncellenen kayıtlara etki edecektir.
-    
+
     setTimeout(() => {
       setSaving(false);
     }, 500);
@@ -35,8 +35,8 @@ export const EncryptionProfileSelector: React.FC = () => {
       <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>
         🔐 Metadata Encryption Profile
       </label>
-      <select 
-        value={profile} 
+      <select
+        value={profile}
         onChange={handleChange}
         style={{
           width: '100%',
@@ -46,21 +46,28 @@ export const EncryptionProfileSelector: React.FC = () => {
           background: 'var(--surface-color)',
           color: 'var(--text-color)',
           outline: 'none',
-          cursor: 'pointer'
+          cursor: 'pointer',
         }}
       >
         <option value="maximum">🔐 Maximum Privacy (Slower Search)</option>
         <option value="balanced">⚖️ Balanced (Recommended)</option>
         <option value="performance">⚡ High Performance (Fast Search)</option>
       </select>
-      
+
       <p style={{ marginTop: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-        {profile === 'maximum' && 'All fields (Title, Username, Website, etc.) are encrypted. Search must match exact hashes.'}
-        {profile === 'balanced' && 'Titles are plaintext for fast search. Usernames, URLs, and Notes are encrypted.'}
-        {profile === 'performance' && 'Only passwords, TOTP, and notes are encrypted. Best performance.'}
+        {profile === 'maximum' &&
+          'All fields (Title, Username, Website, etc.) are encrypted. Search must match exact hashes.'}
+        {profile === 'balanced' &&
+          'Titles are plaintext for fast search. Usernames, URLs, and Notes are encrypted.'}
+        {profile === 'performance' &&
+          'Only passwords, TOTP, and notes are encrypted. Best performance.'}
       </p>
-      
-      {saving && <span style={{ fontSize: '0.8rem', color: 'var(--accent-color)' }}>Saved. Applied to new entries.</span>}
+
+      {saving && (
+        <span style={{ fontSize: '0.8rem', color: 'var(--accent-color)' }}>
+          Saved. Applied to new entries.
+        </span>
+      )}
     </div>
   );
 };

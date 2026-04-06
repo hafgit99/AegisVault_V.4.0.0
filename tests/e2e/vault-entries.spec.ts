@@ -1,6 +1,6 @@
 /**
  * Aegis Vault - Entry Management E2E Tests
- * 
+ *
  * Bu test suite vault giriş yönetimini test eder.
  * NOT: Bu testler vault açıldıktan SONRA çalışır.
  * Bazı testler sadece UI elementlerinin varlığını doğrular
@@ -42,7 +42,7 @@ test.describe('Vault Entry Management (Login Page)', () => {
     // Step 1 submit - Generate buton olmalı
     const generateBtn = page.locator('button.vault-login-unlock-btn').first();
     await expect(generateBtn).toBeVisible();
-    
+
     // Başlık içerik kontrolü (mode indicator)
     const heading = page.locator('h1').first();
     await expect(heading).toBeVisible();

@@ -56,38 +56,68 @@ function buildBridgeProof(message, pairingSecret = '') {
     domain: normalizeDomain(typeof message?.domain === 'string' ? message.domain : ''),
     requestNonce: typeof message?.requestNonce === 'string' ? message.requestNonce.trim() : '',
     clientKeyId: typeof message?.clientKeyId === 'string' ? message.clientKeyId.trim() : '',
-    clientTimestamp: typeof message?.clientTimestamp === 'string' ? message.clientTimestamp.trim() : '',
+    clientTimestamp:
+      typeof message?.clientTimestamp === 'string' ? message.clientTimestamp.trim() : '',
     clientNonce: typeof message?.clientNonce === 'string' ? message.clientNonce.trim() : '',
     clientInfo: {
-      browserName: typeof message?.clientInfo?.browserName === 'string' ? message.clientInfo.browserName.trim() : '',
-      browserVersion: typeof message?.clientInfo?.browserVersion === 'string' ? message.clientInfo.browserVersion.trim() : '',
-      platform: typeof message?.clientInfo?.platform === 'string' ? message.clientInfo.platform.trim() : '',
-      locale: typeof message?.clientInfo?.locale === 'string' ? message.clientInfo.locale.trim() : '',
-      installId: typeof message?.clientInfo?.installId === 'string' ? message.clientInfo.installId.trim() : '',
-      extensionVersion: typeof message?.clientInfo?.extensionVersion === 'string' ? message.clientInfo.extensionVersion.trim() : '',
-      userAgent: typeof message?.clientInfo?.userAgent === 'string' ? message.clientInfo.userAgent.trim() : '',
+      browserName:
+        typeof message?.clientInfo?.browserName === 'string'
+          ? message.clientInfo.browserName.trim()
+          : '',
+      browserVersion:
+        typeof message?.clientInfo?.browserVersion === 'string'
+          ? message.clientInfo.browserVersion.trim()
+          : '',
+      platform:
+        typeof message?.clientInfo?.platform === 'string' ? message.clientInfo.platform.trim() : '',
+      locale:
+        typeof message?.clientInfo?.locale === 'string' ? message.clientInfo.locale.trim() : '',
+      installId:
+        typeof message?.clientInfo?.installId === 'string'
+          ? message.clientInfo.installId.trim()
+          : '',
+      extensionVersion:
+        typeof message?.clientInfo?.extensionVersion === 'string'
+          ? message.clientInfo.extensionVersion.trim()
+          : '',
+      userAgent:
+        typeof message?.clientInfo?.userAgent === 'string'
+          ? message.clientInfo.userAgent.trim()
+          : '',
     },
     clientPublicJwk: message?.clientPublicJwk || null,
-    credential: message?.credential && typeof message.credential === 'object'
-      ? {
-          title: typeof message.credential.title === 'string' ? message.credential.title : '',
-          username: typeof message.credential.username === 'string' ? message.credential.username : '',
-          pass: typeof message.credential.pass === 'string' ? message.credential.pass : '',
-          website: typeof message.credential.website === 'string' ? message.credential.website : '',
-          submittedAt: typeof message.credential.submittedAt === 'string' ? message.credential.submittedAt : '',
-          source: typeof message.credential.source === 'string' ? message.credential.source : 'browser_form',
-        }
-      : null,
-    entry: message?.entry && typeof message.entry === 'object'
-      ? {
-          title: typeof message.entry.title === 'string' ? message.entry.title : '',
-          username: typeof message.entry.username === 'string' ? message.entry.username : '',
-          pass: typeof message.entry.pass === 'string' ? message.entry.pass : '',
-          website: typeof message.entry.website === 'string' ? message.entry.website : '',
-          category: typeof message.entry.category === 'string' ? message.entry.category : '',
-          tags: Array.isArray(message.entry.tags) ? message.entry.tags.map((item) => String(item || '')) : [],
-        }
-      : null,
+    credential:
+      message?.credential && typeof message.credential === 'object'
+        ? {
+            title: typeof message.credential.title === 'string' ? message.credential.title : '',
+            username:
+              typeof message.credential.username === 'string' ? message.credential.username : '',
+            pass: typeof message.credential.pass === 'string' ? message.credential.pass : '',
+            website:
+              typeof message.credential.website === 'string' ? message.credential.website : '',
+            submittedAt:
+              typeof message.credential.submittedAt === 'string'
+                ? message.credential.submittedAt
+                : '',
+            source:
+              typeof message.credential.source === 'string'
+                ? message.credential.source
+                : 'browser_form',
+          }
+        : null,
+    entry:
+      message?.entry && typeof message.entry === 'object'
+        ? {
+            title: typeof message.entry.title === 'string' ? message.entry.title : '',
+            username: typeof message.entry.username === 'string' ? message.entry.username : '',
+            pass: typeof message.entry.pass === 'string' ? message.entry.pass : '',
+            website: typeof message.entry.website === 'string' ? message.entry.website : '',
+            category: typeof message.entry.category === 'string' ? message.entry.category : '',
+            tags: Array.isArray(message.entry.tags)
+              ? message.entry.tags.map((item) => String(item || ''))
+              : [],
+          }
+        : null,
     entryId: Number.isFinite(Number(message?.entryId)) ? Number(message.entryId) : 0,
     query: typeof message?.query === 'string' ? message.query : '',
     category: typeof message?.category === 'string' ? message.category : '',
@@ -110,9 +140,8 @@ function createSignedBridgePayload(message, pairingSecret = '') {
 }
 
 function buildForwardBridgeMessage(message, overrides = {}) {
-  const rawCredential = message?.credential && typeof message.credential === 'object'
-    ? message.credential
-    : null;
+  const rawCredential =
+    message?.credential && typeof message.credential === 'object' ? message.credential : null;
   const credential = rawCredential
     ? {
         title: String(rawCredential.title || '').slice(0, 120),
@@ -123,9 +152,7 @@ function buildForwardBridgeMessage(message, overrides = {}) {
         source: typeof rawCredential.source === 'string' ? rawCredential.source : 'browser_form',
       }
     : null;
-  const rawEntry = message?.entry && typeof message.entry === 'object'
-    ? message.entry
-    : null;
+  const rawEntry = message?.entry && typeof message.entry === 'object' ? message.entry : null;
   const entry = rawEntry
     ? {
         title: String(rawEntry.title || '').slice(0, 256),
@@ -143,9 +170,19 @@ function buildForwardBridgeMessage(message, overrides = {}) {
     ...overrides,
     type: typeof overrides.type === 'string' ? overrides.type : message.type,
     extensionId: typeof message?.extensionId === 'string' ? message.extensionId : '',
-    domain: typeof overrides.domain === 'string' ? overrides.domain : (typeof message?.domain === 'string' ? message.domain : ''),
+    domain:
+      typeof overrides.domain === 'string'
+        ? overrides.domain
+        : typeof message?.domain === 'string'
+          ? message.domain
+          : '',
     requestNonce: typeof message?.requestNonce === 'string' ? message.requestNonce : '',
-    browserName: typeof overrides.browserName === 'string' ? overrides.browserName : (typeof message?.browserName === 'string' ? message.browserName : ''),
+    browserName:
+      typeof overrides.browserName === 'string'
+        ? overrides.browserName
+        : typeof message?.browserName === 'string'
+          ? message.browserName
+          : '',
     clientInfo: message?.clientInfo || {},
     clientKeyId: typeof message?.clientKeyId === 'string' ? message.clientKeyId : '',
     clientTimestamp: typeof message?.clientTimestamp === 'string' ? message.clientTimestamp : '',
@@ -264,7 +301,8 @@ async function handleMessageWithDeps(
 ) {
   const type = typeof message?.type === 'string' ? message.type : '';
   const extensionId = typeof message?.extensionId === 'string' ? message.extensionId.trim() : '';
-  const pairingSecret = typeof message?.pairingSecret === 'string' ? message.pairingSecret.trim() : '';
+  const pairingSecret =
+    typeof message?.pairingSecret === 'string' ? message.pairingSecret.trim() : '';
 
   if (!deps.isAllowlistedExtensionId(extensionId)) {
     deps.writeMessage({ ok: false, error: 'FORBIDDEN_EXTENSION_ID' });
@@ -273,9 +311,12 @@ async function handleMessageWithDeps(
 
   try {
     if (type === 'INIT_PAIRING') {
-      const result = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
-        type: 'INIT_PAIRING',
-      }), pairingSecret);
+      const result = await deps.sendNativeBridgeMessage(
+        buildForwardBridgeMessage(message, {
+          type: 'INIT_PAIRING',
+        }),
+        pairingSecret
+      );
       deps.writeMessage({
         ok: Boolean(result?.ok),
         error: result?.ok ? undefined : String(result?.error || 'PAIRING_FAILED'),
@@ -283,8 +324,10 @@ async function handleMessageWithDeps(
         secret: typeof result?.secret === 'string' ? result.secret : '',
         pairedAt: typeof result?.pairedAt === 'string' ? result.pairedAt : '',
         riskFlags: Array.isArray(result?.riskFlags) ? result.riskFlags : [],
-        deviceFingerprint: typeof result?.deviceFingerprint === 'string' ? result.deviceFingerprint : '',
-        pairingMode: typeof result?.pairingMode === 'string' ? result.pairingMode : 'signed-p256-v1',
+        deviceFingerprint:
+          typeof result?.deviceFingerprint === 'string' ? result.deviceFingerprint : '',
+        pairingMode:
+          typeof result?.pairingMode === 'string' ? result.pairingMode : 'signed-p256-v1',
         clientKeyId: typeof result?.clientKeyId === 'string' ? result.clientKeyId : '',
         desktopAuth: result?.desktopAuth || null,
       });
@@ -292,9 +335,12 @@ async function handleMessageWithDeps(
     }
 
     if (type === 'CLEAR_PAIRING') {
-      const result = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
-        type: 'CLEAR_PAIRING',
-      }), pairingSecret);
+      const result = await deps.sendNativeBridgeMessage(
+        buildForwardBridgeMessage(message, {
+          type: 'CLEAR_PAIRING',
+        }),
+        pairingSecret
+      );
       deps.writeMessage({
         ok: Boolean(result?.ok),
         error: result?.ok ? undefined : String(result?.error || 'CLEAR_PAIRING_FAILED'),
@@ -305,9 +351,12 @@ async function handleMessageWithDeps(
     }
 
     if (type === 'GET_PAIRING_STATUS') {
-      const result = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
-        type: 'GET_PAIRING_STATUS',
-      }), pairingSecret);
+      const result = await deps.sendNativeBridgeMessage(
+        buildForwardBridgeMessage(message, {
+          type: 'GET_PAIRING_STATUS',
+        }),
+        pairingSecret
+      );
       deps.writeMessage({
         ok: Boolean(result?.ok),
         error: result?.ok ? undefined : String(result?.error || 'PAIRING_STATUS_FAILED'),
@@ -316,7 +365,8 @@ async function handleMessageWithDeps(
         pairingMode: typeof result?.pairingMode === 'string' ? result.pairingMode : 'none',
         clientKeyId: typeof result?.clientKeyId === 'string' ? result.clientKeyId : '',
         clientLabel: typeof result?.clientLabel === 'string' ? result.clientLabel : '',
-        deviceFingerprint: typeof result?.deviceFingerprint === 'string' ? result.deviceFingerprint : '',
+        deviceFingerprint:
+          typeof result?.deviceFingerprint === 'string' ? result.deviceFingerprint : '',
         lastUsedAt: typeof result?.lastUsedAt === 'string' ? result.lastUsedAt : '',
         lastApprovedAt: typeof result?.lastApprovedAt === 'string' ? result.lastApprovedAt : '',
         riskFlags: Array.isArray(result?.riskFlags) ? result.riskFlags : [],
@@ -329,9 +379,12 @@ async function handleMessageWithDeps(
     }
 
     if (type === 'GET_VAULT_STATUS') {
-      const status = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
-        type: 'GET_VAULT_STATUS',
-      }), pairingSecret);
+      const status = await deps.sendNativeBridgeMessage(
+        buildForwardBridgeMessage(message, {
+          type: 'GET_VAULT_STATUS',
+        }),
+        pairingSecret
+      );
       deps.writeMessage({
         ok: Boolean(status?.ok),
         error: status?.ok ? undefined : String(status?.error || 'STATUS_FAILED'),
@@ -343,9 +396,12 @@ async function handleMessageWithDeps(
     }
 
     if (type === 'GET_UI_LANGUAGE') {
-      const result = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
-        type: 'GET_UI_LANGUAGE',
-      }), pairingSecret);
+      const result = await deps.sendNativeBridgeMessage(
+        buildForwardBridgeMessage(message, {
+          type: 'GET_UI_LANGUAGE',
+        }),
+        pairingSecret
+      );
       deps.writeMessage({
         ok: Boolean(result?.ok),
         error: result?.ok ? undefined : String(result?.error || 'UI_LANGUAGE_FAILED'),
@@ -362,10 +418,13 @@ async function handleMessageWithDeps(
         return;
       }
 
-      const data = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
-        type: 'GET_DOMAIN_CREDS',
-        domain,
-      }), pairingSecret);
+      const data = await deps.sendNativeBridgeMessage(
+        buildForwardBridgeMessage(message, {
+          type: 'GET_DOMAIN_CREDS',
+          domain,
+        }),
+        pairingSecret
+      );
       deps.writeMessage({
         ok: Boolean(data?.ok),
         error: data?.ok ? undefined : String(data?.error || 'DOMAIN_FAILED'),
@@ -382,10 +441,13 @@ async function handleMessageWithDeps(
         return;
       }
 
-      const data = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
-        type: 'GET_DOMAIN_PASSKEYS',
-        domain,
-      }), pairingSecret);
+      const data = await deps.sendNativeBridgeMessage(
+        buildForwardBridgeMessage(message, {
+          type: 'GET_DOMAIN_PASSKEYS',
+          domain,
+        }),
+        pairingSecret
+      );
       deps.writeMessage({
         ok: Boolean(data?.ok),
         error: data?.ok ? undefined : String(data?.error || 'DOMAIN_FAILED'),
@@ -397,26 +459,34 @@ async function handleMessageWithDeps(
 
     if (type === 'AUTOSAVE_CREDENTIAL') {
       const domain = normalizeDomain(typeof message?.domain === 'string' ? message.domain : '');
-      const rawCredential = message?.credential && typeof message.credential === 'object' ? message.credential : null;
-      const credential = rawCredential ? {
-        title: String(rawCredential.title || '').slice(0, 120),
-        username: String(rawCredential.username || '').slice(0, 256),
-        pass: String(rawCredential.pass || '').slice(0, 1024),
-        website: String(rawCredential.website || '').slice(0, 512),
-        submittedAt: typeof rawCredential.submittedAt === 'string' ? rawCredential.submittedAt : '',
-        source: typeof rawCredential.source === 'string' ? rawCredential.source : 'browser_form',
-      } : null;
+      const rawCredential =
+        message?.credential && typeof message.credential === 'object' ? message.credential : null;
+      const credential = rawCredential
+        ? {
+            title: String(rawCredential.title || '').slice(0, 120),
+            username: String(rawCredential.username || '').slice(0, 256),
+            pass: String(rawCredential.pass || '').slice(0, 1024),
+            website: String(rawCredential.website || '').slice(0, 512),
+            submittedAt:
+              typeof rawCredential.submittedAt === 'string' ? rawCredential.submittedAt : '',
+            source:
+              typeof rawCredential.source === 'string' ? rawCredential.source : 'browser_form',
+          }
+        : null;
 
       if (!domain || !credential?.pass || !credential?.website) {
         deps.writeMessage({ ok: false, error: 'INVALID_AUTOSAVE_PAYLOAD' });
         return;
       }
 
-      const result = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
-        type: 'AUTOSAVE_CREDENTIAL',
-        domain,
-        credential,
-      }), pairingSecret);
+      const result = await deps.sendNativeBridgeMessage(
+        buildForwardBridgeMessage(message, {
+          type: 'AUTOSAVE_CREDENTIAL',
+          domain,
+          credential,
+        }),
+        pairingSecret
+      );
       deps.writeMessage({
         ok: Boolean(result?.ok),
         saved: Boolean(result?.saved),
@@ -429,9 +499,12 @@ async function handleMessageWithDeps(
     }
 
     if (type === 'LIST_VAULT_ENTRIES') {
-      const result = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
-        type: 'LIST_VAULT_ENTRIES',
-      }), pairingSecret);
+      const result = await deps.sendNativeBridgeMessage(
+        buildForwardBridgeMessage(message, {
+          type: 'LIST_VAULT_ENTRIES',
+        }),
+        pairingSecret
+      );
       deps.writeMessage({
         ok: Boolean(result?.ok),
         error: result?.ok ? undefined : String(result?.error || 'CLI_LIST_FAILED'),
@@ -447,10 +520,13 @@ async function handleMessageWithDeps(
         deps.writeMessage({ ok: false, error: 'INVALID_ENTRY_ID', data: null });
         return;
       }
-      const result = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
-        type: 'GET_VAULT_ENTRY',
-        entryId,
-      }), pairingSecret);
+      const result = await deps.sendNativeBridgeMessage(
+        buildForwardBridgeMessage(message, {
+          type: 'GET_VAULT_ENTRY',
+          entryId,
+        }),
+        pairingSecret
+      );
       deps.writeMessage({
         ok: Boolean(result?.ok),
         error: result?.ok ? undefined : String(result?.error || 'CLI_GET_FAILED'),
@@ -466,11 +542,16 @@ async function handleMessageWithDeps(
         deps.writeMessage({ ok: false, error: 'INVALID_ENTRY_PAYLOAD' });
         return;
       }
-      const entryId = Number.isFinite(Number(message?.entryId)) ? Number(message.entryId) : undefined;
-      const result = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
-        type,
-        ...(Number.isFinite(Number(entryId)) ? { entryId } : {}),
-      }), pairingSecret);
+      const entryId = Number.isFinite(Number(message?.entryId))
+        ? Number(message.entryId)
+        : undefined;
+      const result = await deps.sendNativeBridgeMessage(
+        buildForwardBridgeMessage(message, {
+          type,
+          ...(Number.isFinite(Number(entryId)) ? { entryId } : {}),
+        }),
+        pairingSecret
+      );
       deps.writeMessage({
         ok: Boolean(result?.ok),
         error: result?.ok ? undefined : String(result?.error || 'CLI_WRITE_FAILED'),
@@ -486,10 +567,13 @@ async function handleMessageWithDeps(
         deps.writeMessage({ ok: false, error: 'INVALID_ENTRY_ID' });
         return;
       }
-      const result = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
-        type,
-        entryId,
-      }), pairingSecret);
+      const result = await deps.sendNativeBridgeMessage(
+        buildForwardBridgeMessage(message, {
+          type,
+          entryId,
+        }),
+        pairingSecret
+      );
       deps.writeMessage({
         ok: Boolean(result?.ok),
         error: result?.ok ? undefined : String(result?.error || 'CLI_MUTATION_FAILED'),
@@ -500,9 +584,12 @@ async function handleMessageWithDeps(
     }
 
     if (type === 'EMPTY_VAULT_TRASH') {
-      const result = await deps.sendNativeBridgeMessage(buildForwardBridgeMessage(message, {
-        type: 'EMPTY_VAULT_TRASH',
-      }), pairingSecret);
+      const result = await deps.sendNativeBridgeMessage(
+        buildForwardBridgeMessage(message, {
+          type: 'EMPTY_VAULT_TRASH',
+        }),
+        pairingSecret
+      );
       deps.writeMessage({
         ok: Boolean(result?.ok),
         error: result?.ok ? undefined : String(result?.error || 'CLI_EMPTY_TRASH_FAILED'),

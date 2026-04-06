@@ -11,11 +11,7 @@ const defaultChromiumDevExtensionIdPath = path.resolve(
 const defaultChromiumDevExtensionId = fs.existsSync(defaultChromiumDevExtensionIdPath)
   ? fs.readFileSync(defaultChromiumDevExtensionIdPath, 'utf8').trim()
   : '';
-const extensionIds = (
-  process.env.AEGIS_EXTENSION_ALLOWLIST ||
-  process.env.AEGIS_EXTENSION_ID ||
-  ''
-)
+const extensionIds = (process.env.AEGIS_EXTENSION_ALLOWLIST || process.env.AEGIS_EXTENSION_ID || '')
   .split(',')
   .map((id) => id.trim())
   .filter(Boolean);

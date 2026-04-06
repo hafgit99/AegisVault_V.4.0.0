@@ -2,15 +2,15 @@ import type { VaultEntry } from '../vaultService';
 
 /**
  * SyncConflictService — Aegis 4.2 Faz 2 / Adim 2.3
- * 
- * Veri senkronizasyonu sirasinda olusan catismalari (conflict) 
+ *
+ * Veri senkronizasyonu sirasinda olusan catismalari (conflict)
  * cozmek icin "Last-Write-Wins" ve "Tombstone" mekanizmalarini saglar.
  */
 
 export interface SyncConflictResult {
   merged: VaultEntry[];
   modifiedCount: number;
-  conflicts: Array<{ local: VaultEntry, remote: VaultEntry }>;
+  conflicts: Array<{ local: VaultEntry; remote: VaultEntry }>;
 }
 
 export class SyncConflictService {
@@ -19,15 +19,15 @@ export class SyncConflictService {
    * Silinen kayitlar ("tombstones") dikkate alinir.
    */
   static resolve(local: VaultEntry[], remote: VaultEntry[]): SyncConflictResult {
-    const localMap = new Map(local.map(e => [e.id, e]));
-    const remoteMap = new Map(remote.map(e => [e.id, e]));
-    
+    const localMap = new Map(local.map((e) => [e.id, e]));
+    const remoteMap = new Map(remote.map((e) => [e.id, e]));
+
     const allIds = new Set([...localMap.keys(), ...remoteMap.keys()]);
     const merged: VaultEntry[] = [];
-    const conflicts: Array<{ local: VaultEntry, remote: VaultEntry }> = [];
+    const conflicts: Array<{ local: VaultEntry; remote: VaultEntry }> = [];
     let modifiedCount = 0;
 
-    allIds.forEach(id => {
+    allIds.forEach((id) => {
       const l = localMap.get(id);
       const r = remoteMap.get(id);
 
@@ -63,7 +63,7 @@ export class SyncConflictService {
   }
 
   /**
-   * Silinen bir kayiti "Tombstone" olarak isaretlemek icin 
+   * Silinen bir kayiti "Tombstone" olarak isaretlemek icin
    * (Eger soft-delete yapisi varsa) entry'ye metadata ekler.
    */
   static markAsDeleted(entry: VaultEntry): VaultEntry {

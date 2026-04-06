@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useState } from 'react';
 
 /**
  * GlowCard — Premium glassmorphism kartı, fare takibi ile radyal ışıma efekti.
  * Dashboard, Settings, Sidebar ve diğer card tabanlı UI elementleri tarafından kullanılır.
  */
-export function GlowCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+export function GlowCard({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [opacity, setOpacity] = useState(0);
 

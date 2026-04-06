@@ -8,6 +8,7 @@ Surum: Aegis CLI v1 (Aegis Vault 4.2.x ile uyumlu)
 Aegis CLI, masaustu uygulamasina guvenli bridge uzerinden baglanarak kasadaki kayitlari komut satirindan yonetmenizi saglar.
 
 Temel ozellikler:
+
 - CLI-Desktop eslestirme (`pair`)
 - Durum kontrolu (`status`)
 - Kayit listeleme/arama (`list`)
@@ -27,6 +28,7 @@ npm run cli -- help
 ```
 
 Not: CLI ilk calismada kullanici dizininde bir config dosyasi olusturur:
+
 - Windows: `C:\Users\<kullanici>\.aegis-vault\cli-config.json`
 - macOS/Linux: `~/.aegis-vault/cli-config.json`
 
@@ -80,6 +82,7 @@ npm run cli -- status
 ```
 
 Ornek cikti:
+
 - `paired`: CLI eslesmesi var mi
 - `isUnlocked`: Kasa acik mi
 - `entryCount`: Kayit adedi
@@ -105,6 +108,7 @@ npm run cli -- list --searchScope title
 ```
 
 Desteklenen opsiyonlar:
+
 - `--query <metin>`
 - `--category <kategori>`
 - `--scope active|trash`
@@ -129,6 +133,7 @@ npm run cli -- add --title "GitHub" --username "user@example.com" --pass "Strong
 ```
 
 Opsiyonlar:
+
 - Zorunlu: `--title`, `--pass`
 - Opsiyonel: `--username`, `--website`, `--category`, `--tags`
 
@@ -189,6 +194,7 @@ npm run cli -- status --lang en
 ```
 
 Ek olarak bu parametreyi verecegin komutlar:
+
 - `list`, `get`, `add`, `update`, `delete`, `restore`, `empty-trash`, `pair`, `status`
 
 ## 7. JSON Cikti ile Otomasyon
@@ -213,18 +219,22 @@ $obj.data | Format-Table id,title,username,website
 ## 8.1 `pair` oncesi komut hatasi
 
 Belirti:
+
 - `Run aegis-cli pair before this operation.` benzeri hata
 
 Cozum:
+
 1. `npm run cli -- pair`
 2. Sonra komutu tekrar calistir
 
 ## 8.2 `VAULT_LOCKED`
 
 Belirti:
+
 - Listeleme/CRUD komutlarinda kasa kilitli hatasi
 
 Cozum:
+
 1. Aegis desktop uygulamasini ac
 2. Kasayi unlock et
 3. Komutu tekrar dene
@@ -232,18 +242,22 @@ Cozum:
 ## 8.3 `FORBIDDEN_EXTENSION_ID`
 
 Belirti:
+
 - Bridge allowlist hatasi
 
 Cozum:
+
 1. Native host allowlist ayarlarini kontrol et
 2. Gerekirse `AEGIS_CLI_EXTENSION_ID` ile uygun kimlik ver
 
 ## 8.4 `NATIVE_BRIDGE_TIMEOUT` / `NATIVE_BRIDGE_EOF`
 
 Belirti:
+
 - Bridge baglantisi zaman asimi veya kopma
 
 Cozum:
+
 1. Desktop uygulamasi acik mi kontrol et
 2. Native bridge yeniden baslat
 3. Komutu tekrar dene
@@ -275,4 +289,3 @@ npm run cli -- list --query "github"
 3. `list --query ...`
 4. `add` veya `update`
 5. Gerektiginde `delete` / `restore`
-

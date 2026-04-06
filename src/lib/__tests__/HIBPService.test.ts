@@ -9,10 +9,12 @@ describe('HIBPService', () => {
   });
 
   it('returns pwned count when suffix matches', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockFetchResponse({
-      ok: true,
-      text: async () => 'ABCDEF1234567890ABCDEF1234567890ABC:7\n',
-    }));
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      mockFetchResponse({
+        ok: true,
+        text: async () => 'ABCDEF1234567890ABCDEF1234567890ABC:7\n',
+      })
+    );
 
     const count = await HIBPService.checkPassword('password123');
     expect(typeof count).toBe('number');

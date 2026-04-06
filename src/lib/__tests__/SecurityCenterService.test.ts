@@ -1,31 +1,31 @@
-import { describe, expect, it } from "vitest";
-import { SecurityCenterService } from "../SecurityCenterService";
+import { describe, expect, it } from 'vitest';
+import { SecurityCenterService } from '../SecurityCenterService';
 
-describe("SecurityCenterService", () => {
-  it("builds security center metrics and issues from vault entries", () => {
+describe('SecurityCenterService', () => {
+  it('builds security center metrics and issues from vault entries', () => {
     const summary = SecurityCenterService.buildSummary([
       {
         id: 1,
-        title: "Github",
-        username: "octocat",
-        website: "https://github.com",
-        category: "login",
-        pass: "secret",
-        updated_at: "2025-01-01T10:00:00.000Z",
+        title: 'Github',
+        username: 'octocat',
+        website: 'https://github.com',
+        category: 'login',
+        pass: 'secret',
+        updated_at: '2025-01-01T10:00:00.000Z',
       },
       {
         id: 2,
-        title: "Bank",
-        username: "ada",
-        website: "https://bank.example",
-        category: "login",
-        pass: "long-enough-password",
-        updated_at: "2026-03-20T10:00:00.000Z",
-        totp_secret: "ABC123",
+        title: 'Bank',
+        username: 'ada',
+        website: 'https://bank.example',
+        category: 'login',
+        pass: 'long-enough-password',
+        updated_at: '2026-03-20T10:00:00.000Z',
+        totp_secret: 'ABC123',
         sharing: [
           {
-            space_id: "family-space",
-            role: "editor",
+            space_id: 'family-space',
+            role: 'editor',
             is_sensitive: true,
             emergency_access: false,
           },
@@ -33,15 +33,15 @@ describe("SecurityCenterService", () => {
       },
       {
         id: 3,
-        title: "Passkey record",
-        username: "ada",
-        website: "https://passkey.example",
-        category: "Passkeys",
-        updated_at: "2026-03-22T10:00:00.000Z",
+        title: 'Passkey record',
+        username: 'ada',
+        website: 'https://passkey.example',
+        category: 'Passkeys',
+        updated_at: '2026-03-22T10:00:00.000Z',
         passkeyMetadata: {
-          rp_id: "passkey.example",
-          credential_id: "cred-1",
-          mode: "site_passkey_mvp",
+          rp_id: 'passkey.example',
+          credential_id: 'cred-1',
+          mode: 'site_passkey_mvp',
         },
       },
     ] as never);
@@ -51,110 +51,123 @@ describe("SecurityCenterService", () => {
     expect(summary.metrics.agingCredentials).toBe(1);
     expect(summary.metrics.sensitiveSharing).toBe(1);
     expect(summary.issues.map((issue) => issue.type)).toEqual([
-      "missing_second_factor",
-      "passkey_ready",
-      "aging_credentials",
-      "sensitive_sharing",
+      'missing_second_factor',
+      'passkey_ready',
+      'aging_credentials',
+      'sensitive_sharing',
     ]);
     expect(summary.triageItems.length).toBeGreaterThan(0);
-    expect(summary.triageItems[0].severity).toBe("high");
-    expect(summary.triageItems.some((item) => item.issueType === "passkey_ready")).toBe(true);
+    expect(summary.triageItems[0].severity).toBe('high');
+    expect(summary.triageItems.some((item) => item.issueType === 'passkey_ready')).toBe(true);
     expect(summary.score).toBeLessThan(100);
-    expect(summary.riskLevel).toBe("medium");
+    expect(summary.riskLevel).toBe('medium');
   });
 
-  it("hides reviewed triage items from the active queue", () => {
+  it('hides reviewed triage items from the active queue', () => {
     const recentlyReviewedAt = new Date().toISOString();
-    const summary = SecurityCenterService.buildSummary([
+    const summary = SecurityCenterService.buildSummary(
+      [
+        {
+          id: 1,
+          title: 'Github',
+          username: 'octocat',
+          website: 'https://github.com',
+          category: 'login',
+          pass: 'secret',
+          updated_at: '2025-01-01T10:00:00.000Z',
+        },
+      ] as never,
       {
-        id: 1,
-        title: "Github",
-        username: "octocat",
-        website: "https://github.com",
-        category: "login",
-        pass: "secret",
-        updated_at: "2025-01-01T10:00:00.000Z",
-      },
-    ] as never, {
-      "missing_second_factor:1": recentlyReviewedAt,
-      "passkey_ready:1": recentlyReviewedAt,
-      "aging_credentials:1": recentlyReviewedAt,
-    });
+        'missing_second_factor:1': recentlyReviewedAt,
+        'passkey_ready:1': recentlyReviewedAt,
+        'aging_credentials:1': recentlyReviewedAt,
+      }
+    );
 
     expect(summary.issues.length).toBeGreaterThan(0);
     expect(summary.triageItems).toHaveLength(0);
     expect(summary.reviewedTriageItems).toHaveLength(3);
   });
 
-  it("shows reviewed items again after the review window expires", () => {
+  it('shows reviewed items again after the review window expires', () => {
     const expiredReviewAt = new Date(Date.now() - 1000 * 60 * 60 * 24 * 8).toISOString();
-    const summary = SecurityCenterService.buildSummary([
+    const summary = SecurityCenterService.buildSummary(
+      [
+        {
+          id: 1,
+          title: 'Github',
+          username: 'octocat',
+          website: 'https://github.com',
+          category: 'login',
+          pass: 'secret',
+          updated_at: '2025-01-01T10:00:00.000Z',
+        },
+      ] as never,
       {
-        id: 1,
-        title: "Github",
-        username: "octocat",
-        website: "https://github.com",
-        category: "login",
-        pass: "secret",
-        updated_at: "2025-01-01T10:00:00.000Z",
-      },
-    ] as never, {
-      "missing_second_factor:1": expiredReviewAt,
-      "passkey_ready:1": expiredReviewAt,
-      "aging_credentials:1": expiredReviewAt,
-    });
+        'missing_second_factor:1': expiredReviewAt,
+        'passkey_ready:1': expiredReviewAt,
+        'aging_credentials:1': expiredReviewAt,
+      }
+    );
 
     expect(summary.triageItems).toHaveLength(3);
     expect(summary.triageItems.every((item) => item.reviewExpired)).toBe(true);
     expect(summary.reviewedTriageItems).toHaveLength(0);
   });
 
-  it("tracks reviewed items that are now fully resolved", () => {
-    const summary = SecurityCenterService.buildSummary([
+  it('tracks reviewed items that are now fully resolved', () => {
+    const summary = SecurityCenterService.buildSummary(
+      [
+        {
+          id: 1,
+          title: 'Github',
+          username: '',
+          website: '',
+          category: 'login',
+          pass: 'long-enough-password',
+          updated_at: '2026-03-22T10:00:00.000Z',
+          totp_secret: 'ABC123',
+        },
+      ] as never,
       {
-        id: 1,
-        title: "Github",
-        username: "",
-        website: "",
-        category: "login",
-        pass: "long-enough-password",
-        updated_at: "2026-03-22T10:00:00.000Z",
-        totp_secret: "ABC123",
-      },
-    ] as never, {
-      "missing_second_factor:1": "2026-03-23T18:00:00.000Z",
-    });
+        'missing_second_factor:1': '2026-03-23T18:00:00.000Z',
+      }
+    );
 
     expect(summary.triageItems).toHaveLength(0);
     expect(summary.reviewedTriageItems).toHaveLength(0);
     expect(summary.resolvedTriageItems).toHaveLength(1);
-    expect(summary.resolvedTriageItems[0].issueType).toBe("missing_second_factor");
+    expect(summary.resolvedTriageItems[0].issueType).toBe('missing_second_factor');
   });
 
-  it("includes device trust and recent local risk signals", () => {
-    const summary = SecurityCenterService.buildSummary([] as never, {}, {
-      desktopPairings: [
-        {
-          extensionId: "ext-1",
-          browserName: "Chrome",
-          riskLevel: "high",
-          riskFlags: ["fingerprint_changed"],
-        },
-      ],
-      syncAuditEvents: [
-        {
-          id: "sync-1",
-          type: "migration_completed",
-          source: "migration",
-          at: new Date().toISOString(),
-          detail: "Legacy vault migration",
-        },
-      ],
-    });
+  it('includes device trust and recent local risk signals', () => {
+    const summary = SecurityCenterService.buildSummary(
+      [] as never,
+      {},
+      {
+        desktopPairings: [
+          {
+            extensionId: 'ext-1',
+            browserName: 'Chrome',
+            riskLevel: 'high',
+            riskFlags: ['fingerprint_changed'],
+          },
+        ],
+        syncAuditEvents: [
+          {
+            id: 'sync-1',
+            type: 'migration_completed',
+            source: 'migration',
+            at: new Date().toISOString(),
+            detail: 'Legacy vault migration',
+          },
+        ],
+      }
+    );
 
-    expect(summary.issues.map((issue) => issue.type)).toContain("device_trust");
-    expect(summary.issues.map((issue) => issue.type)).toContain("local_risk_activity");
-    expect(summary.triageItems.some((item) => item.issueType === "device_trust")).toBe(true);
-    expect(summary.triageItems.some((item) => item.issueType === "local_risk_activity")).toBe(true);
+    expect(summary.issues.map((issue) => issue.type)).toContain('device_trust');
+    expect(summary.issues.map((issue) => issue.type)).toContain('local_risk_activity');
+    expect(summary.triageItems.some((item) => item.issueType === 'device_trust')).toBe(true);
+    expect(summary.triageItems.some((item) => item.issueType === 'local_risk_activity')).toBe(true);
   });
 });

@@ -1,7 +1,7 @@
-import { useState, useRef, useCallback, useEffect } from "react";
-import { Camera, X } from "lucide-react";
-import { useTranslation } from "react-i18next";
-import jsQR from "jsqr";
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Camera, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import jsQR from 'jsqr';
 
 interface QRScannerProps {
   onScan: (data: string) => void;
@@ -18,7 +18,7 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number>(0);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState<string>('');
   const [isScanning, setIsScanning] = useState(false);
   const scanFrameRef = useRef<() => void>(() => {});
 
@@ -28,7 +28,7 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
       animFrameRef.current = 0;
     }
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
   }, []);
@@ -41,7 +41,7 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
       return;
     }
 
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
     canvas.width = video.videoWidth;
@@ -50,7 +50,7 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
 
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const code = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: "dontInvert",
+      inversionAttempts: 'dontInvert',
     });
 
     if (code && code.data) {
@@ -68,10 +68,10 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
 
   const startCamera = useCallback(async () => {
     try {
-      setError("");
+      setError('');
       setIsScanning(true);
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } }
+        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
       });
       streamRef.current = stream;
       if (videoRef.current) {
@@ -82,15 +82,17 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
       }
     } catch (err: unknown) {
       setIsScanning(false);
-      const errorName = err instanceof Error ? err.name : "";
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      const errorName = err instanceof Error ? err.name : '';
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
 
-      if (errorName === "NotAllowedError") {
-        setError(t("cameraPermissionDenied", "Camera permission denied. Please allow camera access."));
-      } else if (errorName === "NotFoundError") {
-        setError(t("noCameraFound", "No camera found on this device."));
+      if (errorName === 'NotAllowedError') {
+        setError(
+          t('cameraPermissionDenied', 'Camera permission denied. Please allow camera access.')
+        );
+      } else if (errorName === 'NotFoundError') {
+        setError(t('noCameraFound', 'No camera found on this device.'));
       } else {
-        setError(t("cameraError", "Camera error: ") + errorMessage);
+        setError(t('cameraError', 'Camera error: ') + errorMessage);
       }
     }
   }, [scanFrame, t]);
@@ -112,12 +114,15 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
         <div className="flex items-center justify-between px-4 py-3 bg-[var(--color-deep-navy)] text-white">
           <div className="flex items-center gap-2">
             <Camera className="w-4 h-4" />
-            <span className="text-sm font-bold">{t("scanQRCode", "Scan QR Code")}</span>
+            <span className="text-sm font-bold">{t('scanQRCode', 'Scan QR Code')}</span>
           </div>
           <button
-            onClick={() => { stopCamera(); onClose(); }}
+            onClick={() => {
+              stopCamera();
+              onClose();
+            }}
             className="p-1 rounded-lg hover:bg-white/10 transition-colors"
-            aria-label={t("close", "Close")}
+            aria-label={t('close', 'Close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -130,7 +135,7 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
             className="w-full h-full object-cover"
             playsInline
             muted
-            aria-label={t("cameraFeed", "Camera feed for QR scanning")}
+            aria-label={t('cameraFeed', 'Camera feed for QR scanning')}
           />
           <canvas ref={canvasRef} className="hidden" />
 
@@ -144,8 +149,10 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
                 <div className="absolute bottom-0 left-0 w-10 h-10 border-b-3 border-l-3 border-[var(--color-sage-green)] rounded-bl-lg" />
                 <div className="absolute bottom-0 right-0 w-10 h-10 border-b-3 border-r-3 border-[var(--color-sage-green)] rounded-br-lg" />
                 {/* Scanning line animation */}
-                <div className="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-[var(--color-sage-green)] to-transparent animate-[scan_2s_linear_infinite]" 
-                  style={{ animation: "scan 2s linear infinite" }} />
+                <div
+                  className="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-[var(--color-sage-green)] to-transparent animate-[scan_2s_linear_infinite]"
+                  style={{ animation: 'scan 2s linear infinite' }}
+                />
               </div>
             </div>
           )}
@@ -160,7 +167,7 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
                   onClick={startCamera}
                   className="px-4 py-2 bg-[var(--color-sage-green)] text-white text-sm font-bold rounded-lg hover:opacity-90 transition-opacity"
                 >
-                  {t("tryAgain", "Try Again")}
+                  {t('tryAgain', 'Try Again')}
                 </button>
               </div>
             </div>
@@ -170,7 +177,7 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
         {/* Footer */}
         <div className="px-4 py-3 text-center">
           <p className="text-[11px] text-[var(--color-deep-navy)]/50">
-            {t("qrScanHint", "Point your camera at a TOTP QR code to scan it automatically")}
+            {t('qrScanHint', 'Point your camera at a TOTP QR code to scan it automatically')}
           </p>
         </div>
       </div>

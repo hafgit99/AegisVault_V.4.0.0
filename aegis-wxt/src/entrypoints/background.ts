@@ -29,7 +29,15 @@ type DesktopPairingStatus = {
   pairingHistory?: Array<{ at?: string; type?: string; detail?: string; riskFlags?: string[] }>;
 };
 type NativePairingInitResult =
-  | { ok: true; secret: string; pairedAt: string; riskFlags?: string[]; deviceFingerprint?: string; pairingMode?: string; clientKeyId?: string }
+  | {
+      ok: true;
+      secret: string;
+      pairedAt: string;
+      riskFlags?: string[];
+      deviceFingerprint?: string;
+      pairingMode?: string;
+      clientKeyId?: string;
+    }
   | { ok: false; error: string };
 type VaultCacheEntry = {
   title: string;
@@ -81,19 +89,19 @@ type RuntimeMessageSenderWithOrigin = browser.Runtime.MessageSender & {
 // Firefox Manifest V3 -> scripts: [...] -> standart arka plan betiği (background script) olarak derlenir.
 export default defineBackground({
   type: 'module', // Chrome/Safari V3 Service Worker gereksinimi
-  
+
   main() {
     const env = import.meta.env as WxtEnvMap;
     console.log('[Aegis Vault] Hybrid Background Yüklendi.');
 
     browser.runtime.onInstalled.addListener(() => {
-        console.log("Aegis Vault WXT eklentisi başarıyla kuruldu ve başlatıldı.");
+      console.log('Aegis Vault WXT eklentisi başarıyla kuruldu ve başlatıldı.');
     });
-    
+
     browser.contextMenus.create({
-      id: "aegis-fill",
-      title: "Aegis: Bu sayfayı analiz et ve doldur",
-      contexts: ["page", "editable"]
+      id: 'aegis-fill',
+      title: 'Aegis: Bu sayfayı analiz et ve doldur',
+      contexts: ['page', 'editable'],
     });
 
     // ─── RUNTIME ENJEKSİYON (P0-3: Attack Surface Reduction) ───
@@ -104,18 +112,20 @@ export default defineBackground({
         // Script ve CSS enjeksiyonu
         await browser.scripting.executeScript({
           target: { tabId },
-          files: ['content-scripts/content.js']
+          files: ['content-scripts/content.js'],
         });
-        
+
         // CSS dosyasının varlığından emin olun (WXT build çıktısı)
-        await browser.scripting.insertCSS({
-          target: { tabId },
-          files: ['content-scripts/content.css']
-        }).catch(() => {}); // CSS olmayabilirse hata fırlatmasın
-        
+        await browser.scripting
+          .insertCSS({
+            target: { tabId },
+            files: ['content-scripts/content.css'],
+          })
+          .catch(() => {}); // CSS olmayabilirse hata fırlatmasın
+
         console.log(`[Aegis Vault] 💉 JIT: Content script tabId:${tabId} üzerine enjekte edildi.`);
       } catch (err) {
-        console.error("[Aegis Vault] ❌ Enjeksiyon hatası (Scripting API):", err);
+        console.error('[Aegis Vault] ❌ Enjeksiyon hatası (Scripting API):', err);
       }
     };
 
@@ -124,7 +134,7 @@ export default defineBackground({
     });
 
     browser.contextMenus.onClicked.addListener((info, tab) => {
-      if (info.menuItemId === "aegis-fill" && tab?.id) {
+      if (info.menuItemId === 'aegis-fill' && tab?.id) {
         injectContentScript(tab.id);
       }
     });
@@ -132,7 +142,7 @@ export default defineBackground({
     // ──────────────────────────────────────────────────────────────────────
     // 🔒 TEK KAYNAK GÜVENLİK MİMARİSİ (Single Source of Truth)
     // ──────────────────────────────────────────────────────────────────────
-    // 
+    //
     // Eklenti SADECE ve SADECE şu kaynaktan veri alır:
     //   → SAVE_VAULT mesajı (PWA Dashboard kasayı açtığında gönderir)
     //
@@ -155,38 +165,23 @@ export default defineBackground({
     const AUTOSAVE_QUEUE_LIMIT = 20;
     const NONCE_TTL_MS = 30 * 1000;
     const DESKTOP_CHALLENGE_TTL_MS = 60 * 1000;
-    const EXTENSION_ID = (
-      env.WXT_AEGIS_EXTENSION_ID ||
-      browser.runtime.id ||
-      ''
-    ).trim();
-    const DESKTOP_PAIRING_SECRET = (
-      env.WXT_AEGIS_DESKTOP_PAIRING_SECRET ||
-      ''
-    ).trim();
-    const _DESKTOP_SYNC_ENABLED = (
-      env.WXT_AEGIS_ENABLE_DESKTOP_SYNC ||
-      '0'
-    ) === '1';
-    const NATIVE_MESSAGING_ENABLED = (
-      env.WXT_AEGIS_ENABLE_NATIVE_MESSAGING ||
-      '1'
-    ) === '1';
-    const NATIVE_HOST_NAME = (
-      env.WXT_AEGIS_NATIVE_HOST_NAME ||
-      'com.aegisvault.desktop'
-    ).trim();
-    const LOOPBACK_FALLBACK_ENABLED = (
-      env.WXT_AEGIS_ENABLE_LOOPBACK_FALLBACK ||
-      '1'
-    ) === '1';
+    const EXTENSION_ID = (env.WXT_AEGIS_EXTENSION_ID || browser.runtime.id || '').trim();
+    const DESKTOP_PAIRING_SECRET = (env.WXT_AEGIS_DESKTOP_PAIRING_SECRET || '').trim();
+    const _DESKTOP_SYNC_ENABLED = (env.WXT_AEGIS_ENABLE_DESKTOP_SYNC || '0') === '1';
+    const NATIVE_MESSAGING_ENABLED = (env.WXT_AEGIS_ENABLE_NATIVE_MESSAGING || '1') === '1';
+    const NATIVE_HOST_NAME = (env.WXT_AEGIS_NATIVE_HOST_NAME || 'com.aegisvault.desktop').trim();
+    const LOOPBACK_FALLBACK_ENABLED = (env.WXT_AEGIS_ENABLE_LOOPBACK_FALLBACK || '1') === '1';
     const recentDomainRequestMap = new Map<string, number>();
     const recentAutosaveMap = new Map<string, number>();
     const requestNonceMap = new Map<string, number>();
     const normalizeUiLanguage = (value: unknown) =>
       typeof value === 'string' && value.toLowerCase().startsWith('tr') ? 'tr' : 'en';
     let runtimePairingSecret = '';
-    let runtimePairingKeyMaterial: { publicJwk: JsonWebKey; privateJwk: JsonWebKey; keyId: string } | null = null;
+    let runtimePairingKeyMaterial: {
+      publicJwk: JsonWebKey;
+      privateJwk: JsonWebKey;
+      keyId: string;
+    } | null = null;
     let runtimeDesktopBridgeIdentity: { publicJwk: JsonWebKey; keyId: string } | null = null;
     let runtimeUiLanguage = normalizeUiLanguage(
       typeof navigator !== 'undefined' ? navigator.language : 'en'
@@ -216,9 +211,10 @@ export default defineBackground({
     const loadRuntimePairingSecret = async () => {
       try {
         const result = await browser.storage.local.get(PAIRING_SECRET_STORAGE_KEY);
-        runtimePairingSecret = typeof result[PAIRING_SECRET_STORAGE_KEY] === 'string'
-          ? result[PAIRING_SECRET_STORAGE_KEY].trim()
-          : '';
+        runtimePairingSecret =
+          typeof result[PAIRING_SECRET_STORAGE_KEY] === 'string'
+            ? result[PAIRING_SECRET_STORAGE_KEY].trim()
+            : '';
       } catch {
         runtimePairingSecret = '';
       }
@@ -227,7 +223,12 @@ export default defineBackground({
     const normalizeClientPublicJwk = (value: unknown): JsonWebKey | null => {
       if (!value || typeof value !== 'object') return null;
       const candidate = value as JsonWebKey;
-      if (candidate.kty !== 'EC' || candidate.crv !== 'P-256' || typeof candidate.x !== 'string' || typeof candidate.y !== 'string') {
+      if (
+        candidate.kty !== 'EC' ||
+        candidate.crv !== 'P-256' ||
+        typeof candidate.x !== 'string' ||
+        typeof candidate.y !== 'string'
+      ) {
         return null;
       }
       return {
@@ -243,7 +244,13 @@ export default defineBackground({
     const normalizeClientPrivateJwk = (value: unknown): JsonWebKey | null => {
       if (!value || typeof value !== 'object') return null;
       const candidate = value as JsonWebKey;
-      if (candidate.kty !== 'EC' || candidate.crv !== 'P-256' || typeof candidate.x !== 'string' || typeof candidate.y !== 'string' || typeof candidate.d !== 'string') {
+      if (
+        candidate.kty !== 'EC' ||
+        candidate.crv !== 'P-256' ||
+        typeof candidate.x !== 'string' ||
+        typeof candidate.y !== 'string' ||
+        typeof candidate.d !== 'string'
+      ) {
         return null;
       }
       return {
@@ -257,14 +264,15 @@ export default defineBackground({
       };
     };
 
-    const canonicalizePublicJwk = (publicJwk: JsonWebKey) => JSON.stringify({
-      key_ops: ['verify'],
-      ext: true,
-      kty: 'EC',
-      crv: 'P-256',
-      x: publicJwk.x,
-      y: publicJwk.y,
-    });
+    const canonicalizePublicJwk = (publicJwk: JsonWebKey) =>
+      JSON.stringify({
+        key_ops: ['verify'],
+        ext: true,
+        kty: 'EC',
+        crv: 'P-256',
+        x: publicJwk.x,
+        y: publicJwk.y,
+      });
 
     const digestString = async (value: string) => {
       const bytes = new TextEncoder().encode(value);
@@ -272,7 +280,8 @@ export default defineBackground({
       return toHex(digest);
     };
 
-    const computeClientKeyId = async (publicJwk: JsonWebKey) => (await digestString(canonicalizePublicJwk(publicJwk))).slice(0, 24);
+    const computeClientKeyId = async (publicJwk: JsonWebKey) =>
+      (await digestString(canonicalizePublicJwk(publicJwk))).slice(0, 24);
 
     const loadRuntimePairingKeyMaterial = async () => {
       try {
@@ -283,7 +292,10 @@ export default defineBackground({
         ]);
         const publicJwk = normalizeClientPublicJwk(result[PAIRING_PUBLIC_JWK_STORAGE_KEY]);
         const privateJwk = normalizeClientPrivateJwk(result[PAIRING_PRIVATE_JWK_STORAGE_KEY]);
-        const keyId = typeof result[PAIRING_KEY_ID_STORAGE_KEY] === 'string' ? result[PAIRING_KEY_ID_STORAGE_KEY].trim() : '';
+        const keyId =
+          typeof result[PAIRING_KEY_ID_STORAGE_KEY] === 'string'
+            ? result[PAIRING_KEY_ID_STORAGE_KEY].trim()
+            : '';
         if (publicJwk && privateJwk && keyId) {
           runtimePairingKeyMaterial = { publicJwk, privateJwk, keyId };
           return runtimePairingKeyMaterial;
@@ -302,9 +314,10 @@ export default defineBackground({
           DESKTOP_BRIDGE_KEY_ID_STORAGE_KEY,
         ]);
         const publicJwk = normalizeClientPublicJwk(result[DESKTOP_BRIDGE_PUBLIC_JWK_STORAGE_KEY]);
-        const keyId = typeof result[DESKTOP_BRIDGE_KEY_ID_STORAGE_KEY] === 'string'
-          ? result[DESKTOP_BRIDGE_KEY_ID_STORAGE_KEY].trim()
-          : '';
+        const keyId =
+          typeof result[DESKTOP_BRIDGE_KEY_ID_STORAGE_KEY] === 'string'
+            ? result[DESKTOP_BRIDGE_KEY_ID_STORAGE_KEY].trim()
+            : '';
         if (publicJwk && keyId) {
           runtimeDesktopBridgeIdentity = { publicJwk, keyId };
           return runtimeDesktopBridgeIdentity;
@@ -355,21 +368,27 @@ export default defineBackground({
             continue;
           }
           const credentialCandidate = item.credential as Partial<AutosaveCredentialPayload>;
-          const website = typeof credentialCandidate.website === 'string'
-            ? credentialCandidate.website.trim()
-            : '';
-          const pass = typeof credentialCandidate.pass === 'string'
-            ? credentialCandidate.pass
-            : '';
+          const website =
+            typeof credentialCandidate.website === 'string'
+              ? credentialCandidate.website.trim()
+              : '';
+          const pass = typeof credentialCandidate.pass === 'string' ? credentialCandidate.pass : '';
           if (!website || !pass) continue;
           const sanitizedCredential: AutosaveCredentialPayload = {
-            title: typeof credentialCandidate.title === 'string' ? credentialCandidate.title.slice(0, 120) : '',
-            username: typeof credentialCandidate.username === 'string' ? credentialCandidate.username.slice(0, 256) : '',
+            title:
+              typeof credentialCandidate.title === 'string'
+                ? credentialCandidate.title.slice(0, 120)
+                : '',
+            username:
+              typeof credentialCandidate.username === 'string'
+                ? credentialCandidate.username.slice(0, 256)
+                : '',
             pass: pass.slice(0, 1024),
             website: website.slice(0, 512),
-            submittedAt: typeof credentialCandidate.submittedAt === 'string'
-              ? credentialCandidate.submittedAt
-              : new Date().toISOString(),
+            submittedAt:
+              typeof credentialCandidate.submittedAt === 'string'
+                ? credentialCandidate.submittedAt
+                : new Date().toISOString(),
             source: 'browser_form',
           };
           if (!sanitizedCredential) continue;
@@ -377,7 +396,8 @@ export default defineBackground({
             id: item.id,
             domain: item.domain,
             credential: sanitizedCredential,
-            createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString(),
+            createdAt:
+              typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString(),
           });
         }
       } catch {
@@ -391,11 +411,12 @@ export default defineBackground({
     };
 
     const enqueueAutosaveCandidate = (domain: string, credential: AutosaveCredentialPayload) => {
-      const dedupIndex = pendingAutosaveQueue.findIndex((item) =>
-        item.domain === domain &&
-        item.credential.website === credential.website &&
-        item.credential.username.toLowerCase() === credential.username.toLowerCase() &&
-        item.credential.pass === credential.pass
+      const dedupIndex = pendingAutosaveQueue.findIndex(
+        (item) =>
+          item.domain === domain &&
+          item.credential.website === credential.website &&
+          item.credential.username.toLowerCase() === credential.username.toLowerCase() &&
+          item.credential.pass === credential.pass
       );
       if (dedupIndex >= 0) {
         const existing = pendingAutosaveQueue[dedupIndex];
@@ -437,10 +458,14 @@ export default defineBackground({
       const keyPair = await crypto.subtle.generateKey(
         { name: 'ECDSA', namedCurve: 'P-256' },
         true,
-        ['sign', 'verify'],
+        ['sign', 'verify']
       );
-      const publicJwk = normalizeClientPublicJwk(await crypto.subtle.exportKey('jwk', keyPair.publicKey));
-      const privateJwk = normalizeClientPrivateJwk(await crypto.subtle.exportKey('jwk', keyPair.privateKey));
+      const publicJwk = normalizeClientPublicJwk(
+        await crypto.subtle.exportKey('jwk', keyPair.publicKey)
+      );
+      const privateJwk = normalizeClientPrivateJwk(
+        await crypto.subtle.exportKey('jwk', keyPair.privateKey)
+      );
       if (!publicJwk || !privateJwk) {
         throw new Error('PAIRING_KEY_EXPORT_FAILED');
       }
@@ -482,17 +507,19 @@ export default defineBackground({
       }
     };
 
-    const detectBrowserUiLanguage = () => normalizeUiLanguage(
-      typeof navigator !== 'undefined' ? navigator.language : runtimeUiLanguage
-    );
+    const detectBrowserUiLanguage = () =>
+      normalizeUiLanguage(
+        typeof navigator !== 'undefined' ? navigator.language : runtimeUiLanguage
+      );
 
     const ensureRuntimeInstallationId = async () => {
       if (runtimeInstallationId) return runtimeInstallationId;
       try {
         const result = await browser.storage.local.get(INSTALLATION_ID_STORAGE_KEY);
-        const existing = typeof result[INSTALLATION_ID_STORAGE_KEY] === 'string'
-          ? result[INSTALLATION_ID_STORAGE_KEY].trim()
-          : '';
+        const existing =
+          typeof result[INSTALLATION_ID_STORAGE_KEY] === 'string'
+            ? result[INSTALLATION_ID_STORAGE_KEY].trim()
+            : '';
         if (existing) {
           runtimeInstallationId = existing;
           return runtimeInstallationId;
@@ -501,9 +528,10 @@ export default defineBackground({
         // continue with generation
       }
 
-      const generated = typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random()}`;
+      const generated =
+        typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random()}`;
       runtimeInstallationId = generated;
       try {
         await browser.storage.local.set({ [INSTALLATION_ID_STORAGE_KEY]: generated });
@@ -516,10 +544,14 @@ export default defineBackground({
     const buildClientInfo = async () => ({
       browserName: browser.runtime.getManifest().name || 'Aegis Vault',
       browserVersion: browser.runtime.getManifest().version || '',
-      platform: typeof navigator !== 'undefined'
-        ? ((navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform || navigator.platform || 'unknown')
-        : 'unknown',
-      locale: typeof navigator !== 'undefined' ? (navigator.language || 'en') : 'en',
+      platform:
+        typeof navigator !== 'undefined'
+          ? (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData
+              ?.platform ||
+            navigator.platform ||
+            'unknown'
+          : 'unknown',
+      locale: typeof navigator !== 'undefined' ? navigator.language || 'en' : 'en',
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
       extensionVersion: browser.runtime.getManifest().version || '',
       installId: await ensureRuntimeInstallationId(),
@@ -531,52 +563,60 @@ export default defineBackground({
       keyId: string,
       timestamp: string,
       nonce: string,
-      clientPublicJwk?: JsonWebKey | null,
-    ) => JSON.stringify({
-      type: typeof message.type === 'string' ? message.type : '',
-      extensionId: EXTENSION_ID,
-      domain: normalizeBridgeDomain(message.domain),
-      requestNonce: typeof message.requestNonce === 'string' ? message.requestNonce.trim() : '',
-      clientKeyId: keyId,
-      clientTimestamp: timestamp,
-      clientNonce: nonce,
-      clientInfo: {
-        browserName: clientInfo.browserName,
-        browserVersion: clientInfo.browserVersion,
-        platform: clientInfo.platform,
-        locale: clientInfo.locale,
-        installId: clientInfo.installId,
-        extensionVersion: clientInfo.extensionVersion,
-        userAgent: clientInfo.userAgent,
-      },
-      clientPublicJwk: clientPublicJwk || null,
-      credential: message.credential && typeof message.credential === 'object'
-        ? {
-            title: typeof (message.credential as Record<string, unknown>).title === 'string'
-              ? (message.credential as Record<string, unknown>).title
-              : '',
-            username: typeof (message.credential as Record<string, unknown>).username === 'string'
-              ? (message.credential as Record<string, unknown>).username
-              : '',
-            pass: typeof (message.credential as Record<string, unknown>).pass === 'string'
-              ? (message.credential as Record<string, unknown>).pass
-              : '',
-            website: typeof (message.credential as Record<string, unknown>).website === 'string'
-              ? (message.credential as Record<string, unknown>).website
-              : '',
-            submittedAt: typeof (message.credential as Record<string, unknown>).submittedAt === 'string'
-              ? (message.credential as Record<string, unknown>).submittedAt
-              : '',
-            source: typeof (message.credential as Record<string, unknown>).source === 'string'
-              ? (message.credential as Record<string, unknown>).source
-              : 'browser_form',
-          }
-        : null,
-    });
+      clientPublicJwk?: JsonWebKey | null
+    ) =>
+      JSON.stringify({
+        type: typeof message.type === 'string' ? message.type : '',
+        extensionId: EXTENSION_ID,
+        domain: normalizeBridgeDomain(message.domain),
+        requestNonce: typeof message.requestNonce === 'string' ? message.requestNonce.trim() : '',
+        clientKeyId: keyId,
+        clientTimestamp: timestamp,
+        clientNonce: nonce,
+        clientInfo: {
+          browserName: clientInfo.browserName,
+          browserVersion: clientInfo.browserVersion,
+          platform: clientInfo.platform,
+          locale: clientInfo.locale,
+          installId: clientInfo.installId,
+          extensionVersion: clientInfo.extensionVersion,
+          userAgent: clientInfo.userAgent,
+        },
+        clientPublicJwk: clientPublicJwk || null,
+        credential:
+          message.credential && typeof message.credential === 'object'
+            ? {
+                title:
+                  typeof (message.credential as Record<string, unknown>).title === 'string'
+                    ? (message.credential as Record<string, unknown>).title
+                    : '',
+                username:
+                  typeof (message.credential as Record<string, unknown>).username === 'string'
+                    ? (message.credential as Record<string, unknown>).username
+                    : '',
+                pass:
+                  typeof (message.credential as Record<string, unknown>).pass === 'string'
+                    ? (message.credential as Record<string, unknown>).pass
+                    : '',
+                website:
+                  typeof (message.credential as Record<string, unknown>).website === 'string'
+                    ? (message.credential as Record<string, unknown>).website
+                    : '',
+                submittedAt:
+                  typeof (message.credential as Record<string, unknown>).submittedAt === 'string'
+                    ? (message.credential as Record<string, unknown>).submittedAt
+                    : '',
+                source:
+                  typeof (message.credential as Record<string, unknown>).source === 'string'
+                    ? (message.credential as Record<string, unknown>).source
+                    : 'browser_form',
+              }
+            : null,
+      });
 
     const signNativeBridgeMessage = async (
       message: Record<string, unknown>,
-      clientInfo: Awaited<ReturnType<typeof buildClientInfo>>,
+      clientInfo: Awaited<ReturnType<typeof buildClientInfo>>
     ) => {
       const keyMaterial = await ensureRuntimePairingKeyMaterial();
       const timestamp = Date.now().toString();
@@ -588,19 +628,19 @@ export default defineBackground({
         keyMaterial.keyId,
         timestamp,
         nonce,
-        includePublicKey ? keyMaterial.publicJwk : null,
+        includePublicKey ? keyMaterial.publicJwk : null
       );
       const privateKey = await crypto.subtle.importKey(
         'jwk',
         keyMaterial.privateJwk,
         { name: 'ECDSA', namedCurve: 'P-256' },
         false,
-        ['sign'],
+        ['sign']
       );
       const signature = await crypto.subtle.sign(
         { name: 'ECDSA', hash: 'SHA-256' },
         privateKey,
-        new TextEncoder().encode(payload),
+        new TextEncoder().encode(payload)
       );
       const derSignature = convertP1363SignatureToDer(signature);
       return {
@@ -617,19 +657,20 @@ export default defineBackground({
       requestType: string,
       requestNonce: string,
       clientNonce: string,
-      timestamp: string,
-    ) => JSON.stringify({
-      type: requestType,
-      extensionId: EXTENSION_ID,
-      requestNonce,
-      clientNonce,
-      timestamp,
-      response,
-    });
+      timestamp: string
+    ) =>
+      JSON.stringify({
+        type: requestType,
+        extensionId: EXTENSION_ID,
+        requestNonce,
+        clientNonce,
+        timestamp,
+        response,
+      });
 
     const verifyDesktopBridgeResponse = async (
       requestMessage: Record<string, unknown>,
-      response: NativeHostResponse,
+      response: NativeHostResponse
     ) => {
       const auth = (response?.desktopAuth || null) as DesktopAuthEnvelope | null;
       if (!auth || typeof auth !== 'object') {
@@ -653,14 +694,16 @@ export default defineBackground({
         throw new Error('DESKTOP_AUTH_EXPIRED');
       }
 
-      const expectedRequestNonce = typeof requestMessage.requestNonce === 'string' ? requestMessage.requestNonce.trim() : '';
-      const expectedClientNonce = typeof requestMessage.clientNonce === 'string' ? requestMessage.clientNonce.trim() : '';
+      const expectedRequestNonce =
+        typeof requestMessage.requestNonce === 'string' ? requestMessage.requestNonce.trim() : '';
+      const expectedClientNonce =
+        typeof requestMessage.clientNonce === 'string' ? requestMessage.clientNonce.trim() : '';
       if (requestNonce !== expectedRequestNonce || clientNonce !== expectedClientNonce) {
         throw new Error('DESKTOP_AUTH_CONTEXT_MISMATCH');
       }
 
       const suppliedPublicJwk = normalizeClientPublicJwk(auth.publicJwk);
-      let identity = runtimeDesktopBridgeIdentity || await loadRuntimeDesktopBridgeIdentity();
+      let identity = runtimeDesktopBridgeIdentity || (await loadRuntimeDesktopBridgeIdentity());
 
       if (!identity) {
         if (!suppliedPublicJwk) {
@@ -688,21 +731,21 @@ export default defineBackground({
         typeof requestMessage.type === 'string' ? requestMessage.type : '',
         requestNonce,
         clientNonce,
-        timestamp,
+        timestamp
       );
       const verifyKey = await crypto.subtle.importKey(
         'jwk',
         identity.publicJwk,
         { name: 'ECDSA', namedCurve: 'P-256' },
         false,
-        ['verify'],
+        ['verify']
       );
       const signature = hexToUint8(signatureHex);
       const ok = await crypto.subtle.verify(
         { name: 'ECDSA', hash: 'SHA-256' },
         verifyKey,
         signature,
-        new TextEncoder().encode(payload),
+        new TextEncoder().encode(payload)
       );
 
       if (!ok) {
@@ -728,7 +771,7 @@ export default defineBackground({
         const result = await browser.storage.session.get('aegis_vault_unlocked');
         if (result.aegis_vault_unlocked === true) {
           isVaultUnlocked = true;
-          console.log("[Aegis Vault] ℹ️ Önceki oturum durumu geri yüklendi (cache bekleniyor).");
+          console.log('[Aegis Vault] ℹ️ Önceki oturum durumu geri yüklendi (cache bekleniyor).');
         }
       } catch {
         // storage.session her ortamda mevcut olmayabilir
@@ -754,7 +797,9 @@ export default defineBackground({
 
     const toHex = (buffer: ArrayBuffer) => {
       const bytes = new Uint8Array(buffer);
-      return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+      return Array.from(bytes)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
     };
 
     const trimLeadingZeroes = (bytes: Uint8Array) => {
@@ -796,12 +841,15 @@ export default defineBackground({
       const encodedR = encodeDerInteger(r);
       const encodedS = encodeDerInteger(s);
       const sequenceBody = Uint8Array.from([...encodedR, ...encodedS]);
-      return Uint8Array.from([0x30, ...encodeDerLength(sequenceBody.length), ...sequenceBody]).buffer;
+      return Uint8Array.from([0x30, ...encodeDerLength(sequenceBody.length), ...sequenceBody])
+        .buffer;
     };
 
     const generateRequestNonce = () => {
       const bytes = crypto.getRandomValues(new Uint8Array(16));
-      return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+      return Array.from(bytes)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
     };
 
     const normalizeBridgeDomain = (value: unknown) => {
@@ -820,7 +868,10 @@ export default defineBackground({
       if (!NATIVE_MESSAGING_ENABLED || !NATIVE_HOST_NAME || !EXTENSION_ID) return null;
       try {
         const runtimeApi = browser.runtime as typeof browser.runtime & {
-          sendNativeMessage?: (application: string, message: Record<string, unknown>) => Promise<NativeHostResponse>;
+          sendNativeMessage?: (
+            application: string,
+            message: Record<string, unknown>
+          ) => Promise<NativeHostResponse>;
         };
         if (typeof runtimeApi?.sendNativeMessage !== 'function') return null;
         const activePairingSecret = await ensureActivePairingSecret();
@@ -838,7 +889,9 @@ export default defineBackground({
         if (!('desktopAuth' in rawResponse) || rawResponse.desktopAuth == null) {
           if (!warnedAboutLegacyNativeResponse) {
             warnedAboutLegacyNativeResponse = true;
-            console.warn('[Aegis Vault] Native host returned an unsigned legacy response; accepting compatibility mode.');
+            console.warn(
+              '[Aegis Vault] Native host returned an unsigned legacy response; accepting compatibility mode.'
+            );
           }
           return rawResponse;
         }
@@ -867,13 +920,21 @@ export default defineBackground({
         pairingMode: typeof response.pairingMode === 'string' ? response.pairingMode : 'none',
         clientKeyId: typeof response.clientKeyId === 'string' ? response.clientKeyId : '',
         clientLabel: typeof response.clientLabel === 'string' ? response.clientLabel : '',
-        deviceFingerprint: typeof response.deviceFingerprint === 'string' ? response.deviceFingerprint : '',
+        deviceFingerprint:
+          typeof response.deviceFingerprint === 'string' ? response.deviceFingerprint : '',
         lastUsedAt: typeof response.lastUsedAt === 'string' ? response.lastUsedAt : '',
         lastApprovedAt: typeof response.lastApprovedAt === 'string' ? response.lastApprovedAt : '',
-        riskFlags: Array.isArray(response.riskFlags) ? response.riskFlags.filter((item): item is string => typeof item === 'string') : [],
+        riskFlags: Array.isArray(response.riskFlags)
+          ? response.riskFlags.filter((item): item is string => typeof item === 'string')
+          : [],
         riskLevel: typeof response.riskLevel === 'string' ? response.riskLevel : 'low',
         pairingHistory: Array.isArray(response.pairingHistory)
-          ? response.pairingHistory.filter((item): item is { at?: string; type?: string; detail?: string; riskFlags?: string[] } => Boolean(item) && typeof item === 'object')
+          ? response.pairingHistory.filter(
+              (
+                item
+              ): item is { at?: string; type?: string; detail?: string; riskFlags?: string[] } =>
+                Boolean(item) && typeof item === 'object'
+            )
           : [],
       } satisfies DesktopPairingStatus;
     };
@@ -911,7 +972,8 @@ export default defineBackground({
         ok: true,
         secret,
         pairedAt,
-        pairingMode: typeof response.pairingMode === 'string' ? response.pairingMode : 'signed-p256-v1',
+        pairingMode:
+          typeof response.pairingMode === 'string' ? response.pairingMode : 'signed-p256-v1',
         clientKeyId: typeof response.clientKeyId === 'string' ? response.clientKeyId : '',
       } satisfies NativePairingInitResult;
     };
@@ -924,13 +986,15 @@ export default defineBackground({
       if (!extensionId || extensionId.length === 0) {
         extensionId = browser?.runtime?.id || '';
       }
-      
+
       if (!extensionId) {
         console.error('[Aegis Vault] ❌ EXTENSION_ID bulunamadı. Fallback pairing iptal edildi.');
         return { ok: false, error: 'EXTENSION_ID_MISSING' };
       }
 
-      console.log(`[Aegis Vault] 🔄 Fallback pairing başlatılıyor (Aktif ID: ${extensionId.substring(0, 8)}...)`);
+      console.log(
+        `[Aegis Vault] 🔄 Fallback pairing başlatılıyor (Aktif ID: ${extensionId.substring(0, 8)}...)`
+      );
 
       const hosts = ['127.0.0.1', 'localhost'];
       for (const host of hosts) {
@@ -947,7 +1011,9 @@ export default defineBackground({
           console.log(`[Aegis Vault] 🔄 Response status: ${response.status}`);
           if (!response.ok) {
             const errorText = await response.text().catch(() => '');
-            console.warn(`[Aegis Vault] 🔄 Fallback: ${host} failed with status ${response.status}: ${errorText}`);
+            console.warn(
+              `[Aegis Vault] 🔄 Fallback: ${host} failed with status ${response.status}: ${errorText}`
+            );
             continue;
           }
           const data = await response.json();
@@ -963,7 +1029,10 @@ export default defineBackground({
             } satisfies NativePairingInitResult;
           }
         } catch (err) {
-          console.warn(`[Aegis Vault] 🔄 Fallback error (${host}):`, err instanceof Error ? err.message : String(err));
+          console.warn(
+            `[Aegis Vault] 🔄 Fallback error (${host}):`,
+            err instanceof Error ? err.message : String(err)
+          );
         }
       }
       console.error('[Aegis Vault] ❌ Fallback pairing failed: LOOPBACK_FALLBACK_UNAVAILABLE');
@@ -1000,19 +1069,39 @@ export default defineBackground({
     const signDesktopChallenge = async (tokenHex: string, payload: string) => {
       const keyBytes = hexToUint8(tokenHex);
       const payloadBytes = new TextEncoder().encode(payload);
-      const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+      const key = await crypto.subtle.importKey(
+        'raw',
+        keyBytes,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
       const sig = await crypto.subtle.sign('HMAC', key, payloadBytes);
       return toHex(sig);
     };
 
-    const signPairingPayload = async (method: 'GET', path: '/api/challenge' | '/api/status' | '/api/vault' | '/api/domain-credentials' | '/api/domain-passkeys') => {
+    const signPairingPayload = async (
+      method: 'GET',
+      path:
+        | '/api/challenge'
+        | '/api/status'
+        | '/api/vault'
+        | '/api/domain-credentials'
+        | '/api/domain-passkeys'
+    ) => {
       const activePairingSecret = await ensureActivePairingSecret();
       if (!activePairingSecret || !EXTENSION_ID) return null;
       const ts = Date.now().toString();
       const payload = `${method}:${path}:${ts}:${EXTENSION_ID}`;
       const keyBytes = new TextEncoder().encode(activePairingSecret);
       const payloadBytes = new TextEncoder().encode(payload);
-      const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+      const key = await crypto.subtle.importKey(
+        'raw',
+        keyBytes,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
       const sig = await crypto.subtle.sign('HMAC', key, payloadBytes);
       return {
         ts,
@@ -1086,8 +1175,13 @@ export default defineBackground({
           console.debug(`[Aegis Vault] ❌ getDesktopChallenge missing fields:`, challenge);
           return null;
         }
-        if (Number(challenge.expiresAt) - Date.now() <= 0 || Number(challenge.expiresAt) - Date.now() > DESKTOP_CHALLENGE_TTL_MS * 2) {
-          console.debug(`[Aegis Vault] ❌ getDesktopChallenge TTL issue: expiresAt=${challenge.expiresAt}, diff=${Number(challenge.expiresAt) - Date.now()}`);
+        if (
+          Number(challenge.expiresAt) - Date.now() <= 0 ||
+          Number(challenge.expiresAt) - Date.now() > DESKTOP_CHALLENGE_TTL_MS * 2
+        ) {
+          console.debug(
+            `[Aegis Vault] ❌ getDesktopChallenge TTL issue: expiresAt=${challenge.expiresAt}, diff=${Number(challenge.expiresAt) - Date.now()}`
+          );
           return null;
         }
         return challenge;
@@ -1115,9 +1209,10 @@ export default defineBackground({
       const signature = await signDesktopChallenge(challenge.token, payload);
 
       try {
-        const url = path === '/api/domain-credentials'
-          ? `http://${host}:23456${path}?domain=${encodeURIComponent(normalizedDomain)}`
-          : `http://${host}:23456${path}`;
+        const url =
+          path === '/api/domain-credentials'
+            ? `http://${host}:23456${path}?domain=${encodeURIComponent(normalizedDomain)}`
+            : `http://${host}:23456${path}`;
         const finalResponse = await fetch(url, {
           method: 'GET',
           mode: 'cors',
@@ -1133,8 +1228,10 @@ export default defineBackground({
           },
         });
         if (!finalResponse.ok) {
-           const dbgTxt = await finalResponse.text();
-           console.debug(`[Aegis Vault] ❌ desktopSignedGet path=${path} !ok: ${finalResponse.status} => ${dbgTxt}`);
+          const dbgTxt = await finalResponse.text();
+          console.debug(
+            `[Aegis Vault] ❌ desktopSignedGet path=${path} !ok: ${finalResponse.status} => ${dbgTxt}`
+          );
         }
         return finalResponse;
       } catch (err) {
@@ -1212,7 +1309,7 @@ export default defineBackground({
           if (nativeStatus) {
             if (!nativeStatus.isUnlocked) {
               if (isVaultUnlocked) {
-                console.log("[Aegis Vault] 🖥️ Native host üzerinden kasa kilitli tespit edildi.");
+                console.log('[Aegis Vault] 🖥️ Native host üzerinden kasa kilitli tespit edildi.');
                 secureWipeCache();
                 clearAllBadges();
               }
@@ -1220,7 +1317,7 @@ export default defineBackground({
               if (!isVaultUnlocked) {
                 isVaultUnlocked = true;
                 persistVaultState(true);
-                console.log("[Aegis Vault] ✅ Native messaging köprüsü üzerinden kasa açık.");
+                console.log('[Aegis Vault] ✅ Native messaging köprüsü üzerinden kasa açık.');
               }
               resetSessionTimeout();
               return;
@@ -1243,12 +1340,16 @@ export default defineBackground({
 
       for (const host of hosts) {
         try {
-          console.debug(`[Aegis Vault] 🔍 Desktop poll başlatılıyor: ${host}, EXTENSION_ID: ${EXTENSION_ID.substring(0, 8)}...`);
+          console.debug(
+            `[Aegis Vault] 🔍 Desktop poll başlatılıyor: ${host}, EXTENSION_ID: ${EXTENSION_ID.substring(0, 8)}...`
+          );
 
           // 1. Status endpoint — kasa açık mı?
           const statusRes = await desktopSignedGet(host, '/api/status');
           if (!statusRes) {
-            console.debug(`[Aegis Vault] ⚠️ Status isteği null döndü (${host}) — challenge başarısız veya fetch engellendi`);
+            console.debug(
+              `[Aegis Vault] ⚠️ Status isteği null döndü (${host}) — challenge başarısız veya fetch engellendi`
+            );
             continue;
           }
           if (!statusRes.ok) {
@@ -1258,10 +1359,10 @@ export default defineBackground({
           }
           const status = await statusRes.json();
           console.debug(`[Aegis Vault] 📊 Status yanıtı (${host}):`, status);
-          
+
           if (!status.isUnlocked) {
             if (isVaultUnlocked) {
-              console.log("[Aegis Vault] 🖥️ Masaüstü kasası kilitli tespit edildi.");
+              console.log('[Aegis Vault] 🖥️ Masaüstü kasası kilitli tespit edildi.');
               secureWipeCache();
               clearAllBadges();
             }
@@ -1318,7 +1419,7 @@ export default defineBackground({
       }
       isVaultUnlocked = false;
       persistVaultState(false);
-      console.log("[Aegis Vault] 🔒 Önbellek güvenli bir şekilde temizlendi.");
+      console.log('[Aegis Vault] 🔒 Önbellek güvenli bir şekilde temizlendi.');
     };
 
     const resetSessionTimeout = () => {
@@ -1326,7 +1427,7 @@ export default defineBackground({
         clearTimeout(sessionTimeoutId);
       }
       sessionTimeoutId = setTimeout(() => {
-        console.warn("[Aegis Vault] ⏰ Oturum zaman aşımı. Önbellek temizleniyor.");
+        console.warn('[Aegis Vault] ⏰ Oturum zaman aşımı. Önbellek temizleniyor.');
         secureWipeCache();
         clearAllBadges();
       }, SESSION_TIMEOUT_MS);
@@ -1356,7 +1457,9 @@ export default defineBackground({
     const isDomainMatch = (entryWebsite: string, domain: string) => {
       const normalizedEntry = entryWebsite.toLowerCase().trim();
       const normalizedDomain = domain.toLowerCase().trim();
-      return normalizedEntry.includes(normalizedDomain) || normalizedDomain.includes(normalizedEntry);
+      return (
+        normalizedEntry.includes(normalizedDomain) || normalizedDomain.includes(normalizedEntry)
+      );
     };
 
     const getRequestKey = (sender: RuntimeMessageSenderWithOrigin, domain: string) => {
@@ -1389,30 +1492,74 @@ export default defineBackground({
         pass: candidate.pass,
         website: candidate.website,
         category: typeof candidate.category === 'string' ? candidate.category : '',
-        cardDetails: candidate.cardDetails && typeof candidate.cardDetails === 'object'
-          ? {
-              cardholder_name: typeof candidate.cardDetails.cardholder_name === 'string' ? candidate.cardDetails.cardholder_name : '',
-              card_number: typeof candidate.cardDetails.card_number === 'string' ? candidate.cardDetails.card_number : '',
-              brand: typeof candidate.cardDetails.brand === 'string' ? candidate.cardDetails.brand : '',
-              expiry_month: typeof candidate.cardDetails.expiry_month === 'string' ? candidate.cardDetails.expiry_month : '',
-              expiry_year: typeof candidate.cardDetails.expiry_year === 'string' ? candidate.cardDetails.expiry_year : '',
-              cvv: typeof candidate.cardDetails.cvv === 'string' ? candidate.cardDetails.cvv : '',
-              pin: typeof candidate.cardDetails.pin === 'string' ? candidate.cardDetails.pin : '',
-              billing_zip: typeof candidate.cardDetails.billing_zip === 'string' ? candidate.cardDetails.billing_zip : '',
-              billing_address: typeof candidate.cardDetails.billing_address === 'string' ? candidate.cardDetails.billing_address : '',
-            }
-          : null,
-        identityDetails: candidate.identityDetails && typeof candidate.identityDetails === 'object'
-          ? {
-              document_type: typeof candidate.identityDetails.document_type === 'string' ? candidate.identityDetails.document_type : '',
-              identity_number: typeof candidate.identityDetails.identity_number === 'string' ? candidate.identityDetails.identity_number : '',
-              issuing_country: typeof candidate.identityDetails.issuing_country === 'string' ? candidate.identityDetails.issuing_country : '',
-              nationality: typeof candidate.identityDetails.nationality === 'string' ? candidate.identityDetails.nationality : '',
-              date_of_birth: typeof candidate.identityDetails.date_of_birth === 'string' ? candidate.identityDetails.date_of_birth : '',
-              issued_at: typeof candidate.identityDetails.issued_at === 'string' ? candidate.identityDetails.issued_at : '',
-              expires_at: typeof candidate.identityDetails.expires_at === 'string' ? candidate.identityDetails.expires_at : '',
-            }
-          : null,
+        cardDetails:
+          candidate.cardDetails && typeof candidate.cardDetails === 'object'
+            ? {
+                cardholder_name:
+                  typeof candidate.cardDetails.cardholder_name === 'string'
+                    ? candidate.cardDetails.cardholder_name
+                    : '',
+                card_number:
+                  typeof candidate.cardDetails.card_number === 'string'
+                    ? candidate.cardDetails.card_number
+                    : '',
+                brand:
+                  typeof candidate.cardDetails.brand === 'string'
+                    ? candidate.cardDetails.brand
+                    : '',
+                expiry_month:
+                  typeof candidate.cardDetails.expiry_month === 'string'
+                    ? candidate.cardDetails.expiry_month
+                    : '',
+                expiry_year:
+                  typeof candidate.cardDetails.expiry_year === 'string'
+                    ? candidate.cardDetails.expiry_year
+                    : '',
+                cvv: typeof candidate.cardDetails.cvv === 'string' ? candidate.cardDetails.cvv : '',
+                pin: typeof candidate.cardDetails.pin === 'string' ? candidate.cardDetails.pin : '',
+                billing_zip:
+                  typeof candidate.cardDetails.billing_zip === 'string'
+                    ? candidate.cardDetails.billing_zip
+                    : '',
+                billing_address:
+                  typeof candidate.cardDetails.billing_address === 'string'
+                    ? candidate.cardDetails.billing_address
+                    : '',
+              }
+            : null,
+        identityDetails:
+          candidate.identityDetails && typeof candidate.identityDetails === 'object'
+            ? {
+                document_type:
+                  typeof candidate.identityDetails.document_type === 'string'
+                    ? candidate.identityDetails.document_type
+                    : '',
+                identity_number:
+                  typeof candidate.identityDetails.identity_number === 'string'
+                    ? candidate.identityDetails.identity_number
+                    : '',
+                issuing_country:
+                  typeof candidate.identityDetails.issuing_country === 'string'
+                    ? candidate.identityDetails.issuing_country
+                    : '',
+                nationality:
+                  typeof candidate.identityDetails.nationality === 'string'
+                    ? candidate.identityDetails.nationality
+                    : '',
+                date_of_birth:
+                  typeof candidate.identityDetails.date_of_birth === 'string'
+                    ? candidate.identityDetails.date_of_birth
+                    : '',
+                issued_at:
+                  typeof candidate.identityDetails.issued_at === 'string'
+                    ? candidate.identityDetails.issued_at
+                    : '',
+                expires_at:
+                  typeof candidate.identityDetails.expires_at === 'string'
+                    ? candidate.identityDetails.expires_at
+                    : '',
+              }
+            : null,
       };
     };
 
@@ -1428,7 +1575,10 @@ export default defineBackground({
         username: typeof candidate.username === 'string' ? candidate.username.slice(0, 256) : '',
         pass: pass.slice(0, 1024),
         website: website.slice(0, 512),
-        submittedAt: typeof candidate.submittedAt === 'string' ? candidate.submittedAt : new Date().toISOString(),
+        submittedAt:
+          typeof candidate.submittedAt === 'string'
+            ? candidate.submittedAt
+            : new Date().toISOString(),
         source: 'browser_form',
       };
     };
@@ -1445,7 +1595,7 @@ export default defineBackground({
       if (!domain) return;
 
       try {
-        const matches = vaultCache.filter(p => p.website && isDomainMatch(p.website, domain));
+        const matches = vaultCache.filter((p) => p.website && isDomainMatch(p.website, domain));
         if (matches.length > 0) {
           browser.action.setBadgeText({ text: matches.length.toString(), tabId });
           browser.action.setBadgeBackgroundColor({ color: '#22c55e', tabId });
@@ -1480,10 +1630,10 @@ export default defineBackground({
       const runtimeSender = sender as RuntimeMessageSenderWithOrigin;
 
       // ── SAVE_VAULT: Kasa açık, şifreleri al ──
-      if (message.type === "SAVE_VAULT") {
+      if (message.type === 'SAVE_VAULT') {
         // Önce mevcut cache'i güvenli şekilde temizle
         secureWipeCache(false);
-        
+
         if (Array.isArray(message.data) && message.data.length > 0) {
           const sanitizedEntries = message.data
             .map((entry: unknown) => sanitizeVaultEntry(entry))
@@ -1494,41 +1644,39 @@ export default defineBackground({
           isVaultUnlocked = true;
           persistVaultState(true);
           resetSessionTimeout();
-          
-          console.log("[Aegis Vault] ✅ Kasa Eşitlendi, Toplam:", vaultCache.length);
-          
+
+          console.log('[Aegis Vault] ✅ Kasa Eşitlendi, Toplam:', vaultCache.length);
+
           // Aktif sekmedeki badge'i güncelle
-          browser.tabs.query({ active: true, currentWindow: true }).then(tabs => {
+          browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
             if (tabs[0]?.url) updateBadge(tabs[0].id as number, tabs[0].url);
           });
         }
-        
+
         sendResponse({ success: true, count: vaultCache.length });
       }
-      
+
       // ── LOCK_VAULT: Kasa kilitlendi ──
-      else if (message.type === "LOCK_VAULT") {
-        console.log("[Aegis Vault] 🔐 Kasa kilitleniyor...");
-        
+      else if (message.type === 'LOCK_VAULT') {
+        console.log('[Aegis Vault] 🔐 Kasa kilitleniyor...');
+
         if (sessionTimeoutId !== null) {
           clearTimeout(sessionTimeoutId);
           sessionTimeoutId = null;
         }
-        
+
         secureWipeCache();
         clearAllBadges();
-        
+
         sendResponse({ success: true, locked: true });
       }
-      
+
       // ── GET_DOMAIN_CREDS: Sadece aktif domain'e uygun kayıtları ver ──
-      else if (message.type === "GET_DOMAIN_CREDS") {
-        const requestedDomain = typeof message.domain === 'string'
-          ? message.domain.toLowerCase().trim()
-          : '';
-        const requestNonce = typeof message.requestNonce === 'string'
-          ? message.requestNonce.trim()
-          : '';
+      else if (message.type === 'GET_DOMAIN_CREDS') {
+        const requestedDomain =
+          typeof message.domain === 'string' ? message.domain.toLowerCase().trim() : '';
+        const requestNonce =
+          typeof message.requestNonce === 'string' ? message.requestNonce.trim() : '';
         const now = Date.now();
 
         // Sender'ın kim olduğunu belirle:
@@ -1536,16 +1684,14 @@ export default defineBackground({
         // - Extension popup → sender.tab YOK, sender.url "chrome-extension://" ile başlar
         const senderUrl = runtimeSender?.tab?.url;
         const senderDomain = senderUrl ? getDomain(senderUrl) : '';
-        const isFromPopup = !runtimeSender?.tab && (
-          (typeof runtimeSender?.url === 'string' && (
-            runtimeSender.url.startsWith('chrome-extension://') ||
-            runtimeSender.url.startsWith('moz-extension://')
-          )) ||
-          (typeof runtimeSender?.origin === 'string' && (
-            runtimeSender.origin.startsWith('chrome-extension://') ||
-            runtimeSender.origin.startsWith('moz-extension://')
-          ))
-        );
+        const isFromPopup =
+          !runtimeSender?.tab &&
+          ((typeof runtimeSender?.url === 'string' &&
+            (runtimeSender.url.startsWith('chrome-extension://') ||
+              runtimeSender.url.startsWith('moz-extension://'))) ||
+            (typeof runtimeSender?.origin === 'string' &&
+              (runtimeSender.origin.startsWith('chrome-extension://') ||
+                runtimeSender.origin.startsWith('moz-extension://'))));
 
         cleanupNonceMap(now);
 
@@ -1578,7 +1724,7 @@ export default defineBackground({
 
         const cachedMatches = vaultCache
           .filter((p) => p.website && isDomainMatch(p.website, requestedDomain))
-          .slice(0, 5)  // Popup'ta daha fazla kayıt göster
+          .slice(0, 5) // Popup'ta daha fazla kayıt göster
           .map((p) => ({
             title: p.title,
             username: p.username,
@@ -1626,28 +1772,24 @@ export default defineBackground({
       }
 
       // ── GET_DOMAIN_PASSKEYS: Sadece aktif domain'e uygun passkey'leri ver ──
-      else if (message.type === "GET_DOMAIN_PASSKEYS") {
-        const requestedDomain = typeof message.domain === 'string'
-          ? message.domain.toLowerCase().trim()
-          : '';
-        const requestNonce = typeof message.requestNonce === 'string'
-          ? message.requestNonce.trim()
-          : '';
+      else if (message.type === 'GET_DOMAIN_PASSKEYS') {
+        const requestedDomain =
+          typeof message.domain === 'string' ? message.domain.toLowerCase().trim() : '';
+        const requestNonce =
+          typeof message.requestNonce === 'string' ? message.requestNonce.trim() : '';
         const now = Date.now();
 
         const runtimeSender = sender as RuntimeMessageSenderWithOrigin;
         const senderUrl = runtimeSender?.tab?.url;
         const senderDomain = senderUrl ? getDomain(senderUrl) : '';
-        const isFromPopup = !runtimeSender?.tab && (
-          (typeof runtimeSender?.url === 'string' && (
-            runtimeSender.url.startsWith('chrome-extension://') ||
-            runtimeSender.url.startsWith('moz-extension://')
-          )) ||
-          (typeof runtimeSender?.origin === 'string' && (
-            runtimeSender.origin.startsWith('chrome-extension://') ||
-            runtimeSender.origin.startsWith('moz-extension://')
-          ))
-        );
+        const isFromPopup =
+          !runtimeSender?.tab &&
+          ((typeof runtimeSender?.url === 'string' &&
+            (runtimeSender.url.startsWith('chrome-extension://') ||
+              runtimeSender.url.startsWith('moz-extension://'))) ||
+            (typeof runtimeSender?.origin === 'string' &&
+              (runtimeSender.origin.startsWith('chrome-extension://') ||
+                runtimeSender.origin.startsWith('moz-extension://'))));
 
         cleanupNonceMap(now);
 
@@ -1689,13 +1831,10 @@ export default defineBackground({
           sendResponse({ success: true, data: [] });
         });
         return true;
-      }
-
-      else if (message.type === "AUTOSAVE_CREDENTIAL") {
+      } else if (message.type === 'AUTOSAVE_CREDENTIAL') {
         const requestedDomain = normalizeBridgeDomain(message.domain);
-        const requestNonce = typeof message.requestNonce === 'string'
-          ? message.requestNonce.trim()
-          : '';
+        const requestNonce =
+          typeof message.requestNonce === 'string' ? message.requestNonce.trim() : '';
         const credential = sanitizeAutosaveCredential(message.credential);
         const now = Date.now();
         const senderUrl = runtimeSender?.tab?.url;
@@ -1754,19 +1893,15 @@ export default defineBackground({
           sendResponse({ success: false, saved: false, error: 'AUTOSAVE_FAILED' });
         });
         return true;
-      }
-
-      else if (message.type === "GET_AUTOSAVE_QUEUE") {
-        const isFromPopup = !runtimeSender?.tab && (
-          (typeof runtimeSender?.url === 'string' && (
-            runtimeSender.url.startsWith('chrome-extension://') ||
-            runtimeSender.url.startsWith('moz-extension://')
-          )) ||
-          (typeof runtimeSender?.origin === 'string' && (
-            runtimeSender.origin.startsWith('chrome-extension://') ||
-            runtimeSender.origin.startsWith('moz-extension://')
-          ))
-        );
+      } else if (message.type === 'GET_AUTOSAVE_QUEUE') {
+        const isFromPopup =
+          !runtimeSender?.tab &&
+          ((typeof runtimeSender?.url === 'string' &&
+            (runtimeSender.url.startsWith('chrome-extension://') ||
+              runtimeSender.url.startsWith('moz-extension://'))) ||
+            (typeof runtimeSender?.origin === 'string' &&
+              (runtimeSender.origin.startsWith('chrome-extension://') ||
+                runtimeSender.origin.startsWith('moz-extension://'))));
         if (!isFromPopup) {
           sendResponse({ success: false, error: 'FORBIDDEN_SENDER' });
           return true;
@@ -1776,19 +1911,15 @@ export default defineBackground({
           data: pendingAutosaveQueue.map((item) => toAutosavePreview(item)),
         });
         return true;
-      }
-
-      else if (message.type === "REJECT_AUTOSAVE_CREDENTIAL") {
-        const isFromPopup = !runtimeSender?.tab && (
-          (typeof runtimeSender?.url === 'string' && (
-            runtimeSender.url.startsWith('chrome-extension://') ||
-            runtimeSender.url.startsWith('moz-extension://')
-          )) ||
-          (typeof runtimeSender?.origin === 'string' && (
-            runtimeSender.origin.startsWith('chrome-extension://') ||
-            runtimeSender.origin.startsWith('moz-extension://')
-          ))
-        );
+      } else if (message.type === 'REJECT_AUTOSAVE_CREDENTIAL') {
+        const isFromPopup =
+          !runtimeSender?.tab &&
+          ((typeof runtimeSender?.url === 'string' &&
+            (runtimeSender.url.startsWith('chrome-extension://') ||
+              runtimeSender.url.startsWith('moz-extension://'))) ||
+            (typeof runtimeSender?.origin === 'string' &&
+              (runtimeSender.origin.startsWith('chrome-extension://') ||
+                runtimeSender.origin.startsWith('moz-extension://'))));
         if (!isFromPopup) {
           sendResponse({ success: false, error: 'FORBIDDEN_SENDER' });
           return true;
@@ -1807,19 +1938,15 @@ export default defineBackground({
         void persistAutosaveQueue();
         sendResponse({ success: true, rejected: true });
         return true;
-      }
-
-      else if (message.type === "APPROVE_AUTOSAVE_CREDENTIAL") {
-        const isFromPopup = !runtimeSender?.tab && (
-          (typeof runtimeSender?.url === 'string' && (
-            runtimeSender.url.startsWith('chrome-extension://') ||
-            runtimeSender.url.startsWith('moz-extension://')
-          )) ||
-          (typeof runtimeSender?.origin === 'string' && (
-            runtimeSender.origin.startsWith('chrome-extension://') ||
-            runtimeSender.origin.startsWith('moz-extension://')
-          ))
-        );
+      } else if (message.type === 'APPROVE_AUTOSAVE_CREDENTIAL') {
+        const isFromPopup =
+          !runtimeSender?.tab &&
+          ((typeof runtimeSender?.url === 'string' &&
+            (runtimeSender.url.startsWith('chrome-extension://') ||
+              runtimeSender.url.startsWith('moz-extension://'))) ||
+            (typeof runtimeSender?.origin === 'string' &&
+              (runtimeSender.origin.startsWith('chrome-extension://') ||
+                runtimeSender.origin.startsWith('moz-extension://'))));
         if (!isFromPopup) {
           sendResponse({ success: false, error: 'FORBIDDEN_SENDER' });
           return true;
@@ -1858,9 +1985,10 @@ export default defineBackground({
           if (!response || typeof response !== 'object' || !response.ok) {
             sendResponse({
               success: false,
-              error: response && typeof response === 'object' && typeof response.error === 'string'
-                ? response.error
-                : 'AUTOSAVE_FAILED',
+              error:
+                response && typeof response === 'object' && typeof response.error === 'string'
+                  ? response.error
+                  : 'AUTOSAVE_FAILED',
             });
             return;
           }
@@ -1872,7 +2000,9 @@ export default defineBackground({
             success: true,
             saved: Boolean(response.saved),
             action: typeof response.action === 'string' ? response.action : 'none',
-            entryId: Number.isFinite(Number(response.entryId)) ? Number(response.entryId) : undefined,
+            entryId: Number.isFinite(Number(response.entryId))
+              ? Number(response.entryId)
+              : undefined,
           });
         };
 
@@ -1883,7 +2013,7 @@ export default defineBackground({
       }
 
       // ── GET_VAULT: Legacy fallback, mümkünse kullanma ──
-      else if (message.type === "GET_VAULT") {
+      else if (message.type === 'GET_VAULT') {
         if (!LEGACY_GET_VAULT_ENABLED) {
           sendResponse([]);
           return true;
@@ -1897,9 +2027,9 @@ export default defineBackground({
           sendResponse([]);
         }
       }
-      
+
       // ── GET_VAULT_STATUS: Kasa durumu sorgulanıyor ──
-      else if (message.type === "GET_VAULT_STATUS") {
+      else if (message.type === 'GET_VAULT_STATUS') {
         // Önce Native Messaging dene (en güvenilir kanal), sonra loopback fallback
         const resolveVaultStatus = async () => {
           // 1. Native Messaging kanalı
@@ -1952,15 +2082,15 @@ export default defineBackground({
         };
 
         resolveVaultStatus()
-          .then(result => sendResponse(result))
-          .catch(() => sendResponse({
-            isUnlocked: isVaultUnlocked,
-            entryCount: isVaultUnlocked ? vaultCache.length : 0,
-          }));
+          .then((result) => sendResponse(result))
+          .catch(() =>
+            sendResponse({
+              isUnlocked: isVaultUnlocked,
+              entryCount: isVaultUnlocked ? vaultCache.length : 0,
+            })
+          );
         return true;
-      }
-
-      else if (message.type === "GET_UI_LANGUAGE") {
+      } else if (message.type === 'GET_UI_LANGUAGE') {
         const browserLanguage = detectBrowserUiLanguage();
         const fallbackLanguage = hasPersistedUiLanguage ? runtimeUiLanguage : browserLanguage;
 
@@ -1970,7 +2100,7 @@ export default defineBackground({
               const nativeLanguage = normalizeUiLanguage(language || '');
               const resolvedLanguage = hasPersistedUiLanguage
                 ? runtimeUiLanguage
-                : (nativeLanguage || fallbackLanguage);
+                : nativeLanguage || fallbackLanguage;
               runtimeUiLanguage = resolvedLanguage;
               try {
                 await browser.storage.local.set({ [UI_LANGUAGE_STORAGE_KEY]: resolvedLanguage });
@@ -1996,11 +2126,10 @@ export default defineBackground({
           success: true,
           language: fallbackLanguage,
         });
-      }
-
-      else if (message.type === "SET_UI_LANGUAGE") {
+      } else if (message.type === 'SET_UI_LANGUAGE') {
         const language = normalizeUiLanguage(message.language);
-        browser.storage.local.set({ [UI_LANGUAGE_STORAGE_KEY]: language })
+        browser.storage.local
+          .set({ [UI_LANGUAGE_STORAGE_KEY]: language })
           .then(() => {
             runtimeUiLanguage = language;
             hasPersistedUiLanguage = true;
@@ -2010,16 +2139,15 @@ export default defineBackground({
             sendResponse({ success: false, error: 'UI_LANGUAGE_STORE_FAILED' });
           });
         return true;
-      }
-
-      else if (message.type === "SET_DESKTOP_PAIRING_SECRET") {
+      } else if (message.type === 'SET_DESKTOP_PAIRING_SECRET') {
         const secret = typeof message.secret === 'string' ? message.secret.trim() : '';
         if (secret.length < 32) {
           sendResponse({ success: false, error: 'INVALID_PAIRING_SECRET' });
           return true;
         }
 
-        browser.storage.local.set({ [PAIRING_SECRET_STORAGE_KEY]: secret })
+        browser.storage.local
+          .set({ [PAIRING_SECRET_STORAGE_KEY]: secret })
           .then(() => {
             runtimePairingSecret = secret;
             sendResponse({ success: true });
@@ -2028,14 +2156,13 @@ export default defineBackground({
             sendResponse({ success: false, error: 'PAIRING_SECRET_STORE_FAILED' });
           });
         return true;
-      }
-
-      else if (message.type === "CLEAR_DESKTOP_PAIRING_SECRET") {
-        browser.storage.local.remove([
-          PAIRING_SECRET_STORAGE_KEY,
-          DESKTOP_BRIDGE_PUBLIC_JWK_STORAGE_KEY,
-          DESKTOP_BRIDGE_KEY_ID_STORAGE_KEY,
-        ])
+      } else if (message.type === 'CLEAR_DESKTOP_PAIRING_SECRET') {
+        browser.storage.local
+          .remove([
+            PAIRING_SECRET_STORAGE_KEY,
+            DESKTOP_BRIDGE_PUBLIC_JWK_STORAGE_KEY,
+            DESKTOP_BRIDGE_KEY_ID_STORAGE_KEY,
+          ])
           .then(() => {
             runtimePairingSecret = '';
             runtimeDesktopBridgeIdentity = null;
@@ -2045,9 +2172,7 @@ export default defineBackground({
             sendResponse({ success: false, error: 'PAIRING_SECRET_CLEAR_FAILED' });
           });
         return true;
-      }
-
-      else if (message.type === "PAIR_DESKTOP_BRIDGE") {
+      } else if (message.type === 'PAIR_DESKTOP_BRIDGE') {
         initNativePairing()
           .then((result) => {
             if (!result?.ok) {
@@ -2055,7 +2180,8 @@ export default defineBackground({
               return;
             }
 
-            browser.storage.local.set({ [PAIRING_SECRET_STORAGE_KEY]: result.secret })
+            browser.storage.local
+              .set({ [PAIRING_SECRET_STORAGE_KEY]: result.secret })
               .then(() => {
                 runtimePairingSecret = result.secret;
                 sendResponse({ success: true, pairedAt: result.pairedAt });
@@ -2068,15 +2194,15 @@ export default defineBackground({
             sendResponse({ success: false, error: 'PAIRING_FAILED' });
           });
         return true;
-      }
-
-      else if (message.type === "UNPAIR_DESKTOP_BRIDGE") {
+      } else if (message.type === 'UNPAIR_DESKTOP_BRIDGE') {
         clearNativePairing()
-          .then(() => browser.storage.local.remove([
-            PAIRING_SECRET_STORAGE_KEY,
-            DESKTOP_BRIDGE_PUBLIC_JWK_STORAGE_KEY,
-            DESKTOP_BRIDGE_KEY_ID_STORAGE_KEY,
-          ]))
+          .then(() =>
+            browser.storage.local.remove([
+              PAIRING_SECRET_STORAGE_KEY,
+              DESKTOP_BRIDGE_PUBLIC_JWK_STORAGE_KEY,
+              DESKTOP_BRIDGE_KEY_ID_STORAGE_KEY,
+            ])
+          )
           .then(() => {
             runtimePairingSecret = '';
             runtimeDesktopBridgeIdentity = null;
@@ -2086,9 +2212,7 @@ export default defineBackground({
             sendResponse({ success: false, error: 'UNPAIR_FAILED' });
           });
         return true;
-      }
-
-      else if (message.type === "GET_DESKTOP_BRIDGE_MODE") {
+      } else if (message.type === 'GET_DESKTOP_BRIDGE_MODE') {
         getNativePairingStatus()
           .then((status) => {
             const hasRuntimeSecret = Boolean(runtimePairingSecret);
@@ -2097,8 +2221,21 @@ export default defineBackground({
               nativeMessagingEnabled: NATIVE_MESSAGING_ENABLED,
               loopbackFallbackEnabled: LOOPBACK_FALLBACK_ENABLED,
               hasPairingSecret: hasRuntimeSecret || Boolean(DESKTOP_PAIRING_SECRET),
-              pairingSecretSource: runtimePairingSecret ? 'runtime' : (DESKTOP_PAIRING_SECRET ? 'build' : 'none'),
-              desktopPairing: status || (hasRuntimeSecret ? { paired: true, pairedAt: '', secretSource: 'runtime', pairingMode: 'loopback-fallback-v1' } : null),
+              pairingSecretSource: runtimePairingSecret
+                ? 'runtime'
+                : DESKTOP_PAIRING_SECRET
+                  ? 'build'
+                  : 'none',
+              desktopPairing:
+                status ||
+                (hasRuntimeSecret
+                  ? {
+                      paired: true,
+                      pairedAt: '',
+                      secretSource: 'runtime',
+                      pairingMode: 'loopback-fallback-v1',
+                    }
+                  : null),
             });
           })
           .catch(() => {
@@ -2108,26 +2245,37 @@ export default defineBackground({
               nativeMessagingEnabled: NATIVE_MESSAGING_ENABLED,
               loopbackFallbackEnabled: LOOPBACK_FALLBACK_ENABLED,
               hasPairingSecret: hasRuntimeSecret || Boolean(DESKTOP_PAIRING_SECRET),
-              pairingSecretSource: runtimePairingSecret ? 'runtime' : (DESKTOP_PAIRING_SECRET ? 'build' : 'none'),
-              desktopPairing: hasRuntimeSecret ? { paired: true, pairedAt: '', secretSource: 'runtime', pairingMode: 'loopback-fallback-v1' } : null,
+              pairingSecretSource: runtimePairingSecret
+                ? 'runtime'
+                : DESKTOP_PAIRING_SECRET
+                  ? 'build'
+                  : 'none',
+              desktopPairing: hasRuntimeSecret
+                ? {
+                    paired: true,
+                    pairedAt: '',
+                    secretSource: 'runtime',
+                    pairingMode: 'loopback-fallback-v1',
+                  }
+                : null,
             });
           });
         return true;
       }
 
       // ── THEME_MANAGEMENT ──
-      else if (message.type === "GET_THEME") {
-        browser.storage.local.get(['aegis_theme'])
-          .then(res => {
+      else if (message.type === 'GET_THEME') {
+        browser.storage.local
+          .get(['aegis_theme'])
+          .then((res) => {
             sendResponse({ theme: res.aegis_theme || 'light' });
           })
           .catch(() => sendResponse({ theme: 'light' }));
         return true;
-      }
-
-      else if (message.type === "SET_THEME") {
+      } else if (message.type === 'SET_THEME') {
         const theme = message.theme === 'dark' ? 'dark' : 'light';
-        browser.storage.local.set({ aegis_theme: theme })
+        browser.storage.local
+          .set({ aegis_theme: theme })
           .then(() => sendResponse({ success: true }))
           .catch(() => sendResponse({ success: false }));
         return true;
@@ -2136,69 +2284,75 @@ export default defineBackground({
       // ── FILL_CREDENTIALS: Popup'tan gelen fill komutu ──
       // scripting.executeScript ile doğrudan sayfaya fill yapar.
       // WXT context gerektirmez, her sitede çalışır.
-      else if (message.type === "FILL_CREDENTIALS") {
+      else if (message.type === 'FILL_CREDENTIALS') {
         const { tabId, entry } = message;
-        if (!tabId || !entry) { sendResponse({ success: false }); return true; }
+        if (!tabId || !entry) {
+          sendResponse({ success: false });
+          return true;
+        }
 
-        browser.scripting.executeScript({
-          target: { tabId },
-          func: (username: string, password: string) => {
-            // ── Güvenilir fill fonksiyonu (React/Vue/Angular/vanilla) ──
-            function fillField(el: HTMLInputElement, value: string) {
-              el.focus();
-              // React controlled input için native setter zorunlu
-              const nativeSetter = Object.getOwnPropertyDescriptor(
-                window.HTMLInputElement.prototype, 'value'
-              )?.set;
-              if (nativeSetter) nativeSetter.call(el, value);
-              else el.value = value;
+        browser.scripting
+          .executeScript({
+            target: { tabId },
+            func: (username: string, password: string) => {
+              // ── Güvenilir fill fonksiyonu (React/Vue/Angular/vanilla) ──
+              function fillField(el: HTMLInputElement, value: string) {
+                el.focus();
+                // React controlled input için native setter zorunlu
+                const nativeSetter = Object.getOwnPropertyDescriptor(
+                  window.HTMLInputElement.prototype,
+                  'value'
+                )?.set;
+                if (nativeSetter) nativeSetter.call(el, value);
+                else el.value = value;
 
-              ['input', 'change'].forEach(evtName => {
-                el.dispatchEvent(new Event(evtName, { bubbles: true, cancelable: true }));
-              });
-              el.dispatchEvent(new KeyboardEvent('keydown',  { bubbles: true }));
-              el.dispatchEvent(new KeyboardEvent('keyup',    { bubbles: true }));
-              el.dispatchEvent(new Event('blur', { bubbles: true }));
-            }
-
-            // Görünür input'ları topla
-            const inputs = Array.from(
-              document.querySelectorAll<HTMLInputElement>('input')
-            ).filter(i => {
-              const s = window.getComputedStyle(i);
-              return s.display !== 'none' && s.visibility !== 'hidden' && i.offsetParent !== null;
-            });
-
-            // Şifre alanını bul
-            const pwField = inputs.find(i => i.type === 'password');
-            if (pwField) {
-              // Şifre alanından geriye doğru username'i bul
-              const pwIdx = inputs.indexOf(pwField);
-              for (let i = pwIdx - 1; i >= 0; i--) {
-                const f = inputs[i];
-                if (f.type === 'text' || f.type === 'email') {
-                  fillField(f, username);
-                  break;
-                }
+                ['input', 'change'].forEach((evtName) => {
+                  el.dispatchEvent(new Event(evtName, { bubbles: true, cancelable: true }));
+                });
+                el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
+                el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+                el.dispatchEvent(new Event('blur', { bubbles: true }));
               }
-              fillField(pwField, password);
-            } else {
-              // Şifre alanı yoksa (tek adımlı giriş) ilk text/email'i doldur
-              const textField = inputs.find(i => i.type === 'text' || i.type === 'email');
-              if (textField) fillField(textField, username);
-            }
-          },
-          args: [entry.username, entry.pass],
-        }).then(() => {
-          sendResponse({ success: true });
-        }).catch((error: unknown) => {
-          console.error('[Aegis] Fill hatasi:', error);
-          sendResponse({ success: false, error: String(error) });
-        });
+
+              // Görünür input'ları topla
+              const inputs = Array.from(
+                document.querySelectorAll<HTMLInputElement>('input')
+              ).filter((i) => {
+                const s = window.getComputedStyle(i);
+                return s.display !== 'none' && s.visibility !== 'hidden' && i.offsetParent !== null;
+              });
+
+              // Şifre alanını bul
+              const pwField = inputs.find((i) => i.type === 'password');
+              if (pwField) {
+                // Şifre alanından geriye doğru username'i bul
+                const pwIdx = inputs.indexOf(pwField);
+                for (let i = pwIdx - 1; i >= 0; i--) {
+                  const f = inputs[i];
+                  if (f.type === 'text' || f.type === 'email') {
+                    fillField(f, username);
+                    break;
+                  }
+                }
+                fillField(pwField, password);
+              } else {
+                // Şifre alanı yoksa (tek adımlı giriş) ilk text/email'i doldur
+                const textField = inputs.find((i) => i.type === 'text' || i.type === 'email');
+                if (textField) fillField(textField, username);
+              }
+            },
+            args: [entry.username, entry.pass],
+          })
+          .then(() => {
+            sendResponse({ success: true });
+          })
+          .catch((error: unknown) => {
+            console.error('[Aegis] Fill hatasi:', error);
+            sendResponse({ success: false, error: String(error) });
+          });
 
         return true; // async sendResponse için gerekli
       }
     });
-
-  }
+  },
 });

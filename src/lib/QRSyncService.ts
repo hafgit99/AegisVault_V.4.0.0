@@ -56,7 +56,15 @@ export interface QRSyncCreateResult {
 
 export type QRSyncEntry = Pick<
   VaultEntry,
-  'title' | 'username' | 'pass' | 'website' | 'category' | 'tags' | 'passkeyMetadata' | 'cardDetails' | 'identityDetails'
+  | 'title'
+  | 'username'
+  | 'pass'
+  | 'website'
+  | 'category'
+  | 'tags'
+  | 'passkeyMetadata'
+  | 'cardDetails'
+  | 'identityDetails'
 >;
 
 type ConsumedPackageMap = Record<string, string>;
@@ -96,8 +104,12 @@ const isQRSyncEntry = (entry: unknown): entry is QRSyncEntry => {
     (candidate.category === undefined || typeof candidate.category === 'string') &&
     (candidate.tags === undefined || Array.isArray(candidate.tags)) &&
     (candidate.passkeyMetadata === undefined || typeof candidate.passkeyMetadata === 'object') &&
-    (candidate.cardDetails === undefined || candidate.cardDetails === null || typeof candidate.cardDetails === 'object') &&
-    (candidate.identityDetails === undefined || candidate.identityDetails === null || typeof candidate.identityDetails === 'object')
+    (candidate.cardDetails === undefined ||
+      candidate.cardDetails === null ||
+      typeof candidate.cardDetails === 'object') &&
+    (candidate.identityDetails === undefined ||
+      candidate.identityDetails === null ||
+      typeof candidate.identityDetails === 'object')
   );
 };
 
@@ -215,11 +227,7 @@ const isPackageRevoked = (sessionId: string): boolean => {
 };
 
 const generateEcdhKeyPair = async (): Promise<CryptoKeyPair> =>
-  window.crypto.subtle.generateKey(
-    { name: 'ECDH', namedCurve: 'P-256' },
-    true,
-    ['deriveBits']
-  );
+  window.crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
 
 const exportPublicKey = async (publicKey: CryptoKey): Promise<string> => {
   const raw = await window.crypto.subtle.exportKey('raw', publicKey);
@@ -235,7 +243,10 @@ const importPublicKey = async (publicKey: string): Promise<CryptoKey> =>
     []
   );
 
-const deriveSharedSecret = async (privateKey: CryptoKey, peerPublicKey: string): Promise<Uint8Array> => {
+const deriveSharedSecret = async (
+  privateKey: CryptoKey,
+  peerPublicKey: string
+): Promise<Uint8Array> => {
   const imported = await importPublicKey(peerPublicKey);
   const bits = await window.crypto.subtle.deriveBits(
     { name: 'ECDH', public: imported },
@@ -284,7 +295,10 @@ const fingerprintPublicKey = async (publicKey: string): Promise<string> => {
 export class QRSyncService {
   static generateTransferCode(groupCount: number = 4, groupLength: number = 4): string {
     const bytes = window.crypto.getRandomValues(new Uint8Array(groupCount * groupLength));
-    const chars = Array.from(bytes, (byte) => TRANSFER_CODE_ALPHABET[byte % TRANSFER_CODE_ALPHABET.length]);
+    const chars = Array.from(
+      bytes,
+      (byte) => TRANSFER_CODE_ALPHABET[byte % TRANSFER_CODE_ALPHABET.length]
+    );
     const groups: string[] = [];
 
     for (let i = 0; i < chars.length; i += groupLength) {
@@ -294,7 +308,9 @@ export class QRSyncService {
     return groups.join('-');
   }
 
-  static async createReceiverSession(expiresInMs: number = DEFAULT_PAIRING_EXPIRY_MS): Promise<QRSyncReceiverSession> {
+  static async createReceiverSession(
+    expiresInMs: number = DEFAULT_PAIRING_EXPIRY_MS
+  ): Promise<QRSyncReceiverSession> {
     await SecureAppSettings.initialize();
     const keyPair = await generateEcdhKeyPair();
     const publicKey = await exportPublicKey(keyPair.publicKey);
@@ -317,9 +333,13 @@ export class QRSyncService {
     return session;
   }
 
-  static async createPackage(entries: QRSyncEntry[], options: QRSyncCreateOptions | string): Promise<QRSyncCreateResult> {
+  static async createPackage(
+    entries: QRSyncEntry[],
+    options: QRSyncCreateOptions | string
+  ): Promise<QRSyncCreateResult> {
     await SecureAppSettings.initialize();
-    const normalizedOptions: QRSyncCreateOptions = typeof options === 'string' ? { transferCode: options } : options;
+    const normalizedOptions: QRSyncCreateOptions =
+      typeof options === 'string' ? { transferCode: options } : options;
     const normalizedCode = normalizeTransferCode(normalizedOptions.transferCode);
     if (normalizedCode.length < 8) {
       throw new Error('QR_SYNC_TRANSFER_CODE_WEAK');
@@ -327,7 +347,9 @@ export class QRSyncService {
 
     const sessionId = randomHex(16);
     const createdAt = new Date().toISOString();
-    const expiresAt = new Date(Date.now() + (normalizedOptions.expiresInMs ?? DEFAULT_EXPIRY_MS)).toISOString();
+    const expiresAt = new Date(
+      Date.now() + (normalizedOptions.expiresInMs ?? DEFAULT_EXPIRY_MS)
+    ).toISOString();
     let protectionMode: QRSyncPackage['protectionMode'] = 'transfer-code';
     let senderPublicKey: string | undefined;
     let recipientKeyFingerprint: string | undefined;
@@ -336,7 +358,10 @@ export class QRSyncService {
     if (normalizedOptions.recipientPublicKey?.trim()) {
       const senderKeyPair = await generateEcdhKeyPair();
       senderPublicKey = await exportPublicKey(senderKeyPair.publicKey);
-      sharedSecret = await deriveSharedSecret(senderKeyPair.privateKey, normalizedOptions.recipientPublicKey);
+      sharedSecret = await deriveSharedSecret(
+        senderKeyPair.privateKey,
+        normalizedOptions.recipientPublicKey
+      );
       protectionMode = 'transfer-code+ecdh';
       recipientKeyFingerprint = await fingerprintPublicKey(normalizedOptions.recipientPublicKey);
     }
@@ -383,9 +408,13 @@ export class QRSyncService {
     };
   }
 
-  static async parsePackage(rawPackage: string, options: QRSyncParseOptions | string): Promise<QRSyncEntry[]> {
+  static async parsePackage(
+    rawPackage: string,
+    options: QRSyncParseOptions | string
+  ): Promise<QRSyncEntry[]> {
     await SecureAppSettings.initialize();
-    const normalizedOptions: QRSyncParseOptions = typeof options === 'string' ? { transferCode: options } : options;
+    const normalizedOptions: QRSyncParseOptions =
+      typeof options === 'string' ? { transferCode: options } : options;
     const normalizedCode = normalizeTransferCode(normalizedOptions.transferCode);
     if (normalizedCode.length < 8) {
       throw new Error('QR_SYNC_TRANSFER_CODE_REQUIRED');
@@ -455,11 +484,21 @@ export class QRSyncService {
       if (!qrPackage.senderPublicKey) {
         throw new Error('QR_SYNC_PAIRING_REQUIRED');
       }
-      sharedSecret = await deriveSharedSecret(normalizedOptions.receiverSession.privateKey, qrPackage.senderPublicKey);
+      sharedSecret = await deriveSharedSecret(
+        normalizedOptions.receiverSession.privateKey,
+        qrPackage.senderPublicKey
+      );
     }
 
-    const derivedPassword = await deriveBackupPassword(normalizedCode, qrPackage.sessionId, sharedSecret);
-    const entries = await BackupService.decryptBackup<QRSyncEntry>(qrPackage.payload, derivedPassword);
+    const derivedPassword = await deriveBackupPassword(
+      normalizedCode,
+      qrPackage.sessionId,
+      sharedSecret
+    );
+    const entries = await BackupService.decryptBackup<QRSyncEntry>(
+      qrPackage.payload,
+      derivedPassword
+    );
     if (!Array.isArray(entries) || !entries.every(isQRSyncEntry)) {
       throw new Error('QR_SYNC_INVALID_PAYLOAD');
     }

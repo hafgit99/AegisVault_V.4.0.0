@@ -203,10 +203,7 @@ describe('SharingOverviewService', () => {
     });
     expect(firstReport.issues.map((issue) => issue.type)).toContain('review_required');
 
-    VaultSharingLinkService.markEntryAssignmentsReviewed(
-      404,
-      '2026-03-23T11:55:00.000Z'
-    );
+    VaultSharingLinkService.markEntryAssignmentsReviewed(404, '2026-03-23T11:55:00.000Z');
 
     const secondReport = SharingOverviewService.buildReport(entries, {
       now: new Date('2026-03-23T12:00:00.000Z').getTime(),

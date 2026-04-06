@@ -3,7 +3,7 @@ import type { VaultEntry } from '../vaultService';
 /**
  * SearchService — Aegis Vault özel (blind) arama ve performans optimizasyon katmanı.
  * 4.2 Performans Hardening (Adım 5.3) kapsamında eklendi.
- * 
+ *
  * Ana Özellikler:
  * 1. Blind Search: HMAC tabanlı arama indeksiyle şifreli verilerde hızlı arama.
  * 2. Subsequence Matching: Gelişmiş bulanık arama desteği.
@@ -13,12 +13,12 @@ export class SearchService {
   /**
    * Değerleri normalize et (küçük harf, aksandan arındırma, özel karakter temizliği)
    */
-  static normalize(value: string = ""): string {
+  static normalize(value: string = ''): string {
     return value
       .toLowerCase()
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]/g, " ")
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, ' ')
       .trim();
   }
 
@@ -28,7 +28,7 @@ export class SearchService {
   static tokenize(fields: string[]): string[] {
     const tokenSet = new Set<string>();
     for (const rawField of fields) {
-      const normalized = this.normalize(rawField || "");
+      const normalized = this.normalize(rawField || '');
       if (!normalized) continue;
 
       const parts = normalized.split(/\s+/).filter(Boolean);
@@ -45,7 +45,7 @@ export class SearchService {
   }
 
   /**
-   * Subsequence (LCS-benzeri) arama mantığı. 
+   * Subsequence (LCS-benzeri) arama mantığı.
    * 'needle' karakterlerinin 'haystack' içinde sırasıyla olup olmadığını kontrol eder.
    */
   static isSubsequence(needle: string, haystack: string): boolean {
@@ -61,7 +61,7 @@ export class SearchService {
 
   /**
    * Bellek içi (Decrypted) arama ve sıralama mantığı.
-   * Skor bazlı sıralama yapar: 
+   * Skor bazlı sıralama yapar:
    * - Başlıkta prefix match: 120 puan
    * - Başlıkta içerik: 90 puan
    * - Kullanıcı adında içerik: 60 puan
@@ -71,14 +71,14 @@ export class SearchService {
   static searchDecrypted(
     entries: VaultEntry[],
     query: string,
-    scope: "all" | "title" | "username" | "tags" = "all"
+    scope: 'all' | 'title' | 'username' | 'tags' = 'all'
   ): VaultEntry[] {
     if (!query.trim()) return entries;
 
     const queryTokens = query
       .toLowerCase()
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "")
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
       .trim()
       .split(/\s+/)
       .filter(Boolean);
@@ -87,23 +87,23 @@ export class SearchService {
 
     const scored = entries
       .map((entry) => {
-        const title = this.normalize(entry.title || "");
-        const username = this.normalize(entry.username || "");
-        const website = this.normalize(entry.website || "");
-        const category = this.normalize(entry.category || "");
+        const title = this.normalize(entry.title || '');
+        const username = this.normalize(entry.username || '');
+        const website = this.normalize(entry.website || '');
+        const category = this.normalize(entry.category || '');
         const tags = (entry.tags || []).map((t) => this.normalize(t));
 
         // Kapsama göre alanları belirle
         const scopedFields =
-          scope === "title"
+          scope === 'title'
             ? [title]
-            : scope === "username"
-            ? [username]
-            : scope === "tags"
-            ? tags
-            : [title, username, website, category, ...tags];
+            : scope === 'username'
+              ? [username]
+              : scope === 'tags'
+                ? tags
+                : [title, username, website, category, ...tags];
 
-        const fullByScope = scopedFields.join(" ");
+        const fullByScope = scopedFields.join(' ');
 
         let score = 0;
         let matchedAllTokens = true;
@@ -117,32 +117,40 @@ export class SearchService {
           if (!tokenPrefixMatched) prefixMatchedAllTokens = false;
 
           // Başlık Ağırlığı (En yüksek)
-          if ((scope === "all" || scope === "title") && title.startsWith(token)) {
+          if ((scope === 'all' || scope === 'title') && title.startsWith(token)) {
             score += 120;
             tokenMatched = true;
-          } else if ((scope === "all" || scope === "title") && title.includes(token)) {
+          } else if ((scope === 'all' || scope === 'title') && title.includes(token)) {
             score += 90;
             tokenMatched = true;
           }
 
           // Kullanıcı Adı Ağırlığı
-          if (!tokenMatched && (scope === "all" || scope === "username") && username.includes(token)) {
+          if (
+            !tokenMatched &&
+            (scope === 'all' || scope === 'username') &&
+            username.includes(token)
+          ) {
             score += 60;
             tokenMatched = true;
           }
 
           // Diğer alanlar
-          if (!tokenMatched && scope === "all" && website.includes(token)) {
+          if (!tokenMatched && scope === 'all' && website.includes(token)) {
             score += 50;
             tokenMatched = true;
           }
 
-          if (!tokenMatched && scope === "all" && category.includes(token)) {
+          if (!tokenMatched && scope === 'all' && category.includes(token)) {
             score += 35;
             tokenMatched = true;
           }
 
-          if (!tokenMatched && (scope === "all" || scope === "tags") && tags.some((tag) => tag.includes(token))) {
+          if (
+            !tokenMatched &&
+            (scope === 'all' || scope === 'tags') &&
+            tags.some((tag) => tag.includes(token))
+          ) {
             score += 40;
             tokenMatched = true;
           }

@@ -24,7 +24,7 @@ Bu yol haritasındaki P0 maddelerine paralel olarak kod tabanında aşağıdaki 
 - `X-Aegis-Extension-Id` allowlist kontrolu ile desktop bridge tarafinda ek kimlik dogrulamasi aktif edildi.
 - Extension kimligi sabit hardcode modelinden cikarildi; extension tarafinda runtime-id/env tabanli kimlik kullanimi eklendi.
 - Electron allowlist artik `AEGIS_EXTENSION_ALLOWLIST`/`AEGIS_EXTENSION_ID` env degiskenlerinden okunabiliyor.
-- Vault metadata encryption iskeleti eklendi (title/username/website alanlari icin encrypted_* + *_iv).
+- Vault metadata encryption iskeleti eklendi (title/username/website alanlari icin encrypted\__ + _\_iv).
 - Eski kayitlar icin lazy migration akisi eklendi: ilk okuma sirasinda metadata sifreli formata tasiniyor.
 - Metadata arama icin ilk private search index (HMAC tabanli blind index) katmani eklendi.
 - `search_index` alanlari ile sorgu tokenlari hash karsilastirma ile filtreleniyor (plaintext metadata dizini tutulmuyor).
@@ -57,6 +57,7 @@ Kalan kritik adımlar:
 ## Uygulama Durumları (Checklist)
 
 ### Tamamlananlar
+
 - ✅ P0-1 Bridge hardening (challenge endpoint + HMAC + nonce/TTL + allowlist + env tabanlı extension kimliği)
 - ✅ P0-2 Full vault plaintext fallback kaldırma (domain-scoped minimal credential modeli)
 - ✅ P0-3 Metadata encryption (title/username/website/category/tags + attachment metadata)
@@ -66,12 +67,14 @@ Kalan kritik adımlar:
 - ✅ Search index benchmark suiti (`npm run bench:search-index`)
 
 ### Devam Eden / Sonraki Adımlar
+
 - ✅ P1-2 Passkey / PRF modeli: recovery/export-import + profil-bazli revocation uygulandi
 - ✅ P1-4 HIBP privacy modu: opt-in + unknown fallback + kullanici bildirimi uygulandi
 - ✅ P1-5 TOTP ayrışma modu: ayrı 2FA vault profil modu + migration uyarı akışı uygulandı
 - ✅ P0-4 / P2 dokümantasyon: whitepaper + threat model + disclosure + audit prep checklist hazirlandi
 
 ### Dokuman Ciktilari
+
 - ✅ Security Whitepaper: `guvenlik/SECURITY_WHITEPAPER.md`
 - ✅ Security Whitepaper (EN): `guvenlik/SECURITY_WHITEPAPER_EN.md`
 - ✅ Threat Model: `guvenlik/THREAT_MODEL.md`
@@ -115,12 +118,15 @@ Ancak şu alanlar kritik gelişim gerektirir:
 ## P0-1: Extension/Desktop Bridge Yeniden Tasarimi
 
 ### Problem
+
 Mevcut localhost / loopback bridge modeli, `X-Aegis-Client` gibi header tabanlı doğrulama ile çalışıyor. Bu model internetten değil ama lokal kötü amaçlı süreçler, malware veya browser-istismar zincirleri karşısında gerektiğinden fazla risk taşıyor.
 
 ### Hedef
+
 Vault verisini extension ve desktop arasında taşırken sadece güvenilir istemcilerin, sadece aktif oturum boyunca ve sadece doğrulanmış talepler üzerinden erişim sağlaması.
 
 ### Önerilen çözüm
+
 1. HTTP loopback yerine tercihen **native messaging** kullan
 2. Eğer loopback korunacaksa:
    - per-session random secret
@@ -134,12 +140,14 @@ Vault verisini extension ve desktop arasında taşırken sadece güvenilir istem
 4. Domain-bazlı, kullanıcı aksiyonlu, minimum veri yanıt modeli kur
 
 ### Başarı Kriterleri
+
 - Unknown local process vault endpointine erişemez
 - Eski/replayed request kabul edilmez
 - Extension kimliği + oturum sırrı olmadan veri alınmaz
 - Plaintext full-vault endpoint kalmaz
 
 ### Puan etkisi
+
 Güvenlik puanına en büyük olumlu etkiyi bu değişiklik yapar.
 
 ---
@@ -147,12 +155,15 @@ Güvenlik puanına en büyük olumlu etkiyi bu değişiklik yapar.
 ## P0-2: Full Vault Plaintext Sync Modelini Kaldırma
 
 ### Problem
+
 Vault unlock olduktan sonra plaintext veriler extension/electron tarafına toplu aktarılıyor. Bu, ana şifreleme modelini zayıflatıyor.
 
 ### Hedef
+
 "Decrypt only what is needed, only when needed."
 
 ### Önerilen çözüm
+
 - Tüm kasayı senkronize etme
 - Sadece aktif domain ile eşleşen girişleri gönder
 - Sadece kullanıcı autofill istediğinde decryption yap
@@ -165,6 +176,7 @@ Vault unlock olduktan sonra plaintext veriler extension/electron tarafına toplu
 - Secure notes, attachments ve diğer gereksiz alanları extension path'ine hiç sokma
 
 ### Başarı Kriterleri
+
 - Full vault plaintext cache ortadan kalkar
 - Extension sadece seçili siteye ait kayıtları geçici alır
 - Fill sonrası cache hemen temizlenir
@@ -174,7 +186,9 @@ Vault unlock olduktan sonra plaintext veriler extension/electron tarafına toplu
 ## P0-3: Metadata Encryption
 
 ### Problem
+
 Parolalar şifreli, ama metadata alanları plaintext:
+
 - title
 - username
 - website
@@ -184,20 +198,26 @@ Parolalar şifreli, ama metadata alanları plaintext:
 - vault profile isimleri
 
 ### Neden kritik
+
 Bir saldırgan şifreleri çözemese bile:
+
 - hangi bankaları kullandığını
 - hangi sitelere üye olduğunu
 - kullanıcı adlarını
 - ilgi alanlarını
 - hassas kategori etiketlerini
-görür.
+  görür.
 
 ### Hedef
+
 Vault içerisindeki tüm hassas anlamsal bilginin şifrelenmesi.
 
 ### Önerilen çözüm
+
 #### Aşama 1
+
 Aşağıdaki alanları şifrele:
+
 - title
 - username
 - website
@@ -206,18 +226,23 @@ Aşağıdaki alanları şifrele:
 - attachment file name/type
 
 #### Aşama 2
+
 Arama için private index modeli ekle:
+
 - normalized token hash
 - blind index
 - per-vault keyed hash
 - exact/prefix search için kısıtlı private search
 
 #### Aşama 3
+
 İki mod sun:
+
 - Standard Search Mode
 - Private Search Mode
 
 ### Başarı Kriterleri
+
 - Storage dump alan saldırgan site listesi göremez
 - Vault metadata açık olarak okunamaz
 - Arama deneyimi kabul edilebilir performansta korunur
@@ -227,9 +252,11 @@ Arama için private index modeli ekle:
 ## P0-4: Formal Threat Model ve Security Whitepaper
 
 ### Problem
+
 Kodda iyi niyetli hardening var ama resmi güvenlik modeli dokümante edilmemiş.
 
 ### Önerilen çözüm
+
 - Trust boundaries çiz
 - Threat actors tanımla
 - Attack surface haritası çıkar
@@ -237,6 +264,7 @@ Kodda iyi niyetli hardening var ama resmi güvenlik modeli dokümante edilmemiş
 - Kriptografi akışını teknik olarak belgeye bağla
 
 ### Başarı Kriterleri
+
 - Yeni contributor'lar mimariyi yanlış genişletmez
 - Audit öncesi hazırlık tamamlanır
 - Pazarlama dili teknik gerçekle hizalanır
@@ -248,14 +276,17 @@ Kodda iyi niyetli hardening var ama resmi güvenlik modeli dokümante edilmemiş
 ## P1-1: PBKDF2 Doğrulama Katmanını Argon2id'e Taşıma
 
 ### Problem
+
 Vault key derivation güçlü ama auth verifier katmanı PBKDF2 tabanlı.
 
 ### Önerilen çözüm
+
 - `auth_credential` verifier katmanını da Argon2id'e taşı
 - Migration path ekle
 - Legacy uyumluluğu kontrollü sürdür
 
 ### Beklenen fayda
+
 Teknik tutarlılık artar, brute-force direnci güçlenir.
 
 ---
@@ -263,9 +294,11 @@ Teknik tutarlılık artar, brute-force direnci güçlenir.
 ## P1-2: Passkey / PRF Modelini Güçlendirme
 
 ### Problem
+
 Passkey akışı iyi ama localStorage bağımlılığı ve operational fallback'ler daha da sertleştirilebilir.
 
 ### Önerilen çözüm
+
 - Passkey payload storage modelini gözden geçir
 - PRF failure handling daha netleştir
 - Device-bound encrypted envelope tasarla
@@ -276,6 +309,7 @@ Passkey akışı iyi ama localStorage bağımlılığı ve operational fallback'
 ## P1-3: Security Regression Test Suite
 
 ### Eklenmesi gereken testler
+
 - malicious localhost client simulation
 - replay request testleri
 - wrong-origin/wrong-extension bağlantı testleri
@@ -289,6 +323,7 @@ Passkey akışı iyi ama localStorage bağımlılığı ve operational fallback'
 ## P1-4: HIBP Privacy Modu İyileştirmesi
 
 ### Öneriler
+
 - Varsayılan opt-in
 - "network error = unknown" durumu
 - Kullanıcıya açık privacy metni
@@ -299,6 +334,7 @@ Passkey akışı iyi ama localStorage bağımlılığı ve operational fallback'
 ## P1-5: TOTP Ayrışma Seçeneği
 
 ### Öneriler
+
 - "TOTP aynı kasada" ve "ayrı 2FA vault" seçenekleri
 - Kullanıcıyı risk konusunda bilgilendiren açıklama
 - High-security profilinde ayrı vault önerisi
@@ -308,28 +344,33 @@ Passkey akışı iyi ama localStorage bağımlılığı ve operational fallback'
 # P2 - Orta Vadeli Profesyonelleşme
 
 ## P2-1: Harici Güvenlik Auditi
+
 - Bağımsız audit firması
 - Bulguların remediation takibi
 - Public audit summary
 
 ## P2-2: Bug Bounty / Responsible Disclosure
+
 - Güvenlik e-posta adresi
 - PGP anahtarı
 - Scope tanımı
 - Severity policy
 
 ## P2-3: Secure Telemetry YOK ya da Opt-in
+
 - Varsayılan kapalı
 - Sıfır hassas veri
 - Açık belge
 
 ## P2-4: Supply Chain Hardening
+
 - Lockfile denetimi
 - Dependency review
 - Reproducible build hedefi
 - Signed releases
 
 ## P2-5: Release Security Checklist
+
 - Build integrity hash
 - CSP review
 - Extension permission diff
@@ -341,18 +382,21 @@ Passkey akışı iyi ama localStorage bağımlılığı ve operational fallback'
 # 90 Günlük Uygulama Sırası
 
 ## İlk 30 gün
+
 1. Bridge redesign taslağı
 2. Full-vault plaintext sync kaldırma
 3. Threat model taslağı
 4. Security whitepaper v0.1
 
 ## 31-60 gün
+
 1. Metadata encryption prototipi
 2. Argon2id verifier migration
 3. Security regression tests
 4. Passkey akışı sertleştirme
 
 ## 61-90 gün
+
 1. Audit hazırlığı
 2. Bug bounty / disclosure policy
 3. Release hardening checklist
@@ -363,8 +407,9 @@ Passkey akışı iyi ama localStorage bağımlılığı ve operational fallback'
 # Hedeflenen Sonuç
 
 Bu roadmap tamamlandığında Aegis Vault:
+
 - sadece ilgi çekici bir offline şifre yöneticisi olmayacak,
 - aynı zamanda denetlenebilir,
 - teknik olarak savunulabilir,
 - rakiplerle aynı masaya oturabilecek
-bir güvenlik ürününe dönüşecek.
+  bir güvenlik ürününe dönüşecek.

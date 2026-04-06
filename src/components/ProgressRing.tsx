@@ -12,11 +12,7 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({ radius, stroke, prog
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <svg
-      height={radius * 2}
-      width={radius * 2}
-      className="transform -rotate-90 origin-center"
-    >
+    <svg height={radius * 2} width={radius * 2} className="transform -rotate-90 origin-center">
       <circle
         stroke="rgba(255,255,255,0.2)"
         fill="transparent"

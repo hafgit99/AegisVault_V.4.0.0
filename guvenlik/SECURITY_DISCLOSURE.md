@@ -16,6 +16,7 @@ Geçici kanal (audit oncesi):
 - E-posta: security@aegisvault.local (placeholder)
 
 Not:
+
 - Uretim alan adi uzerinden resmi kanal ve PGP anahtari yayinlandiginda bu dokuman guncellenecektir.
 
 ## 3) Scope

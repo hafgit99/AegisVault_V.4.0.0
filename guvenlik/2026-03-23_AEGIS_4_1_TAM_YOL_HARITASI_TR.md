@@ -2291,6 +2291,7 @@ Kod etkisi:
 - `src/components/dashboard/SecurityCenterPanel.tsx`
 - `src/components/dashboard/SettingsDrawer.tsx`
 - `src/i18n.ts`
+
 ## 2026-03-23 Ayarlar Ekrani Duzeltmeleri
 
 - Security Center triage gorunumu uzun kasa listeleri icin kisaltilmis ve kaydirilabilir hale getirildi.

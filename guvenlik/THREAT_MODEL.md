@@ -192,9 +192,11 @@ Imported entries
 ### T1. Yerel kotu niyetli proses desktop bridge'i taklit etmeye calisir
 
 Hedef:
+
 - native host veya Electron tarafindan gercek extension gibi kabul edilmek
 
 Kontroller:
+
 - allowlist extension ID modeli
 - pairing secret
 - native host uzerinden gecen imzali local IPC mesaji
@@ -202,33 +204,41 @@ Kontroller:
 - kullanici onayli pairing diyalogu
 
 Durum:
+
 - tam kapatilmadi, ama onceki loopback-only modele gore belirgin bicimde daraltildi
 
 Residual risk:
+
 - host kompromizasyonunda veya pairing secret'in ele gecmesi halinde local attacker riski tamamen sifirlanmaz
 
 ### T2. Desktop uygulamadan full vault plaintext kopyasi alinmasi
 
 Hedef:
+
 - ana surecte veya extension tarafinda tum vault'u topluca elde etmek
 
 Kontroller:
+
 - Electron main process'te full plaintext vault cache kaldirildi
 - domain-scoped credential modeli
 - renderer'dan sadece ihtiyac aninda minimum veri talebi
 
 Durum:
+
 - onceki tasarima gore buyuk olcude kapatildi
 
 Residual risk:
+
 - aktif domain icin gereken minimum credential runtime memory'de kisa sure tutulur
 
 ### T3. QR sync plaintext export ele gecirilir
 
 Hedef:
+
 - QR paketleri taranarak sifresiz veri elde edilmesi
 
 Kontroller:
+
 - sifreli `aegis-qr-sync-v1` paket formati
 - transfer code
 - sure sonu
@@ -236,65 +246,80 @@ Kontroller:
 - opsiyonel ECDH alici baglama
 
 Durum:
+
 - plaintext aktarim riski kapatildi
 
 Residual risk:
+
 - transfer code zayif paylasilirsa veya ayni anda aciga cikarsa operasyonel risk devam eder
 
 ### T4. At-rest metadata disclosure
 
 Hedef:
+
 - site, username, tags, attachment metadata gibi alanlari diskten cikarmak
 
 Kontroller:
+
 - metadata encryption
 - blind search index
 - attachment metadata encryption
 
 Residual risk:
+
 - kullanici davranis metadatasi ve kullanim sikligi tam olarak gizlenemez
 
 ### T5. Yanlis profile TOTP veya passkey baglama yazimi
 
 Hedef:
+
 - guvenlik artefact'larinin yanlis profile veya yanlis kasa baglamina yazilmasi
 
 Kontroller:
+
 - profile-scoped passkey binding
 - TOTP policy modeli
 - recovery import/export context dogrulamasi
 
 Residual risk:
+
 - manuel migration sureclerinde kullanici hatasi tamamen yok edilemez
 
 ### T6. Sync Relay uzerinden veri sizintisi veya manipulasyonu
 
 Hedef:
+
 - sunucudaki blob'lari deşifre etmek veya sahte blob enjekte etmek
 
 Kontroller:
+
 - E2EE (AES-256-GCM): sunucu sadece şifreli blob'u görür
 - HMAC-SHA256: her paket auth key ile imzalanır, sunucu veya MITM manipüle edemez
 - Sequence Number: replay saldırılarını ve eski veriyle üzerine yazmayı (overwrite) engeller
 - Separate Keys: vault şifreleme anahtarı ile sync anahtarı HKDF ile ayrıştırılmıştır
 
 Durum:
+
 - Sıfır-bilgi mimarisiyle sunucu tarafındaki risk minimize edildi
 
 Residual risk:
+
 - Sunucu veriyi silebilebilir (DoS), ancak okuyamaz veya değiştiremez
 
 ### T7. Passkey Spoofing veya Yanlış RP Bağlama
 
 Hedef:
+
 - bir sitenin passkey'ini başka bir site için kullanmak veya sahte passkey enjekte etmek
 
 Kontroller:
+
 - Browser-Enforced Origin: WebAuthn API tarayıcı seviyesinde RP-ID doğrulaması yapar
 - Metadata Binding: Passkey credential_id ve metadata'sı vault entry'ye sıkıca bağlanır
 - Audit Log: Her passkey auth işlemi `last_auth_at` ile izlenir
 
 Durum:
+
 - WebAuthn standartları gereği spoofing riski tarayıcı güvenliğine tabidir
 
 ## 8. Yerel Kotu Niyetli Surec Senaryolari

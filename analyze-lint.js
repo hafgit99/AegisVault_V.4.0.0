@@ -8,20 +8,23 @@ const errorRules = {};
 const fileErrors = [];
 
 for (const result of results) {
-    if (result.errorCount > 0) {
-        for (const msg of result.messages) {
-            if (msg.severity === 2) { // Error
-                const ruleId = msg.ruleId || 'unknown';
-                errorRules[ruleId] = (errorRules[ruleId] || 0) + 1;
-                fileErrors.push(`${result.filePath}:${msg.line}:${msg.column} - ${msg.message} [${ruleId}]`);
-            }
-        }
+  if (result.errorCount > 0) {
+    for (const msg of result.messages) {
+      if (msg.severity === 2) {
+        // Error
+        const ruleId = msg.ruleId || 'unknown';
+        errorRules[ruleId] = (errorRules[ruleId] || 0) + 1;
+        fileErrors.push(
+          `${result.filePath}:${msg.line}:${msg.column} - ${msg.message} [${ruleId}]`
+        );
+      }
     }
+  }
 }
 
 console.log('--- ERROR RULE COUNTS ---');
-for (const [ruleId, count] of Object.entries(errorRules).sort((a,b) => b[1] - a[1])) {
-    console.log(`${ruleId}: ${count}`);
+for (const [ruleId, count] of Object.entries(errorRules).sort((a, b) => b[1] - a[1])) {
+  console.log(`${ruleId}: ${count}`);
 }
 
 console.log('\n--- TOP 30 ERRORS ---');

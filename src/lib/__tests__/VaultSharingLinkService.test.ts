@@ -137,9 +137,9 @@ describe('VaultSharingLinkService', () => {
     );
 
     expect(updated).toBe(true);
-    expect(
-      VaultSharingLinkService.getAssignmentsForEntry(505)[0]?.last_reviewed_at
-    ).toBe('2026-03-23T15:00:00.000Z');
+    expect(VaultSharingLinkService.getAssignmentsForEntry(505)[0]?.last_reviewed_at).toBe(
+      '2026-03-23T15:00:00.000Z'
+    );
     expect(
       SecureAppSettings.getSharingAudit().some((event) => event.type === 'assignment_reviewed')
     ).toBe(true);

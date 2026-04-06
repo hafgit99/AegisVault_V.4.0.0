@@ -6,7 +6,7 @@ import type {
 
 type ViewDensity = 'comfortable' | 'compact';
 type TotpVaultMode = 'same_vault' | 'separate_2fa_vault';
-type ThemeMode = 'light' | 'dark';
+type ThemeMode = 'light' | 'dark' | 'system';
 type EncryptionProfile = 'maximum' | 'balanced' | 'performance';
 export type SecurityModeProfile = 'standard' | 'strict' | 'maximum';
 
@@ -57,12 +57,17 @@ export interface SharingAuditEvent {
   type:
     | 'space_saved'
     | 'space_deleted'
+    | 'space_restored'
+    | 'space_deletion_failed'
     | 'member_invited'
     | 'member_status_changed'
     | 'member_removed'
     | 'assignment_saved'
     | 'assignment_cleared'
-    | 'assignment_reviewed';
+    | 'assignment_reviewed'
+    | 'assignments_restored'
+    | 'sharing_transport_encrypt'
+    | 'sharing_transport_decrypt';
   entryId?: string;
   spaceId?: string;
   detail?: string;
@@ -170,6 +175,7 @@ interface SecureAppSettingsState {
   hibpEnabled: boolean;
   hibpCache: HibpCacheState | null;
   autoLockTime: number;
+  clipboardClearSeconds: number;
   viewDensity: ViewDensity;
   themeMode: ThemeMode;
   hasSeenTour: boolean;
@@ -206,6 +212,7 @@ const LEGACY_KEYS = {
   hibpEnabled: 'aegis_hibp_enabled',
   hibpCache: 'aegis_hibp_cache',
   autoLockTime: 'aegis_auto_lock_time',
+  clipboardClearSeconds: 'aegis_clipboard_clear_seconds',
   idleTimeout: 'aegis_idle_timeout',
   viewDensity: 'aegis:view-density',
   themeMode: 'aegis:theme-mode',
@@ -237,6 +244,7 @@ const DEFAULT_STATE: SecureAppSettingsState = {
   hibpEnabled: false,
   hibpCache: null,
   autoLockTime: 2,
+  clipboardClearSeconds: 30,
   viewDensity: 'comfortable',
   themeMode: 'light',
   hasSeenTour: false,
@@ -302,6 +310,7 @@ const cloneState = (state: SecureAppSettingsState): SecureAppSettingsState => ({
       }
     : null,
   autoLockTime: state.autoLockTime,
+  clipboardClearSeconds: state.clipboardClearSeconds,
   viewDensity: state.viewDensity,
   themeMode: state.themeMode,
   hasSeenTour: state.hasSeenTour,
@@ -364,7 +373,9 @@ const normalizeEmergencyAccessContact = (value: unknown): EmergencyAccessContact
   }
 
   const waitHoursRaw = Number(candidate.wait_hours);
-  const wait_hours = Number.isFinite(waitHoursRaw) ? Math.min(720, Math.max(1, Math.round(waitHoursRaw))) : 48;
+  const wait_hours = Number.isFinite(waitHoursRaw)
+    ? Math.min(720, Math.max(1, Math.round(waitHoursRaw)))
+    : 48;
 
   return {
     id: candidate.id,
@@ -457,11 +468,12 @@ const normalizeEmergencyAccessAuditEvent = (value: unknown): EmergencyAccessAudi
     metadata:
       candidate.metadata && typeof candidate.metadata === 'object'
         ? Object.fromEntries(
-            Object.entries(candidate.metadata).filter(([, value]) =>
-              value === undefined ||
-              typeof value === 'string' ||
-              typeof value === 'number' ||
-              typeof value === 'boolean'
+            Object.entries(candidate.metadata).filter(
+              ([, value]) =>
+                value === undefined ||
+                typeof value === 'string' ||
+                typeof value === 'number' ||
+                typeof value === 'boolean'
             )
           )
         : undefined,
@@ -564,14 +576,16 @@ const normalizeSharingAssignment = (value: unknown): CanonicalSharingAssignment 
 };
 
 const normalizeState = (value: unknown): SecureAppSettingsState => {
-  const candidate = value && typeof value === 'object' ? value as Partial<SecureAppSettingsState> : {};
-  const hibpCache = candidate.hibpCache && typeof candidate.hibpCache === 'object'
-    ? candidate.hibpCache as HibpCacheState
-    : null;
-  const vaultProfiles =
-    Array.isArray(candidate.vaultProfiles)
-      ? candidate.vaultProfiles
-          .filter((profile): profile is VaultProfileState =>
+  const candidate =
+    value && typeof value === 'object' ? (value as Partial<SecureAppSettingsState>) : {};
+  const hibpCache =
+    candidate.hibpCache && typeof candidate.hibpCache === 'object'
+      ? (candidate.hibpCache as HibpCacheState)
+      : null;
+  const vaultProfiles = Array.isArray(candidate.vaultProfiles)
+    ? candidate.vaultProfiles
+        .filter(
+          (profile): profile is VaultProfileState =>
             Boolean(profile) &&
             typeof profile === 'object' &&
             typeof (profile as VaultProfileState).id === 'string' &&
@@ -579,22 +593,21 @@ const normalizeState = (value: unknown): SecureAppSettingsState => {
             typeof (profile as VaultProfileState).color === 'string' &&
             typeof (profile as VaultProfileState).createdAt === 'string' &&
             typeof (profile as VaultProfileState).dbName === 'string'
-          )
-          .map((profile) => ({
-            id: profile.id,
-            name: profile.name,
-            color: profile.color,
-            createdAt: profile.createdAt,
-            dbName: profile.dbName,
-            isDefault: Boolean(profile.isDefault),
-          }))
-      : [];
-  const sharedSpaces =
-    Array.isArray(candidate.sharedSpaces)
-      ? candidate.sharedSpaces
-          .map((space) => normalizeSharedSpace(space))
-          .filter((space): space is CanonicalSharedSpace => Boolean(space))
-      : [];
+        )
+        .map((profile) => ({
+          id: profile.id,
+          name: profile.name,
+          color: profile.color,
+          createdAt: profile.createdAt,
+          dbName: profile.dbName,
+          isDefault: Boolean(profile.isDefault),
+        }))
+    : [];
+  const sharedSpaces = Array.isArray(candidate.sharedSpaces)
+    ? candidate.sharedSpaces
+        .map((space) => normalizeSharedSpace(space))
+        .filter((space): space is CanonicalSharedSpace => Boolean(space))
+    : [];
   const sharedItemAssignments =
     candidate.sharedItemAssignments && typeof candidate.sharedItemAssignments === 'object'
       ? (Object.fromEntries(
@@ -604,69 +617,67 @@ const normalizeState = (value: unknown): SecureAppSettingsState => {
               Array.isArray(assignments)
                 ? assignments
                     .map((assignment) => normalizeSharingAssignment(assignment))
-                    .filter(
-                      (
-                        assignment
-                      ): assignment is CanonicalSharingAssignment => Boolean(assignment)
+                    .filter((assignment): assignment is CanonicalSharingAssignment =>
+                      Boolean(assignment)
                     )
                 : [],
             ]
           )
         ) as Record<string, CanonicalSharingAssignment[]>)
       : {};
-  const sharingAudit =
-    Array.isArray(candidate.sharingAudit)
-      ? candidate.sharingAudit
-          .filter(
-            (event): event is SharingAuditEvent =>
-              Boolean(event) &&
-              typeof event === 'object' &&
-              typeof (event as SharingAuditEvent).id === 'string' &&
-              typeof (event as SharingAuditEvent).type === 'string' &&
-              typeof (event as SharingAuditEvent).at === 'string'
-          )
-          .map((event) => ({
-            ...event,
-            metadata:
-              event.metadata && typeof event.metadata === 'object'
-                ? Object.fromEntries(
-                    Object.entries(event.metadata).filter(([, value]) =>
+  const sharingAudit = Array.isArray(candidate.sharingAudit)
+    ? candidate.sharingAudit
+        .filter(
+          (event): event is SharingAuditEvent =>
+            Boolean(event) &&
+            typeof event === 'object' &&
+            typeof (event as SharingAuditEvent).id === 'string' &&
+            typeof (event as SharingAuditEvent).type === 'string' &&
+            typeof (event as SharingAuditEvent).at === 'string'
+        )
+        .map((event) => ({
+          ...event,
+          metadata:
+            event.metadata && typeof event.metadata === 'object'
+              ? Object.fromEntries(
+                  Object.entries(event.metadata).filter(
+                    ([, value]) =>
                       value === undefined ||
                       typeof value === 'string' ||
                       typeof value === 'number' ||
                       typeof value === 'boolean'
-                    )
                   )
-                : undefined,
-          }))
-      : [];
-  const syncAudit =
-    Array.isArray(candidate.syncAudit)
-      ? candidate.syncAudit
-          .filter(
-            (event): event is SyncAuditEvent =>
-              Boolean(event) &&
-              typeof event === 'object' &&
-              typeof (event as SyncAuditEvent).id === 'string' &&
-              typeof (event as SyncAuditEvent).type === 'string' &&
-              typeof (event as SyncAuditEvent).at === 'string' &&
-              typeof (event as SyncAuditEvent).source === 'string'
-          )
-          .map((event) => ({
-            ...event,
-            metadata:
-              event.metadata && typeof event.metadata === 'object'
-                ? Object.fromEntries(
-                    Object.entries(event.metadata).filter(([, value]) =>
+                )
+              : undefined,
+        }))
+    : [];
+  const syncAudit = Array.isArray(candidate.syncAudit)
+    ? candidate.syncAudit
+        .filter(
+          (event): event is SyncAuditEvent =>
+            Boolean(event) &&
+            typeof event === 'object' &&
+            typeof (event as SyncAuditEvent).id === 'string' &&
+            typeof (event as SyncAuditEvent).type === 'string' &&
+            typeof (event as SyncAuditEvent).at === 'string' &&
+            typeof (event as SyncAuditEvent).source === 'string'
+        )
+        .map((event) => ({
+          ...event,
+          metadata:
+            event.metadata && typeof event.metadata === 'object'
+              ? Object.fromEntries(
+                  Object.entries(event.metadata).filter(
+                    ([, value]) =>
                       value === undefined ||
                       typeof value === 'string' ||
                       typeof value === 'number' ||
                       typeof value === 'boolean'
-                    )
                   )
-                : undefined,
-          }))
-      : [];
+                )
+              : undefined,
+        }))
+    : [];
   const securityCenterReviews =
     candidate.securityCenterReviews && typeof candidate.securityCenterReviews === 'object'
       ? (Object.fromEntries(
@@ -675,21 +686,20 @@ const normalizeState = (value: unknown): SecureAppSettingsState => {
           )
         ) as Record<string, string>)
       : {};
-  const securityCenterHistory =
-    Array.isArray(candidate.securityCenterHistory)
-      ? candidate.securityCenterHistory
-          .filter(
-            (event): event is SecurityCenterHistoryEvent =>
-              Boolean(event) &&
-              typeof event === 'object' &&
-              typeof (event as SecurityCenterHistoryEvent).id === 'string' &&
-              typeof (event as SecurityCenterHistoryEvent).at === 'string' &&
-              typeof (event as SecurityCenterHistoryEvent).action === 'string' &&
-              typeof (event as SecurityCenterHistoryEvent).reviewKey === 'string' &&
-              typeof (event as SecurityCenterHistoryEvent).issueType === 'string'
-          )
-          .map((event) => ({ ...event }))
-      : [];
+  const securityCenterHistory = Array.isArray(candidate.securityCenterHistory)
+    ? candidate.securityCenterHistory
+        .filter(
+          (event): event is SecurityCenterHistoryEvent =>
+            Boolean(event) &&
+            typeof event === 'object' &&
+            typeof (event as SecurityCenterHistoryEvent).id === 'string' &&
+            typeof (event as SecurityCenterHistoryEvent).at === 'string' &&
+            typeof (event as SecurityCenterHistoryEvent).action === 'string' &&
+            typeof (event as SecurityCenterHistoryEvent).reviewKey === 'string' &&
+            typeof (event as SecurityCenterHistoryEvent).issueType === 'string'
+        )
+        .map((event) => ({ ...event }))
+    : [];
   const releaseTrustChecklist =
     candidate.releaseTrustChecklist && typeof candidate.releaseTrustChecklist === 'object'
       ? (Object.fromEntries(
@@ -706,38 +716,34 @@ const normalizeState = (value: unknown): SecureAppSettingsState => {
           )
         ) as Record<string, string>)
       : {};
-  const releaseTrustHistory =
-    Array.isArray(candidate.releaseTrustHistory)
-      ? candidate.releaseTrustHistory
-          .filter(
-            (event): event is ReleaseTrustHistoryEvent =>
-              Boolean(event) &&
-              typeof event === 'object' &&
-              typeof (event as ReleaseTrustHistoryEvent).id === 'string' &&
-              typeof (event as ReleaseTrustHistoryEvent).at === 'string' &&
-              typeof (event as ReleaseTrustHistoryEvent).action === 'string' &&
-              typeof (event as ReleaseTrustHistoryEvent).targetId === 'string'
-          )
-          .map((event) => ({ ...event }))
-      : [];
-  const emergencyAccessContacts =
-    Array.isArray(candidate.emergencyAccessContacts)
-      ? candidate.emergencyAccessContacts
-          .map((contact) => normalizeEmergencyAccessContact(contact))
-          .filter((contact): contact is EmergencyAccessContact => Boolean(contact))
-      : [];
-  const emergencyAccessRequests =
-    Array.isArray(candidate.emergencyAccessRequests)
-      ? candidate.emergencyAccessRequests
-          .map((request) => normalizeEmergencyAccessRequest(request))
-          .filter((request): request is EmergencyAccessRequest => Boolean(request))
-      : [];
-  const emergencyAccessAudit =
-    Array.isArray(candidate.emergencyAccessAudit)
-      ? candidate.emergencyAccessAudit
-          .map((event) => normalizeEmergencyAccessAuditEvent(event))
-          .filter((event): event is EmergencyAccessAuditEvent => Boolean(event))
-      : [];
+  const releaseTrustHistory = Array.isArray(candidate.releaseTrustHistory)
+    ? candidate.releaseTrustHistory
+        .filter(
+          (event): event is ReleaseTrustHistoryEvent =>
+            Boolean(event) &&
+            typeof event === 'object' &&
+            typeof (event as ReleaseTrustHistoryEvent).id === 'string' &&
+            typeof (event as ReleaseTrustHistoryEvent).at === 'string' &&
+            typeof (event as ReleaseTrustHistoryEvent).action === 'string' &&
+            typeof (event as ReleaseTrustHistoryEvent).targetId === 'string'
+        )
+        .map((event) => ({ ...event }))
+    : [];
+  const emergencyAccessContacts = Array.isArray(candidate.emergencyAccessContacts)
+    ? candidate.emergencyAccessContacts
+        .map((contact) => normalizeEmergencyAccessContact(contact))
+        .filter((contact): contact is EmergencyAccessContact => Boolean(contact))
+    : [];
+  const emergencyAccessRequests = Array.isArray(candidate.emergencyAccessRequests)
+    ? candidate.emergencyAccessRequests
+        .map((request) => normalizeEmergencyAccessRequest(request))
+        .filter((request): request is EmergencyAccessRequest => Boolean(request))
+    : [];
+  const emergencyAccessAudit = Array.isArray(candidate.emergencyAccessAudit)
+    ? candidate.emergencyAccessAudit
+        .map((event) => normalizeEmergencyAccessAuditEvent(event))
+        .filter((event): event is EmergencyAccessAuditEvent => Boolean(event))
+    : [];
   const emergencyAccessPolicyRaw =
     candidate.emergencyAccessPolicy && typeof candidate.emergencyAccessPolicy === 'object'
       ? (candidate.emergencyAccessPolicy as Partial<EmergencyAccessPolicy>)
@@ -759,17 +765,30 @@ const normalizeState = (value: unknown): SecureAppSettingsState => {
         : 'standard',
     plaintextExportEnabled: Boolean(candidate.plaintextExportEnabled),
     hibpEnabled: Boolean(candidate.hibpEnabled),
-    hibpCache: hibpCache && hibpCache.hashes && typeof hibpCache.hashes === 'object'
-      ? {
-          hashes: Object.fromEntries(
-            Object.entries(hibpCache.hashes).filter(([, count]) => typeof count === 'number')
-          ),
-          lastUpdated: typeof hibpCache.lastUpdated === 'number' ? hibpCache.lastUpdated : Date.now(),
-        }
-      : null,
-    autoLockTime: typeof candidate.autoLockTime === 'number' && !Number.isNaN(candidate.autoLockTime) ? candidate.autoLockTime : DEFAULT_STATE.autoLockTime,
+    hibpCache:
+      hibpCache && hibpCache.hashes && typeof hibpCache.hashes === 'object'
+        ? {
+            hashes: Object.fromEntries(
+              Object.entries(hibpCache.hashes).filter(([, count]) => typeof count === 'number')
+            ),
+            lastUpdated:
+              typeof hibpCache.lastUpdated === 'number' ? hibpCache.lastUpdated : Date.now(),
+          }
+        : null,
+    autoLockTime:
+      typeof candidate.autoLockTime === 'number' && !Number.isNaN(candidate.autoLockTime)
+        ? candidate.autoLockTime
+        : DEFAULT_STATE.autoLockTime,
+    clipboardClearSeconds:
+      typeof candidate.clipboardClearSeconds === 'number' &&
+      !Number.isNaN(candidate.clipboardClearSeconds)
+        ? Math.min(300, Math.max(5, Math.round(candidate.clipboardClearSeconds)))
+        : DEFAULT_STATE.clipboardClearSeconds,
     viewDensity: candidate.viewDensity === 'compact' ? 'compact' : 'comfortable',
-    themeMode: candidate.themeMode === 'dark' ? 'dark' : 'light',
+    themeMode:
+      candidate.themeMode === 'dark' || candidate.themeMode === 'system'
+        ? candidate.themeMode
+        : 'light',
     hasSeenTour: Boolean(candidate.hasSeenTour),
     encryptionProfile:
       candidate.encryptionProfile === 'maximum' || candidate.encryptionProfile === 'performance'
@@ -780,8 +799,12 @@ const normalizeState = (value: unknown): SecureAppSettingsState => {
       typeof candidate.activeVaultId === 'string' && candidate.activeVaultId.trim()
         ? candidate.activeVaultId
         : 'default',
-    totpVaultMode: candidate.totpVaultMode === 'separate_2fa_vault' ? 'separate_2fa_vault' : 'same_vault',
-    totpVaultId: typeof candidate.totpVaultId === 'string' && candidate.totpVaultId.trim() ? candidate.totpVaultId.trim() : null,
+    totpVaultMode:
+      candidate.totpVaultMode === 'separate_2fa_vault' ? 'separate_2fa_vault' : 'same_vault',
+    totpVaultId:
+      typeof candidate.totpVaultId === 'string' && candidate.totpVaultId.trim()
+        ? candidate.totpVaultId.trim()
+        : null,
     qrConsumedPackages:
       candidate.qrConsumedPackages && typeof candidate.qrConsumedPackages === 'object'
         ? (Object.fromEntries(
@@ -804,31 +827,32 @@ const normalizeState = (value: unknown): SecureAppSettingsState => {
             )
           ) as Record<string, QRTransferLedgerRecord>)
         : {},
-    qrTransferAudit:
-      Array.isArray(candidate.qrTransferAudit)
-        ? candidate.qrTransferAudit
-            .filter(
-              (event): event is QRTransferAuditEvent =>
-                Boolean(event) &&
-                typeof event === 'object' &&
-                typeof (event as QRTransferAuditEvent).id === 'string' &&
-                typeof (event as QRTransferAuditEvent).type === 'string' &&
-                typeof (event as QRTransferAuditEvent).at === 'string'
-            )
-            .map((event) => ({
-              ...event,
-              metadata: event.metadata && typeof event.metadata === 'object'
+    qrTransferAudit: Array.isArray(candidate.qrTransferAudit)
+      ? candidate.qrTransferAudit
+          .filter(
+            (event): event is QRTransferAuditEvent =>
+              Boolean(event) &&
+              typeof event === 'object' &&
+              typeof (event as QRTransferAuditEvent).id === 'string' &&
+              typeof (event as QRTransferAuditEvent).type === 'string' &&
+              typeof (event as QRTransferAuditEvent).at === 'string'
+          )
+          .map((event) => ({
+            ...event,
+            metadata:
+              event.metadata && typeof event.metadata === 'object'
                 ? Object.fromEntries(
-                    Object.entries(event.metadata).filter(([, value]) =>
-                      value === undefined ||
-                      typeof value === 'string' ||
-                      typeof value === 'number' ||
-                      typeof value === 'boolean'
+                    Object.entries(event.metadata).filter(
+                      ([, value]) =>
+                        value === undefined ||
+                        typeof value === 'string' ||
+                        typeof value === 'number' ||
+                        typeof value === 'boolean'
                     )
                   )
                 : undefined,
-            }))
-        : [],
+          }))
+      : [],
     sharedSpaces,
     sharedItemAssignments,
     sharingAudit,
@@ -890,7 +914,7 @@ const writeStateToDb = async (state: SecureAppSettingsState): Promise<void> => {
 const loadLegacyState = (): SecureAppSettingsState => {
   try {
     const hibpCacheRaw = localStorage.getItem(LEGACY_KEYS.hibpCache);
-    const hibpCacheParsed = hibpCacheRaw ? JSON.parse(hibpCacheRaw) as HibpCacheState : null;
+    const hibpCacheParsed = hibpCacheRaw ? (JSON.parse(hibpCacheRaw) as HibpCacheState) : null;
     return normalizeState({
       securityModeProfile:
         localStorage.getItem(LEGACY_KEYS.securityModeProfile) === 'strict' ||
@@ -901,7 +925,12 @@ const loadLegacyState = (): SecureAppSettingsState => {
       hibpEnabled: localStorage.getItem(LEGACY_KEYS.hibpEnabled) === '1',
       hibpCache: hibpCacheParsed,
       autoLockTime: Number.parseInt(localStorage.getItem(LEGACY_KEYS.autoLockTime) || '', 10),
-      viewDensity: localStorage.getItem(LEGACY_KEYS.viewDensity) === 'compact' ? 'compact' : 'comfortable',
+      clipboardClearSeconds: Number.parseInt(
+        localStorage.getItem(LEGACY_KEYS.clipboardClearSeconds) || '',
+        10
+      ),
+      viewDensity:
+        localStorage.getItem(LEGACY_KEYS.viewDensity) === 'compact' ? 'compact' : 'comfortable',
       themeMode: localStorage.getItem(LEGACY_KEYS.themeMode) === 'dark' ? 'dark' : 'light',
       hasSeenTour: localStorage.getItem(LEGACY_KEYS.seenTour) === 'true',
       encryptionProfile:
@@ -919,7 +948,10 @@ const loadLegacyState = (): SecureAppSettingsState => {
         }
       })(),
       activeVaultId: localStorage.getItem(LEGACY_KEYS.activeVaultId) || 'default',
-      totpVaultMode: localStorage.getItem(LEGACY_KEYS.totpMode) === 'separate_2fa_vault' ? 'separate_2fa_vault' : 'same_vault',
+      totpVaultMode:
+        localStorage.getItem(LEGACY_KEYS.totpMode) === 'separate_2fa_vault'
+          ? 'separate_2fa_vault'
+          : 'same_vault',
       totpVaultId: localStorage.getItem(LEGACY_KEYS.totpVaultId),
       qrConsumedPackages: (() => {
         const raw = localStorage.getItem(LEGACY_KEYS.qrConsumedPackages);
@@ -1118,7 +1150,9 @@ export class SecureAppSettings {
 
   static getHibpCache(): HibpCacheState | null {
     ensureBootstrapped();
-    return stateCache.hibpCache ? cloneState({ ...DEFAULT_STATE, hibpCache: stateCache.hibpCache }).hibpCache : null;
+    return stateCache.hibpCache
+      ? cloneState({ ...DEFAULT_STATE, hibpCache: stateCache.hibpCache }).hibpCache
+      : null;
   }
 
   static setHibpCache(cache: HibpCacheState | null): void {
@@ -1141,7 +1175,23 @@ export class SecureAppSettings {
     ensureMutableState();
     stateCache.autoLockTime = value;
     void schedulePersist();
-    window.dispatchEvent(new CustomEvent('aegis-secure-setting-changed', { detail: { key: 'autoLockTime' } }));
+    window.dispatchEvent(
+      new CustomEvent('aegis-secure-setting-changed', { detail: { key: 'autoLockTime' } })
+    );
+  }
+
+  static getClipboardClearSeconds(): number {
+    ensureBootstrapped();
+    return stateCache.clipboardClearSeconds;
+  }
+
+  static setClipboardClearSeconds(value: number): void {
+    ensureMutableState();
+    stateCache.clipboardClearSeconds = Math.min(300, Math.max(5, Math.round(value)));
+    void schedulePersist();
+    window.dispatchEvent(
+      new CustomEvent('aegis-secure-setting-changed', { detail: { key: 'clipboardClearSeconds' } })
+    );
   }
 
   static getViewDensity(): ViewDensity {
@@ -1296,9 +1346,7 @@ export class SecureAppSettings {
     );
   }
 
-  static setSharedItemAssignments(
-    assignments: Record<string, CanonicalSharingAssignment[]>
-  ): void {
+  static setSharedItemAssignments(assignments: Record<string, CanonicalSharingAssignment[]>): void {
     ensureMutableState();
     stateCache.sharedItemAssignments = Object.fromEntries(
       Object.entries(assignments).map(([key, value]) => [

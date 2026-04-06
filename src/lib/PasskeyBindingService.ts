@@ -174,15 +174,28 @@ const clearStateInIndexedDb = async (): Promise<void> => {
 };
 
 const normalizePersistedState = (state: unknown): PasskeySecureState => {
-  const candidate = (state && typeof state === 'object') ? state as Partial<PasskeySecureState> : {};
+  const candidate =
+    state && typeof state === 'object' ? (state as Partial<PasskeySecureState>) : {};
   return {
-    bindings: candidate.bindings && typeof candidate.bindings === 'object' ? candidate.bindings as Record<string, PasskeyBindingRecord> : {},
+    bindings:
+      candidate.bindings && typeof candidate.bindings === 'object'
+        ? (candidate.bindings as Record<string, PasskeyBindingRecord>)
+        : {},
     auditLog: Array.isArray(candidate.auditLog) ? candidate.auditLog : [],
     revocations: Array.isArray(candidate.revocations) ? candidate.revocations : [],
     policy: {
-      maxBindingAgeDays: typeof candidate.policy?.maxBindingAgeDays === 'number' ? candidate.policy.maxBindingAgeDays : DEFAULT_POLICY.maxBindingAgeDays,
-      requireRecoveryExportBeforeRotation: typeof candidate.policy?.requireRecoveryExportBeforeRotation === 'boolean' ? candidate.policy.requireRecoveryExportBeforeRotation : DEFAULT_POLICY.requireRecoveryExportBeforeRotation,
-      blockRevokedCredentials: typeof candidate.policy?.blockRevokedCredentials === 'boolean' ? candidate.policy.blockRevokedCredentials : DEFAULT_POLICY.blockRevokedCredentials,
+      maxBindingAgeDays:
+        typeof candidate.policy?.maxBindingAgeDays === 'number'
+          ? candidate.policy.maxBindingAgeDays
+          : DEFAULT_POLICY.maxBindingAgeDays,
+      requireRecoveryExportBeforeRotation:
+        typeof candidate.policy?.requireRecoveryExportBeforeRotation === 'boolean'
+          ? candidate.policy.requireRecoveryExportBeforeRotation
+          : DEFAULT_POLICY.requireRecoveryExportBeforeRotation,
+      blockRevokedCredentials:
+        typeof candidate.policy?.blockRevokedCredentials === 'boolean'
+          ? candidate.policy.blockRevokedCredentials
+          : DEFAULT_POLICY.blockRevokedCredentials,
     },
   };
 };
@@ -199,9 +212,13 @@ const clearLegacyStorageKeys = () => {
 };
 
 const loadLegacyState = (): PasskeySecureState => {
-  const bindings = safeParse<Record<string, PasskeyBindingRecord>>(localStorage.getItem(BINDINGS_KEY));
+  const bindings = safeParse<Record<string, PasskeyBindingRecord>>(
+    localStorage.getItem(BINDINGS_KEY)
+  );
   const auditLog = safeParse<PasskeyEventRecord[]>(localStorage.getItem(PASSKEY_AUDIT_KEY));
-  const revocations = safeParse<PasskeyRevocationRecord[]>(localStorage.getItem(PASSKEY_REVOCATIONS_KEY));
+  const revocations = safeParse<PasskeyRevocationRecord[]>(
+    localStorage.getItem(PASSKEY_REVOCATIONS_KEY)
+  );
   const policyRaw = safeParse<PasskeyPolicy>(localStorage.getItem(PASSKEY_POLICY_KEY));
   return normalizePersistedState({
     bindings: bindings && typeof bindings === 'object' ? bindings : {},
@@ -260,9 +277,18 @@ const readPolicy = (): PasskeyPolicy => {
   ensureBootstrappedState();
   const parsed = secureStateCache.policy;
   return {
-    maxBindingAgeDays: typeof parsed?.maxBindingAgeDays === 'number' ? parsed.maxBindingAgeDays : DEFAULT_POLICY.maxBindingAgeDays,
-    requireRecoveryExportBeforeRotation: typeof parsed?.requireRecoveryExportBeforeRotation === 'boolean' ? parsed.requireRecoveryExportBeforeRotation : DEFAULT_POLICY.requireRecoveryExportBeforeRotation,
-    blockRevokedCredentials: typeof parsed?.blockRevokedCredentials === 'boolean' ? parsed.blockRevokedCredentials : DEFAULT_POLICY.blockRevokedCredentials,
+    maxBindingAgeDays:
+      typeof parsed?.maxBindingAgeDays === 'number'
+        ? parsed.maxBindingAgeDays
+        : DEFAULT_POLICY.maxBindingAgeDays,
+    requireRecoveryExportBeforeRotation:
+      typeof parsed?.requireRecoveryExportBeforeRotation === 'boolean'
+        ? parsed.requireRecoveryExportBeforeRotation
+        : DEFAULT_POLICY.requireRecoveryExportBeforeRotation,
+    blockRevokedCredentials:
+      typeof parsed?.blockRevokedCredentials === 'boolean'
+        ? parsed.blockRevokedCredentials
+        : DEFAULT_POLICY.blockRevokedCredentials,
   };
 };
 
@@ -272,14 +298,14 @@ const writePolicy = (policy: PasskeyPolicy) => {
 };
 
 const getDeviceInfo = () => {
-  const platform = typeof navigator !== 'undefined' ? (navigator.platform || 'unknown') : 'unknown';
-  const locale = typeof navigator !== 'undefined' ? (navigator.language || 'en') : 'en';
-  const userAgent = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+  const platform = typeof navigator !== 'undefined' ? navigator.platform || 'unknown' : 'unknown';
+  const locale = typeof navigator !== 'undefined' ? navigator.language || 'en' : 'en';
+  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
   const deviceLabel = `This device / ${platform}`;
   const fingerprintSource = JSON.stringify({ platform, locale, userAgent });
   let hash = 0;
   for (let i = 0; i < fingerprintSource.length; i += 1) {
-    hash = ((hash << 5) - hash) + fingerprintSource.charCodeAt(i);
+    hash = (hash << 5) - hash + fingerprintSource.charCodeAt(i);
     hash |= 0;
   }
   const normalized = Math.abs(hash).toString(16).padStart(8, '0');
@@ -300,7 +326,10 @@ const appendEvent = (
   writeAuditLog([...readAuditLog(), event]);
 };
 
-const migrateLegacyIfExists = (profileId?: string | null, dbName?: string): PasskeyBindingRecord | null => {
+const migrateLegacyIfExists = (
+  profileId?: string | null,
+  dbName?: string
+): PasskeyBindingRecord | null => {
   const credentialId = localStorage.getItem(LEGACY_ID_KEY) || '';
   const encryptedPayload = localStorage.getItem(LEGACY_DATA_KEY) || '';
   const prfSalt = localStorage.getItem(LEGACY_SALT_KEY) || '';
@@ -391,11 +420,14 @@ export class PasskeyBindingService {
       ...nextPolicy,
     };
     writePolicy(merged);
-    writeAuditLog([...readAuditLog(), {
-      at: new Date().toISOString(),
-      type: 'policy_updated',
-      detail: JSON.stringify(merged),
-    }]);
+    writeAuditLog([
+      ...readAuditLog(),
+      {
+        at: new Date().toISOString(),
+        type: 'policy_updated',
+        detail: JSON.stringify(merged),
+      },
+    ]);
     return merged;
   }
 
@@ -423,9 +455,13 @@ export class PasskeyBindingService {
         deviceLabel: record.meta.deviceLabel || deviceInfo.deviceLabel,
         deviceFingerprint: record.meta.deviceFingerprint || deviceInfo.deviceFingerprint,
         rotatedAt: existing ? now : record.meta.rotatedAt,
-        rotatedFromCredentialId: existing ? existing.credentialId : record.meta.rotatedFromCredentialId,
+        rotatedFromCredentialId: existing
+          ? existing.credentialId
+          : record.meta.rotatedFromCredentialId,
       },
-      eventLog: [...(existing?.eventLog || []), ...(record.eventLog || [])].slice(-PASSKEY_EVENT_LIMIT),
+      eventLog: [...(existing?.eventLog || []), ...(record.eventLog || [])].slice(
+        -PASSKEY_EVENT_LIMIT
+      ),
     };
     appendEvent(map, key, {
       at: now,
@@ -434,7 +470,9 @@ export class PasskeyBindingService {
       dbName,
       credentialId: record.credentialId,
       deviceFingerprint: map[key].meta.deviceFingerprint,
-      detail: existing ? 'Passkey binding rotated on this device.' : 'Passkey binding created on this device.',
+      detail: existing
+        ? 'Passkey binding rotated on this device.'
+        : 'Passkey binding created on this device.',
     });
     writeBindingMap(map);
   }
@@ -460,7 +498,11 @@ export class PasskeyBindingService {
     writeBindingMap(map);
   }
 
-  static revokeBinding(profileId?: string | null, dbName?: string, reason: string = 'manual_revoke'): boolean {
+  static revokeBinding(
+    profileId?: string | null,
+    dbName?: string,
+    reason: string = 'manual_revoke'
+  ): boolean {
     const key = profileKey(profileId, dbName);
     const map = readBindingMap();
     if (!map[key]) return false;
@@ -526,7 +568,11 @@ export class PasskeyBindingService {
     const map = readBindingMap();
     return Object.entries(map)
       .map(([bindingKey, record]) => ({ bindingKey, ...record }))
-      .sort((left, right) => Date.parse(right.meta.lastUsedAt || right.meta.createdAt) - Date.parse(left.meta.lastUsedAt || left.meta.createdAt));
+      .sort(
+        (left, right) =>
+          Date.parse(right.meta.lastUsedAt || right.meta.createdAt) -
+          Date.parse(left.meta.lastUsedAt || left.meta.createdAt)
+      );
   }
 
   static getEventLog(profileId?: string | null, dbName?: string): PasskeyEventRecord[] {
@@ -542,7 +588,10 @@ export class PasskeyBindingService {
   }
 
   static isCredentialRevoked(credentialId: string): boolean {
-    return readPolicy().blockRevokedCredentials && readRevocations().some((item) => item.credentialId === credentialId);
+    return (
+      readPolicy().blockRevokedCredentials &&
+      readRevocations().some((item) => item.credentialId === credentialId)
+    );
   }
 
   static getPolicyViolations(binding: PasskeyBindingRecord | null): string[] {
@@ -569,7 +618,11 @@ export class PasskeyBindingService {
     return violations;
   }
 
-  static async exportRecoveryPackage(profileId: string | null, dbName: string, password: string): Promise<string> {
+  static async exportRecoveryPackage(
+    profileId: string | null,
+    dbName: string,
+    password: string
+  ): Promise<string> {
     const binding = this.getBinding(profileId, dbName);
     if (!binding) throw new Error('NO_PASSKEY_BINDING');
 
@@ -591,7 +644,8 @@ export class PasskeyBindingService {
     expectedDbName: string
   ): Promise<void> {
     const payload = await BackupService.decryptBackup(encryptedPackage, password);
-    if (!Array.isArray(payload) || payload.length === 0) throw new Error('INVALID_RECOVERY_PACKAGE');
+    if (!Array.isArray(payload) || payload.length === 0)
+      throw new Error('INVALID_RECOVERY_PACKAGE');
 
     const pkg = payload[0] as RecoveryPackage;
     if (!pkg || pkg.kind !== 'aegis-passkey-recovery-v2' || !pkg.binding) {
@@ -619,13 +673,20 @@ export class PasskeyBindingService {
     const key = profileKey(expectedProfileId, expectedDbName);
     const map = readBindingMap();
     if (Array.isArray(pkg.revocations)) {
-      const merged = [...readRevocations(), ...pkg.revocations]
-        .reduce<PasskeyRevocationRecord[]>((acc, item) => {
-          if (!acc.some((existing) => existing.credentialId === item.credentialId && existing.revokedAt === item.revokedAt)) {
+      const merged = [...readRevocations(), ...pkg.revocations].reduce<PasskeyRevocationRecord[]>(
+        (acc, item) => {
+          if (
+            !acc.some(
+              (existing) =>
+                existing.credentialId === item.credentialId && existing.revokedAt === item.revokedAt
+            )
+          ) {
             acc.push(item);
           }
           return acc;
-        }, []);
+        },
+        []
+      );
       writeRevocations(merged);
     }
     if (pkg.policy) {
@@ -652,7 +713,11 @@ export class PasskeyBindingService {
    * Yeni bir WebAuthn site passkey credential kaydini, mevcut bir VaultEntry'nin
    * site passkey veri modeline (metadata) baglar.
    */
-  static bindSiteCredentialToEntry(entry: VaultEntry, credentialId: string, rpId: string): VaultEntry {
+  static bindSiteCredentialToEntry(
+    entry: VaultEntry,
+    credentialId: string,
+    rpId: string
+  ): VaultEntry {
     const now = new Date().toISOString();
     return {
       ...entry,
@@ -660,7 +725,7 @@ export class PasskeyBindingService {
         ...(entry.passkeyMetadata || {}),
         credential_id: credentialId,
         rp_id: rpId,
-        mode: "site_passkey_active",
+        mode: 'site_passkey_active',
         created_at: entry.passkeyMetadata?.created_at || now,
         last_registration_at: now,
       },
@@ -674,22 +739,22 @@ export class PasskeyBindingService {
   static mergeExternalRevocations(external: PasskeyRevocationRecord[]): number {
     const local = readRevocations();
     const map = new Map<string, PasskeyRevocationRecord>();
-    
-    // De-duplicate by credentialId (keep the one with latest revokedAt)
-    [...local, ...external].forEach(rev => {
+    let changedCount = 0;
+
+    local.forEach(rev => map.set(rev.credentialId, rev));
+
+    external.forEach((rev) => {
       const existing = map.get(rev.credentialId);
       if (!existing || Date.parse(rev.revokedAt) > Date.parse(existing.revokedAt)) {
         map.set(rev.credentialId, rev);
+        changedCount++;
       }
     });
 
-    const merged = Array.from(map.values());
-    const addedCount = merged.length - local.length;
-    
-    if (addedCount > 0) {
-      writeRevocations(merged);
+    if (changedCount > 0) {
+      writeRevocations(Array.from(map.values()));
     }
-    
-    return addedCount;
+
+    return changedCount;
   }
 }

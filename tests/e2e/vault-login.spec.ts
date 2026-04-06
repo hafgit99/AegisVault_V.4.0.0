@@ -1,6 +1,6 @@
 /**
  * Aegis Vault - Authentication E2E Tests
- * 
+ *
  * Bu test suite, Aegis Vault'un kimlik doğrulama akışlarını test eder:
  * - Login ekranının görüntülenmesi
  * - Yeni vault oluşturma (Initialize)
@@ -51,7 +51,7 @@ test.describe('Vault Authentication', () => {
   // TEST 3: Initialize tabına geçiş
   // ─────────────────────────────────────────────────────────────────────────────
   test('should switch to Initialize tab when clicked', async ({ page }) => {
-    // İkinci tab (Initialize) 
+    // İkinci tab (Initialize)
     const initTab = page.locator('.login-tab-btn').nth(1);
     await initTab.click();
 
@@ -76,7 +76,7 @@ test.describe('Vault Authentication', () => {
   // TEST 5: Master password alanı password type olmalı
   // ─────────────────────────────────────────────────────────────────────────────
   test('should have password type for master password input', async ({ page }) => {
-    // İlk input password type olmalı 
+    // İlk input password type olmalı
     const passwordInput = page.locator('input[type="password"].vault-login-input').first();
     await expect(passwordInput).toBeVisible({ timeout: 5000 });
   });
@@ -124,7 +124,7 @@ test.describe('Vault Authentication', () => {
     const _errorState = page
       .locator('.animate-shake, .border-red-500, [class*="error"], .bg-red-500')
       .first();
-    
+
     // Login input hâlâ görünmeli (vault açılmamış)
     await expect(passwordInput).toBeVisible({ timeout: 8000 });
   });
@@ -163,7 +163,9 @@ test.describe('Vault Authentication', () => {
     await page.locator('button.vault-login-unlock-btn, button[type="submit"]').first().click();
 
     // Secret panel çıktıktan sonra download butonu görünmeli
-    const downloadBtn = page.locator('.vault-login-download-btn, button:has-text("Download"), button:has-text("İndir")');
+    const downloadBtn = page.locator(
+      '.vault-login-download-btn, button:has-text("Download"), button:has-text("İndir")'
+    );
     await expect(downloadBtn.first()).toBeVisible({ timeout: 10000 });
   });
 
@@ -176,7 +178,9 @@ test.describe('Vault Authentication', () => {
     await unlockTab.click();
 
     // Fingerprint/passkey butonu görünmeli
-    const biometricsBtn = page.locator('.vault-login-passkey, button:has-text("Biometric"), button:has-text("Parmak")');
+    const biometricsBtn = page.locator(
+      '.vault-login-passkey, button:has-text("Biometric"), button:has-text("Parmak")'
+    );
     await expect(biometricsBtn.first()).toBeVisible({ timeout: 5000 });
   });
 });

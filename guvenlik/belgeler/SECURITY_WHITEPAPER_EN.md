@@ -18,6 +18,7 @@ Aegis Vault is an offline-first credential manager with local zero-knowledge sec
 ## Architecture overview
 
 Core surfaces:
+
 - PWA/React application and vault logic
 - Electron runtime for desktop flows
 - Browser extension runtime for field interaction
@@ -57,12 +58,14 @@ Core surfaces:
 ## Independent audit readiness
 
 Preparation targets:
+
 - OSTIF independent audit proposal
 - Mozilla MOSS support request
 - OpenSSF security review track
 - OSS-Fuzz/ClusterFuzz compatibility path
 
 Supporting pack:
+
 - Threat model
 - Security policy and disclosure process
 - CI static analysis configuration

@@ -16,16 +16,19 @@ function fileExists(filePath) {
 
 function listFiles(dir, matcher) {
   if (!fileExists(dir)) return [];
-  return fs.readdirSync(dir).filter((file) => matcher.test(file)).sort();
+  return fs
+    .readdirSync(dir)
+    .filter((file) => matcher.test(file))
+    .sort();
 }
 
 function buildReport() {
   const installerFiles = listFiles(releaseDir, /\.(exe|dmg|zip|AppImage|deb)$/i);
   const blockMapFiles = listFiles(releaseDir, /\.blockmap$/i);
   const hashFiles = listFiles(releaseDir, /\.sha256$/i);
-  const sbomExists = fileExists(path.join(releaseDir, "aegis-release-sbom.json"));
-  const provenanceExists = fileExists(path.join(releaseDir, "aegis-release-provenance.json"));
-  const manifestExists = fileExists(path.join(releaseDir, "aegis-release-manifest.json"));
+  const sbomExists = fileExists(path.join(releaseDir, 'aegis-release-sbom.json'));
+  const provenanceExists = fileExists(path.join(releaseDir, 'aegis-release-provenance.json'));
+  const manifestExists = fileExists(path.join(releaseDir, 'aegis-release-manifest.json'));
 
   const artifactDetails = installerFiles.map((file) => {
     const fullPath = path.join(releaseDir, file);

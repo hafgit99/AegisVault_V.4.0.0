@@ -40,4 +40,3 @@ Her dokuman su bilgileri icermelidir:
 - TR ve EN dokumanlar ayni komut setini kapsamalidir.
 - Komut ornekleri birebir esdeger olmali.
 - Terminoloji sabit olmali (`pair`, `status`, `list`, `get`, `add`, `update`, `delete`, `restore`, `empty-trash`, `unpair`).
-

@@ -2,11 +2,7 @@ module.exports = {
   appId: 'com.aegis.vault',
   productName: 'Aegis Vault',
   asar: true,
-  files: [
-    'dist/**/*',
-    'electron-main.cjs',
-    'preload.cjs',
-  ],
+  files: ['dist/**/*', 'electron-main.cjs', 'preload.cjs'],
   extraResources: [
     {
       from: 'scripts/aegis-native-host.ps1',

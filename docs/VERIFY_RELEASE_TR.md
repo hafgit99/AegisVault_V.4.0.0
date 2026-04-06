@@ -7,26 +7,35 @@ Aegis Vault, kullanıcı güvenliğini en üst düzeyde tutmak için yayınları
 Aegis masaüstü uygulamaları her platformda resmi sertifikalarla imzalanmıştır.
 
 ### Windows (.exe / .msi)
+
 1. İndirdiğiniz `.exe` dosyasına sağ tıklayın ve **Özellikler** (Properties) seçeneğini seçin.
 2. **Dijital İmzalar** (Digital Signatures) sekmesine gidin.
 3. İmza listesinde `Aegis Vault` veya sertifika sağlayıcısını (örn: `Hafgit99 / DigiCert`) görmelisiniz.
 4. **Ayrıntılar** (Details) butonuna tıklayarak "Bu dijital imza tamam" (This digital signature is OK) ibaresini kontrol edin.
 
 ### macOS (.dmg / .zip)
+
 macOS, imzalanmamış ve Notarize edilmemiş uygulamaları çalıştırmaz. Yine de manuel kontrol için terminalde:
+
 ```bash
 codesign -vvv --deep --strict "/Applications/Aegis Vault.app"
 ```
+
 Doğrulama başarılıysa "valid on disk" ve "satisfies its Designated Requirement" çıktılarını görmelisiniz.
 
 ### Linux (.AppImage)
+
 Aegis AppImage dosyaları GPG ile imzalanmıştır.
+
 1. `.AppImage` ve eşlik eden `.asc` veya `.sig` dosyasını indirin.
 2. Aegis GPG anahtarını içe aktarın:
+
 ```bash
 gpg --keyserver keyserver.ubuntu.com --recv-keys [AEGIS_GPG_KEY_ID]
 ```
+
 3. Doğrulayın:
+
 ```bash
 gpg --verify aegis-vault-4.2.0.AppImage.asc
 ```

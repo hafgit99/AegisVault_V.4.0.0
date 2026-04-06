@@ -203,6 +203,7 @@ Aegis 4.2 ile opsiyonel bulut senkronizasyonu "sıfır-bilgi" (zero-knowledge) p
 ### 19.2 Paket Yapısı (Enveloping)
 
 Her senkronizasyon paketi şu alanları içerir:
+
 - `payload`: Base64url(AES-GCM-Encrypted veriler)
 - `iv`: 12-byte rastgele initialization vector
 - `hmac`: Tüm paketin (IV + Ciphertext) HMAC-SHA256 imzası
@@ -211,6 +212,7 @@ Her senkronizasyon paketi şu alanları içerir:
 ### 19.3 Sunucu Rolü
 
 Relay sunucusu (Aegis Sync Relay) sadece şifreli paketleri saklar ve taşır. Sunucu:
+
 - Plaintext veriyi göremez (Sıfır-bilgi)
 - Veriyi değiştiremez (HMAC doğrulaması istemci tarafında yapılır)
 - Eski veriyi enjekte edemez (Sequence number kontrolü)

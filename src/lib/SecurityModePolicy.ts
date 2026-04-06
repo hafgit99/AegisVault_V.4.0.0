@@ -1,4 +1,4 @@
-import { SecureAppSettings, type SecurityModeProfile } from "./SecureAppSettings";
+import { SecureAppSettings, type SecurityModeProfile } from './SecureAppSettings';
 
 export interface SecurityModeDefinition {
   profile: SecurityModeProfile;
@@ -11,28 +11,28 @@ export interface SecurityModeDefinition {
 
 const SECURITY_MODE_DEFINITIONS: Record<SecurityModeProfile, SecurityModeDefinition> = {
   standard: {
-    profile: "standard",
+    profile: 'standard',
     allowPlaintextExport: true,
     allowQrSync: true,
     allowHibpNetwork: true,
     maxAutoLockMinutes: 30,
-    descriptionKey: "securityModeStandardDesc",
+    descriptionKey: 'securityModeStandardDesc',
   },
   strict: {
-    profile: "strict",
+    profile: 'strict',
     allowPlaintextExport: false,
     allowQrSync: true,
     allowHibpNetwork: true,
     maxAutoLockMinutes: 5,
-    descriptionKey: "securityModeStrictDesc",
+    descriptionKey: 'securityModeStrictDesc',
   },
   maximum: {
-    profile: "maximum",
+    profile: 'maximum',
     allowPlaintextExport: false,
     allowQrSync: false,
     allowHibpNetwork: false,
     maxAutoLockMinutes: 1,
-    descriptionKey: "securityModeMaximumDesc",
+    descriptionKey: 'securityModeMaximumDesc',
   },
 };
 

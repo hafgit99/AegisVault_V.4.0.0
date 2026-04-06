@@ -55,9 +55,13 @@ describe('QRSyncService', () => {
   });
 
   it('rejects incorrect transfer codes', async () => {
-    const result = await QRSyncService.createPackage(entries, { transferCode: 'ABCD-EFGH-IJKL-MNOP' });
+    const result = await QRSyncService.createPackage(entries, {
+      transferCode: 'ABCD-EFGH-IJKL-MNOP',
+    });
 
-    await expect(QRSyncService.parsePackage(result.rawPackage, { transferCode: 'WXYZ-1234-WXYZ-1234' })).rejects.toThrow('DECRYPTION_FAILED');
+    await expect(
+      QRSyncService.parsePackage(result.rawPackage, { transferCode: 'WXYZ-1234-WXYZ-1234' })
+    ).rejects.toThrow('BACKUP_INTEGRITY_FAILED');
   });
 
   it('rejects expired packages', async () => {
@@ -66,7 +70,9 @@ describe('QRSyncService', () => {
       expiresInMs: -1000,
     });
 
-    await expect(QRSyncService.parsePackage(result.rawPackage, { transferCode: 'ABCD-EFGH-IJKL-MNOP' })).rejects.toThrow('QR_SYNC_PACKAGE_EXPIRED');
+    await expect(
+      QRSyncService.parsePackage(result.rawPackage, { transferCode: 'ABCD-EFGH-IJKL-MNOP' })
+    ).rejects.toThrow('QR_SYNC_PACKAGE_EXPIRED');
   });
 
   it('marks packages as one-time use after successful import', async () => {
@@ -75,7 +81,9 @@ describe('QRSyncService', () => {
 
     await QRSyncService.parsePackage(result.rawPackage, { transferCode });
 
-    await expect(QRSyncService.parsePackage(result.rawPackage, { transferCode })).rejects.toThrow('QR_SYNC_PACKAGE_ALREADY_USED');
+    await expect(QRSyncService.parsePackage(result.rawPackage, { transferCode })).rejects.toThrow(
+      'QR_SYNC_PACKAGE_ALREADY_USED'
+    );
   });
 
   it('records audit history for created and consumed transfers', async () => {
@@ -98,7 +106,9 @@ describe('QRSyncService', () => {
     const result = await QRSyncService.createPackage(entries, { transferCode });
 
     expect(QRSyncService.revokeTransfer(result.packageInfo.sessionId, 'test_revoke')).toBe(true);
-    await expect(QRSyncService.parsePackage(result.rawPackage, { transferCode })).rejects.toThrow('QR_SYNC_PACKAGE_REVOKED');
+    await expect(QRSyncService.parsePackage(result.rawPackage, { transferCode })).rejects.toThrow(
+      'QR_SYNC_PACKAGE_REVOKED'
+    );
 
     const history = QRSyncService.listTransferHistory();
     expect(history[0]?.status).toBe('revoked');
@@ -129,10 +139,12 @@ describe('QRSyncService', () => {
       recipientPublicKey: receiverSession.publicKey,
     });
 
-    await expect(QRSyncService.parsePackage(result.rawPackage, {
-      transferCode: 'ABCD-EFGH-IJKL-MNOP',
-      receiverSession: wrongReceiverSession,
-    })).rejects.toThrow('QR_SYNC_PAIRING_MISMATCH');
+    await expect(
+      QRSyncService.parsePackage(result.rawPackage, {
+        transferCode: 'ABCD-EFGH-IJKL-MNOP',
+        receiverSession: wrongReceiverSession,
+      })
+    ).rejects.toThrow('QR_SYNC_PAIRING_MISMATCH');
   });
 
   it('preserves expiry and entry metadata for regression visibility', async () => {

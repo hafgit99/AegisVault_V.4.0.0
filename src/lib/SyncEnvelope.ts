@@ -1,8 +1,8 @@
 /**
  * SyncEnvelope — Aegis 4.2 Faz 2 / Adim 2.1
- * 
- * Sunucuya gonderilen ve sunucudan alinan senkronizasyon paketinin 
- * zarf (envelope) yapisi. 
+ *
+ * Sunucuya gonderilen ve sunucudan alinan senkronizasyon paketinin
+ * zarf (envelope) yapisi.
  */
 
 export interface SyncEnvelope {
@@ -11,12 +11,14 @@ export interface SyncEnvelope {
   deviceId: string;
   timestamp: string;
   sequenceNumber: number;
+  nonce: string;
   payload: string; // Base64url(AES-GCM-Encrypted)
-  iv: string;      // Base64url(12-byte IV)
-  hmac: string;    // Base64url(HMAC-SHA256)
+  iv: string; // Base64url(12-byte IV)
+  hmac: string; // Base64url(HMAC-SHA256)
+  envelopeMac: string; // Base64url(HMAC-SHA256) over envelope metadata
   metadata?: {
-      entryCount: number;
-      vaultId?: string;
+    entryCount: number;
+    vaultId?: string;
   };
 }
 
@@ -26,27 +28,46 @@ export class SyncEnvelopeUtil {
     iv: string,
     hmac: string,
     deviceId: string,
-    options: { sessionId: string, sequenceNumber: number, entryCount?: number }
+    options: {
+      sessionId: string;
+      sequenceNumber: number;
+      nonce: string;
+      envelopeMac: string;
+      entryCount?: number;
+      timestamp?: string;
+    }
   ): SyncEnvelope {
     return {
-      version: "1.0",
+      version: '1.0',
       sessionId: options.sessionId,
       deviceId,
-      timestamp: new Date().toISOString(),
+      timestamp: options.timestamp || new Date().toISOString(),
       sequenceNumber: options.sequenceNumber,
+      nonce: options.nonce,
       payload,
       iv,
       hmac,
+      envelopeMac: options.envelopeMac,
       metadata: options.entryCount ? { entryCount: options.entryCount } : undefined,
     };
   }
 
   static validate(env: SyncEnvelope): boolean {
-    if (!env.version || !env.sessionId || !env.deviceId || !env.payload || !env.iv || !env.hmac) {
+    if (
+      !env.version ||
+      !env.sessionId ||
+      !env.deviceId ||
+      !env.payload ||
+      !env.iv ||
+      !env.hmac ||
+      !env.nonce ||
+      !env.envelopeMac ||
+      !env.timestamp
+    ) {
       return false;
     }
-    // Check version compatibility (SemVer or fixed string)
-    if (env.version !== "1.0") return false;
+    if (!Number.isFinite(env.sequenceNumber) || env.sequenceNumber < 0) return false;
+    if (env.version !== '1.0') return false;
     return true;
   }
 }

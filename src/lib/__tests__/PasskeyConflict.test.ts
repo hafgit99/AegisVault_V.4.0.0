@@ -27,10 +27,13 @@ describe('PasskeyConflictResolver: Conflict Paths', () => {
 
   it('3. mergeRevocations: Çift kayıtları (latest revokedAt) birleştirir', () => {
     const listA = [{ credentialId: 'id-1', revokedAt: past }];
-    const listB = [{ credentialId: 'id-1', revokedAt: now }, { credentialId: 'id-2', revokedAt: now }];
+    const listB = [
+      { credentialId: 'id-1', revokedAt: now },
+      { credentialId: 'id-2', revokedAt: now },
+    ];
 
     const merged = PasskeyConflictResolver.mergeRevocations(listA, listB);
     expect(merged.length).toBe(2);
-    expect(merged.find(r => r.credentialId === 'id-1')?.revokedAt).toBe(now);
+    expect(merged.find((r) => r.credentialId === 'id-1')?.revokedAt).toBe(now);
   });
 });

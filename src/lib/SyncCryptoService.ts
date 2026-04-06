@@ -1,25 +1,67 @@
 import { toBufferSource } from './crypto-types';
 import { bufferToBase64url, base64urlToBuffer } from './webAuthn';
+import type { SyncEnvelope } from './SyncEnvelope';
 
 /**
  * SyncCryptoService — Aegis 4.2 Faz 2 / Adim 2.1
- * 
- * E2E Encrypted senkronizasyon icin anahtar turetimi, 
+ *
+ * E2E Encrypted senkronizasyon icin anahtar turetimi,
  * sifreleme ve imzalama islemlerini yonetir.
  */
 
 export interface SyncCryptoPackage {
   payload: string; // Base64url(AES-GCM-Encrypted)
-  iv: string;      // Base64url(12-byte IV)
-  hmac: string;    // Base64url(HMAC-SHA256)
-  nonce: string;   // Unique session nonce
+  iv: string; // Base64url(12-byte IV)
+  hmac: string; // Base64url(HMAC-SHA256)
+  nonce: string; // Unique session nonce
 }
 
 export class SyncCryptoService {
+  private static encodeEnvelopeForMac(envelope: SyncEnvelope): Uint8Array {
+    const payload = [
+      envelope.version,
+      envelope.sessionId,
+      envelope.deviceId,
+      envelope.timestamp,
+      String(envelope.sequenceNumber),
+      envelope.nonce,
+      envelope.payload,
+      envelope.iv,
+      envelope.hmac,
+    ].join('|');
+
+    return new TextEncoder().encode(payload);
+  }
+
+  static async createEnvelopeMac(envelope: SyncEnvelope, authKey: CryptoKey): Promise<string> {
+    const mac = await window.crypto.subtle.sign(
+      'HMAC',
+      authKey,
+      toBufferSource(this.encodeEnvelopeForMac(envelope))
+    );
+    return bufferToBase64url(mac);
+  }
+
+  static async verifyEnvelopeMac(envelope: SyncEnvelope, authKey: CryptoKey): Promise<boolean> {
+    try {
+      const macBytes = new Uint8Array(base64urlToBuffer(envelope.envelopeMac));
+      return await window.crypto.subtle.verify(
+        'HMAC',
+        authKey,
+        toBufferSource(macBytes),
+        toBufferSource(this.encodeEnvelopeForMac(envelope))
+      );
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * Sync Root Secret'tan Encryption ve Auth anahtarlarını türetir (HKDF).
    */
-  static async deriveSubKeys(rootSecret: Uint8Array): Promise<{ encryptionKey: CryptoKey, authKey: CryptoKey }> {
+  static async deriveSubKeys(
+    rootSecret: Uint8Array
+  ): Promise<{ encryptionKey: CryptoKey; authKey: CryptoKey }> {
     const baseKey = await window.crypto.subtle.importKey(
       'raw',
       toBufferSource(rootSecret),
@@ -79,11 +121,7 @@ export class SyncCryptoService {
     hmacSource.set(iv, 0);
     hmacSource.set(new Uint8Array(ciphertext), iv.length);
 
-    const hmac = await window.crypto.subtle.sign(
-      'HMAC',
-      authKey,
-      toBufferSource(hmacSource)
-    );
+    const hmac = await window.crypto.subtle.sign('HMAC', authKey, toBufferSource(hmacSource));
 
     return {
       payload: bufferToBase64url(ciphertext),
@@ -128,11 +166,14 @@ export class SyncCryptoService {
         toBufferSource(ciphertext)
       );
 
-      const decoded = JSON.parse(new TextDecoder().decode(decrypted)) as { payload: T; nonce: string };
-      
-      // Nonce check or session validation logic here...
+      const decoded = JSON.parse(new TextDecoder().decode(decrypted)) as {
+        payload: T;
+        nonce: string;
+      };
+
       if (decoded.nonce !== pkg.nonce) {
-         console.warn('[SyncCrypto] Nonce mismatch');
+        console.error('[SyncCrypto] Nonce mismatch');
+        return null;
       }
 
       return decoded.payload as T;

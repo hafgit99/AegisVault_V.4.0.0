@@ -42,7 +42,15 @@ describe('canonical sharing adapters', () => {
       requireReview: true,
       createdAt: '2026-03-23T12:00:00.000Z',
       updatedAt: '2026-03-23T13:00:00.000Z',
-      members: [{ id: 'member-1', name: 'Ada', email: 'ada@example.com', role: 'viewer', status: 'pending' }],
+      members: [
+        {
+          id: 'member-1',
+          name: 'Ada',
+          email: 'ada@example.com',
+          role: 'viewer',
+          status: 'pending',
+        },
+      ],
     });
 
     expect(space.name).toBe('Family');

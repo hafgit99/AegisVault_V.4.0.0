@@ -183,18 +183,24 @@ export const fromCanonicalVaultRecord = (record: CanonicalVaultRecord): Partial<
   totp_period: record.secret?.totp?.period || undefined,
   attachments: fromCanonicalAttachments(record.attachments),
   passkeyMetadata: record.passkey ? { ...record.passkey } : undefined,
-  sharing: Array.isArray(record.sharing) ? record.sharing.map((assignment) => ({ ...assignment })) : undefined,
+  sharing: Array.isArray(record.sharing)
+    ? record.sharing.map((assignment) => ({ ...assignment }))
+    : undefined,
   cardDetails: (() => {
-    const custom = record.custom_data && typeof record.custom_data === 'object'
-      ? (record.custom_data as Record<string, unknown>)
-      : null;
+    const custom =
+      record.custom_data && typeof record.custom_data === 'object'
+        ? (record.custom_data as Record<string, unknown>)
+        : null;
     return normalizeCardDetails((custom?.card_details as CanonicalCardDetails | undefined) || null);
   })(),
   identityDetails: (() => {
-    const custom = record.custom_data && typeof record.custom_data === 'object'
-      ? (record.custom_data as Record<string, unknown>)
-      : null;
-    return normalizeIdentityDetails((custom?.identity_details as CanonicalIdentityDetails | undefined) || null);
+    const custom =
+      record.custom_data && typeof record.custom_data === 'object'
+        ? (record.custom_data as Record<string, unknown>)
+        : null;
+    return normalizeIdentityDetails(
+      (custom?.identity_details as CanonicalIdentityDetails | undefined) || null
+    );
   })(),
 });
 

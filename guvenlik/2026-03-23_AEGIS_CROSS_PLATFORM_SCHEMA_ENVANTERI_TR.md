@@ -267,7 +267,7 @@ Iki platform farkli passkey problemlerini cozmeye calisiyor:
 - desktop: vault unlock passkey
 - Android: passkey item ve RP helper mantigi
 
-4.1 icin bunlar tek bir urun dili altinda ayrilmali:
+  4.1 icin bunlar tek bir urun dili altinda ayrilmali:
 
 - `vault_passkey`
 - `site_passkey`

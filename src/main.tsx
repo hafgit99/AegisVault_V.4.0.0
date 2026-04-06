@@ -1,12 +1,12 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import "./index.css";
-import App from "./App.tsx";
-import "@fontsource/geist-sans/index.css";
-import "@fontsource/geist-mono/index.css";
-import { ElectronFailSafe } from "./components/ElectronFailSafe";
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import './index.css';
+import App from './App.tsx';
+import '@fontsource/geist-sans/index.css';
+import '@fontsource/geist-mono/index.css';
+import { ElectronFailSafe } from './components/ElectronFailSafe';
 
-const rootElement = document.getElementById("root");
+const rootElement = document.getElementById('root');
 
 if (!rootElement) {
   document.body.innerHTML = `
@@ -19,7 +19,7 @@ if (!rootElement) {
       </div>
     </div>
   `;
-  throw new Error("ROOT_ELEMENT_MISSING");
+  throw new Error('ROOT_ELEMENT_MISSING');
 }
 
 createRoot(rootElement).render(

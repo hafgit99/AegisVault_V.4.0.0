@@ -29,11 +29,7 @@
       "impact": 10,
       "effort": "M",
       "depends_on": [],
-      "files": [
-        "electron-main.cjs",
-        "preload.cjs",
-        "src/contexts/VaultContext.tsx"
-      ],
+      "files": ["electron-main.cjs", "preload.cjs", "src/contexts/VaultContext.tsx"],
       "objective": [
         "/api/status endpoint token dondurmesin.",
         "Origin yoksa request reddedilsin.",
@@ -54,9 +50,7 @@
       "priority": "P0",
       "impact": 9,
       "effort": "M",
-      "depends_on": [
-        "P0-1"
-      ],
+      "depends_on": ["P0-1"],
       "files": [
         "aegis-wxt/src/entrypoints/content/index.tsx",
         "aegis-wxt/src/entrypoints/background.ts",
@@ -81,15 +75,8 @@
       "impact": 9,
       "effort": "S",
       "depends_on": [],
-      "files": [
-        "vite.extension.config.ts",
-        "package.json",
-        "extension/content.ts"
-      ],
-      "objective": [
-        "Legacy extension build prod pipeline disinda",
-        "Wildcard origin ('*') kaldir"
-      ],
+      "files": ["vite.extension.config.ts", "package.json", "extension/content.ts"],
+      "objective": ["Legacy extension build prod pipeline disinda", "Wildcard origin ('*') kaldir"],
       "acceptance_criteria": [
         "Prod build artifact icinde legacy bridge yok",
         "Scriptler net: modern WXT tek kaynak"
@@ -103,12 +90,8 @@
       "impact": 8,
       "effort": "S",
       "depends_on": [],
-      "files": [
-        "src/vaultService.ts"
-      ],
-      "objective": [
-        "Demo kayitlar sadece dev modda eklensin"
-      ],
+      "files": ["src/vaultService.ts"],
+      "objective": ["Demo kayitlar sadece dev modda eklensin"],
       "acceptance_criteria": [
         "Yeni prod vault bos baslar",
         "Dev deneyimi opsiyonel flag ile korunur"
@@ -121,10 +104,7 @@
       "priority": "P1",
       "impact": 9,
       "effort": "L",
-      "depends_on": [
-        "P0-1",
-        "P0-2"
-      ],
+      "depends_on": ["P0-1", "P0-2"],
       "files": [
         "src/components/dashboard/SettingsDrawer.tsx",
         "src/vaultService.ts",
@@ -148,18 +128,9 @@
       "impact": 8,
       "effort": "M",
       "depends_on": [],
-      "files": [
-        "src/components/VaultLogin.tsx",
-        "src/components/dashboard/SettingsDrawer.tsx"
-      ],
-      "objective": [
-        "Typed confirmation phrase",
-        "Ikinci onay modali + kapsam ozeti"
-      ],
-      "acceptance_criteria": [
-        "Tek tik wipe yok",
-        "Kullanici neyin silinecegini net goruyor"
-      ],
+      "files": ["src/components/VaultLogin.tsx", "src/components/dashboard/SettingsDrawer.tsx"],
+      "objective": ["Typed confirmation phrase", "Ikinci onay modali + kapsam ozeti"],
+      "acceptance_criteria": ["Tek tik wipe yok", "Kullanici neyin silinecegini net goruyor"],
       "ai_prompt": "Add two-step confirmation UX for destructive wipe/reset actions: typed phrase + final confirmation modal with clear scope summary. Prevent accidental one-click destructive execution."
     },
     {
@@ -169,16 +140,9 @@
       "impact": 8,
       "effort": "M",
       "depends_on": [],
-      "files": [
-        "src/components/dashboard/SettingsDrawer.tsx",
-        "src/components/Dashboard.tsx"
-      ],
-      "objective": [
-        "Export, Emergency Kit, PIN degisiminde master password re-auth"
-      ],
-      "acceptance_criteria": [
-        "Acik oturumda bile kritik aksiyon re-auth ister"
-      ],
+      "files": ["src/components/dashboard/SettingsDrawer.tsx", "src/components/Dashboard.tsx"],
+      "objective": ["Export, Emergency Kit, PIN degisiminde master password re-auth"],
+      "acceptance_criteria": ["Acik oturumda bile kritik aksiyon re-auth ister"],
       "ai_prompt": "Introduce master password re-auth gate for high-risk actions: export, emergency kit generation, and secret PIN updates. Keep UX smooth with clear timeout/session rules."
     },
     {
@@ -187,20 +151,13 @@
       "priority": "P2",
       "impact": 6.5,
       "effort": "L",
-      "depends_on": [
-        "P1-1",
-        "P1-2"
-      ],
+      "depends_on": ["P1-1", "P1-2"],
       "files": [
         "src/components/dashboard/SettingsDrawer.tsx",
         "src/components/dashboard/settings/*"
       ],
-      "objective": [
-        "Security/Data/Sync/Advanced tablara ayir"
-      ],
-      "acceptance_criteria": [
-        "Ana dosya kuculur, sorumluluklar ayrilir"
-      ],
+      "objective": ["Security/Data/Sync/Advanced tablara ayir"],
+      "acceptance_criteria": ["Ana dosya kuculur, sorumluluklar ayrilir"],
       "ai_prompt": "Refactor SettingsDrawer into modular subcomponents: SecurityTab, DataTab, SyncTab, AdvancedTab. Preserve behavior and translations, reduce component complexity."
     },
     {
@@ -220,10 +177,7 @@
         "Dialog role/aria-modal/focus trap",
         "Icon button aria-label standardi"
       ],
-      "acceptance_criteria": [
-        "Klavye-only kullanim tamam",
-        "Temel WCAG AA kontrolleri gecer"
-      ],
+      "acceptance_criteria": ["Klavye-only kullanim tamam", "Temel WCAG AA kontrolleri gecer"],
       "ai_prompt": "Improve accessibility in forms and dialogs: proper labels, dialog semantics, focus trap, keyboard navigation, and consistent aria-labels for icon-only buttons."
     }
   ],

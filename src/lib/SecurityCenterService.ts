@@ -1,17 +1,17 @@
-import type { VaultEntry } from "../vaultService";
+import type { VaultEntry } from '../vaultService';
 
 export type SecurityCenterIssueType =
-  | "missing_second_factor"
-  | "passkey_ready"
-  | "aging_credentials"
-  | "sensitive_sharing"
-  | "device_trust"
-  | "local_risk_activity";
+  | 'missing_second_factor'
+  | 'passkey_ready'
+  | 'aging_credentials'
+  | 'sensitive_sharing'
+  | 'device_trust'
+  | 'local_risk_activity';
 
 export interface SecurityCenterIssueSummary {
   type: SecurityCenterIssueType;
   count: number;
-  severity: "low" | "medium" | "high";
+  severity: 'low' | 'medium' | 'high';
   messageKey: string;
   actionKey: string;
 }
@@ -20,7 +20,7 @@ export interface SecurityCenterTriageItem {
   issueType: SecurityCenterIssueType;
   itemId: number;
   title: string;
-  severity: "low" | "medium" | "high";
+  severity: 'low' | 'medium' | 'high';
   actionKey: string;
   detailKey: string;
   reviewKey: string;
@@ -31,7 +31,7 @@ export interface SecurityCenterTriageItem {
 
 export interface SecurityCenterSummary {
   score: number;
-  riskLevel: "low" | "medium" | "high";
+  riskLevel: 'low' | 'medium' | 'high';
   metrics: {
     missingSecondFactor: number;
     passkeyReady: number;
@@ -57,7 +57,7 @@ function hasSecondFactor(entry: VaultEntry): boolean {
 }
 
 function isCredentialEntry(entry: VaultEntry): boolean {
-  return Boolean(entry.pass && (entry.website || entry.username)) && entry.category !== "Passkeys";
+  return Boolean(entry.pass && (entry.website || entry.username)) && entry.category !== 'Passkeys';
 }
 
 function isPasskeyReady(entry: VaultEntry): boolean {
@@ -101,18 +101,18 @@ export interface SecurityCenterContext {
 
 function isHighRiskPairing(pairing: SecurityCenterDesktopPairing): boolean {
   return Boolean(
-    pairing.riskLevel === "high" ||
-      pairing.riskLevel === "medium" ||
-      (Array.isArray(pairing.riskFlags) && pairing.riskFlags.length > 0)
+    pairing.riskLevel === 'high' ||
+    pairing.riskLevel === 'medium' ||
+    (Array.isArray(pairing.riskFlags) && pairing.riskFlags.length > 0)
   );
 }
 
 function isRecentLocalRiskEvent(event: SecurityCenterSyncAuditEvent): boolean {
   if (
-    event.source !== "backup_import" &&
-    event.source !== "structured_import" &&
-    event.source !== "canonical_restore" &&
-    event.source !== "migration"
+    event.source !== 'backup_import' &&
+    event.source !== 'structured_import' &&
+    event.source !== 'canonical_restore' &&
+    event.source !== 'migration'
   ) {
     return false;
   }
@@ -138,34 +138,36 @@ function getReviewMeta(reviewed: Record<string, string>, reviewKey: string) {
   };
 }
 
-function getSeverityForIssue(issueType: SecurityCenterIssueType): "low" | "medium" | "high" {
-  if (issueType === "missing_second_factor" || issueType === "sensitive_sharing") return "high";
-  return "medium";
+function getSeverityForIssue(issueType: SecurityCenterIssueType): 'low' | 'medium' | 'high' {
+  if (issueType === 'missing_second_factor' || issueType === 'sensitive_sharing') return 'high';
+  return 'medium';
 }
 
 function getActionForIssue(issueType: SecurityCenterIssueType): string {
-  if (issueType === "missing_second_factor" || issueType === "passkey_ready") {
-    return "securityCenterActionReviewPasskeys";
+  if (issueType === 'missing_second_factor' || issueType === 'passkey_ready') {
+    return 'securityCenterActionReviewPasskeys';
   }
-  if (issueType === "sensitive_sharing") return "securityCenterActionReviewSharing";
-  return "securityCenterActionReviewPasswords";
+  if (issueType === 'sensitive_sharing') return 'securityCenterActionReviewSharing';
+  return 'securityCenterActionReviewPasswords';
 }
 
 function getDetailKeyForIssue(issueType: SecurityCenterIssueType): string {
-  if (issueType === "missing_second_factor") return "securityCenterTriageMissingSecondFactor";
-  if (issueType === "passkey_ready") return "securityCenterTriagePasskeyReady";
-  if (issueType === "aging_credentials") return "securityCenterTriageAgingCredential";
-  return "securityCenterTriageSensitiveSharing";
+  if (issueType === 'missing_second_factor') return 'securityCenterTriageMissingSecondFactor';
+  if (issueType === 'passkey_ready') return 'securityCenterTriagePasskeyReady';
+  if (issueType === 'aging_credentials') return 'securityCenterTriageAgingCredential';
+  return 'securityCenterTriageSensitiveSharing';
 }
 
-function parseReviewKey(reviewKey: string): { issueType: SecurityCenterIssueType; itemId: number } | null {
-  const [issueType, rawId] = reviewKey.split(":");
+function parseReviewKey(
+  reviewKey: string
+): { issueType: SecurityCenterIssueType; itemId: number } | null {
+  const [issueType, rawId] = reviewKey.split(':');
   const itemId = Number(rawId);
   if (
-    (issueType !== "missing_second_factor" &&
-      issueType !== "passkey_ready" &&
-      issueType !== "aging_credentials" &&
-      issueType !== "sensitive_sharing") ||
+    (issueType !== 'missing_second_factor' &&
+      issueType !== 'passkey_ready' &&
+      issueType !== 'aging_credentials' &&
+      issueType !== 'sensitive_sharing') ||
     Number.isNaN(itemId)
   ) {
     return null;
@@ -197,30 +199,30 @@ export class SecurityCenterService {
       riskyDesktopPairings.length * 6 +
       recentLocalRiskEvents.length * 3;
     const score = Math.max(0, 100 - penalty);
-    const riskLevel = score >= 80 ? "low" : score >= 55 ? "medium" : "high";
+    const riskLevel = score >= 80 ? 'low' : score >= 55 ? 'medium' : 'high';
 
     const issues: SecurityCenterIssueSummary[] = [];
     const triageItems: SecurityCenterTriageItem[] = [];
 
     if (missingSecondFactor > 0) {
       issues.push({
-        type: "missing_second_factor",
+        type: 'missing_second_factor',
         count: missingSecondFactor,
-        severity: "high",
-        messageKey: "securityCenterIssueMissingSecondFactor",
-        actionKey: "securityCenterActionReviewPasskeys",
+        severity: 'high',
+        messageKey: 'securityCenterIssueMissingSecondFactor',
+        actionKey: 'securityCenterActionReviewPasskeys',
       });
       credentialEntries
         .filter((entry) => !hasSecondFactor(entry))
         .slice(0, 6)
         .forEach((entry) => {
           triageItems.push({
-            issueType: "missing_second_factor",
+            issueType: 'missing_second_factor',
             itemId: entry.id,
-            title: entry.title || "Untitled",
-            severity: "high",
-            actionKey: "securityCenterActionReviewPasskeys",
-            detailKey: "securityCenterTriageMissingSecondFactor",
+            title: entry.title || 'Untitled',
+            severity: 'high',
+            actionKey: 'securityCenterActionReviewPasskeys',
+            detailKey: 'securityCenterTriageMissingSecondFactor',
             reviewKey: `missing_second_factor:${entry.id}`,
           });
         });
@@ -228,23 +230,23 @@ export class SecurityCenterService {
 
     if (passkeyReady > 0) {
       issues.push({
-        type: "passkey_ready",
+        type: 'passkey_ready',
         count: passkeyReady,
-        severity: "medium",
-        messageKey: "securityCenterIssuePasskeyReady",
-        actionKey: "securityCenterActionReviewPasskeys",
+        severity: 'medium',
+        messageKey: 'securityCenterIssuePasskeyReady',
+        actionKey: 'securityCenterActionReviewPasskeys',
       });
       credentialEntries
         .filter(isPasskeyReady)
         .slice(0, 6)
         .forEach((entry) => {
           triageItems.push({
-            issueType: "passkey_ready",
+            issueType: 'passkey_ready',
             itemId: entry.id,
-            title: entry.title || "Untitled",
-            severity: "medium",
-            actionKey: "securityCenterActionReviewPasskeys",
-            detailKey: "securityCenterTriagePasskeyReady",
+            title: entry.title || 'Untitled',
+            severity: 'medium',
+            actionKey: 'securityCenterActionReviewPasskeys',
+            detailKey: 'securityCenterTriagePasskeyReady',
             reviewKey: `passkey_ready:${entry.id}`,
           });
         });
@@ -252,23 +254,23 @@ export class SecurityCenterService {
 
     if (agingCredentials > 0) {
       issues.push({
-        type: "aging_credentials",
+        type: 'aging_credentials',
         count: agingCredentials,
-        severity: "medium",
-        messageKey: "securityCenterIssueAgingCredentials",
-        actionKey: "securityCenterActionReviewPasswords",
+        severity: 'medium',
+        messageKey: 'securityCenterIssueAgingCredentials',
+        actionKey: 'securityCenterActionReviewPasswords',
       });
       credentialEntries
         .filter(isAgingCredential)
         .slice(0, 6)
         .forEach((entry) => {
           triageItems.push({
-            issueType: "aging_credentials",
+            issueType: 'aging_credentials',
             itemId: entry.id,
-            title: entry.title || "Untitled",
-            severity: "medium",
-            actionKey: "securityCenterActionReviewPasswords",
-            detailKey: "securityCenterTriageAgingCredential",
+            title: entry.title || 'Untitled',
+            severity: 'medium',
+            actionKey: 'securityCenterActionReviewPasswords',
+            detailKey: 'securityCenterTriageAgingCredential',
             reviewKey: `aging_credentials:${entry.id}`,
           });
         });
@@ -276,23 +278,23 @@ export class SecurityCenterService {
 
     if (sensitiveSharing > 0) {
       issues.push({
-        type: "sensitive_sharing",
+        type: 'sensitive_sharing',
         count: sensitiveSharing,
-        severity: "high",
-        messageKey: "securityCenterIssueSensitiveSharing",
-        actionKey: "securityCenterActionReviewSharing",
+        severity: 'high',
+        messageKey: 'securityCenterIssueSensitiveSharing',
+        actionKey: 'securityCenterActionReviewSharing',
       });
       activeEntries
         .filter(hasSensitiveSharingGap)
         .slice(0, 6)
         .forEach((entry) => {
           triageItems.push({
-            issueType: "sensitive_sharing",
+            issueType: 'sensitive_sharing',
             itemId: entry.id,
-            title: entry.title || "Untitled",
-            severity: "high",
-            actionKey: "securityCenterActionReviewSharing",
-            detailKey: "securityCenterTriageSensitiveSharing",
+            title: entry.title || 'Untitled',
+            severity: 'high',
+            actionKey: 'securityCenterActionReviewSharing',
+            detailKey: 'securityCenterTriageSensitiveSharing',
             reviewKey: `sensitive_sharing:${entry.id}`,
           });
         });
@@ -300,20 +302,20 @@ export class SecurityCenterService {
 
     if (riskyDesktopPairings.length > 0) {
       issues.push({
-        type: "device_trust",
+        type: 'device_trust',
         count: riskyDesktopPairings.length,
-        severity: "high",
-        messageKey: "securityCenterIssueDeviceTrust",
-        actionKey: "securityCenterActionReviewDevices",
+        severity: 'high',
+        messageKey: 'securityCenterIssueDeviceTrust',
+        actionKey: 'securityCenterActionReviewDevices',
       });
       riskyDesktopPairings.slice(0, 4).forEach((pairing, index) => {
         triageItems.push({
-          issueType: "device_trust",
+          issueType: 'device_trust',
           itemId: -1000 - index,
-          title: pairing.browserName || "Desktop pairing",
-          severity: "high",
-          actionKey: "securityCenterActionReviewDevices",
-          detailKey: "securityCenterTriageDeviceTrust",
+          title: pairing.browserName || 'Desktop pairing',
+          severity: 'high',
+          actionKey: 'securityCenterActionReviewDevices',
+          detailKey: 'securityCenterTriageDeviceTrust',
           reviewKey: `device_trust:${pairing.extensionId || index}`,
           contextKey: pairing.extensionId,
         });
@@ -322,20 +324,20 @@ export class SecurityCenterService {
 
     if (recentLocalRiskEvents.length > 0) {
       issues.push({
-        type: "local_risk_activity",
+        type: 'local_risk_activity',
         count: recentLocalRiskEvents.length,
-        severity: "medium",
-        messageKey: "securityCenterIssueLocalRiskActivity",
-        actionKey: "securityCenterActionReviewLocalRisk",
+        severity: 'medium',
+        messageKey: 'securityCenterIssueLocalRiskActivity',
+        actionKey: 'securityCenterActionReviewLocalRisk',
       });
       recentLocalRiskEvents.slice(0, 4).forEach((event, index) => {
         triageItems.push({
-          issueType: "local_risk_activity",
+          issueType: 'local_risk_activity',
           itemId: -2000 - index,
           title: event.detail || event.type,
-          severity: "medium",
-          actionKey: "securityCenterActionReviewLocalRisk",
-          detailKey: "securityCenterTriageLocalRiskActivity",
+          severity: 'medium',
+          actionKey: 'securityCenterActionReviewLocalRisk',
+          detailKey: 'securityCenterTriageLocalRiskActivity',
           reviewKey: `local_risk_activity:${event.id || `${event.source}-${index}`}`,
           contextKey: event.source,
         });
@@ -376,7 +378,7 @@ export class SecurityCenterService {
       resolvedTriageItems.push({
         issueType: parsed.issueType,
         itemId: parsed.itemId,
-        title: entry?.title || "Untitled",
+        title: entry?.title || 'Untitled',
         severity: getSeverityForIssue(parsed.issueType),
         actionKey: getActionForIssue(parsed.issueType),
         detailKey: getDetailKeyForIssue(parsed.issueType),

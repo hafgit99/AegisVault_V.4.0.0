@@ -7,17 +7,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type HostModule = {
   buildBridgeProof: (message: Record<string, unknown>, pairingSecret?: string) => string;
-  createSignedBridgePayload: (message: Record<string, unknown>, pairingSecret?: string) => Record<string, unknown>;
-  sendNativeBridgeMessage: (message: Record<string, unknown>, pairingSecret?: string) => Promise<Record<string, unknown>>;
+  createSignedBridgePayload: (
+    message: Record<string, unknown>,
+    pairingSecret?: string
+  ) => Record<string, unknown>;
+  sendNativeBridgeMessage: (
+    message: Record<string, unknown>,
+    pairingSecret?: string
+  ) => Promise<Record<string, unknown>>;
   normalizeDomain: (input: unknown) => string;
   isAllowlistedExtensionId: (extensionId: unknown) => boolean;
   getNativeBridgeSocketPath: () => string;
-  buildForwardBridgeMessage: (message: Record<string, unknown>, overrides?: Record<string, unknown>) => Record<string, unknown>;
+  buildForwardBridgeMessage: (
+    message: Record<string, unknown>,
+    overrides?: Record<string, unknown>
+  ) => Record<string, unknown>;
   writeMessage: (message: Record<string, unknown>) => Buffer;
   handleMessageWithDeps: (
     message: Record<string, unknown>,
     deps: {
-      sendNativeBridgeMessage: (message: Record<string, unknown>, pairingSecret?: string) => Promise<Record<string, unknown>>;
+      sendNativeBridgeMessage: (
+        message: Record<string, unknown>,
+        pairingSecret?: string
+      ) => Promise<Record<string, unknown>>;
       writeMessage: (message: Record<string, unknown>) => unknown;
       isAllowlistedExtensionId: (extensionId: unknown) => boolean;
     }
@@ -27,9 +39,10 @@ type HostModule = {
 
 const requireForTests = createRequire(import.meta.url);
 const hostModulePath = requireForTests.resolve('../../../scripts/aegis-native-host.cjs');
-const socketPath = process.platform === 'win32'
-  ? '\\\\.\\pipe\\aegis-vault-native-host-test'
-  : path.join(os.tmpdir(), 'aegis-vault-native-host-test.sock');
+const socketPath =
+  process.platform === 'win32'
+    ? '\\\\.\\pipe\\aegis-vault-native-host-test'
+    : path.join(os.tmpdir(), 'aegis-vault-native-host-test.sock');
 
 describe('Aegis Native Host Bridge', () => {
   let hostModule: HostModule;
@@ -77,13 +90,16 @@ describe('Aegis Native Host Bridge', () => {
     };
 
     const proofA = hostModule.buildBridgeProof(baseMessage, secret);
-    const proofB = hostModule.buildBridgeProof({
-      ...baseMessage,
-      clientInfo: {
-        ...baseMessage.clientInfo,
-        installId: 'install-b',
+    const proofB = hostModule.buildBridgeProof(
+      {
+        ...baseMessage,
+        clientInfo: {
+          ...baseMessage.clientInfo,
+          installId: 'install-b',
+        },
       },
-    }, secret);
+      secret
+    );
 
     expect(proofA).toHaveLength(64);
     expect(proofA).not.toBe(proofB);
@@ -173,24 +189,29 @@ describe('Aegis Native Host Bridge', () => {
     await new Promise<void>((resolve) => server.listen(socketPath, resolve));
 
     try {
-      const response = await hostModule.sendNativeBridgeMessage({
-        type: 'GET_VAULT_STATUS',
-        extensionId: 'iockeheicjcnfoegjjboooljndjcafae',
-        clientInfo: {
-          browserName: 'Aegis Vault',
-          browserVersion: '4.0.0',
-          platform: 'Win32',
-          locale: 'en-US',
-          installId: 'integration-install',
-          extensionVersion: '4.0.5',
-          userAgent: 'integration-agent',
+      const response = await hostModule.sendNativeBridgeMessage(
+        {
+          type: 'GET_VAULT_STATUS',
+          extensionId: 'iockeheicjcnfoegjjboooljndjcafae',
+          clientInfo: {
+            browserName: 'Aegis Vault',
+            browserVersion: '4.0.0',
+            platform: 'Win32',
+            locale: 'en-US',
+            installId: 'integration-install',
+            extensionVersion: '4.0.5',
+            userAgent: 'integration-agent',
+          },
         },
-      }, '0123456789abcdef0123456789abcdef');
+        '0123456789abcdef0123456789abcdef'
+      );
 
       expect(response.ok).toBe(true);
       expect(response.entryCount).toBe(3);
     } finally {
-      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve()))
+      );
     }
   });
 
@@ -215,7 +236,9 @@ describe('Aegis Native Host Bridge', () => {
         )
       ).rejects.toThrow('INVALID_NATIVE_BRIDGE_RESPONSE');
     } finally {
-      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve()))
+      );
     }
   });
 
@@ -240,7 +263,9 @@ describe('Aegis Native Host Bridge', () => {
         )
       ).rejects.toThrow('NATIVE_BRIDGE_EOF');
     } finally {
-      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve()))
+      );
     }
   });
 
@@ -299,8 +324,15 @@ describe('Aegis Native Host Bridge', () => {
 
     expect(sendNativeBridgeMessage).not.toHaveBeenCalled();
     expect(writeMessage).toHaveBeenNthCalledWith(1, { ok: false, error: 'FORBIDDEN_EXTENSION_ID' });
-    expect(writeMessage).toHaveBeenNthCalledWith(2, { ok: false, error: 'INVALID_DOMAIN', data: [] });
-    expect(writeMessage).toHaveBeenNthCalledWith(3, { ok: false, error: 'UNSUPPORTED_MESSAGE_TYPE' });
+    expect(writeMessage).toHaveBeenNthCalledWith(2, {
+      ok: false,
+      error: 'INVALID_DOMAIN',
+      data: [],
+    });
+    expect(writeMessage).toHaveBeenNthCalledWith(3, {
+      ok: false,
+      error: 'UNSUPPORTED_MESSAGE_TYPE',
+    });
   });
 
   it('maps native bridge responses and failures through handleMessageWithDeps', async () => {

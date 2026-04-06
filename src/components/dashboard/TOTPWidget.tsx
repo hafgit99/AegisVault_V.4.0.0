@@ -1,13 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { Copy, Check, ShieldCheck } from "lucide-react";
-import { generateTOTP, getRemainingSeconds, type TOTPParams } from "../../lib/TOTPService";
-import { toast } from "react-toastify";
-import { useTranslation } from "react-i18next";
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Copy, Check, ShieldCheck } from 'lucide-react';
+import { generateTOTP, getRemainingSeconds, type TOTPParams } from '../../lib/TOTPService';
+import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 
 interface TOTPWidgetProps {
   totpSecret: string;
   issuer?: string;
-  algorithm?: TOTPParams["algorithm"];
+  algorithm?: TOTPParams['algorithm'];
   digits?: number;
   period?: number;
 }
@@ -18,13 +18,13 @@ interface TOTPWidgetProps {
  */
 export function TOTPWidget({
   totpSecret,
-  issuer = "",
-  algorithm = "SHA-1",
+  issuer = '',
+  algorithm = 'SHA-1',
   digits = 6,
   period = 30,
 }: TOTPWidgetProps) {
   const { t } = useTranslation();
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState('');
   const [remaining, setRemaining] = useState(getRemainingSeconds(period));
   const [copied, setCopied] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -34,7 +34,7 @@ export function TOTPWidget({
       const params: TOTPParams = {
         secret: totpSecret,
         issuer,
-        account: "",
+        account: '',
         algorithm,
         digits,
         period,
@@ -42,7 +42,7 @@ export function TOTPWidget({
       const newCode = await generateTOTP(params);
       setCode(newCode);
     } catch {
-      setCode("ERROR");
+      setCode('ERROR');
     }
   }, [totpSecret, issuer, algorithm, digits, period]);
 
@@ -70,7 +70,7 @@ export function TOTPWidget({
   const handleCopy = () => {
     navigator.clipboard.writeText(code);
     setCopied(true);
-    toast.success(t("totpCopied"));
+    toast.success(t('totpCopied'));
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -83,21 +83,29 @@ export function TOTPWidget({
     code.length === 6
       ? `${code.slice(0, 3)} ${code.slice(3)}`
       : code.length === 8
-      ? `${code.slice(0, 4)} ${code.slice(4)}`
-      : code;
+        ? `${code.slice(0, 4)} ${code.slice(4)}`
+        : code;
 
   return (
     <div
       className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-300 ${
         isLow
-          ? "totp-status-alert animate-pulse"
-          : "bg-[var(--color-sage-green)]/10 border border-[var(--color-sage-green)]/30"
+          ? 'totp-status-alert animate-pulse'
+          : 'bg-[var(--color-sage-green)]/10 border border-[var(--color-sage-green)]/30'
       }`}
     >
       {/* Circular Timer */}
       <div className="relative w-8 h-8 shrink-0">
         <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 36 36">
-          <circle cx="18" cy="18" r="16" fill="transparent" stroke="currentColor" strokeWidth="3" className="text-black/5" />
+          <circle
+            cx="18"
+            cy="18"
+            r="16"
+            fill="transparent"
+            stroke="currentColor"
+            strokeWidth="3"
+            className="text-black/5"
+          />
           <circle
             cx="18"
             cy="18"
@@ -109,12 +117,14 @@ export function TOTPWidget({
             strokeDashoffset={2 * Math.PI * 16 * (1 - progress / 100)}
             strokeLinecap="round"
             className={`transition-all duration-1000 ease-linear ${
-              isLow ? "text-red-500" : "text-[var(--color-sage-green)]"
+              isLow ? 'text-red-500' : 'text-[var(--color-sage-green)]'
             }`}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className={`text-[9px] font-bold ${isLow ? "text-red-500" : "text-[var(--color-deep-navy)]"}`}>
+          <span
+            className={`text-[9px] font-bold ${isLow ? 'text-red-500' : 'text-[var(--color-deep-navy)]'}`}
+          >
             {remaining}
           </span>
         </div>
@@ -127,7 +137,7 @@ export function TOTPWidget({
         </span>
         <span
           className={`font-mono text-lg font-bold tracking-[0.3em] select-all transition-colors ${
-            isLow ? "text-red-600" : "text-[var(--color-deep-navy)]"
+            isLow ? 'text-red-600' : 'text-[var(--color-deep-navy)]'
           }`}
         >
           {formattedCode}
@@ -138,11 +148,9 @@ export function TOTPWidget({
       <button
         onClick={handleCopy}
         className={`ml-auto p-2 rounded-lg transition-all ${
-          copied
-            ? "bg-[var(--color-sage-green)] text-white scale-110"
-            : "totp-btn-secondary"
+          copied ? 'bg-[var(--color-sage-green)] text-white scale-110' : 'totp-btn-secondary'
         }`}
-        title={t("copyTOTP")}
+        title={t('copyTOTP')}
       >
         {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
       </button>

@@ -64,6 +64,15 @@ export interface SitePasskeyAuthOptions {
 }
 
 /* ------------------------------------------------------------------ */
+/*  WebAuthn Tip Genişletmeleri                                        */
+/* ------------------------------------------------------------------ */
+
+/** TypeScript DOM lib henüz authenticatorAttachment içermiyor */
+interface PublicKeyCredentialWithAttachment extends PublicKeyCredential {
+  authenticatorAttachment: string | null;
+}
+
+/* ------------------------------------------------------------------ */
 /*  Yardimci fonksiyonlar                                              */
 /* ------------------------------------------------------------------ */
 
@@ -142,8 +151,8 @@ export class WebAuthnService {
         displayName: options.userDisplayName || options.userName,
       },
       pubKeyCredParams: [
-        { type: 'public-key', alg: -7 },   // ES256
-        { type: 'public-key', alg: -257 },  // RS256
+        { type: 'public-key', alg: -7 }, // ES256
+        { type: 'public-key', alg: -257 }, // RS256
       ],
       timeout: options.timeout || 60000,
       attestation: options.attestation || 'none',
@@ -151,20 +160,21 @@ export class WebAuthnService {
       authenticatorSelection: {
         authenticatorAttachment: options.authenticatorAttachment || 'platform',
         residentKey: options.residentKey || 'preferred',
-        userVerification: options.userVerification || 'preferred'
-      }
+        userVerification: options.userVerification || 'preferred',
+      },
     };
 
     // Note: When attachment is 'cross-platform', browsers usually offer QR code (hybrid).
     // We allow the user to specify it via options, defaulting to 'platform'.
-    if (options.authenticatorAttachment === 'cross-platform') {
-      (publicKeyOptions as any).authenticatorSelection.authenticatorAttachment = 'cross-platform';
+    if (options.authenticatorAttachment === 'cross-platform' && publicKeyOptions.authenticatorSelection) {
+      publicKeyOptions.authenticatorSelection.authenticatorAttachment = 'cross-platform';
     }
 
     try {
-      const credential = (await navigator.credentials.create({
+      const resp = await navigator.credentials.create({
         publicKey: publicKeyOptions,
-      })) as PublicKeyCredential | null;
+      });
+      const credential = resp as PublicKeyCredential;
 
       if (!credential) return null;
 
@@ -185,16 +195,19 @@ export class WebAuthnService {
 
       return {
         credentialId: credential.id,
-        publicKeyBase64: publicKeyBytes
-          ? bufferToBase64url(publicKeyBytes)
-          : '',
+        publicKeyBase64: publicKeyBytes ? bufferToBase64url(publicKeyBytes) : '',
         rpId: options.rpId,
-        userHandle: bufferToBase64url(userId instanceof Uint8Array ? userId.buffer.slice(userId.byteOffset, userId.byteOffset + userId.byteLength) : userId),
+        userHandle: bufferToBase64url(
+          userId instanceof Uint8Array
+            ? userId.buffer.slice(userId.byteOffset, userId.byteOffset + userId.byteLength)
+            : userId
+        ),
         displayName: options.userDisplayName || options.userName,
         transport: transports,
         authenticatorAttachment:
-          (credential as unknown as { authenticatorAttachment?: string })
-            .authenticatorAttachment || options.authenticatorAttachment || 'platform',
+          (credential as PublicKeyCredentialWithAttachment).authenticatorAttachment ||
+          options.authenticatorAttachment ||
+          'platform',
         algorithm,
         registeredAt: new Date().toISOString(),
       };
@@ -249,9 +262,7 @@ export class WebAuthnService {
         authenticatorDataBase64: bufferToBase64url(response.authenticatorData),
         clientDataJSONBase64: bufferToBase64url(response.clientDataJSON),
         signatureBase64: bufferToBase64url(response.signature),
-        userHandleBase64: response.userHandle
-          ? bufferToBase64url(response.userHandle)
-          : null,
+        userHandleBase64: response.userHandle ? bufferToBase64url(response.userHandle) : null,
         authenticatedAt: new Date().toISOString(),
       };
     } catch (error) {

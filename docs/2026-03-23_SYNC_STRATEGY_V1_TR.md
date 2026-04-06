@@ -15,20 +15,24 @@ Aegis 4.1 senkronizasyon stratejisi `offline-first` olarak sabitlenir.
 ## Guven Sinirlari
 
 1. QR transfer
+
 - Kaynak cihaz
 - Alici cihaz
 - Tek kullanimlik transfer kodu
 
 2. Sifreli yedek
+
 - Yedek parolasi
 - Yerel dosya depolama
 - Geri yukleme hedef cihazi
 
 3. Duz metin export
+
 - Kullanici kontrollu gecici dosya kullanimi
 - Sifreli kasa korumasi disina cikan veri
 
 4. Opsiyonel sifreli senkron
+
 - Yalnizca sifreli payload
 - Uzak relay sunucu duz metin otoritesi degildir
 

@@ -1,7 +1,7 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
-import path from "path";
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+import path from 'path';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -9,11 +9,11 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      '@': path.resolve(__dirname, './src'),
     },
   },
   optimizeDeps: {
-    entries: ['index.html']
+    entries: ['index.html'],
   },
   build: {
     rollupOptions: {
@@ -25,9 +25,9 @@ export default defineConfig({
           'vendor-ui': ['react-toastify', 'lucide-react'],
           'vendor-crypto': ['hash-wasm'],
           'vendor-i18n': ['i18next', 'react-i18next'],
-        }
-      }
+        },
+      },
     },
     chunkSizeWarningLimit: 600,
-  }
+  },
 });

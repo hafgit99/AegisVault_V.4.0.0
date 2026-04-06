@@ -1,13 +1,13 @@
-const requireSignedRelease = process.env.AEGIS_REQUIRE_SIGNED_RELEASE === "1";
+const requireSignedRelease = process.env.AEGIS_REQUIRE_SIGNED_RELEASE === '1';
 
 function normalizePem(value) {
   if (!value) return null;
-  return value.includes("\\n") ? value.replace(/\\n/g, "\n") : value;
+  return value.includes('\\n') ? value.replace(/\\n/g, '\n') : value;
 }
 
 function main() {
   if (!requireSignedRelease) {
-    console.log("[release:signing-env] signed release not required in this environment.");
+    console.log('[release:signing-env] signed release not required in this environment.');
     return;
   }
 
@@ -15,11 +15,13 @@ function main() {
   const publicKey = normalizePem(process.env.AEGIS_RELEASE_SIGNING_PUBLIC_KEY);
 
   if (!privateKey || !publicKey) {
-    console.error("[release:signing-env] AEGIS_REQUIRE_SIGNED_RELEASE=1 but signing key pair is missing.");
+    console.error(
+      '[release:signing-env] AEGIS_REQUIRE_SIGNED_RELEASE=1 but signing key pair is missing.'
+    );
     process.exit(1);
   }
 
-  console.log("[release:signing-env] signing key pair detected.");
+  console.log('[release:signing-env] signing key pair detected.');
 }
 
 main();

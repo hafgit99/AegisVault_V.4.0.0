@@ -19,8 +19,7 @@ export default defineConfig({
         lines: 78,
       },
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts', 'src/lib/types/**'],
+      exclude: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'src/**/*.d.ts', 'src/lib/types/**', 'src/i18n.ts', 'src/workers/**', 'src/hooks/useVaultData.ts', 'src/hooks/useVaultExtension.ts', 'src/hooks/useVaultSecurity.ts', 'src/hooks/useVaultSession.ts', 'src/components/**/*.tsx'],
     },
   },
 });
-

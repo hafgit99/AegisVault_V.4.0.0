@@ -1,4 +1,4 @@
-import { vaultService } from "../vaultService";
+import { vaultService } from '../vaultService';
 
 type ImportMetaEnvWithExtensionIds = ImportMetaEnv & {
   VITE_AEGIS_ALLOWED_EXTENSION_IDS?: string;
@@ -6,14 +6,14 @@ type ImportMetaEnvWithExtensionIds = ImportMetaEnv & {
 };
 
 type ExtensionBridgeMessage =
-  | { type: "SYNC_TOKEN"; token: string | null }
-  | { type: "ERROR"; error: string }
-  | { type: "CHALLENGE_RESPONSE"; nonce: string; expiresAt: number }
+  | { type: 'SYNC_TOKEN'; token: string | null }
+  | { type: 'ERROR'; error: string }
+  | { type: 'CHALLENGE_RESPONSE'; nonce: string; expiresAt: number }
   | {
-      type: "DECRYPTED_CREDS_RESPONSE";
+      type: 'DECRYPTED_CREDS_RESPONSE';
       data: Array<{ title: string; username: string; pass: string; website: string }>;
     }
-  | { type: "VAULT_LOCKED" };
+  | { type: 'VAULT_LOCKED' };
 
 type ExtensionPortRequest = {
   type?: string;
@@ -39,39 +39,50 @@ type ChromeRuntimeWithConnect = {
   connect: (extensionId: string, options: { name: string }) => ExtensionPort;
 };
 
-type WindowWithChromeRuntime = Window & typeof globalThis & {
-  chrome?: {
-    runtime?: ChromeRuntimeWithConnect;
+type WindowWithChromeRuntime = Window &
+  typeof globalThis & {
+    chrome?: {
+      runtime?: ChromeRuntimeWithConnect;
+    };
   };
+
+type PortSession = {
+  extensionId: string;
+  token: string;
+  challengeNonceMap: Map<string, number>;
 };
 
-// 🔒 SECURITY HARDENED: Allowlist tabanlı extension ID doğrulama
-// Race condition saldırılarını önlemek için sabit allowlist kullanılır
 const DEFAULT_ALLOWED_EXTENSION_IDS = [
   'gddgomiecgnihlljfkogfjgakedoielk',
   'kjbdjkfijeflhhbnkjgkmccljifidpcc',
 ];
+const ALLOWLIST_STORAGE_KEY = 'aegis_extension_allowlist_v1';
 
-const envAllowedIdsRaw = (import.meta.env as ImportMetaEnvWithExtensionIds).VITE_AEGIS_ALLOWED_EXTENSION_IDS ||
-  (import.meta.env as ImportMetaEnvWithExtensionIds).VITE_AEGIS_EXTENSION_ID ||
-  '';
+function parseAllowlist(raw: string): string[] {
+  return raw
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
 
-const ALLOWED_EXTENSION_IDS = envAllowedIdsRaw
-  .split(',')
-  .map((id) => id.trim())
-  .filter(Boolean);
-
-if (ALLOWED_EXTENSION_IDS.length === 0) {
-  ALLOWED_EXTENSION_IDS.push(...DEFAULT_ALLOWED_EXTENSION_IDS);
+function buildInitialAllowlist(): string[] {
+  const envRaw =
+    (import.meta.env as ImportMetaEnvWithExtensionIds).VITE_AEGIS_ALLOWED_EXTENSION_IDS ||
+    (import.meta.env as ImportMetaEnvWithExtensionIds).VITE_AEGIS_EXTENSION_ID ||
+    '';
+  const envIds = parseAllowlist(envRaw);
+  return envIds.length > 0 ? envIds : [...DEFAULT_ALLOWED_EXTENSION_IDS];
 }
 
 class ExtensionBridge {
-  private sessionToken: string | null = null;
   private isListening: boolean = false;
-  private activePort: ExtensionPort | null = null; // Aktif eklenti port referansi
-  private trustedExtensionId: string | null = null; // Trusted extension ID
   private readonly challengeTtlMs = 20_000;
-  private challengeNonceMap: Map<string, number> = new Map();
+  private allowedExtensionIds: Set<string> = new Set(buildInitialAllowlist());
+  private activeSessions: Map<ExtensionPort, PortSession> = new Map();
+
+  constructor() {
+    this.loadAllowlistFromStorage();
+  }
 
   private getRuntime() {
     return (window as WindowWithChromeRuntime).chrome?.runtime;
@@ -79,14 +90,46 @@ class ExtensionBridge {
 
   private toHex(buffer: ArrayBuffer): string {
     const bytes = new Uint8Array(buffer);
-    return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+    return Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
   }
 
-  private async signSessionPayload(payload: string): Promise<string | null> {
-    if (!this.sessionToken) return null;
+  private isExtensionAllowed(extensionId: string): boolean {
+    return this.allowedExtensionIds.has(extensionId);
+  }
+
+  private getAllowlistStorage(): Storage | null {
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  }
+
+  private loadAllowlistFromStorage(): void {
+    const storage = this.getAllowlistStorage();
+    if (!storage) return;
+
+    const raw = storage.getItem(ALLOWLIST_STORAGE_KEY);
+    if (!raw) return;
+
+    const runtimeIds = parseAllowlist(raw);
+    if (runtimeIds.length === 0) return;
+
+    this.allowedExtensionIds = new Set(runtimeIds);
+  }
+
+  private persistAllowlist(): void {
+    const storage = this.getAllowlistStorage();
+    if (!storage) return;
+    storage.setItem(ALLOWLIST_STORAGE_KEY, Array.from(this.allowedExtensionIds).join(','));
+  }
+
+  private async signSessionPayload(token: string, payload: string): Promise<string> {
     const key = await window.crypto.subtle.importKey(
       'raw',
-      new TextEncoder().encode(this.sessionToken),
+      new TextEncoder().encode(token),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['sign']
@@ -95,26 +138,34 @@ class ExtensionBridge {
     return this.toHex(signature);
   }
 
-  private cleanupExpiredChallenges(now: number = Date.now()) {
-    for (const [nonce, expiresAt] of this.challengeNonceMap.entries()) {
+  private cleanupExpiredChallenges(session: PortSession, now: number = Date.now()) {
+    for (const [nonce, expiresAt] of session.challengeNonceMap.entries()) {
       if (expiresAt <= now) {
-        this.challengeNonceMap.delete(nonce);
+        session.challengeNonceMap.delete(nonce);
       }
     }
   }
 
-  private async verifySignedRequest(type: string, domain: string, nonce: string, ts: number, signature: string): Promise<boolean> {
+  private async verifySignedRequest(
+    session: PortSession,
+    type: string,
+    domain: string,
+    nonce: string,
+    ts: number,
+    signature: string
+  ): Promise<boolean> {
     if (!nonce || !signature || !Number.isFinite(ts)) return false;
-    const now = Date.now();
-    this.cleanupExpiredChallenges(now);
 
-    const nonceExpiresAt = this.challengeNonceMap.get(nonce);
+    const now = Date.now();
+    this.cleanupExpiredChallenges(session, now);
+
+    const nonceExpiresAt = session.challengeNonceMap.get(nonce);
     if (!nonceExpiresAt || nonceExpiresAt <= now) return false;
     if (Math.abs(now - ts) > this.challengeTtlMs) return false;
 
     const payload = `${type}:${domain || ''}:${nonce}:${ts}`;
-    const expectedSig = await this.signSessionPayload(payload);
-    if (!expectedSig || expectedSig.length !== signature.length) return false;
+    const expectedSig = await this.signSessionPayload(session.token, payload);
+    if (expectedSig.length !== signature.length) return false;
 
     let mismatch = 0;
     for (let i = 0; i < expectedSig.length; i++) {
@@ -123,7 +174,7 @@ class ExtensionBridge {
 
     const valid = mismatch === 0;
     if (valid) {
-      this.challengeNonceMap.delete(nonce);
+      session.challengeNonceMap.delete(nonce);
     }
     return valid;
   }
@@ -151,177 +202,198 @@ class ExtensionBridge {
     return this.toRegistrableDomain(entryHost) === this.toRegistrableDomain(reqHost);
   }
 
+  private attachPort(extensionId: string, port: ExtensionPort): void {
+    const session: PortSession = {
+      extensionId,
+      token: this.generateToken(),
+      challengeNonceMap: new Map(),
+    };
+
+    this.activeSessions.set(port, session);
+    port.postMessage({ type: 'SYNC_TOKEN', token: session.token });
+
+    port.onMessage.addListener(async (msg: ExtensionPortRequest) => {
+      const currentSession = this.activeSessions.get(port);
+      if (!currentSession) return;
+
+      if (msg.token !== currentSession.token) {
+        port.postMessage({ type: 'ERROR', error: 'UNAUTHORIZED_TOKEN' });
+        return;
+      }
+
+      if (msg.type === 'REQUEST_CHALLENGE') {
+        const nonce = this.generateToken();
+        const expiresAt = Date.now() + this.challengeTtlMs;
+        currentSession.challengeNonceMap.set(nonce, expiresAt);
+        port.postMessage({ type: 'CHALLENGE_RESPONSE', nonce, expiresAt });
+        return;
+      }
+
+      if (msg.type === 'get_decrypted_creds') {
+        const nonce = typeof msg.nonce === 'string' ? msg.nonce : '';
+        const ts = Number(msg.ts);
+        const signature = typeof msg.signature === 'string' ? msg.signature : '';
+        const domain = typeof msg.domain === 'string' ? msg.domain : '';
+
+        const isSigned = await this.verifySignedRequest(
+          currentSession,
+          msg.type,
+          domain,
+          nonce,
+          ts,
+          signature
+        );
+        if (!isSigned) {
+          port.postMessage({ type: 'ERROR', error: 'INVALID_CHALLENGE_SIGNATURE' });
+          return;
+        }
+
+        if (!vaultService.isUnlocked()) {
+          port.postMessage({ type: 'ERROR', error: 'VAULT_LOCKED' });
+          return;
+        }
+
+        try {
+          const creds = await vaultService.getPasswords();
+          const filteredCreds = domain
+            ? creds.filter((c) => this.isExactDomainMatch(c.website || '', domain))
+            : [];
+
+          const selected = filteredCreds.slice(0, 1).map((c) => ({
+            title: c.title,
+            username: c.username,
+            pass: c.pass || '',
+            website: c.website || '',
+          }));
+
+          port.postMessage({
+            type: 'DECRYPTED_CREDS_RESPONSE',
+            data: selected,
+          });
+        } catch {
+          port.postMessage({ type: 'ERROR', error: 'INTERNAL_ERROR' });
+        }
+      }
+    });
+
+    port.onDisconnect.addListener(() => {
+      const active = this.activeSessions.get(port);
+      if (active) {
+        active.challengeNonceMap.clear();
+      }
+      this.activeSessions.delete(port);
+    });
+  }
+
   private messageListener = async (event: MessageEvent) => {
-    // 🔒 Güvenlik: Sadece aynı origin veya doğrulanmış extension origin'den gelen mesajları kabul et
-    if (event.origin !== window.location.origin && !event.origin.startsWith('chrome-extension://')) {
+    if (
+      event.origin !== window.location.origin &&
+      !event.origin.startsWith('chrome-extension://')
+    ) {
       return;
     }
 
     const data = event.data;
     if (typeof data !== 'object' || !data) return;
 
-    // Secure Handshake (Eklenti kendini tanıtıyor ve ID'sini sunuyor)
-    if (data.type === "AEGIS_EXTENSION_HELLO") {
-       // 🔒 SECURITY HARDENED: Extension ID allowlist kontrolü — race condition koruması
-       const incomingExtensionId = data.extensionId;
-       
-       // Extension ID format validasyonu
-       if (!incomingExtensionId || typeof incomingExtensionId !== 'string') {
-         console.warn("[PWA Bridge] ❌ Geçersiz extension ID formatı, reddedildi.");
-         return;
-       }
+    if (data.type !== 'AEGIS_EXTENSION_HELLO') return;
 
-       // 🔒 ALLOWLIST KONTROLÜ — İlk bağlantıda bile allowlist dışı ID reddedilir
-       if (!ALLOWED_EXTENSION_IDS.includes(incomingExtensionId)) {
-         console.warn(`[PWA Bridge] ❌ Extension ID allowlist dışı, reddedildi: ${incomingExtensionId.substring(0, 8)}...`);
-         return;
-       }
+    const incomingExtensionId = data.extensionId;
+    if (!incomingExtensionId || typeof incomingExtensionId !== 'string') {
+      return;
+    }
 
-       // İlk bağlantıda trusted ID'yi kaydet (defense in depth)
-       if (this.trustedExtensionId && this.trustedExtensionId !== incomingExtensionId) {
-         console.warn(`[PWA Bridge] ❌ Trusted ID uyuşmazlığı! Beklenen: ${this.trustedExtensionId.substring(0, 8)}..., Gelen: ${incomingExtensionId.substring(0, 8)}...`);
-         return;
-       }
+    if (!this.isExtensionAllowed(incomingExtensionId)) {
+      return;
+    }
 
-       console.log(`[PWA Bridge] ✅ Allowlist extension tespit edildi, bağlantı hazırlanıyor: ${incomingExtensionId.substring(0, 8)}...`);
-       
-       // Eklentiye güvenli port açalım
-       const runtime = this.getRuntime();
-       if (runtime) {
-         try {
-           const port = runtime.connect(incomingExtensionId, { name: "aegis-pwa-vault-port" });
-           this.activePort = port;
-           this.trustedExtensionId = incomingExtensionId; // İlk başarılı bağlantıda ID'yi kaydet
-           
-            this.sessionToken = this.generateToken();
-            this.challengeNonceMap.clear();
-           
-           // handshake token paylaşımı
-           port.postMessage({ type: "SYNC_TOKEN", token: this.sessionToken });
+    const runtime = this.getRuntime();
+    if (!runtime) return;
 
-           port.onMessage.addListener(async (msg: ExtensionPortRequest) => {
-             // Sadece Token yetkilendirmesi başarılı olan mesajları işle
-              if (msg.token !== this.sessionToken) {
-                console.warn("[PWA Bridge] Yetkisiz eklenti isteği reddedildi (Token Uyumsuz).");
-                port.postMessage({ type: "ERROR", error: "UNAUTHORIZED_TOKEN" });
-                return;
-              }
-
-              if (msg.type === "REQUEST_CHALLENGE") {
-                const nonce = this.generateToken();
-                const expiresAt = Date.now() + this.challengeTtlMs;
-                this.challengeNonceMap.set(nonce, expiresAt);
-                port.postMessage({
-                  type: "CHALLENGE_RESPONSE",
-                  nonce,
-                  expiresAt,
-                });
-                return;
-              }
-
-              if (msg.type === "get_decrypted_creds") {
-                const nonce = typeof msg.nonce === 'string' ? msg.nonce : '';
-                const ts = Number(msg.ts);
-                const signature = typeof msg.signature === 'string' ? msg.signature : '';
-                const domain = typeof msg.domain === 'string' ? msg.domain : '';
-
-               const isSigned = await this.verifySignedRequest(msg.type, domain, nonce, ts, signature);
-                if (!isSigned) {
-                  port.postMessage({ type: "ERROR", error: "INVALID_CHALLENGE_SIGNATURE" });
-                  return;
-                }
-
-                // Sadece kasa aktif (unlocked) ise yanıt ver
-                if (!vaultService['isConnected']) {
-                  port.postMessage({ type: "ERROR", error: "VAULT_LOCKED" });
-                  return;
-                }
-
-               try {
-                 const creds = await vaultService.getPasswords();
-                 const filteredCreds = domain
-                   ? creds.filter((c) => this.isExactDomainMatch(c.website || '', domain))
-                   : [];
-
-                 // Domain exact + tek kayıt + minimum alan
-                 const selected = filteredCreds.slice(0, 1).map((c) => ({
-                   title: c.title,
-                   username: c.username,
-                   pass: c.pass || '',
-                   website: c.website || '',
-                 }));
-
-                 port.postMessage({ 
-                   type: "DECRYPTED_CREDS_RESPONSE", 
-                   data: selected 
-                 });
-                 console.log("[PWA Bridge] Kasa açık, veriler eklentiye iletildi.");
-               } catch {
-                 port.postMessage({ type: "ERROR", error: "INTERNAL_ERROR" });
-               }
-             }
-           });
-           
-            port.onDisconnect.addListener(() => {
-              console.log("[PWA Bridge] Eklenti bağlantısı koptu.");
-              this.sessionToken = null;
-              this.activePort = null;
-              this.challengeNonceMap.clear();
-            });
-         } catch (error) {
-           console.error("[PWA Bridge] Eklentiyle runtime (externally_connectable) üzerinden bağlantı kurulamadı.", error);
-         }
-       }
+    try {
+      const port = runtime.connect(incomingExtensionId, { name: 'aegis-pwa-vault-port' });
+      this.attachPort(incomingExtensionId, port);
+    } catch (error) {
+      console.error(
+        '[PWA Bridge] Eklenti ile runtime (externally_connectable) baglantisi kurulamad�.',
+        error
+      );
     }
   };
 
   public init() {
     if (this.isListening) return;
     this.isListening = true;
-    window.addEventListener("message", this.messageListener);
+    window.addEventListener('message', this.messageListener);
   }
 
-  /**
-   * 🔒 Kasa kilitlendiğinde çağrılır.
-   * Aktif port bağlantısını koparır ve oturum token'ını geçersiz kılar.
-   * Bu, externally_connectable kanalı üzerinden veri sızmasını engeller.
-   */
-  public lockAndDisconnect() {
-    if (this.activePort) {
-      try {
-        // Eklentiye kasa kilitlendi bilgisini gönder
-        this.activePort.postMessage({ type: "VAULT_LOCKED" });
-        this.activePort.disconnect();
-      } catch {
-        // Port zaten kapanmış olabilir
-      }
-      this.activePort = null;
+  public getAllowedExtensionIds(): string[] {
+    return Array.from(this.allowedExtensionIds);
+  }
+
+  public updateAllowedExtensionIds(ids: string[]): void {
+    const normalized = ids
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    if (normalized.length === 0) {
+      this.allowedExtensionIds = new Set(DEFAULT_ALLOWED_EXTENSION_IDS);
+    } else {
+      this.allowedExtensionIds = new Set(normalized);
     }
-    this.sessionToken = null;
-    this.challengeNonceMap.clear();
-    console.log("[PWA Bridge] 🔐 Eklenti bağlantısı güvenli şekilde kapatıldı.");
+
+    this.persistAllowlist();
+    this.lockAndDisconnect();
+  }
+
+  public addAllowedExtensionId(id: string): void {
+    const normalized = id.trim();
+    if (!normalized) return;
+    this.allowedExtensionIds.add(normalized);
+    this.persistAllowlist();
+  }
+
+  public removeAllowedExtensionId(id: string): void {
+    this.allowedExtensionIds.delete(id.trim());
+    if (this.allowedExtensionIds.size === 0) {
+      this.allowedExtensionIds = new Set(DEFAULT_ALLOWED_EXTENSION_IDS);
+    }
+    this.persistAllowlist();
+    this.lockAndDisconnect();
+  }
+
+  public lockAndDisconnect() {
+    for (const [port, session] of this.activeSessions.entries()) {
+      try {
+        port.postMessage({ type: 'VAULT_LOCKED' });
+        port.disconnect();
+      } catch {
+        /* port may already be closed */
+      }
+      session.challengeNonceMap.clear();
+      this.activeSessions.delete(port);
+    }
   }
 
   public dispose() {
     this.isListening = false;
-    window.removeEventListener("message", this.messageListener);
+    window.removeEventListener('message', this.messageListener);
     this.lockAndDisconnect();
   }
 
   private generateToken() {
     const array = new Uint8Array(16);
     window.crypto.getRandomValues(array);
-    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+    return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
   }
 
   /** @internal ONLY FOR TESTING */
   public reset() {
-    this.sessionToken = null;
     this.isListening = false;
-    this.activePort = null;
-    this.trustedExtensionId = null;
-    this.challengeNonceMap.clear();
-    window.removeEventListener("message", this.messageListener);
+    this.activeSessions.clear();
+    this.allowedExtensionIds = new Set(buildInitialAllowlist());
+    this.loadAllowlistFromStorage();
+    window.removeEventListener('message', this.messageListener);
   }
 }
 

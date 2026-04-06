@@ -60,4 +60,3 @@ npm run cli -- pair
 - `Run aegis-cli pair...`: run `pair` first.
 - `VAULT_LOCKED`: unlock vault in desktop app.
 - `NATIVE_BRIDGE_TIMEOUT`: verify app/bridge availability.
-

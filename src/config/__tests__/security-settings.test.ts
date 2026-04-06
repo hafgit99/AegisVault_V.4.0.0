@@ -1,9 +1,9 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
-import { IDLE_TIMEOUT_OPTIONS, useAutoLock } from "../security-settings";
-import { SecureAppSettings } from "../../lib/SecureAppSettings";
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { IDLE_TIMEOUT_OPTIONS, useAutoLock } from '../security-settings';
+import { SecureAppSettings } from '../../lib/SecureAppSettings';
 
-describe("security-settings", () => {
+describe('security-settings', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -13,23 +13,23 @@ describe("security-settings", () => {
     vi.restoreAllMocks();
   });
 
-  it("exposes idle timeout options", () => {
+  it('exposes idle timeout options', () => {
     expect(IDLE_TIMEOUT_OPTIONS[0].value).toBe(0);
     expect(IDLE_TIMEOUT_OPTIONS.at(-1)?.value).toBe(14400);
     expect(IDLE_TIMEOUT_OPTIONS).toHaveLength(7);
   });
 
-  it("does not schedule lock timer when vault is locked", () => {
+  it('does not schedule lock timer when vault is locked', () => {
     const onLock = vi.fn();
-    const intervalSpy = vi.spyOn(globalThis, "setInterval");
+    const timeoutSpy = vi.spyOn(globalThis, 'setTimeout');
     renderHook(() => useAutoLock(onLock, false));
 
-    expect(intervalSpy).not.toHaveBeenCalled();
+    expect(timeoutSpy).not.toHaveBeenCalled();
   });
 
-  it("locks when timeout passes and reacts to setting change event", () => {
+  it('locks when timeout passes and reacts to setting change event', () => {
     const onLock = vi.fn();
-    vi.spyOn(SecureAppSettings, "getAutoLockTime").mockReturnValue(1 / 6); // 10 seconds
+    vi.spyOn(SecureAppSettings, 'getAutoLockTime').mockReturnValue(1 / 6); // 10 seconds
 
     const { unmount } = renderHook(() => useAutoLock(onLock, true));
 
@@ -39,7 +39,10 @@ describe("security-settings", () => {
     expect(onLock).toHaveBeenCalledTimes(1);
 
     act(() => {
-      window.dispatchEvent(new CustomEvent("aegis-secure-setting-changed", { detail: { key: "autoLockTime" } }));
+      window.dispatchEvent(
+        new CustomEvent('aegis-secure-setting-changed', { detail: { key: 'autoLockTime' } })
+      );
+      window.dispatchEvent(new MouseEvent('mousemove'));
       vi.advanceTimersByTime(10000);
     });
     expect(onLock).toHaveBeenCalledTimes(2);

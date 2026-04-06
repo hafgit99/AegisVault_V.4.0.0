@@ -58,20 +58,32 @@ describe('PasskeyBindingService', () => {
       credentialId: 'cred-A',
       encryptedPayload: 'enc-A',
       prfSalt: 'salt-A',
-      meta: { createdAt: new Date().toISOString(), lastUsedAt: new Date().toISOString(), version: 1 },
+      meta: {
+        createdAt: new Date().toISOString(),
+        lastUsedAt: new Date().toISOString(),
+        version: 1,
+      },
     });
     PasskeyBindingService.saveBinding('profile-B', 'db-B', {
       credentialId: 'cred-B',
       encryptedPayload: 'enc-B',
       prfSalt: 'salt-B',
-      meta: { createdAt: new Date().toISOString(), lastUsedAt: new Date().toISOString(), version: 1 },
+      meta: {
+        createdAt: new Date().toISOString(),
+        lastUsedAt: new Date().toISOString(),
+        version: 1,
+      },
     });
 
     const revoked = PasskeyBindingService.revokeBinding('profile-A', 'db-A', 'user_requested');
     expect(revoked).toBe(true);
     expect(PasskeyBindingService.getBinding('profile-A', 'db-A')).toBeNull();
     expect(PasskeyBindingService.getBinding('profile-B', 'db-B')?.credentialId).toBe('cred-B');
-    expect(PasskeyBindingService.getEventLog().some((event) => event.type === 'revoked' && event.detail === 'user_requested')).toBe(true);
+    expect(
+      PasskeyBindingService.getEventLog().some(
+        (event) => event.type === 'revoked' && event.detail === 'user_requested'
+      )
+    ).toBe(true);
   });
 
   it('exports and imports recovery package for matching profile/db', async () => {
@@ -79,10 +91,16 @@ describe('PasskeyBindingService', () => {
       credentialId: 'cred-A',
       encryptedPayload: 'enc-A',
       prfSalt: 'salt-A',
-      meta: { createdAt: new Date().toISOString(), lastUsedAt: new Date().toISOString(), version: 1 },
+      meta: {
+        createdAt: new Date().toISOString(),
+        lastUsedAt: new Date().toISOString(),
+        version: 1,
+      },
     });
 
-    const encryptSpy = vi.spyOn(BackupService, 'encryptBackup').mockResolvedValue('encrypted-package');
+    const encryptSpy = vi
+      .spyOn(BackupService, 'encryptBackup')
+      .mockResolvedValue('encrypted-package');
     const recoveryPayload: RecoveryPackage[] = [
       {
         kind: 'aegis-passkey-recovery-v2',
@@ -90,7 +108,13 @@ describe('PasskeyBindingService', () => {
           credentialId: 'cred-A2',
           encryptedPayload: 'enc-A2',
           prfSalt: 'salt-A2',
-          meta: { createdAt: new Date().toISOString(), lastUsedAt: new Date().toISOString(), version: 1, profileId: 'profile-A', dbName: 'db-A' },
+          meta: {
+            createdAt: new Date().toISOString(),
+            lastUsedAt: new Date().toISOString(),
+            version: 1,
+            profileId: 'profile-A',
+            dbName: 'db-A',
+          },
         },
         revocations: [],
         policy: {
@@ -106,12 +130,21 @@ describe('PasskeyBindingService', () => {
     expect(out).toBe('encrypted-package');
     expect(encryptSpy).toHaveBeenCalledTimes(1);
 
-    await PasskeyBindingService.importRecoveryPackage('encrypted-package', 'pw', 'profile-A', 'db-A');
+    await PasskeyBindingService.importRecoveryPackage(
+      'encrypted-package',
+      'pw',
+      'profile-A',
+      'db-A'
+    );
     expect(decryptSpy).toHaveBeenCalledTimes(1);
     const imported = PasskeyBindingService.getBinding('profile-A', 'db-A');
     expect(imported?.credentialId).toBe('cred-A2');
     expect(imported?.meta.deviceFingerprint).toBeTruthy();
-    expect(PasskeyBindingService.getEventLog('profile-A', 'db-A').some((event) => event.type === 'recovery_imported')).toBe(true);
+    expect(
+      PasskeyBindingService.getEventLog('profile-A', 'db-A').some(
+        (event) => event.type === 'recovery_imported'
+      )
+    ).toBe(true);
 
     encryptSpy.mockRestore();
     decryptSpy.mockRestore();
@@ -125,7 +158,13 @@ describe('PasskeyBindingService', () => {
           credentialId: 'cred-X',
           encryptedPayload: 'enc-X',
           prfSalt: 'salt-X',
-          meta: { createdAt: new Date().toISOString(), lastUsedAt: new Date().toISOString(), version: 1, profileId: 'profile-X', dbName: 'db-X' },
+          meta: {
+            createdAt: new Date().toISOString(),
+            lastUsedAt: new Date().toISOString(),
+            version: 1,
+            profileId: 'profile-X',
+            dbName: 'db-X',
+          },
         },
         revocations: [],
         policy: {
@@ -149,10 +188,16 @@ describe('PasskeyBindingService', () => {
       credentialId: 'cred-A',
       encryptedPayload: 'enc-A',
       prfSalt: 'salt-A',
-      meta: { createdAt: new Date().toISOString(), lastUsedAt: new Date().toISOString(), version: 1 },
+      meta: {
+        createdAt: new Date().toISOString(),
+        lastUsedAt: new Date().toISOString(),
+        version: 1,
+      },
     });
 
-    const encryptSpy = vi.spyOn(BackupService, 'encryptBackup').mockResolvedValue('encrypted-package');
+    const encryptSpy = vi
+      .spyOn(BackupService, 'encryptBackup')
+      .mockResolvedValue('encrypted-package');
     await PasskeyBindingService.exportRecoveryPackage('profile-A', 'db-A', 'pw');
     PasskeyBindingService.updateLastUsed('profile-A', 'db-A');
 
@@ -169,7 +214,11 @@ describe('PasskeyBindingService', () => {
       credentialId: 'cred-A',
       encryptedPayload: 'enc-A',
       prfSalt: 'salt-A',
-      meta: { createdAt: new Date().toISOString(), lastUsedAt: new Date().toISOString(), version: 1 },
+      meta: {
+        createdAt: new Date().toISOString(),
+        lastUsedAt: new Date().toISOString(),
+        version: 1,
+      },
     });
 
     const bindings = PasskeyBindingService.listBindings();
@@ -186,7 +235,13 @@ describe('PasskeyBindingService', () => {
           credentialId: 'cred-Z',
           encryptedPayload: 'enc-Z',
           prfSalt: 'salt-Z',
-          meta: { createdAt: new Date().toISOString(), lastUsedAt: new Date().toISOString(), version: 1, profileId: 'profile-A', dbName: 'db-A' },
+          meta: {
+            createdAt: new Date().toISOString(),
+            lastUsedAt: new Date().toISOString(),
+            version: 1,
+            profileId: 'profile-A',
+            dbName: 'db-A',
+          },
         },
         revocations: [
           {
@@ -205,7 +260,9 @@ describe('PasskeyBindingService', () => {
 
     await PasskeyBindingService.importRecoveryPackage('pkg', 'pw', 'profile-A', 'db-A');
 
-    expect(PasskeyBindingService.listRevocations().some((item) => item.credentialId === 'cred-old')).toBe(true);
+    expect(
+      PasskeyBindingService.listRevocations().some((item) => item.credentialId === 'cred-old')
+    ).toBe(true);
     expect(PasskeyBindingService.getPolicy().maxBindingAgeDays).toBe(60);
     expect(PasskeyBindingService.isCredentialRevoked('cred-old')).toBe(true);
 

@@ -24,7 +24,7 @@ function main() {
   console.log('   Value: (Copy the private key block below, including BEGIN/END lines)');
   console.log('\n--- PRIVATE KEY (SECRET) ---');
   console.log(privateKey);
-  
+
   console.log('\n4. Click "New repository secret" again');
   console.log('5. Name: AEGIS_RELEASE_SIGNING_PUBLIC_KEY');
   console.log('   Value: (Copy the public key block below, including BEGIN/END lines)');
@@ -33,7 +33,9 @@ function main() {
 
   console.log('\n--- FINAL STEP ---');
   console.log('Change AEGIS_REQUIRE_SIGNED_RELEASE to "1" in .github/workflows/build.yml');
-  console.log('\n⚠️  SECURITY WARNING: Store your private key in a safe place. If you lose it, you cannot verify future releases. If it is stolen, someone can sign malicious versions of your app.');
+  console.log(
+    '\n⚠️  SECURITY WARNING: Store your private key in a safe place. If you lose it, you cannot verify future releases. If it is stolen, someone can sign malicious versions of your app.'
+  );
 }
 
 main();

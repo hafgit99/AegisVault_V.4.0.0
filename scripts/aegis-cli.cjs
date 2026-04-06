@@ -6,16 +6,18 @@ const os = require('os');
 const path = require('path');
 
 const DEFAULT_EXTENSION_ID = process.env.AEGIS_CLI_EXTENSION_ID || 'aegisvault-cli@local';
-const DEFAULT_SOCKET_PATH = process.platform === 'win32'
-  ? '\\\\.\\pipe\\aegis-vault-native-v1'
-  : path.join(os.tmpdir(), 'aegis-vault-native-v1.sock');
+const DEFAULT_SOCKET_PATH =
+  process.platform === 'win32'
+    ? '\\\\.\\pipe\\aegis-vault-native-v1'
+    : path.join(os.tmpdir(), 'aegis-vault-native-v1.sock');
 const CONFIG_DIR = path.join(os.homedir(), '.aegis-vault');
 const CONFIG_PATH = path.join(CONFIG_DIR, 'cli-config.json');
 
 const I18N = {
   tr: {
     usage: 'Kullanim: aegis-cli <komut> [opsiyonlar]',
-    commands: 'Komutlar: pair, status, language, list, get <id>, add, update <id>, delete <id>, restore <id>, empty-trash, unpair',
+    commands:
+      'Komutlar: pair, status, language, list, get <id>, add, update <id>, delete <id>, restore <id>, empty-trash, unpair',
     paired: 'CLI eslestirildi.',
     unpaired: 'CLI eslesmesi kaldirildi.',
     status: 'Durum',
@@ -32,7 +34,8 @@ const I18N = {
   },
   en: {
     usage: 'Usage: aegis-cli <command> [options]',
-    commands: 'Commands: pair, status, language, list, get <id>, add, update <id>, delete <id>, restore <id>, empty-trash, unpair',
+    commands:
+      'Commands: pair, status, language, list, get <id>, add, update <id>, delete <id>, restore <id>, empty-trash, unpair',
     paired: 'CLI paired successfully.',
     unpaired: 'CLI pairing removed.',
     status: 'Status',
@@ -102,26 +105,37 @@ function getClientInfo(extensionId) {
 
 function buildNativeBridgePayload(message) {
   const clientPublicJwk = normalizeClientPublicJwk(message.clientPublicJwk);
-  const credential = message?.credential && typeof message.credential === 'object'
-    ? {
-        title: typeof message.credential.title === 'string' ? message.credential.title : '',
-        username: typeof message.credential.username === 'string' ? message.credential.username : '',
-        pass: typeof message.credential.pass === 'string' ? message.credential.pass : '',
-        website: typeof message.credential.website === 'string' ? message.credential.website : '',
-        submittedAt: typeof message.credential.submittedAt === 'string' ? message.credential.submittedAt : '',
-        source: typeof message.credential.source === 'string' ? message.credential.source : 'browser_form',
-      }
-    : null;
-  const entry = message?.entry && typeof message.entry === 'object'
-    ? {
-        title: typeof message.entry.title === 'string' ? message.entry.title : '',
-        username: typeof message.entry.username === 'string' ? message.entry.username : '',
-        pass: typeof message.entry.pass === 'string' ? message.entry.pass : '',
-        website: typeof message.entry.website === 'string' ? message.entry.website : '',
-        category: typeof message.entry.category === 'string' ? message.entry.category : '',
-        tags: Array.isArray(message.entry.tags) ? message.entry.tags.map((item) => String(item || '')) : [],
-      }
-    : null;
+  const credential =
+    message?.credential && typeof message.credential === 'object'
+      ? {
+          title: typeof message.credential.title === 'string' ? message.credential.title : '',
+          username:
+            typeof message.credential.username === 'string' ? message.credential.username : '',
+          pass: typeof message.credential.pass === 'string' ? message.credential.pass : '',
+          website: typeof message.credential.website === 'string' ? message.credential.website : '',
+          submittedAt:
+            typeof message.credential.submittedAt === 'string'
+              ? message.credential.submittedAt
+              : '',
+          source:
+            typeof message.credential.source === 'string'
+              ? message.credential.source
+              : 'browser_form',
+        }
+      : null;
+  const entry =
+    message?.entry && typeof message.entry === 'object'
+      ? {
+          title: typeof message.entry.title === 'string' ? message.entry.title : '',
+          username: typeof message.entry.username === 'string' ? message.entry.username : '',
+          pass: typeof message.entry.pass === 'string' ? message.entry.pass : '',
+          website: typeof message.entry.website === 'string' ? message.entry.website : '',
+          category: typeof message.entry.category === 'string' ? message.entry.category : '',
+          tags: Array.isArray(message.entry.tags)
+            ? message.entry.tags.map((item) => String(item || ''))
+            : [],
+        }
+      : null;
 
   return JSON.stringify({
     type: typeof message?.type === 'string' ? message.type : '',
@@ -129,16 +143,34 @@ function buildNativeBridgePayload(message) {
     domain: normalizeDomain(typeof message?.domain === 'string' ? message.domain : ''),
     requestNonce: typeof message?.requestNonce === 'string' ? message.requestNonce.trim() : '',
     clientKeyId: typeof message?.clientKeyId === 'string' ? message.clientKeyId.trim() : '',
-    clientTimestamp: typeof message?.clientTimestamp === 'string' ? message.clientTimestamp.trim() : '',
+    clientTimestamp:
+      typeof message?.clientTimestamp === 'string' ? message.clientTimestamp.trim() : '',
     clientNonce: typeof message?.clientNonce === 'string' ? message.clientNonce.trim() : '',
     clientInfo: {
-      browserName: typeof message?.clientInfo?.browserName === 'string' ? message.clientInfo.browserName.trim() : '',
-      browserVersion: typeof message?.clientInfo?.browserVersion === 'string' ? message.clientInfo.browserVersion.trim() : '',
-      platform: typeof message?.clientInfo?.platform === 'string' ? message.clientInfo.platform.trim() : '',
-      locale: typeof message?.clientInfo?.locale === 'string' ? message.clientInfo.locale.trim() : '',
-      installId: typeof message?.clientInfo?.installId === 'string' ? message.clientInfo.installId.trim() : '',
-      extensionVersion: typeof message?.clientInfo?.extensionVersion === 'string' ? message.clientInfo.extensionVersion.trim() : '',
-      userAgent: typeof message?.clientInfo?.userAgent === 'string' ? message.clientInfo.userAgent.trim() : '',
+      browserName:
+        typeof message?.clientInfo?.browserName === 'string'
+          ? message.clientInfo.browserName.trim()
+          : '',
+      browserVersion:
+        typeof message?.clientInfo?.browserVersion === 'string'
+          ? message.clientInfo.browserVersion.trim()
+          : '',
+      platform:
+        typeof message?.clientInfo?.platform === 'string' ? message.clientInfo.platform.trim() : '',
+      locale:
+        typeof message?.clientInfo?.locale === 'string' ? message.clientInfo.locale.trim() : '',
+      installId:
+        typeof message?.clientInfo?.installId === 'string'
+          ? message.clientInfo.installId.trim()
+          : '',
+      extensionVersion:
+        typeof message?.clientInfo?.extensionVersion === 'string'
+          ? message.clientInfo.extensionVersion.trim()
+          : '',
+      userAgent:
+        typeof message?.clientInfo?.userAgent === 'string'
+          ? message.clientInfo.userAgent.trim()
+          : '',
     },
     clientPublicJwk,
     credential,
@@ -339,10 +371,13 @@ function toNumber(value) {
 async function main() {
   const { positionals, options } = parseArgs(process.argv.slice(2));
   let config = loadConfig();
-  config.language = options.lang ? normalizeLanguage(options.lang) : normalizeLanguage(config.language);
-  config.extensionId = typeof options.extensionId === 'string' && options.extensionId.trim()
-    ? options.extensionId.trim()
-    : config.extensionId;
+  config.language = options.lang
+    ? normalizeLanguage(options.lang)
+    : normalizeLanguage(config.language);
+  config.extensionId =
+    typeof options.extensionId === 'string' && options.extensionId.trim()
+      ? options.extensionId.trim()
+      : config.extensionId;
   config = ensureClientKeys(config);
   saveConfig(config);
 
@@ -354,7 +389,17 @@ async function main() {
     return;
   }
 
-  const requiresPair = ['list', 'get', 'add', 'update', 'delete', 'restore', 'empty-trash', 'unpair', 'language'];
+  const requiresPair = [
+    'list',
+    'get',
+    'add',
+    'update',
+    'delete',
+    'restore',
+    'empty-trash',
+    'unpair',
+    'language',
+  ];
   if (requiresPair.includes(command) && command !== 'language') {
     const statusCheck = await callBridge(config, 'GET_PAIRING_STATUS');
     if (!statusCheck?.ok || !statusCheck?.paired) {
@@ -382,15 +427,19 @@ async function main() {
       callBridge(config, 'GET_PAIRING_STATUS'),
       callBridge(config, 'GET_VAULT_STATUS'),
     ]);
-    printOutput({
-      ok: Boolean(pairingStatus?.ok && vaultStatus?.ok),
-      data: {
-        paired: Boolean(pairingStatus?.paired),
-        pairingMode: pairingStatus?.pairingMode || 'none',
-        isUnlocked: Boolean(vaultStatus?.isUnlocked),
-        entryCount: Number(vaultStatus?.entryCount || 0),
+    printOutput(
+      {
+        ok: Boolean(pairingStatus?.ok && vaultStatus?.ok),
+        data: {
+          paired: Boolean(pairingStatus?.paired),
+          pairingMode: pairingStatus?.pairingMode || 'none',
+          isUnlocked: Boolean(vaultStatus?.isUnlocked),
+          entryCount: Number(vaultStatus?.entryCount || 0),
+        },
       },
-    }, options, t);
+      options,
+      t
+    );
     return;
   }
 
@@ -430,9 +479,13 @@ async function main() {
     const pass = typeof options.pass === 'string' ? options.pass : '';
     if (!title) throw new Error(t.titleRequired);
     if (!pass) throw new Error(t.passRequired);
-    const tags = typeof options.tags === 'string'
-      ? options.tags.split(',').map((item) => item.trim()).filter(Boolean)
-      : [];
+    const tags =
+      typeof options.tags === 'string'
+        ? options.tags
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean)
+        : [];
     const response = await callBridge(config, 'CREATE_VAULT_ENTRY', {
       entry: {
         title,
@@ -459,7 +512,10 @@ async function main() {
     if (typeof options.website === 'string') entry.website = options.website;
     if (typeof options.category === 'string') entry.category = options.category;
     if (typeof options.tags === 'string') {
-      entry.tags = options.tags.split(',').map((item) => item.trim()).filter(Boolean);
+      entry.tags = options.tags
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
     }
     const response = await callBridge(config, 'UPDATE_VAULT_ENTRY', { entryId: id, entry });
     if (!response?.ok) throw new Error(response?.error || 'UPDATE_FAILED');
@@ -505,4 +561,3 @@ main().catch((error) => {
   console.error(`${t.failed}: ${error instanceof Error ? error.message : String(error)}`);
   process.exitCode = 1;
 });
-

@@ -27,15 +27,18 @@ Older tags may be unsupported for security patches.
 Do not open public issues for security vulnerabilities.
 
 Primary contact:
+
 - Email: `admin@aegisvault.xyz`
 
 Recommended report content:
+
 1. Affected component and version/commit.
 2. Reproduction steps with clear preconditions.
 3. Impact and likely attack path.
 4. Optional PoC and mitigations.
 
 Target response times:
+
 - Acknowledgement: within 48 hours
 - Initial triage: within 5 business days
 - Critical fix target: within 10 days (when feasible)
@@ -54,18 +57,21 @@ We follow coordinated disclosure:
 The project is in active independent-audit preparation.
 
 Current policy:
+
 - Threat model and whitepaper are published in [`guvenlik/belgeler`](guvenlik/belgeler).
 - Static analysis runs in CI (`CodeQL`, `Semgrep`) for pull requests and pushes.
 - High-risk areas (crypto, vault storage, bridge auth, import/export, sync) require explicit security review.
 - Security-impacting changes should include tests and updated documentation.
 
 Planned external review channels:
+
 - OSTIF proposal submission
 - Mozilla MOSS submission
 - OpenSSF Security Review submission
 - OSS-Fuzz/ClusterFuzz assessment and submission package
 
 See:
+
 - [`guvenlik/belgeler/README_AUDIT_PREP_EN.md`](guvenlik/belgeler/README_AUDIT_PREP_EN.md)
 - [`guvenlik/belgeler/AUDIT_APPLICATION_PACK_EN.md`](guvenlik/belgeler/AUDIT_APPLICATION_PACK_EN.md)
 

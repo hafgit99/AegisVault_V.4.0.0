@@ -29,6 +29,7 @@ If OSS-Fuzz eligibility is limited, use ClusterFuzzLite or continuous local fuzz
 - [ ] Defined fuzz targets and expected bug classes
 - [ ] Build instructions and test corpus seed plan
 - [ ] Contact email for triage and reports
+- [ ] OSS-Fuzz project files prepared from templates in `guvenlik/belgeler/oss-fuzz-template/`
 
 ## Suggested submission text (template)
 
@@ -42,3 +43,12 @@ Repository: https://github.com/hafgit99/AegisVault_V.4.0.0
 
 - If accepted: integrate findings workflow into CI + security advisory process.
 - If not accepted: ship ClusterFuzzLite/Jazzer-based pipeline for parser-focused fuzzing.
+
+## Ready-to-edit templates
+
+Use:
+
+- `guvenlik/belgeler/oss-fuzz-template/project.yaml.template`
+- `guvenlik/belgeler/oss-fuzz-template/Dockerfile.template`
+- `guvenlik/belgeler/oss-fuzz-template/build.sh.template`
+- `guvenlik/belgeler/oss-fuzz-template/PR_CHECKLIST_EN.md`

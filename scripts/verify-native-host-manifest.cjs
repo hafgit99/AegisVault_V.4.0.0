@@ -42,11 +42,17 @@ if (firefoxManifest.path !== launcherPath) {
   fail('Firefox manifest launcher path mismatch');
 }
 
-if (!Array.isArray(chromiumManifest.allowed_origins) || chromiumManifest.allowed_origins.length === 0) {
+if (
+  !Array.isArray(chromiumManifest.allowed_origins) ||
+  chromiumManifest.allowed_origins.length === 0
+) {
   fail('Chromium manifest allowed_origins missing');
 }
 
-if (!Array.isArray(firefoxManifest.allowed_extensions) || firefoxManifest.allowed_extensions.length === 0) {
+if (
+  !Array.isArray(firefoxManifest.allowed_extensions) ||
+  firefoxManifest.allowed_extensions.length === 0
+) {
   fail('Firefox manifest allowed_extensions missing');
 }
 

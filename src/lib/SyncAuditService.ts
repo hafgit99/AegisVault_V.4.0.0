@@ -7,9 +7,7 @@ export class SyncAuditService {
     return SecureAppSettings.getSyncAudit();
   }
 
-  static recordEvent(
-    event: Omit<SyncAuditEvent, 'id' | 'at'> & { at?: string }
-  ): SyncAuditEvent {
+  static recordEvent(event: Omit<SyncAuditEvent, 'id' | 'at'> & { at?: string }): SyncAuditEvent {
     const nextEvent: SyncAuditEvent = {
       id: crypto.randomUUID(),
       at: event.at || new Date().toISOString(),

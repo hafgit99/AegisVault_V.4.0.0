@@ -2,6 +2,47 @@
 
 All notable changes to this project are documented in this file.
 
+## [4.2.1] - 2026-04-06
+
+### Added
+
+- **Vault Modularization**: Refactored monolithic `vaultService.ts` into 9 dedicated service modules under `src/lib/vault/`:
+  - `VaultAuthService` — Authentication, key derivation verification, legacy salt fallback
+  - `VaultBootstrapService` — Database initialization, IDB-to-SQLite migration orchestration
+  - `VaultCryptoService` — Field-level AES-256-GCM encryption/decryption with IV management
+  - `VaultEntryService` — CRUD operations for all vault entry types
+  - `VaultPinService` — PIN-based quick unlock with Argon2id verification
+  - `VaultSearchIndexer` — Encrypted search index build and lazy migration
+  - `VaultStorageService` — Low-level storage abstraction for SQLCipher/IDB
+  - `VaultTrashService` — Soft-delete, restore, auto-cleanup (30-day policy)
+  - `VaultAttachmentService` — File attachment encryption, storage, and retrieval
+- **Argon2WorkerService**: Non-blocking Argon2id key derivation via dedicated Web Worker (`src/workers/argon2.worker.ts`) with automatic WASM/main-thread fallback and worker failure recovery
+- **AegisError**: Centralized error taxonomy with typed error codes, bilingual messages, and structured error context
+- **SharingTransportService**: End-to-end encrypted credential sharing with ECDH receiver pairing, replay protection, and transport-level integrity verification
+- **ShareTransportModal**: UI component for guided sharing flow
+- **New React Hooks**: `useVaultData`, `useVaultExtension`, `useVaultSecurity`, `useVaultSession` for clean separation of vault state management
+- **30+ Branch Test Files**: Comprehensive branch coverage tests for all critical services including EmergencyAccess, BackupService, ExtensionBridge, ImportService, PasskeyBinding, SyncManager, VaultBootstrap, VaultManager, and more
+- **ESLint Hardening**: Zero-error, zero-warning lint pass with strict config
+- **Stryker Mutation Testing**: Pilot and full configuration for test quality validation
+
+### Changed
+
+- **711 unit tests** across 81 test files — all passing
+- **Coverage**: 87.7% statements, 75.3% branches, 90.6% functions, 89.4% lines
+- **i18n expansion**: Massive Turkish/English bilingual string expansion across all UI components
+- **ESLint config**: Relaxed noisy rules for pragmatic development while maintaining zero-error enforcement
+- **Extension bridge**: Improved form detection, content script reliability, and WebAuthn polyfill handling
+- **Build pipeline**: Updated Electron builder, Vite config, and TypeScript strict mode alignment
+- **Documentation**: Updated security governance docs, threat model, hardening plan, and audit preparation pack
+
+### Fixed
+
+- Unterminated template literal in `scripts/write-tests.cjs`
+- `@typescript-eslint/no-this-alias` error in Argon2 branch tests
+- Unused ESLint directive warnings across test files
+- Type-safety improvements across vault services and extension bridge
+- Encoding and readability issues in core documentation
+
 ## [Unreleased] - 2026-04-01
 
 ### Added

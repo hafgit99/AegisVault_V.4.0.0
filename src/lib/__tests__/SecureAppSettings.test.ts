@@ -474,18 +474,18 @@ describe('SecureAppSettings', () => {
 
   it('stores release trust checklist, approvals and history defensively', () => {
     SecureAppSettings.setReleaseTrustChecklist({
-      "releaseTrustPackageChecklist.external_audit.manifest": "2026-03-23T20:00:00.000Z",
+      'releaseTrustPackageChecklist.external_audit.manifest': '2026-03-23T20:00:00.000Z',
     });
     SecureAppSettings.setReleaseTrustApprovals({
-      external_audit_packet: "2026-03-23T20:05:00.000Z",
+      external_audit_packet: '2026-03-23T20:05:00.000Z',
     });
     SecureAppSettings.setReleaseTrustHistory([
       {
-        id: "rt-history-1",
-        at: "2026-03-23T20:05:00.000Z",
-        action: "owner_approved",
-        targetId: "external_audit_packet",
-        title: "External audit packet",
+        id: 'rt-history-1',
+        at: '2026-03-23T20:05:00.000Z',
+        action: 'owner_approved',
+        targetId: 'external_audit_packet',
+        title: 'External audit packet',
       },
     ]);
 
@@ -493,16 +493,18 @@ describe('SecureAppSettings', () => {
     const approvals = SecureAppSettings.getReleaseTrustApprovals();
     const history = SecureAppSettings.getReleaseTrustHistory();
 
-    checklist["releaseTrustPackageChecklist.external_audit.manifest"] = "mutated";
-    approvals.external_audit_packet = "mutated";
-    history[0].title = "mutated";
+    checklist['releaseTrustPackageChecklist.external_audit.manifest'] = 'mutated';
+    approvals.external_audit_packet = 'mutated';
+    history[0].title = 'mutated';
 
     expect(
-      SecureAppSettings.getReleaseTrustChecklist()["releaseTrustPackageChecklist.external_audit.manifest"]
-    ).toBe("2026-03-23T20:00:00.000Z");
+      SecureAppSettings.getReleaseTrustChecklist()[
+        'releaseTrustPackageChecklist.external_audit.manifest'
+      ]
+    ).toBe('2026-03-23T20:00:00.000Z');
     expect(SecureAppSettings.getReleaseTrustApprovals().external_audit_packet).toBe(
-      "2026-03-23T20:05:00.000Z"
+      '2026-03-23T20:05:00.000Z'
     );
-    expect(SecureAppSettings.getReleaseTrustHistory()[0]?.title).toBe("External audit packet");
+    expect(SecureAppSettings.getReleaseTrustHistory()[0]?.title).toBe('External audit packet');
   });
 });

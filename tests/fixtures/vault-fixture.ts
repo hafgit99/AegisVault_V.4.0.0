@@ -3,7 +3,7 @@ import { test as base, expect, type Page } from '@playwright/test';
 /**
  * Vault Test Fixture
  * Aegis Vault UI ile uyumlu reusable setup/teardown
- * 
+ *
  * NOT: Aegis Vault URL-based routing yerine React state-based navigation kullanır.
  * Tüm helper fonksiyonlar buna göre hazırlanmıştır.
  */
@@ -24,9 +24,11 @@ export { expect };
 // ─── Helper: Initialize sekmesine geç ────────────────────────────────────────
 export async function switchToInitializeTab(page: Page) {
   // "Initialize" tabını bul — i18n key: 'initialize', görünen metin değişebilir
-  const initTab = page.locator(
-    'button.login-tab-btn:has-text("Initialize"), button.login-tab-btn:has-text("Oluştur"), button.login-tab-btn:has-text("Yeni")'
-  ).first();
+  const initTab = page
+    .locator(
+      'button.login-tab-btn:has-text("Initialize"), button.login-tab-btn:has-text("Oluştur"), button.login-tab-btn:has-text("Yeni")'
+    )
+    .first();
   if (await initTab.isVisible()) {
     await initTab.click();
   }
@@ -34,9 +36,11 @@ export async function switchToInitializeTab(page: Page) {
 
 // ─── Helper: Unlock sekmesine geç ────────────────────────────────────────────
 export async function switchToUnlockTab(page: Page) {
-  const unlockTab = page.locator(
-    'button.login-tab-btn:has-text("Unlock"), button.login-tab-btn:has-text("Aç"), button.login-tab-btn:has-text("Kilidi")'
-  ).first();
+  const unlockTab = page
+    .locator(
+      'button.login-tab-btn:has-text("Unlock"), button.login-tab-btn:has-text("Aç"), button.login-tab-btn:has-text("Kilidi")'
+    )
+    .first();
   if (await unlockTab.isVisible()) {
     await unlockTab.click();
   }
@@ -49,15 +53,11 @@ export async function switchToUnlockTab(page: Page) {
  * 2. Master Password gir
  * 3. "Generate Secret" butonuna tıkla
  * 4. "Finalize Vault" butonuna tıkla (secret otomatik oluşturulur)
- * 
+ *
  * deviceSecret parametresi bu implementasyonda kullanılmaz çünkü
  * Aegis kendi secret key'ini otomatik üretip gösterir.
  */
-export async function setupNewVault(
-  page: Page,
-  masterPassword: string,
-  _deviceSecret?: string
-) {
+export async function setupNewVault(page: Page, masterPassword: string, _deviceSecret?: string) {
   // Initialize sekmesine geç
   await switchToInitializeTab(page);
 
@@ -86,11 +86,7 @@ export async function setupNewVault(
 }
 
 // ─── Helper: Login ────────────────────────────────────────────────────────────
-export async function loginVault(
-  page: Page,
-  masterPassword: string,
-  deviceSecret: string
-) {
+export async function loginVault(page: Page, masterPassword: string, deviceSecret: string) {
   // Unlock tabına geç (varsayılan)
   await switchToUnlockTab(page);
 
@@ -98,7 +94,10 @@ export async function loginVault(
   await page.waitForSelector('input.vault-login-input', { timeout: 8000 });
 
   // Master Password gir
-  await page.fill('input.vault-login-input[type="password"], input.vault-login-input:not([type="text"])', masterPassword);
+  await page.fill(
+    'input.vault-login-input[type="password"], input.vault-login-input:not([type="text"])',
+    masterPassword
+  );
 
   // Device Secret Key gir
   const secretInput = page.locator('input.vault-login-input[type="text"]');
@@ -107,7 +106,9 @@ export async function loginVault(
   }
 
   // Unlock tıkla
-  await page.click('button.vault-login-unlock-btn, button[type="submit"]:has-text("Unlock"), button[type="submit"]:has-text("Kilidi Aç")');
+  await page.click(
+    'button.vault-login-unlock-btn, button[type="submit"]:has-text("Unlock"), button[type="submit"]:has-text("Kilidi Aç")'
+  );
 
   // Dashboard göründükten sonra devam et
   await page.waitForSelector(
@@ -166,18 +167,23 @@ export async function addVaultEntry(
   );
 
   // Form yüklen
-  await page.waitForSelector(
-    'input[placeholder*="Title"], input[placeholder*="Başlık"]',
-    { timeout: 5000 }
-  );
+  await page.waitForSelector('input[placeholder*="Title"], input[placeholder*="Başlık"]', {
+    timeout: 5000,
+  });
 
   await page.fill('input[placeholder*="Title"], input[placeholder*="Başlık"]', options.title);
 
   if (options.username) {
-    await page.fill('input[placeholder*="Username"], input[placeholder*="Kullanıcı"]', options.username);
+    await page.fill(
+      'input[placeholder*="Username"], input[placeholder*="Kullanıcı"]',
+      options.username
+    );
   }
   if (options.password) {
-    await page.fill('input[placeholder*="Password"], input[placeholder*="Şifre"]', options.password);
+    await page.fill(
+      'input[placeholder*="Password"], input[placeholder*="Şifre"]',
+      options.password
+    );
   }
   if (options.website) {
     await page.fill('input[placeholder*="Website"], input[placeholder*="URL"]', options.website);

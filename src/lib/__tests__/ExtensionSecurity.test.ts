@@ -6,10 +6,12 @@ describe('Extension Bridge Security (P0-2)', () => {
   let messageEvents: MessageEvent[] = [];
 
   // Simulate window message environment
-  const mockPostMessage = vi.fn((message: unknown, targetOrigin: string | WindowPostMessageOptions | undefined) => {
-    // Collect intercepted messages locally to verify logic
-    messageEvents.push({ data: message, origin: targetOrigin } as MessageEvent);
-  });
+  const mockPostMessage = vi.fn(
+    (message: unknown, targetOrigin: string | WindowPostMessageOptions | undefined) => {
+      // Collect intercepted messages locally to verify logic
+      messageEvents.push({ data: message, origin: targetOrigin } as MessageEvent);
+    }
+  );
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -26,7 +28,10 @@ describe('Extension Bridge Security (P0-2)', () => {
 
     // Simulate sending sync (simplified VaultContext logic)
     if (fakeNonce && typeof window !== 'undefined') {
-      window.postMessage({ type: 'AEGIS_SYNC_VAULT', payload: dummySyncPayload, nonce: fakeNonce }, expectedOrigin);
+      window.postMessage(
+        { type: 'AEGIS_SYNC_VAULT', payload: dummySyncPayload, nonce: fakeNonce },
+        expectedOrigin
+      );
     }
 
     expect(mockPostMessage).toHaveBeenCalledTimes(1);
@@ -46,13 +51,12 @@ describe('Extension Bridge Security (P0-2)', () => {
   });
 
   it('ignores postMessages originating from untrusted domains (WXT Validation)', () => {
-    const TRUSTED_ORIGINS = [
-      'https://app.aegisvault.xyz',
-      'https://aegisvault.xyz'
-    ];
+    const TRUSTED_ORIGINS = ['https://app.aegisvault.xyz', 'https://aegisvault.xyz'];
 
     const maliciousOrigin = 'https://evil-phishing-site.com';
-    const isTrusted = TRUSTED_ORIGINS.includes(maliciousOrigin) || maliciousOrigin.startsWith('chrome-extension://');
+    const isTrusted =
+      TRUSTED_ORIGINS.includes(maliciousOrigin) ||
+      maliciousOrigin.startsWith('chrome-extension://');
 
     expect(isTrusted).toBe(false); // Origin logic properly blocks phishing attempt
   });
@@ -64,7 +68,7 @@ describe('Extension Bridge Security (P0-2)', () => {
 describe('Extension Bridge Allowlist Hardening (P1-1)', () => {
   const ALLOWED_EXTENSION_IDS = [
     'gddgomiecgnihlljfkogfjgakedoielk',
-    'kjbdjkfijeflhhbnkjgkmccljifidpcc'
+    'kjbdjkfijeflhhbnkjgkmccljifidpcc',
   ];
 
   it('rejects extension IDs not in allowlist (race condition protection)', () => {
@@ -109,14 +113,19 @@ describe('Extension Bridge Allowlist Hardening (P1-1)', () => {
 describe('Electron Sync Server Origin Validation (P0-1)', () => {
   const ALLOWLIST_EXTENSION_IDS = [
     'gddgomiecgnihlljfkogfjgakedoielk',
-    'kjbdjkfijeflhhbnkjgkmccljifidpcc'
+    'kjbdjkfijeflhhbnkjgkmccljifidpcc',
   ];
 
   function isOriginAllowed(origin: string | null): boolean {
     if (!origin) return false;
 
     // Yerel Dashboard (PWA) originleri
-    if (origin === 'http://localhost:5173' || origin === 'http://127.0.0.1:5173' || origin === 'file://' || origin === 'app://localhost') {
+    if (
+      origin === 'http://localhost:5173' ||
+      origin === 'http://127.0.0.1:5173' ||
+      origin === 'file://' ||
+      origin === 'app://localhost'
+    ) {
       return true;
     }
 
@@ -169,7 +178,8 @@ describe('Electron Sync Server Origin Validation (P0-1)', () => {
 // 🔒 CSP SECURITY TESTS (P0-2 HARDENING)
 // ─────────────────────────────────────────────────────────────────
 describe('Content Security Policy (P0-2)', () => {
-  const CSP_STRING = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; connect-src 'self' https://api.pwnedpasswords.com http://127.0.0.1:23456 http://localhost:23456; font-src 'self' https://fonts.gstatic.com data:; object-src 'none'; base-uri 'self'";
+  const CSP_STRING =
+    "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; connect-src 'self' https://api.pwnedpasswords.com http://127.0.0.1:23456 http://localhost:23456; font-src 'self' https://fonts.gstatic.com data:; object-src 'none'; base-uri 'self'";
 
   it('does not contain unsafe-eval', () => {
     expect(CSP_STRING).not.toContain("'unsafe-eval'");

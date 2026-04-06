@@ -27,7 +27,9 @@ export class TotpVaultPolicy {
     const existingById = this.getTwoFactorVaultProfile();
     if (existingById) return existingById;
 
-    const existingByName = VaultManager.getProfiles().find((p) => p.name === TOTP_VAULT_DEFAULT_NAME);
+    const existingByName = VaultManager.getProfiles().find(
+      (p) => p.name === TOTP_VAULT_DEFAULT_NAME
+    );
     if (existingByName) {
       SecureAppSettings.setTotpVaultId(existingByName.id);
       return existingByName;

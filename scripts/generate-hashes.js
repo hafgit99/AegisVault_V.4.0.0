@@ -4,12 +4,13 @@ const { join, extname } = await import('node:path');
 
 async function generateHashes() {
   const releaseDir = join(process.cwd(), 'release');
-  
+
   try {
     const files = await readdir(releaseDir);
-    const targets = files.filter(f => 
-      ['.exe', '.dmg', '.AppImage', '.deb', '.zip'].includes(extname(f)) && 
-      !f.includes('.blockmap')
+    const targets = files.filter(
+      (f) =>
+        ['.exe', '.dmg', '.AppImage', '.deb', '.zip'].includes(extname(f)) &&
+        !f.includes('.blockmap')
     );
 
     if (targets.length === 0) {
@@ -21,7 +22,7 @@ async function generateHashes() {
       const filePath = join(releaseDir, file);
       const fileBuffer = await readFile(filePath);
       const hash = createHash('sha256').update(fileBuffer).digest('hex');
-      
+
       const hashFilePath = join(releaseDir, `${file}.sha256`);
       await writeFile(hashFilePath, hash);
       console.log(`✅ Generated hash file: release/${file}.sha256`);

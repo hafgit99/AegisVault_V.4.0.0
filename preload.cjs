@@ -1,6 +1,6 @@
 /**
  * Aegis Vault — Electron Preload Script
- * 
+ *
  * SECURITY: Bu dosya contextBridge ile güvenli IPC API'yi renderer'a açar.
  * nodeIntegration: false ve contextIsolation: true ile çalışır.
  * Renderer tarafında `window.aegisElectron` üzerinden erişilir.
@@ -28,26 +28,32 @@ ipcRenderer.on('aegis-domain-credentials-request', async (_event, payload) => {
           pass: String(item?.pass || ''),
           website: String(item?.website || ''),
           category: String(item?.category || ''),
-          cardDetails: item?.cardDetails && typeof item.cardDetails === 'object' ? {
-            cardholder_name: String(item.cardDetails.cardholder_name || ''),
-            card_number: String(item.cardDetails.card_number || ''),
-            brand: String(item.cardDetails.brand || ''),
-            expiry_month: String(item.cardDetails.expiry_month || ''),
-            expiry_year: String(item.cardDetails.expiry_year || ''),
-            cvv: String(item.cardDetails.cvv || ''),
-            pin: String(item.cardDetails.pin || ''),
-            billing_zip: String(item.cardDetails.billing_zip || ''),
-            billing_address: String(item.cardDetails.billing_address || ''),
-          } : null,
-          identityDetails: item?.identityDetails && typeof item.identityDetails === 'object' ? {
-            document_type: String(item.identityDetails.document_type || ''),
-            identity_number: String(item.identityDetails.identity_number || ''),
-            issuing_country: String(item.identityDetails.issuing_country || ''),
-            nationality: String(item.identityDetails.nationality || ''),
-            date_of_birth: String(item.identityDetails.date_of_birth || ''),
-            issued_at: String(item.identityDetails.issued_at || ''),
-            expires_at: String(item.identityDetails.expires_at || ''),
-          } : null,
+          cardDetails:
+            item?.cardDetails && typeof item.cardDetails === 'object'
+              ? {
+                  cardholder_name: String(item.cardDetails.cardholder_name || ''),
+                  card_number: String(item.cardDetails.card_number || ''),
+                  brand: String(item.cardDetails.brand || ''),
+                  expiry_month: String(item.cardDetails.expiry_month || ''),
+                  expiry_year: String(item.cardDetails.expiry_year || ''),
+                  cvv: String(item.cardDetails.cvv || ''),
+                  pin: String(item.cardDetails.pin || ''),
+                  billing_zip: String(item.cardDetails.billing_zip || ''),
+                  billing_address: String(item.cardDetails.billing_address || ''),
+                }
+              : null,
+          identityDetails:
+            item?.identityDetails && typeof item.identityDetails === 'object'
+              ? {
+                  document_type: String(item.identityDetails.document_type || ''),
+                  identity_number: String(item.identityDetails.identity_number || ''),
+                  issuing_country: String(item.identityDetails.issuing_country || ''),
+                  nationality: String(item.identityDetails.nationality || ''),
+                  date_of_birth: String(item.identityDetails.date_of_birth || ''),
+                  issued_at: String(item.identityDetails.issued_at || ''),
+                  expires_at: String(item.identityDetails.expires_at || ''),
+                }
+              : null,
         }))
       : [];
 
@@ -76,11 +82,13 @@ ipcRenderer.on('aegis-domain-passkeys-request', async (_event, payload) => {
           title: String(item?.title || ''),
           username: String(item?.username || ''),
           website: String(item?.website || ''),
-          passkeyMetadata: item?.passkeyMetadata ? {
-            credential_id: String(item.passkeyMetadata.credential_id || ''),
-            rp_id: String(item.passkeyMetadata.rp_id || ''),
-            mode: String(item.passkeyMetadata.mode || ''),
-          } : null,
+          passkeyMetadata: item?.passkeyMetadata
+            ? {
+                credential_id: String(item.passkeyMetadata.credential_id || ''),
+                rp_id: String(item.passkeyMetadata.rp_id || ''),
+                mode: String(item.passkeyMetadata.mode || ''),
+              }
+            : null,
         }))
       : [];
 
@@ -144,7 +152,8 @@ ipcRenderer.on('aegis-autosave-credential-request', async (_event, payload) => {
 ipcRenderer.on('aegis-vault-cli-request', async (_event, payload) => {
   const requestId = typeof payload?.requestId === 'string' ? payload.requestId : '';
   const operation = typeof payload?.operation === 'string' ? payload.operation : '';
-  const requestPayload = payload?.payload && typeof payload.payload === 'object' ? payload.payload : {};
+  const requestPayload =
+    payload?.payload && typeof payload.payload === 'object' ? payload.payload : {};
 
   if (!requestId || !operation) return;
 
@@ -227,5 +236,5 @@ contextBridge.exposeInMainWorld('aegisElectron', {
   /**
    * Electron ortamında çalışıp çalışmadığını belirtir.
    */
-  isElectron: true
+  isElectron: true,
 });

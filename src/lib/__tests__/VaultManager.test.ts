@@ -26,10 +26,10 @@ describe('VaultManager', () => {
 
   it('creates, renames, recolors and clones custom profiles safely', () => {
     vi.spyOn(Date, 'now').mockReturnValue(1700000000000);
-    vi.spyOn(Math, 'random').mockReturnValue(0.123456789);
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('4fzzzx12-aaaa-bbbb-cccc-ddddeeeeffff');
 
     const created = VaultManager.createProfile(' Work Vault ');
-    expect(created.id).toBe('vault_1700000000000_4fzzzx');
+    expect(created.id).toBe('vault_1700000000000_4fzzzx12');
     expect(created.name).toBe('Work Vault');
     expect(created.dbName).toBe(`aegis_opfs_${created.id}`);
 
@@ -51,10 +51,10 @@ describe('VaultManager', () => {
 
   it('prevents deleting the default profile and reassigns active vault when needed', () => {
     vi.spyOn(Date, 'now').mockReturnValue(1700000000000);
-    const randomSpy = vi.spyOn(Math, 'random');
-    randomSpy
-      .mockReturnValueOnce(0.111111111)
-      .mockReturnValueOnce(0.222222222);
+    const randomUuidSpy = vi.spyOn(crypto, 'randomUUID');
+    randomUuidSpy
+      .mockReturnValueOnce('11111111-aaaa-bbbb-cccc-ddddeeeeffff')
+      .mockReturnValueOnce('22222222-aaaa-bbbb-cccc-ddddeeeeffff');
 
     const first = VaultManager.createProfile('Work Vault');
     const second = VaultManager.createProfile('Travel Vault');
@@ -72,7 +72,7 @@ describe('VaultManager', () => {
     expect(VaultManager.deleteProfile(second.id)).toBe(true);
     expect(VaultManager.getActiveVaultId()).toBe('default');
 
-    randomSpy.mockRestore();
+    randomUuidSpy.mockRestore();
     vi.restoreAllMocks();
   });
 });

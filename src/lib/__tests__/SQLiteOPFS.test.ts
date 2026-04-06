@@ -9,12 +9,7 @@ vi.mock('sql.js/dist/sql-wasm.wasm?url', () => ({
   default: 'mock-sql-wasm-url',
 }));
 
-import {
-  SQLiteOPFS,
-  clearAllOPFSFiles,
-  deleteOPFSFile,
-  isOPFSAvailable,
-} from '../SQLiteOPFS';
+import { SQLiteOPFS, clearAllOPFSFiles, deleteOPFSFile, isOPFSAvailable } from '../SQLiteOPFS';
 
 type FakeStmtRow = Record<string, unknown>;
 
@@ -42,7 +37,10 @@ class FakeStatement {
 class FakeDb {
   public passwords = new Map<number, Record<string, unknown>>();
   public metadata = new Map<string, string>();
-  public attachments = new Map<string, { id: string; entry_id: number; iv: Uint8Array; encrypted_data: Uint8Array }>();
+  public attachments = new Map<
+    string,
+    { id: string; entry_id: number; iv: Uint8Array; encrypted_data: Uint8Array }
+  >();
   public lastSql = '';
   public sqlHistory: string[] = [];
   public close = vi.fn();
@@ -116,12 +114,14 @@ class FakeDb {
     }
 
     if (sql === 'PRAGMA table_info(passwords)') {
-      return [{
-        values: [
-          [0, 'id', 'INTEGER', 0, null, 1],
-          [1, 'title', 'TEXT', 0, null, 0],
-        ],
-      }];
+      return [
+        {
+          values: [
+            [0, 'id', 'INTEGER', 0, null, 1],
+            [1, 'title', 'TEXT', 0, null, 0],
+          ],
+        },
+      ];
     }
 
     return [];
@@ -255,24 +255,24 @@ describe('SQLiteOPFS', () => {
 
   it('5. open() initializes and migrates schema', async () => {
     const sqlite = new SQLiteOPFS('init-test');
-    
+
     // Mock navigator.storage.getDirectory for readOPFSFile
     const mockFile = {
       getFile: vi.fn().mockResolvedValue({
-        arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8))
+        arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
       }),
       createWritable: vi.fn().mockResolvedValue({
         write: vi.fn(),
-        close: vi.fn()
-      })
+        close: vi.fn(),
+      }),
     };
     const mockDir = {
       getFileHandle: vi.fn().mockResolvedValue(mockFile),
-      removeEntry: vi.fn()
+      removeEntry: vi.fn(),
     };
     Object.defineProperty(navigator, 'storage', {
       value: { getDirectory: vi.fn().mockResolvedValue(mockDir) },
-      configurable: true
+      configurable: true,
     });
 
     // Mock sql.js Database constructor
@@ -281,7 +281,7 @@ describe('SQLiteOPFS', () => {
     (initSqlJsMock.default as any).mockResolvedValue({ Database: Database });
 
     await sqlite.open();
-    
+
     expect(sqlite.isOpen).toBe(true);
   });
 });

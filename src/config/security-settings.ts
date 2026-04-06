@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { SecureAppSettings } from '../lib/SecureAppSettings';
 
 export const IDLE_TIMEOUT_OPTIONS = [
-  { label: 'Never ♾️', value: 0 },
+  { label: 'Never ??', value: 0 },
   { label: '1 minute', value: 60 },
   { label: '5 minutes', value: 300 },
   { label: '15 minutes', value: 900 },
@@ -19,45 +19,88 @@ export const IDLE_TIMEOUT_OPTIONS = [
 export function useAutoLock(onLock: () => void, isUnlocked: boolean) {
   const [version, setVersion] = useState(0);
 
-  // Ayar değişikliklerini dinle
   useEffect(() => {
-    const onSettingChanged = (event: Event) => {
-      const customEvent = event as CustomEvent<{ key?: string }>;
-      // Herhangi bir güvenlik ayarı değiştiğinde versiyonu güncelle (autoLockTime dahil)
+    const onSettingChanged = () => {
       setVersion((v) => v + 1);
     };
     window.addEventListener('aegis-secure-setting-changed', onSettingChanged as EventListener);
-    return () => window.removeEventListener('aegis-secure-setting-changed', onSettingChanged as EventListener);
+    return () =>
+      window.removeEventListener('aegis-secure-setting-changed', onSettingChanged as EventListener);
   }, []);
-  
+
   useEffect(() => {
     if (!isUnlocked) return;
 
     let lastActivityTime = Date.now();
+    let lockTimer: ReturnType<typeof setTimeout> | null = null;
+    let idleHandle: number | null = null;
+
+    const getCurrentTimeoutMs = (): number => {
+      const autoLockMinutes = SecureAppSettings.getAutoLockTime();
+      return Math.max(0, autoLockMinutes * 60 * 1000);
+    };
+
+    const scheduleNextCheck = () => {
+      if (lockTimer) {
+        clearTimeout(lockTimer);
+        lockTimer = null;
+      }
+      if (idleHandle !== null && 'cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleHandle);
+        idleHandle = null;
+      }
+
+      const timeoutMs = getCurrentTimeoutMs();
+      if (timeoutMs <= 0) return;
+
+      const elapsed = Date.now() - lastActivityTime;
+      const remainingMs = Math.max(250, timeoutMs - elapsed);
+
+      lockTimer = setTimeout(() => {
+        const runLockCheck = () => {
+          const currentTimeoutMs = getCurrentTimeoutMs();
+          if (currentTimeoutMs <= 0) return;
+
+          const currentElapsed = Date.now() - lastActivityTime;
+          if (currentElapsed >= currentTimeoutMs) {
+            onLock();
+            return;
+          }
+          scheduleNextCheck();
+        };
+
+        if ('requestIdleCallback' in window) {
+          idleHandle = window.requestIdleCallback(() => runLockCheck(), { timeout: 1000 });
+        } else {
+          runLockCheck();
+        }
+      }, remainingMs);
+    };
 
     const userActivity = () => {
       lastActivityTime = Date.now();
+      scheduleNextCheck();
     };
 
-    // Monitör user activity (fare, klavye, dokunmatik, ekran kaydırma)
     const events = ['click', 'keydown', 'mousemove', 'touchstart', 'scroll', 'mousedown'];
-    events.forEach(e => window.addEventListener(e, userActivity));
+    events.forEach((e) => window.addEventListener(e, userActivity));
 
-    const lockInterval = setInterval(() => {
-      const elapsed = (Date.now() - lastActivityTime) / 1000;
-      
-      // Merkezi ayardan güncel kilit süresini al (Dakikayı saniyeye çevir)
-      const autoLockMinutes = SecureAppSettings.getAutoLockTime();
-      const currentTimeoutSeconds = autoLockMinutes * 60;
-      
-      if (currentTimeoutSeconds > 0 && elapsed >= currentTimeoutSeconds) {
-        onLock();
+    const onVisibilityChanged = () => {
+      if (document.visibilityState === 'visible') {
+        scheduleNextCheck();
       }
-    }, 10000); // Her 10 saniyede bir kontrol et
-    
+    };
+    document.addEventListener('visibilitychange', onVisibilityChanged);
+
+    scheduleNextCheck();
+
     return () => {
-      clearInterval(lockInterval);
-      events.forEach(e => window.removeEventListener(e, userActivity));
+      if (lockTimer) clearTimeout(lockTimer);
+      if (idleHandle !== null && 'cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleHandle);
+      }
+      document.removeEventListener('visibilitychange', onVisibilityChanged);
+      events.forEach((e) => window.removeEventListener(e, userActivity));
     };
   }, [isUnlocked, onLock, version]);
 }

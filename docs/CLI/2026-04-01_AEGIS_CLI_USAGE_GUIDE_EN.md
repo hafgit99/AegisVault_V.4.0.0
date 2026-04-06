@@ -8,6 +8,7 @@ Version: Aegis CLI v1 (compatible with Aegis Vault 4.2.x)
 Aegis CLI lets you manage your vault from the command line through the secure desktop bridge.
 
 Core capabilities:
+
 - CLI-desktop pairing (`pair`)
 - Status checks (`status`)
 - Entry listing/search (`list`)
@@ -27,6 +28,7 @@ npm run cli -- help
 ```
 
 Note: On first run, CLI creates a local config file:
+
 - Windows: `C:\Users\<user>\.aegis-vault\cli-config.json`
 - macOS/Linux: `~/.aegis-vault/cli-config.json`
 
@@ -80,6 +82,7 @@ npm run cli -- status
 ```
 
 Output fields:
+
 - `paired`: whether CLI is paired
 - `isUnlocked`: whether vault is unlocked
 - `entryCount`: entry count
@@ -105,6 +108,7 @@ npm run cli -- list --searchScope title
 ```
 
 Supported options:
+
 - `--query <text>`
 - `--category <category>`
 - `--scope active|trash`
@@ -129,6 +133,7 @@ npm run cli -- add --title "GitHub" --username "user@example.com" --pass "Strong
 ```
 
 Options:
+
 - Required: `--title`, `--pass`
 - Optional: `--username`, `--website`, `--category`, `--tags`
 
@@ -189,6 +194,7 @@ npm run cli -- status --lang en
 ```
 
 Use with:
+
 - `list`, `get`, `add`, `update`, `delete`, `restore`, `empty-trash`, `pair`, `status`
 
 ## 7. JSON Output for Automation
@@ -213,18 +219,22 @@ $obj.data | Format-Table id,title,username,website
 ## 8.1 Pairing required error
 
 Symptom:
+
 - `Run aegis-cli pair before this operation.`
 
 Fix:
+
 1. `npm run cli -- pair`
 2. Retry command
 
 ## 8.2 `VAULT_LOCKED`
 
 Symptom:
+
 - List/CRUD commands fail with lock-related error
 
 Fix:
+
 1. Open Aegis desktop
 2. Unlock vault
 3. Retry command
@@ -232,18 +242,22 @@ Fix:
 ## 8.3 `FORBIDDEN_EXTENSION_ID`
 
 Symptom:
+
 - Bridge allowlist rejection
 
 Fix:
+
 1. Check native host allowlist setup
 2. Optionally set `AEGIS_CLI_EXTENSION_ID` for a valid ID
 
 ## 8.4 `NATIVE_BRIDGE_TIMEOUT` / `NATIVE_BRIDGE_EOF`
 
 Symptom:
+
 - Bridge timeout/disconnect
 
 Fix:
+
 1. Ensure desktop app is running
 2. Restart native bridge
 3. Retry
@@ -275,4 +289,3 @@ npm run cli -- list --query "github"
 3. `list --query ...`
 4. `add` or `update`
 5. `delete` / `restore` when needed
-

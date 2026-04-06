@@ -78,10 +78,7 @@ const getPrimaryAssignment = (
 };
 
 export class SharingOverviewService {
-  static buildReport(
-    entries: VaultEntry[],
-    options?: { now?: number }
-  ): SharingOverviewReport {
+  static buildReport(entries: VaultEntry[], options?: { now?: number }): SharingOverviewReport {
     const now = options?.now ?? Date.now();
     const assignmentsMap = VaultSharingLinkService.getAssignmentsMap();
     const spaces = VaultSharingLinkService.getSharedSpaces();

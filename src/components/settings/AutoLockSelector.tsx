@@ -3,18 +3,20 @@ import { IDLE_TIMEOUT_OPTIONS } from '../../config/security-settings';
 import { SecureAppSettings } from '../../lib/SecureAppSettings';
 
 export const AutoLockSelector: React.FC = () => {
-  const [timeoutSec, setTimeoutSec] = useState<number>(() => SecureAppSettings.getAutoLockTime() * 60);
+  const [timeoutSec, setTimeoutSec] = useState<number>(
+    () => SecureAppSettings.getAutoLockTime() * 60
+  );
   const [saving, setSaving] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = parseInt(e.target.value, 10);
     setTimeoutSec(val);
     setSaving(true);
-    
+
     // Convert seconds to minutes for the unified setting
     const minutes = val / 60;
     SecureAppSettings.setAutoLockTime(minutes);
-    
+
     setTimeout(() => {
       setSaving(false);
     }, 500);
@@ -25,8 +27,8 @@ export const AutoLockSelector: React.FC = () => {
       <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>
         ⏱️ Auto-Lock Timeout
       </label>
-      <select 
-        value={timeoutSec} 
+      <select
+        value={timeoutSec}
         onChange={handleChange}
         style={{
           width: '100%',
@@ -36,7 +38,7 @@ export const AutoLockSelector: React.FC = () => {
           background: 'var(--surface-color)',
           color: 'var(--text-color)',
           outline: 'none',
-          cursor: 'pointer'
+          cursor: 'pointer',
         }}
       >
         {IDLE_TIMEOUT_OPTIONS.map((opt) => (
@@ -45,14 +47,18 @@ export const AutoLockSelector: React.FC = () => {
           </option>
         ))}
       </select>
-      
+
       <p style={{ marginTop: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-        {timeoutSec === 0 
-          ? "Vault will never lock automatically. Please lock it manually." 
+        {timeoutSec === 0
+          ? 'Vault will never lock automatically. Please lock it manually.'
           : `Vault will automatically lock after ${timeoutSec / 60} ${timeoutSec === 60 ? 'minute' : 'minutes'} of inactivity.`}
       </p>
-      
-      {saving && <span style={{ fontSize: '0.8rem', color: 'var(--accent-color)' }}>Saved automatically.</span>}
+
+      {saving && (
+        <span style={{ fontSize: '0.8rem', color: 'var(--accent-color)' }}>
+          Saved automatically.
+        </span>
+      )}
     </div>
   );
 };

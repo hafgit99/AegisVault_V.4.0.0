@@ -1,4 +1,11 @@
-import React, { Component, type ErrorInfo, type ReactNode, useEffect, useMemo, useState } from "react";
+import React, {
+  Component,
+  type ErrorInfo,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 type DiagnosticEvent = {
   at?: string;
@@ -44,55 +51,61 @@ type WindowWithElectronApi = Window &
 
 const MESSAGES = {
   en: {
-    title: "Aegis Vault recovery screen",
-    subtitle: "A startup or renderer problem was detected. Review the diagnostics below and try reloading the app.",
-    diagnostics: "Diagnostics",
-    summary: "Summary",
-    recentEvents: "Recent events",
-    noEvents: "No recorded events.",
-    reload: "Reload app",
-    quit: "Quit app",
-    packaged: "Packaged mode",
-    bridge: "Local bridge",
-    pairings: "Pairing records",
-    appVersion: "App version",
-    platform: "Platform",
-    fatalError: "Captured error",
-    checks: "Startup checks",
+    title: 'Aegis Vault recovery screen',
+    subtitle:
+      'A startup or renderer problem was detected. Review the diagnostics below and try reloading the app.',
+    diagnostics: 'Diagnostics',
+    summary: 'Summary',
+    recentEvents: 'Recent events',
+    noEvents: 'No recorded events.',
+    reload: 'Reload app',
+    quit: 'Quit app',
+    packaged: 'Packaged mode',
+    bridge: 'Local bridge',
+    pairings: 'Pairing records',
+    appVersion: 'App version',
+    platform: 'Platform',
+    fatalError: 'Captured error',
+    checks: 'Startup checks',
   },
   tr: {
-    title: "Aegis Vault kurtarma ekrani",
-    subtitle: "Baslangic veya renderer tarafinda bir sorun algilandi. Asagidaki tani bilgisini inceleyip uygulamayi yeniden yuklemeyi deneyin.",
-    diagnostics: "Tani bilgisi",
-    summary: "Ozet",
-    recentEvents: "Son olaylar",
-    noEvents: "Kayitli olay yok.",
-    reload: "Uygulamayi yeniden yukle",
-    quit: "Uygulamayi kapat",
-    packaged: "Paketli calisma",
-    bridge: "Yerel kopru",
-    pairings: "Eslesme kaydi",
-    appVersion: "Uygulama surumu",
-    platform: "Platform",
-    fatalError: "Yakalanan hata",
-    checks: "Baslangic kontrolleri",
+    title: 'Aegis Vault kurtarma ekrani',
+    subtitle:
+      'Baslangic veya renderer tarafinda bir sorun algilandi. Asagidaki tani bilgisini inceleyip uygulamayi yeniden yuklemeyi deneyin.',
+    diagnostics: 'Tani bilgisi',
+    summary: 'Ozet',
+    recentEvents: 'Son olaylar',
+    noEvents: 'Kayitli olay yok.',
+    reload: 'Uygulamayi yeniden yukle',
+    quit: 'Uygulamayi kapat',
+    packaged: 'Paketli calisma',
+    bridge: 'Yerel kopru',
+    pairings: 'Eslesme kaydi',
+    appVersion: 'Uygulama surumu',
+    platform: 'Platform',
+    fatalError: 'Yakalanan hata',
+    checks: 'Baslangic kontrolleri',
   },
 } as const;
 
-const normalizeLanguage = (value?: string) => (value || "").toLowerCase().startsWith("tr") ? "tr" : "en";
+const normalizeLanguage = (value?: string) =>
+  (value || '').toLowerCase().startsWith('tr') ? 'tr' : 'en';
 
 function useFailSafeLanguage() {
-  const [language, setLanguage] = useState<"en" | "tr">(() =>
-    normalizeLanguage(navigator.language) as "en" | "tr"
+  const [language, setLanguage] = useState<'en' | 'tr'>(
+    () => normalizeLanguage(navigator.language) as 'en' | 'tr'
   );
 
   useEffect(() => {
     const electronApi = (window as WindowWithElectronApi).aegisElectron;
-    void electronApi?.getUiLanguage?.().then((result) => {
-      setLanguage(normalizeLanguage(result?.language) as "en" | "tr");
-    }).catch(() => {
-      setLanguage(normalizeLanguage(navigator.language) as "en" | "tr");
-    });
+    void electronApi
+      ?.getUiLanguage?.()
+      .then((result) => {
+        setLanguage(normalizeLanguage(result?.language) as 'en' | 'tr');
+      })
+      .catch(() => {
+        setLanguage(normalizeLanguage(navigator.language) as 'en' | 'tr');
+      });
   }, []);
 
   return { language, text: MESSAGES[language] };
@@ -104,20 +117,23 @@ function DiagnosticScreen({ error }: { error?: Error | null }) {
 
   useEffect(() => {
     const electronApi = (window as WindowWithElectronApi).aegisElectron;
-    void electronApi?.getStartupDiagnostics?.().then((result) => {
-      setDiagnostics(result);
-    }).catch(() => {
-      setDiagnostics(null);
-    });
+    void electronApi
+      ?.getStartupDiagnostics?.()
+      .then((result) => {
+        setDiagnostics(result);
+      })
+      .catch(() => {
+        setDiagnostics(null);
+      });
   }, []);
 
   const summaryRows = useMemo(
     () => [
-      { label: text.packaged, value: diagnostics?.summary?.isPackaged ? "yes" : "no" },
-      { label: text.bridge, value: diagnostics?.summary?.nativeBridgeServerActive ? "ok" : "down" },
+      { label: text.packaged, value: diagnostics?.summary?.isPackaged ? 'yes' : 'no' },
+      { label: text.bridge, value: diagnostics?.summary?.nativeBridgeServerActive ? 'ok' : 'down' },
       { label: text.pairings, value: String(diagnostics?.summary?.pairingCount ?? 0) },
-      { label: text.appVersion, value: diagnostics?.summary?.appVersion || "-" },
-      { label: text.platform, value: diagnostics?.summary?.platform || "-" },
+      { label: text.appVersion, value: diagnostics?.summary?.appVersion || '-' },
+      { label: text.platform, value: diagnostics?.summary?.platform || '-' },
     ],
     [diagnostics, text]
   );
@@ -151,7 +167,10 @@ function DiagnosticScreen({ error }: { error?: Error | null }) {
               <h2 className="text-lg font-semibold">{text.summary}</h2>
               <div className="mt-4 space-y-3 text-sm">
                 {summaryRows.map((row) => (
-                  <div key={row.label} className="flex items-center justify-between gap-4 rounded-xl bg-black/10 px-3 py-2">
+                  <div
+                    key={row.label}
+                    className="flex items-center justify-between gap-4 rounded-xl bg-black/10 px-3 py-2"
+                  >
                     <span className="text-slate-300">{row.label}</span>
                     <span className="font-medium text-slate-50">{row.value}</span>
                   </div>
@@ -166,11 +185,21 @@ function DiagnosticScreen({ error }: { error?: Error | null }) {
                   <div key={check.key || check.label} className="rounded-xl bg-black/10 px-3 py-3">
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-slate-200">{check.label}</span>
-                      <span className={check.status === "ok" ? "text-emerald-300" : check.status === "warn" ? "text-amber-300" : "text-rose-300"}>
+                      <span
+                        className={
+                          check.status === 'ok'
+                            ? 'text-emerald-300'
+                            : check.status === 'warn'
+                              ? 'text-amber-300'
+                              : 'text-rose-300'
+                        }
+                      >
                         {check.status}
                       </span>
                     </div>
-                    {check.detail && <div className="mt-1 break-all text-xs text-slate-400">{check.detail}</div>}
+                    {check.detail && (
+                      <div className="mt-1 break-all text-xs text-slate-400">{check.detail}</div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -181,14 +210,23 @@ function DiagnosticScreen({ error }: { error?: Error | null }) {
             <h2 className="text-lg font-semibold">{text.recentEvents}</h2>
             <div className="mt-4 space-y-3 text-sm">
               {(diagnostics?.recentEvents?.length ?? 0) === 0 && (
-                <div className="rounded-xl bg-black/10 px-3 py-3 text-slate-300">{text.noEvents}</div>
+                <div className="rounded-xl bg-black/10 px-3 py-3 text-slate-300">
+                  {text.noEvents}
+                </div>
               )}
               {(diagnostics?.recentEvents || []).map((event, index) => (
-                <div key={`${event.code || "event"}-${event.at || index}`} className="rounded-xl bg-black/10 px-3 py-3">
-                  <div className="font-medium text-slate-100">{event.code || "EVENT"}</div>
-                  <div className="mt-1 text-slate-300">{event.message || "-"}</div>
-                  <div className="mt-1 text-xs text-slate-400">{event.at || "-"}</div>
-                  {event.detail && <pre className="mt-2 whitespace-pre-wrap break-words text-xs text-slate-500">{event.detail}</pre>}
+                <div
+                  key={`${event.code || 'event'}-${event.at || index}`}
+                  className="rounded-xl bg-black/10 px-3 py-3"
+                >
+                  <div className="font-medium text-slate-100">{event.code || 'EVENT'}</div>
+                  <div className="mt-1 text-slate-300">{event.message || '-'}</div>
+                  <div className="mt-1 text-xs text-slate-400">{event.at || '-'}</div>
+                  {event.detail && (
+                    <pre className="mt-2 whitespace-pre-wrap break-words text-xs text-slate-500">
+                      {event.detail}
+                    </pre>
+                  )}
                 </div>
               ))}
             </div>
@@ -247,18 +285,24 @@ export function ElectronFailSafe({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onError = (event: ErrorEvent) => {
-      setFatalError(event.error instanceof Error ? event.error : new Error(event.message || "WINDOW_ERROR"));
+      setFatalError(
+        event.error instanceof Error ? event.error : new Error(event.message || 'WINDOW_ERROR')
+      );
     };
     const onUnhandledRejection = (event: PromiseRejectionEvent) => {
       const reason = event.reason;
-      setFatalError(reason instanceof Error ? reason : new Error(typeof reason === "string" ? reason : "UNHANDLED_REJECTION"));
+      setFatalError(
+        reason instanceof Error
+          ? reason
+          : new Error(typeof reason === 'string' ? reason : 'UNHANDLED_REJECTION')
+      );
     };
 
-    window.addEventListener("error", onError);
-    window.addEventListener("unhandledrejection", onUnhandledRejection);
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onUnhandledRejection);
     return () => {
-      window.removeEventListener("error", onError);
-      window.removeEventListener("unhandledrejection", onUnhandledRejection);
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onUnhandledRejection);
     };
   }, []);
 

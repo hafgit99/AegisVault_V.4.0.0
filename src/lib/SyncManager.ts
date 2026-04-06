@@ -8,40 +8,79 @@ import { vaultService, type VaultEntry } from '../vaultService';
 
 /**
  * SyncManager — Aegis 4.2 Faz 2
- * 
+ *
  * Relay sunucusu ile senkronizasyon akışlarını (Push/Pull) yönetir.
  */
 
 export class SyncManager {
-  private static RELAY_URL = 'http://localhost:3000'; // Default, should be configurable
+  private static relayApiKey = (
+    (import.meta.env as ImportMetaEnv & { VITE_AEGIS_SYNC_RELAY_KEY?: string })
+      .VITE_AEGIS_SYNC_RELAY_KEY || ''
+  ).trim();
+  private static getRelayUrl(): string {
+    const relayUrl = (
+      (import.meta.env as ImportMetaEnv & { VITE_AEGIS_SYNC_RELAY_URL?: string })
+        .VITE_AEGIS_SYNC_RELAY_URL || ''
+    ).trim();
+
+    if (!relayUrl) {
+      throw new Error(
+        '[SyncManager] Missing relay URL. Set VITE_AEGIS_SYNC_RELAY_URL with an HTTPS endpoint.'
+      );
+    }
+
+    let parsed: URL;
+    try {
+      parsed = new URL(relayUrl);
+    } catch {
+      throw new Error('[SyncManager] Invalid relay URL format in VITE_AEGIS_SYNC_RELAY_URL.');
+    }
+
+    if (parsed.protocol !== 'https:') {
+      throw new Error('[SyncManager] Relay URL must use HTTPS.');
+    }
+
+    return relayUrl.replace(/\/+$/, '');
+  }
+
+  private static buildRelayHeaders(): HeadersInit {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.relayApiKey) {
+      headers['X-Aegis-Relay-Key'] = this.relayApiKey;
+    }
+    return headers;
+  }
 
   /**
    * Vault verilerini şifreler ve sunucuya gönderir.
    */
   static async push(
-    sessionId: string, 
-    rootSecret: Uint8Array, 
-    entries: VaultEntry[], 
+    sessionId: string,
+    rootSecret: Uint8Array,
+    entries: VaultEntry[],
     sequenceNumber: number
   ): Promise<boolean> {
     try {
       const { encryptionKey, authKey } = await SyncCryptoService.deriveSubKeys(rootSecret);
-      
+
       const pkg = await SyncCryptoService.encryptAndSign(entries, encryptionKey, authKey);
       const device = SyncDeviceService.getLocalFingerprint();
 
-      const envelope = SyncEnvelopeUtil.create(
-        pkg.payload, 
-        pkg.iv, 
-        pkg.hmac, 
-        device.id, 
-        { sessionId, sequenceNumber, entryCount: entries.length }
-      );
+      const timestamp = new Date().toISOString();
+      const envelope = SyncEnvelopeUtil.create(pkg.payload, pkg.iv, pkg.hmac, device.id, {
+        sessionId,
+        sequenceNumber,
+        nonce: pkg.nonce,
+        envelopeMac: '',
+        entryCount: entries.length,
+        timestamp,
+      });
+      envelope.envelopeMac = await SyncCryptoService.createEnvelopeMac(envelope, authKey);
 
-      const response = await fetch(`${this.RELAY_URL}/v1/sync/push`, {
+      const response = await fetch(`${this.getRelayUrl()}/v1/sync/push`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(envelope)
+        headers: this.buildRelayHeaders(),
+        body: JSON.stringify(envelope),
       });
 
       return response.ok;
@@ -59,9 +98,14 @@ export class SyncManager {
     rootSecret: Uint8Array,
     localEntries: VaultEntry[],
     lastSequence: number
-  ): Promise<{ merged: VaultEntry[], newSequence: number } | null> {
+  ): Promise<{ merged: VaultEntry[]; newSequence: number } | null> {
     try {
-      const response = await fetch(`${this.RELAY_URL}/v1/sync/pull/${sessionId}?after=${lastSequence}`);
+      const response = await fetch(
+        `${this.getRelayUrl()}/v1/sync/pull/${sessionId}?after=${lastSequence}`,
+        {
+          headers: this.buildRelayHeaders(),
+        }
+      );
       if (!response.ok) return null;
 
       const envelopes = (await response.json()) as SyncEnvelope[];
@@ -73,14 +117,29 @@ export class SyncManager {
       let maxSeq = lastSequence;
 
       for (const env of envelopes) {
+        if (!SyncEnvelopeUtil.validate(env)) {
+          console.error('[SyncManager] Invalid envelope shape detected');
+          continue;
+        }
+
+        const isEnvelopeMacValid = await SyncCryptoService.verifyEnvelopeMac(env, authKey);
+        if (!isEnvelopeMacValid) {
+          console.error('[SyncManager] Envelope MAC verification failed');
+          continue;
+        }
+
         const pkg: SyncCryptoPackage = {
           payload: env.payload,
           iv: env.iv,
           hmac: env.hmac,
-          nonce: '' // We don't track nonce in pull yet
+          nonce: env.nonce,
         };
 
-        const remoteEntries = await SyncCryptoService.verifyAndDecrypt<VaultEntry[]>(pkg, encryptionKey, authKey);
+        const remoteEntries = await SyncCryptoService.verifyAndDecrypt<VaultEntry[]>(
+          pkg,
+          encryptionKey,
+          authKey
+        );
         if (remoteEntries) {
           const result = SyncConflictService.resolve(currentMerged, remoteEntries);
           currentMerged = result.merged;
