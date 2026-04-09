@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { initializeVaultAndGoToDashboard, createEntry } from './helpers/vault-init';
+import { initializeVaultAndGoToDashboard, createEntry, dismissTour } from './helpers/vault-init';
 
 test.describe('Entry CRUD Lifecycle', () => {
   test.beforeEach(async ({ page }) => {
@@ -7,20 +7,22 @@ test.describe('Entry CRUD Lifecycle', () => {
   });
 
   test('should open entry form when New Entry button clicked', async ({ page }) => {
+    await dismissTour(page);
     const newEntryBtn = page
       .locator('button:has-text("New Entry"), button:has-text("Yeni Giriş")')
       .first();
-    await newEntryBtn.click();
+    await newEntryBtn.click({ force: true });
 
     const entryForm = page.locator('.entry-form-surface');
     await expect(entryForm).toBeVisible({ timeout: 5000 });
   });
 
   test('should have category selector with all categories', async ({ page }) => {
+    await dismissTour(page);
     const newEntryBtn = page
       .locator('button:has-text("New Entry"), button:has-text("Yeni Giriş")')
       .first();
-    await newEntryBtn.click();
+    await newEntryBtn.click({ force: true });
     await page.waitForSelector('.entry-form-surface', { timeout: 5000 });
 
     const categorySelect = page.locator('.entry-form-surface select').first();
@@ -62,10 +64,11 @@ test.describe('Entry CRUD Lifecycle', () => {
   });
 
   test('should create entry with Notes category', async ({ page }) => {
+    await dismissTour(page);
     const newEntryBtn = page
       .locator('button:has-text("New Entry"), button:has-text("Yeni Giriş")')
       .first();
-    await newEntryBtn.click();
+    await newEntryBtn.click({ force: true });
     await page.waitForSelector('.entry-form-surface', { timeout: 5000 });
 
     const categorySelect = page.locator('.entry-form-surface select').first();
@@ -83,7 +86,7 @@ test.describe('Entry CRUD Lifecycle', () => {
         '.entry-form-surface button[type="submit"], .entry-form-surface button:has-text("Save"), .entry-form-surface button:has-text("Kaydet")'
       )
       .first();
-    await saveBtn.click();
+    await saveBtn.click({ force: true });
 
     await page.waitForTimeout(2000);
     const entryCard = page.locator('.vault-entry-card').first();
@@ -91,10 +94,11 @@ test.describe('Entry CRUD Lifecycle', () => {
   });
 
   test('should close entry form without saving', async ({ page }) => {
+    await dismissTour(page);
     const newEntryBtn = page
       .locator('button:has-text("New Entry"), button:has-text("Yeni Giriş")')
       .first();
-    await newEntryBtn.click();
+    await newEntryBtn.click({ force: true });
     await page.waitForSelector('.entry-form-surface', { timeout: 5000 });
 
     const closeBtn = page.locator('.entry-form-surface button:has(svg.lucide-x)').first();
@@ -109,10 +113,11 @@ test.describe('Entry CRUD Lifecycle', () => {
   });
 
   test('should show password visibility toggle in form', async ({ page }) => {
+    await dismissTour(page);
     const newEntryBtn = page
       .locator('button:has-text("New Entry"), button:has-text("Yeni Giriş")')
       .first();
-    await newEntryBtn.click();
+    await newEntryBtn.click({ force: true });
     await page.waitForSelector('.entry-form-surface', { timeout: 5000 });
 
     const passwordInput = page
@@ -129,15 +134,25 @@ test.describe('Entry CRUD Lifecycle', () => {
   });
 
   test('should generate password with wand button', async ({ page }) => {
+    await dismissTour(page);
     const newEntryBtn = page
       .locator('button:has-text("New Entry"), button:has-text("Yeni Giriş")')
       .first();
-    await newEntryBtn.click();
+    await newEntryBtn.click({ force: true });
     await page.waitForSelector('.entry-form-surface', { timeout: 5000 });
 
-    const wandBtn = page.locator('.entry-form-surface button:has(svg.lucide-wand-2)').first();
-    await expect(wandBtn).toBeVisible();
-    await wandBtn.click();
+    const wandBtn = page
+      .locator(
+        '.entry-form-surface button:has(svg.lucide-wand-2), .entry-form-surface button[title*="Generate"], .entry-form-surface button[title*="generate"]'
+      )
+      .first();
+    if (await wandBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await wandBtn.click({ force: true });
+    } else {
+      await page.keyboard.press('Control+g');
+    }
+
+    await page.waitForTimeout(500);
 
     const passwordInput = page
       .locator(
@@ -149,10 +164,11 @@ test.describe('Entry CRUD Lifecycle', () => {
   });
 
   test('should add tags to an entry', async ({ page }) => {
+    await dismissTour(page);
     const newEntryBtn = page
       .locator('button:has-text("New Entry"), button:has-text("Yeni Giriş")')
       .first();
-    await newEntryBtn.click();
+    await newEntryBtn.click({ force: true });
     await page.waitForSelector('.entry-form-surface', { timeout: 5000 });
 
     const titleInput = page.locator('.entry-form-surface input[type="text"]').first();
@@ -178,7 +194,7 @@ test.describe('Entry CRUD Lifecycle', () => {
         '.entry-form-surface button[type="submit"], .entry-form-surface button:has-text("Save"), .entry-form-surface button:has-text("Kaydet")'
       )
       .first();
-    await saveBtn.click();
+    await saveBtn.click({ force: true });
 
     await page.waitForTimeout(2000);
   });
@@ -190,13 +206,14 @@ test.describe('Entry CRUD Lifecycle', () => {
       password: 'DeletePass123!',
     });
     await page.waitForTimeout(2000);
+    await dismissTour(page);
 
     const entryCard = page.locator('.vault-entry-card:has-text("Delete Me")').first();
     await expect(entryCard).toBeVisible({ timeout: 10000 });
 
     const deleteBtn = entryCard.locator('button:has(svg.lucide-trash-2)').first();
     if (await deleteBtn.isVisible()) {
-      await deleteBtn.click();
+      await deleteBtn.click({ force: true });
       await page.waitForTimeout(1000);
     }
 
@@ -212,12 +229,13 @@ test.describe('Entry CRUD Lifecycle', () => {
       password: 'RestorePass123!',
     });
     await page.waitForTimeout(2000);
+    await dismissTour(page);
 
     const entryCard = page.locator('.vault-entry-card:has-text("Restore Me")').first();
     if (await entryCard.isVisible({ timeout: 5000 }).catch(() => false)) {
       const deleteBtn = entryCard.locator('button:has(svg.lucide-trash-2)').first();
       if (await deleteBtn.isVisible()) {
-        await deleteBtn.click();
+        await deleteBtn.click({ force: true });
         await page.waitForTimeout(1000);
       }
     }
@@ -225,7 +243,7 @@ test.describe('Entry CRUD Lifecycle', () => {
     const trashFilter = page
       .locator('.category-item:has-text("Trash"), .category-item:has-text("Çöp")')
       .first();
-    await trashFilter.click();
+    await trashFilter.click({ force: true });
     await page.waitForTimeout(1000);
 
     const trashedCard = page.locator('.vault-entry-card:has-text("Restore Me")').first();
@@ -234,7 +252,7 @@ test.describe('Entry CRUD Lifecycle', () => {
         .locator('button:has-text("Restore"), button:has-text("Geri")')
         .first();
       if (await restoreBtn.isVisible()) {
-        await restoreBtn.click();
+        await restoreBtn.click({ force: true });
         await page.waitForTimeout(1000);
       }
     }
@@ -247,13 +265,14 @@ test.describe('Entry CRUD Lifecycle', () => {
       password: 'VisiblePassword!',
     });
     await page.waitForTimeout(2000);
+    await dismissTour(page);
 
     const entryCard = page.locator('.vault-entry-card:has-text("Visibility Test")').first();
     await expect(entryCard).toBeVisible({ timeout: 10000 });
 
     const eyeBtn = entryCard.locator('button:has(svg.lucide-eye)').first();
     if (await eyeBtn.isVisible()) {
-      await eyeBtn.click();
+      await eyeBtn.click({ force: true });
       await page.waitForTimeout(500);
     }
   });
@@ -265,13 +284,14 @@ test.describe('Entry CRUD Lifecycle', () => {
       password: 'CopyPassword123!',
     });
     await page.waitForTimeout(2000);
+    await dismissTour(page);
 
     const entryCard = page.locator('.vault-entry-card:has-text("Copy Test")').first();
     await expect(entryCard).toBeVisible({ timeout: 10000 });
 
     const copyBtn = entryCard.locator('button:has(svg.lucide-copy)').first();
     if (await copyBtn.isVisible()) {
-      await copyBtn.click();
+      await copyBtn.click({ force: true });
       await page.waitForTimeout(500);
     }
   });

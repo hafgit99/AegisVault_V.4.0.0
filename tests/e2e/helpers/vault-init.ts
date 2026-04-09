@@ -40,22 +40,53 @@ export async function initializeVaultAndGoToDashboard(page: Page) {
     page.locator('main[role="main"], main[aria-label="Vault entries"]').first()
   ).toBeVisible({ timeout: 35000 });
 
-  const closeTourBtn = page.locator('[class*="z-\\[200\\"] button:has(svg.lucide-x)').first();
-  if (await closeTourBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await closeTourBtn.click({ force: true });
-    await page.waitForTimeout(500);
+  await dismissTour(page);
+}
+
+export async function dismissTour(page: Page) {
+  await page.waitForTimeout(2000);
+
+  const overlay = page.locator('.fixed.inset-0.z-\\[200\\]').first();
+  if (await overlay.isVisible({ timeout: 3000 }).catch(() => false)) {
+    const closeBtn = overlay.locator('button:has(svg)').first();
+    if (await closeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await closeBtn.click({ force: true });
+      await page.waitForTimeout(500);
+    }
+
+    const stillVisible = await overlay.isVisible().catch(() => false);
+    if (stillVisible) {
+      await page.evaluate(() => {
+        const els = document.querySelectorAll('.fixed.inset-0.z-\\[200\\]');
+        els.forEach((el) => el.remove());
+      });
+      await page.waitForTimeout(300);
+    }
   }
+
+  await page.evaluate(() => {
+    try {
+      const raw = localStorage.getItem('aegis_settings') || '{}';
+      const settings = JSON.parse(raw);
+      settings.hasSeenTour = true;
+      localStorage.setItem('aegis_settings', JSON.stringify(settings));
+    } catch {
+      /* ignore */
+    }
+  });
 }
 
 export async function createEntry(
   page: Page,
   opts: { title: string; username?: string; password?: string; category?: string }
 ) {
+  await dismissTour(page);
+
   const addBtn = page
     .locator('button:has-text("New Entry"), button:has-text("Yeni Giriş")')
     .first();
-  if (await addBtn.isVisible().catch(() => false)) {
-    await addBtn.click();
+  if (await addBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await addBtn.click({ force: true });
   }
 
   await page.waitForSelector('.entry-form-surface', { timeout: 5000 });
@@ -89,7 +120,7 @@ export async function createEntry(
       '.entry-form-surface button[type="submit"], .entry-form-surface button:has-text("Save"), .entry-form-surface button:has-text("Kaydet")'
     )
     .first();
-  await saveBtn.click();
+  await saveBtn.click({ force: true });
 
   await page
     .waitForSelector('.entry-form-surface', { state: 'hidden', timeout: 10000 })

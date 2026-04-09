@@ -84,7 +84,8 @@ test.describe('Settings Drawer', () => {
       .locator('button:has-text("Advanced"), button:has-text("Gelişmiş")')
       .first();
     if (await advancedTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await advancedTab.click();
+      await advancedTab.click({ force: true });
+      await page.waitForTimeout(500);
     }
   });
 

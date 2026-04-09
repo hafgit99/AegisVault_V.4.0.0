@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { initializeVaultAndGoToDashboard, createEntry } from './helpers/vault-init';
+import { initializeVaultAndGoToDashboard, createEntry, dismissTour } from './helpers/vault-init';
 
 test.describe('Search, Filter & Sort', () => {
   test.beforeEach(async ({ page }) => {
@@ -23,6 +23,7 @@ test.describe('Search, Filter & Sort', () => {
       password: 'EmailPass789!',
     });
     await page.waitForTimeout(2000);
+    await dismissTour(page);
   });
 
   test('should filter entries by search query', async ({ page }) => {
@@ -74,7 +75,7 @@ test.describe('Search, Filter & Sort', () => {
       )
       .first();
     if (await titleScopeBtn.isVisible()) {
-      await titleScopeBtn.click();
+      await titleScopeBtn.click({ force: true });
     }
 
     const searchInput = page
@@ -95,7 +96,7 @@ test.describe('Search, Filter & Sort', () => {
       )
       .first();
     if (await userScopeBtn.isVisible()) {
-      await userScopeBtn.click();
+      await userScopeBtn.click({ force: true });
     }
 
     const searchInput = page
@@ -116,7 +117,7 @@ test.describe('Search, Filter & Sort', () => {
     const generalCat = page
       .locator('.category-item:has-text("General"), .category-item:has-text("Genel")')
       .first();
-    await generalCat.click();
+    await generalCat.click({ force: true });
     await page.waitForTimeout(500);
 
     const filteredItems = page.locator('.vault-entry-card');
@@ -128,7 +129,7 @@ test.describe('Search, Filter & Sort', () => {
     const trashItem = page
       .locator('.category-item:has-text("Trash"), .category-item:has-text("Çöp")')
       .first();
-    await trashItem.click();
+    await trashItem.click({ force: true });
     await page.waitForTimeout(500);
 
     const emptyState = page.locator('text=/no.*trash|Çöp.*yok|empty/i').first();
@@ -143,13 +144,13 @@ test.describe('Search, Filter & Sort', () => {
     const trashItem = page
       .locator('.category-item:has-text("Trash"), .category-item:has-text("Çöp")')
       .first();
-    await trashItem.click();
+    await trashItem.click({ force: true });
     await page.waitForTimeout(500);
 
     const allBtn = page
       .locator('.category-item:has-text("All"), .category-item:has-text("Tümü")')
       .first();
-    await allBtn.click();
+    await allBtn.click({ force: true });
     await page.waitForTimeout(500);
 
     const cards = page.locator('.vault-entry-card');
@@ -207,7 +208,7 @@ test.describe('Search, Filter & Sort', () => {
 
     const initialText = await densityBtn.textContent();
 
-    await densityBtn.click();
+    await densityBtn.click({ force: true });
     await page.waitForTimeout(500);
 
     const newText = await densityBtn.textContent();
@@ -220,7 +221,7 @@ test.describe('Search, Filter & Sort', () => {
         '.toolbar-chip-group button:has-text("All"), .toolbar-chip-group button:has-text("Tümü")'
       )
       .first();
-    await allScopeBtn.click();
+    await allScopeBtn.click({ force: true });
 
     const searchInput = page
       .locator('input[placeholder*="earch"], input[placeholder*="Ara"]')
@@ -239,7 +240,7 @@ test.describe('Search, Filter & Sort', () => {
         '.toolbar-chip-group button:has-text("Title"), .toolbar-chip-group button:has-text("Başlık")'
       )
       .first();
-    await titleScopeBtn.click();
+    await titleScopeBtn.click({ force: true });
 
     await expect(titleScopeBtn).toHaveClass(/sage-green|bg-.*text-white/);
   });
