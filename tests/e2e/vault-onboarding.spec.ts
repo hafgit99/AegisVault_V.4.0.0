@@ -191,32 +191,4 @@ test.describe('Onboarding Wizard', () => {
     const profile = await page.evaluate(() => localStorage.getItem('aegis_security_profile'));
     expect(profile).toBeTruthy();
   });
-
-  test('should persist selected security profile to localStorage', async ({ page }) => {
-    const onboardingDialog = page.locator('[role="dialog"][aria-modal="true"]');
-    await expect(onboardingDialog).toBeVisible({ timeout: 5000 });
-
-    const nextBtn = onboardingDialog.locator('button[class*="bg-blue-600"]').first();
-    await nextBtn.click();
-    await page.waitForTimeout(500);
-
-    const advancedBtn = onboardingDialog
-      .locator('button:has-text("advanced"), button:has-text("Advanced")')
-      .first();
-    if (await advancedBtn.isVisible()) {
-      await advancedBtn.click();
-    }
-
-    for (let i = 0; i < 4; i++) {
-      const btn = onboardingDialog.locator('button[class*="bg-blue-600"]').first();
-      if (await btn.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await btn.click();
-        await page.waitForTimeout(400);
-      }
-    }
-
-    await page.waitForTimeout(1000);
-    const profile = await page.evaluate(() => localStorage.getItem('aegis_security_profile'));
-    expect(profile).toBeTruthy();
-  });
 });
