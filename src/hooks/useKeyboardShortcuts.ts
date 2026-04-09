@@ -12,8 +12,8 @@ export const useKeyboardShortcuts = (configs: ShortcutConfigs) => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const isMod = event.ctrlKey || event.metaKey;
 
-      // Ctrl + F: Search
-      if (isMod && event.key === 'f') {
+      // Ctrl + F or Ctrl + K: Search
+      if (isMod && (event.key === 'f' || event.key === 'k')) {
         if (configs.onSearch) {
           event.preventDefault();
           configs.onSearch();

@@ -10,19 +10,17 @@ test.describe('Search, Filter & Sort', () => {
       username: 'dev@github.com',
       password: 'GitHubPass123!',
     });
-    await page.waitForTimeout(1000);
     await createEntry(page, {
       title: 'AWS Console',
       username: 'admin@aws.com',
       password: 'AwsPass456!',
     });
-    await page.waitForTimeout(1000);
     await createEntry(page, {
       title: 'Personal Email',
       username: 'me@gmail.com',
       password: 'EmailPass789!',
     });
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1000);
     await dismissTour(page);
   });
 
@@ -92,18 +90,18 @@ test.describe('Search, Filter & Sort', () => {
   test('should search by username when user scope selected', async ({ page }) => {
     const userScopeBtn = page
       .locator(
-        '.toolbar-chip-group button:has-text("User"), .toolbar-chip-group button:has-text("Kullanıcı")'
+        '.toolbar-chip-group button:has-text("User"), .toolbar-chip-group button:has-text("Kullanıcı"), .toolbar-chip-group button:has-text("Kullanici")'
       )
       .first();
-    if (await userScopeBtn.isVisible()) {
-      await userScopeBtn.click({ force: true });
-    }
+    await expect(userScopeBtn).toBeVisible({ timeout: 5000 });
+    await userScopeBtn.click({ force: true });
+    await page.waitForTimeout(500);
 
     const searchInput = page
       .locator('input[placeholder*="earch"], input[placeholder*="Ara"]')
       .first();
     await searchInput.fill('admin@aws');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
 
     const cards = page.locator('.vault-entry-card');
     const count = await cards.count();

@@ -44,23 +44,23 @@ export async function initializeVaultAndGoToDashboard(page: Page) {
 }
 
 export async function dismissTour(page: Page) {
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(500);
 
-  const overlay = page.locator('.fixed.inset-0.z-\\[200\\]').first();
-  if (await overlay.isVisible({ timeout: 3000 }).catch(() => false)) {
+  const overlay = page.locator('.fixed.inset-0').first();
+  if (await overlay.isVisible({ timeout: 2000 }).catch(() => false)) {
     const closeBtn = overlay.locator('button:has(svg)').first();
-    if (await closeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+    if (await closeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
       await closeBtn.click({ force: true });
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(300);
     }
 
     const stillVisible = await overlay.isVisible().catch(() => false);
     if (stillVisible) {
       await page.evaluate(() => {
-        const els = document.querySelectorAll('.fixed.inset-0.z-\\[200\\]');
+        const els = document.querySelectorAll('.fixed.inset-0');
         els.forEach((el) => el.remove());
       });
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(200);
     }
   }
 
@@ -80,8 +80,6 @@ export async function createEntry(
   page: Page,
   opts: { title: string; username?: string; password?: string; category?: string }
 ) {
-  await dismissTour(page);
-
   const addBtn = page
     .locator('button:has-text("New Entry"), button:has-text("Yeni Giriş")')
     .first();

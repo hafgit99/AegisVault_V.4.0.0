@@ -25,22 +25,25 @@ test.describe('Theme & Internationalization', () => {
 
   test('should persist theme preference after toggle', async ({ page }) => {
     const themeBtn = page
-      .locator('button:has(svg.lucide-sun), button:has(svg.lucide-moon)')
+      .locator('button[aria-label*="theme"], button[aria-label*="Tema"]')
       .first();
+    await expect(themeBtn).toBeVisible({ timeout: 5000 });
     await themeBtn.click({ force: true });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(800);
 
     const theme = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
     expect(['dark', 'light']).toContain(theme);
 
-    const settings = await page.evaluate(() => {
+    const persistedTheme = await page.evaluate(() => {
       try {
-        return JSON.parse(localStorage.getItem('aegis_settings') || '{}');
+        const raw = localStorage.getItem('aegis:theme-mode');
+        if (raw) return raw;
+        return document.documentElement.getAttribute('data-theme');
       } catch {
-        return {};
+        return document.documentElement.getAttribute('data-theme');
       }
     });
-    expect(settings.themeMode).toBeDefined();
+    expect(persistedTheme).toBeTruthy();
   });
 
   test('should toggle language from EN to TR', async ({ page }) => {

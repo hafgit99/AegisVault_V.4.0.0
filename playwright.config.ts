@@ -53,9 +53,9 @@ export default defineConfig({
   },
 
   // Timeout per test
-  timeout: 30000, // 30 saniye per test
+  timeout: 60000, // 60 seconds per test (Firefox beforeEach slower)
   expect: {
-    timeout: 8000, // expect assertion timeout
+    timeout: 10000, // expect assertion timeout
   },
 
   // Output directory
