@@ -40,9 +40,10 @@ export async function initializeVaultAndGoToDashboard(page: Page) {
   const finalizeBtn = page.locator('.vault-login-unlock-btn').first();
   await finalizeBtn.click();
 
-  await expect(
-    page.locator('main[role="main"], main[aria-label="Vault entries"]').first()
-  ).toBeVisible({ timeout: 35000 });
+  await expect(async () => {
+    const mainEl = page.locator('main[role="main"], main[aria-label="Vault entries"]').first();
+    await expect(mainEl).toBeVisible({ timeout: 5000 });
+  }).toPass({ timeout: 45000 });
 
   await dismissTour(page);
 }

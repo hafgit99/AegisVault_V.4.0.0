@@ -20,7 +20,8 @@ test.describe('Search, Filter & Sort', () => {
       username: 'me@gmail.com',
       password: 'EmailPass789!',
     });
-    await page.waitForTimeout(1000);
+    // Wait for entries to be visible and indexed before starting tests
+    await expect(page.locator('.vault-entry-card')).toHaveCount(3, { timeout: 15000 });
     await dismissTour(page);
   });
 
@@ -37,16 +38,27 @@ test.describe('Search, Filter & Sort', () => {
     expect(firstCardText?.toLowerCase()).toContain('github');
   });
 
-  test('should show no results for non-matching search', async ({ page }) => {
+  test('should find entries using special characters like @', async ({ page }) => {
     const searchInput = page
       .locator('input[placeholder*="earch"], input[placeholder*="Ara"]')
       .first();
     await searchInput.fill('admin@aws');
-
-    // Wait for the filtered results to appear
-    const cards = page.locator('.vault-entry-card');
-    await expect(cards).toHaveCount(1, { timeout: 10000 });
-    await expect(cards.first()).toContainText('AWS Console');
+ 
+    // Wait for the filtered results with retries to handle debounce timing
+    await expect(async () => {
+      const cards = page.locator('.vault-entry-card');
+      await expect(cards).toHaveCount(1);
+      await expect(cards.first()).toContainText('AWS Console');
+    }).toPass({ timeout: 10000 });
+  });
+ 
+  test('should show no results for non-matching search', async ({ page }) => {
+    const searchInput = page
+      .locator('input[placeholder*="earch"], input[placeholder*="Ara"]')
+      .first();
+    await searchInput.fill('nonexistent_entry_xyz');
+ 
+    await expect(page.locator('.vault-entry-card')).toHaveCount(0, { timeout: 5000 });
   });
 
   test('should show all entries when search is cleared', async ({ page }) => {
@@ -54,10 +66,10 @@ test.describe('Search, Filter & Sort', () => {
       .locator('input[placeholder*="earch"], input[placeholder*="Ara"]')
       .first();
     await searchInput.fill('aws');
-    await expect(page.locator('.vault-entry-card')).toHaveCount(1);
-
+    await expect(page.locator('.vault-entry-card')).toHaveCount(1, { timeout: 5000 });
+ 
     await searchInput.fill('');
-    await expect(page.locator('.vault-entry-card')).toHaveCount(3, { timeout: 5000 });
+    await expect(page.locator('.vault-entry-card')).toHaveCount(3, { timeout: 7000 });
   });
 
   test('should search by title when title scope selected', async ({ page }) => {

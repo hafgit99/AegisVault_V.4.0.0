@@ -11,7 +11,8 @@ test.describe('Entry CRUD Lifecycle', () => {
     const newEntryBtn = page
       .locator('button:has-text("New Entry"), button:has-text("Yeni Giriş")')
       .first();
-    await newEntryBtn.click({ force: true });
+    await expect(newEntryBtn).toBeVisible({ timeout: 15000 });
+    await newEntryBtn.click();
 
     const entryForm = page.locator('.entry-form-surface');
     await expect(entryForm).toBeVisible({ timeout: 5000 });
@@ -258,11 +259,8 @@ test.describe('Entry CRUD Lifecycle', () => {
       username: 'vis@test.com',
       password: 'VisiblePassword!',
     });
-    await page.waitForTimeout(2000);
-    await dismissTour(page);
-
-    const entryCard = page.locator('.vault-entry-card:has-text("Visibility Test")').first();
-    await expect(entryCard).toBeVisible({ timeout: 10000 });
+    const entryCard = page.locator('.vault-entry-card').filter({ hasText: 'Visibility Test' }).first();
+    await expect(entryCard).toBeVisible({ timeout: 15000 });
 
     const eyeBtn = entryCard.locator('button:has(svg.lucide-eye)').first();
     if (await eyeBtn.isVisible()) {
@@ -277,11 +275,8 @@ test.describe('Entry CRUD Lifecycle', () => {
       username: 'copy@test.com',
       password: 'CopyPassword123!',
     });
-    await page.waitForTimeout(2000);
-    await dismissTour(page);
-
-    const entryCard = page.locator('.vault-entry-card:has-text("Copy Test")').first();
-    await expect(entryCard).toBeVisible({ timeout: 10000 });
+    const entryCard = page.locator('.vault-entry-card').filter({ hasText: 'Copy Test' }).first();
+    await expect(entryCard).toBeVisible({ timeout: 15000 });
 
     const copyBtn = entryCard.locator('button:has(svg.lucide-copy)').first();
     if (await copyBtn.isVisible()) {
