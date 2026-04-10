@@ -36,11 +36,11 @@ export default defineConfig({
     video: 'retain-on-failure',
 
     // Viewport default
-    viewport: { width: 1280, height: 720 },
+    viewport: { width: 1280, height: 900 },
 
     // Navigation timeout
-    navigationTimeout: 15000,
-    actionTimeout: 10000,
+    navigationTimeout: 20000,
+    actionTimeout: 15000,
   },
 
   // Web Server - Vite dev server

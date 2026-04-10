@@ -202,6 +202,19 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[120px] animate-pulse" />
 
+      {/* Bottom Tip */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="absolute bottom-10 flex items-center text-white/30 text-sm pointer-events-none"
+      >
+        <Info size={14} className="mr-2" />
+        {t(
+          'onboarding.anytime',
+          'Bu ayarları dilediğiniz zaman Kasa Ayarları panelinden değiştirebilirsiniz.'
+        )}
+      </motion.div>
+
       <div
         className="relative w-full max-w-2xl bg-white/[0.02] border border-white/10 rounded-[2.5rem] shadow-2xl p-8 md:p-12 overflow-hidden"
         role="dialog"
@@ -243,6 +256,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
           <Button
             ref={nextButtonRef}
             onClick={nextStep}
+            data-testid="onboarding-next"
             className="min-w-[140px] h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-[0_4px_20px_rgba(59,130,246,0.3)]"
             aria-label={
               step === steps.length - 1
@@ -258,18 +272,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
         </div>
       </div>
 
-      {/* Bottom Tip */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="absolute bottom-10 flex items-center text-white/30 text-sm"
-      >
-        <Info size={14} className="mr-2" />
-        {t(
-          'onboarding.anytime',
-          'Bu ayarları dilediğiniz zaman Kasa Ayarları panelinden değiştirebilirsiniz.'
-        )}
-      </motion.div>
+      {/* Dialog content moved up */}
     </div>
   );
 };

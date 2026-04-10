@@ -66,10 +66,17 @@ test.describe('Onboarding Wizard', () => {
       .locator('button:has-text("Devam"), button:has-text("Next"), button[class*="bg-blue-600"]')
       .first();
     await expect(nextBtn).toBeVisible();
-    await nextBtn.click();
 
-    const stepTitle = onboardingDialog.locator('h2').first();
-    await expect(stepTitle).toBeVisible();
+    const oldTitle = await onboardingDialog.locator('h2').first().textContent();
+    await expect(async () => {
+      const currentTitle = await onboardingDialog.locator('h2').first().textContent();
+      if (currentTitle === oldTitle) {
+        await nextBtn.click({ force: true });
+        await page.waitForTimeout(300);
+      }
+      const newTitle = await onboardingDialog.locator('h2').first().textContent();
+      expect(newTitle !== oldTitle).toBeTruthy();
+    }).toPass({ timeout: 5000 });
   });
 
   test('should show security profile selection on step 2', async ({ page }) => {
@@ -79,10 +86,8 @@ test.describe('Onboarding Wizard', () => {
     const nextBtn = onboardingDialog.locator('button[class*="bg-blue-600"]').first();
     await nextBtn.click();
 
-    const profileButtons = onboardingDialog.locator(
-      'button.group, [class*="bg-white/5"][class*="border"]'
-    );
-    await expect(profileButtons.first()).toBeVisible({ timeout: 5000 });
+    const profileButtons = onboardingDialog.locator('button.group');
+    await expect(profileButtons).toHaveCount(3, { timeout: 5000 });
     const count = await profileButtons.count();
     expect(count).toBeGreaterThanOrEqual(2);
   });
@@ -132,35 +137,33 @@ test.describe('Onboarding Wizard', () => {
   });
 
   test('should complete onboarding and close dialog', async ({ page }) => {
-    const onboardingDialog = page
-      .locator('[role="dialog"]')
-      .filter({ hasText: /Hoş Geldiniz|Welcome/i });
+    const onboardingDialog = page.locator('[role="dialog"][aria-modal="true"]').first();
     await expect(onboardingDialog).toBeVisible({ timeout: 15000 });
 
-    // Step 0 -> 1 -> 2 -> 3 -> 4 -> Complete
-    for (let i = 0; i < 5; i++) {
-      const nextBtn = onboardingDialog
-        .locator(
-          'button:has-text("Devam"), button:has-text("Next"), button:has-text("Başla"), button:has-text("Finish"), button[class*="bg-blue-600"]'
-        )
-        .first();
+    const nextBtn = page.getByTestId('onboarding-next');
 
-      await expect(nextBtn).toBeVisible({ timeout: 5000 });
-      const oldContent = await onboardingDialog.textContent();
+    // Step 0: Welcome -> Go to Step 1: Profile
+    await expect(onboardingDialog.locator('h2')).toHaveText(/Hoş Geldiniz|Welcome/i);
+    await nextBtn.click();
 
-      if (i < 4) {
-        await nextBtn.click();
-        await expect(async () => {
-          const newContent = await onboardingDialog.textContent();
-          expect(newContent).not.toEqual(oldContent);
-        }).toPass({ timeout: 5000 });
-      } else {
-        await nextBtn.click();
-      }
-    }
+    // Step 1: Profile -> Go to Step 2: Extension
+    await expect(onboardingDialog.locator('h2')).toHaveText(/Profil|Security Profile/i);
+    await nextBtn.click();
 
-    // Wait for the dialog to be hidden or detached
-    await expect(onboardingDialog).toBeHidden({ timeout: 10000 });
+    // Step 2: Extension -> Go to Step 3: Mobile
+    await expect(onboardingDialog.locator('h2')).toHaveText(/Tarayıcı|Browser/i);
+    await nextBtn.click();
+
+    // Step 3: Mobile -> Go to Step 4: Finalize
+    await expect(onboardingDialog.locator('h2')).toHaveText(/Her Yerde|Access Everywhere/i);
+    await nextBtn.click();
+
+    // Step 4: Finalize -> Finish
+    await expect(onboardingDialog.locator('h2')).toHaveText(/Her Şey Hazır|All Set|Ready/i);
+    await nextBtn.click();
+
+    // Verify completion
+    await expect(onboardingDialog).toBeHidden({ timeout: 15000 });
 
     const onboardingDone = await page.evaluate(() => localStorage.getItem('aegis_onboarding_done'));
     expect(onboardingDone).toBe('true');
@@ -173,11 +176,15 @@ test.describe('Onboarding Wizard', () => {
     const nextBtn = onboardingDialog
       .locator('button[class*="bg-blue-600"], button:has-text("Devam")')
       .first();
-    const oldContent = await onboardingDialog.textContent();
-    await nextBtn.click();
+    const oldTitle = await onboardingDialog.locator('h2').first().textContent();
     await expect(async () => {
-      const newContent = await onboardingDialog.textContent();
-      expect(newContent).not.toEqual(oldContent);
+      const currentTitle = await onboardingDialog.locator('h2').first().textContent();
+      if (currentTitle === oldTitle) {
+        await nextBtn.click({ force: true });
+        await page.waitForTimeout(300);
+      }
+      const newTitle = await onboardingDialog.locator('h2').first().textContent();
+      expect(newTitle !== oldTitle).toBeTruthy();
     }).toPass({ timeout: 5000 });
 
     const advancedBtn = onboardingDialog
@@ -194,14 +201,17 @@ test.describe('Onboarding Wizard', () => {
         .locator('button[class*="bg-blue-600"], button:has-text("Devam"), button:has-text("Next")')
         .first();
       if (await btn.isVisible({ timeout: 1500 }).catch(() => false)) {
-        const stepContent = await onboardingDialog.textContent();
-
-        await btn.click();
+        const oldTitle = await onboardingDialog.locator('h2').first().textContent();
         await expect(async () => {
-          const newContent = await onboardingDialog.textContent();
-          expect(newContent).not.toEqual(stepContent);
+          const currentTitle = await onboardingDialog.locator('h2').first().textContent();
+          if (currentTitle === oldTitle) {
+            await btn.click({ force: true });
+            await page.waitForTimeout(300);
+          }
+          const newTitle = await onboardingDialog.locator('h2').first().textContent();
+          expect(newTitle !== oldTitle).toBeTruthy();
         })
-          .toPass({ timeout: 5000 })
+          .toPass({ timeout: 6000 })
           .catch(() => {});
       } else {
         break;

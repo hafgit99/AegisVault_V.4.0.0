@@ -84,7 +84,7 @@ npm run test:coverage
 - **ESLint**: Zero errors, zero warnings across the entire codebase
 - **TypeScript Strict**: Full strict mode enabled
 - **Mutation Testing**: Stryker integration for test quality validation
-- **E2E Tests**: Playwright-based end-to-end test suite
+- **E2E Resilience**: Playwright-based end-to-end suite with auto-retrying `toPass` assertions and async state synchronization
 - **CI Quality Gate**: `npm run test:quality-gate` enforces lint + unit + regression + e2e
 
 ## What's New in 4.2
@@ -116,6 +116,15 @@ Refactored monolithic `vaultService.ts` into dedicated service modules under `sr
 ### Web Worker Support
 
 Dedicated `argon2.worker.ts` for offloaded key derivation, preventing UI blocking during heavy crypto operations.
+
+### E2E Stabilization & Resilience
+
+The v4.2.0 release includes a significantly hardened E2E test suite:
+
+- **Onboarding Wizard**: Resolved pointer event interception issues and implemented robust, linear step-validation logic.
+- **Search Hardening**: Optimized `SearchService` query normalization to ensure consistent matching for special characters (e.g., `@`).
+- **Async State Sync**: Replaced fragile timeouts with Playwright's native `toPass` and `toHaveText` assertions for reliable UI state synchronization.
+- **Improved CI Utility**: Optimized Playwright configurations for higher reliability on resource-constrained runners.
 
 For the complete changelog, see [CHANGELOG.md](CHANGELOG.md).
 
