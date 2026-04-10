@@ -66,7 +66,7 @@ test.describe('Onboarding Wizard', () => {
       .locator('button:has-text("Devam"), button:has-text("Next"), button[class*="bg-blue-600"]')
       .first();
     await expect(nextBtn).toBeVisible();
-    await nextBtn.click({ force: true });
+    await nextBtn.click();
 
     const stepTitle = onboardingDialog.locator('h2').first();
     await expect(stepTitle).toBeVisible();
@@ -77,7 +77,7 @@ test.describe('Onboarding Wizard', () => {
     await expect(onboardingDialog).toBeVisible({ timeout: 5000 });
 
     const nextBtn = onboardingDialog.locator('button[class*="bg-blue-600"]').first();
-    await nextBtn.click({ force: true });
+    await nextBtn.click();
 
     const profileButtons = onboardingDialog.locator(
       'button.group, [class*="bg-white/5"][class*="border"]'
@@ -92,13 +92,13 @@ test.describe('Onboarding Wizard', () => {
     await expect(onboardingDialog).toBeVisible({ timeout: 5000 });
 
     const nextBtn = onboardingDialog.locator('button[class*="bg-blue-600"]').first();
-    await nextBtn.click({ force: true });
+    await nextBtn.click();
 
     const paranoidBtn = onboardingDialog
       .locator('button:has-text("paranoid"), button:has-text("Paranoid")')
       .first();
     await expect(paranoidBtn).toBeVisible({ timeout: 5000 });
-    await paranoidBtn.click({ force: true });
+    await paranoidBtn.click();
     await expect(paranoidBtn).toHaveClass(/bg-blue-500|ring-1|border-blue/);
   });
 
@@ -107,13 +107,13 @@ test.describe('Onboarding Wizard', () => {
     await expect(onboardingDialog).toBeVisible({ timeout: 5000 });
 
     const nextBtn = onboardingDialog.locator('button[class*="bg-blue-600"]').first();
-    await nextBtn.click({ force: true });
+    await nextBtn.click();
 
     const backBtn = onboardingDialog
       .locator('button:has-text("Geri"), button:has-text("Back")')
       .first();
     await expect(backBtn).toBeVisible();
-    await backBtn.click({ force: true });
+    await backBtn.click();
 
     const stepTitle = onboardingDialog.locator('h2#step-title-0, h2').first();
     await expect(stepTitle).toBeVisible();
@@ -146,11 +146,16 @@ test.describe('Onboarding Wizard', () => {
         .first();
 
       await expect(nextBtn).toBeVisible({ timeout: 5000 });
-      await nextBtn.click({ force: true });
+      const oldContent = await onboardingDialog.textContent();
 
       if (i < 4) {
-        // Wait for step indicator to change or some content change
-        await page.waitForTimeout(500);
+        await nextBtn.click();
+        await expect(async () => {
+          const newContent = await onboardingDialog.textContent();
+          expect(newContent).not.toEqual(oldContent);
+        }).toPass({ timeout: 5000 });
+      } else {
+        await nextBtn.click();
       }
     }
 
@@ -168,8 +173,12 @@ test.describe('Onboarding Wizard', () => {
     const nextBtn = onboardingDialog
       .locator('button[class*="bg-blue-600"], button:has-text("Devam")')
       .first();
-    await nextBtn.click({ force: true });
-    await page.waitForTimeout(800);
+    const oldContent = await onboardingDialog.textContent();
+    await nextBtn.click();
+    await expect(async () => {
+      const newContent = await onboardingDialog.textContent();
+      expect(newContent).not.toEqual(oldContent);
+    }).toPass({ timeout: 5000 });
 
     const advancedBtn = onboardingDialog
       .locator(
@@ -177,7 +186,7 @@ test.describe('Onboarding Wizard', () => {
       )
       .first();
     if (await advancedBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await advancedBtn.click({ force: true });
+      await advancedBtn.click();
     }
 
     for (let i = 0; i < 4; i++) {
@@ -185,14 +194,19 @@ test.describe('Onboarding Wizard', () => {
         .locator('button[class*="bg-blue-600"], button:has-text("Devam"), button:has-text("Next")')
         .first();
       if (await btn.isVisible({ timeout: 1500 }).catch(() => false)) {
-        await btn.click({ force: true });
-        await page.waitForTimeout(800);
+        const stepContent = await onboardingDialog.textContent();
+
+        await btn.click();
+        await expect(async () => {
+          const newContent = await onboardingDialog.textContent();
+          expect(newContent).not.toEqual(stepContent);
+        })
+          .toPass({ timeout: 5000 })
+          .catch(() => {});
       } else {
         break;
       }
     }
-
-    await page.waitForTimeout(2000);
 
     const profile = await page.evaluate(() => {
       return localStorage.getItem('aegis_security_profile');

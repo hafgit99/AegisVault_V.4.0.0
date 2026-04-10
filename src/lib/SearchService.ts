@@ -75,13 +75,7 @@ export class SearchService {
   ): VaultEntry[] {
     if (!query.trim()) return entries;
 
-    const queryTokens = query
-      .toLowerCase()
-      .normalize('NFKD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
+    const queryTokens = this.normalize(query).split(/\s+/).filter(Boolean);
 
     if (queryTokens.length === 0) return entries;
 

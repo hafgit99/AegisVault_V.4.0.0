@@ -29,11 +29,9 @@ test.describe('Search, Filter & Sort', () => {
       .locator('input[placeholder*="earch"], input[placeholder*="Ara"]')
       .first();
     await searchInput.fill('GitHub');
-    await page.waitForTimeout(500);
 
     const cards = page.locator('.vault-entry-card');
-    const count = await cards.count();
-    expect(count).toBeGreaterThanOrEqual(1);
+    await expect(cards).toHaveCount(1, { timeout: 5000 });
 
     const firstCardText = await cards.first().textContent();
     expect(firstCardText?.toLowerCase()).toContain('github');
@@ -108,11 +106,9 @@ test.describe('Search, Filter & Sort', () => {
       .locator('.category-item:has-text("General"), .category-item:has-text("Genel")')
       .first();
     await generalCat.click({ force: true });
-    await page.waitForTimeout(500);
 
     const filteredItems = page.locator('.vault-entry-card');
-    const filteredCount = await filteredItems.count();
-    expect(filteredCount).toBe(initialCount);
+    await expect(filteredItems).toHaveCount(initialCount, { timeout: 5000 });
   });
 
   test('should show trash category as empty initially', async ({ page }) => {
@@ -120,14 +116,12 @@ test.describe('Search, Filter & Sort', () => {
       .locator('.category-item:has-text("Trash"), .category-item:has-text("Çöp")')
       .first();
     await trashItem.click({ force: true });
-    await page.waitForTimeout(500);
 
     const emptyState = page.locator('text=/no.*trash|Çöp.*yok|empty/i').first();
-    const hasEmptyState = await emptyState.isVisible({ timeout: 3000 }).catch(() => false);
+    await expect(emptyState).toBeVisible({ timeout: 5000 });
 
     const cards = page.locator('.vault-entry-card');
-    const count = await cards.count();
-    expect(count === 0 || hasEmptyState).toBe(true);
+    await expect(cards).toHaveCount(0, { timeout: 5000 });
   });
 
   test('should show all entries when All category clicked', async ({ page }) => {
@@ -135,17 +129,15 @@ test.describe('Search, Filter & Sort', () => {
       .locator('.category-item:has-text("Trash"), .category-item:has-text("Çöp")')
       .first();
     await trashItem.click({ force: true });
-    await page.waitForTimeout(500);
+    await expect(page.locator('.vault-entry-card')).toHaveCount(0, { timeout: 5000 });
 
     const allBtn = page
       .locator('.category-item:has-text("All"), .category-item:has-text("Tümü")')
       .first();
     await allBtn.click({ force: true });
-    await page.waitForTimeout(500);
 
     const cards = page.locator('.vault-entry-card');
-    const count = await cards.count();
-    expect(count).toBeGreaterThanOrEqual(3);
+    await expect(cards).not.toHaveCount(0, { timeout: 5000 });
   });
 
   test('should sort entries by name A-Z', async ({ page }) => {
@@ -153,27 +145,25 @@ test.describe('Search, Filter & Sort', () => {
       .locator('select[aria-label*="Sort"], select[aria-label*="Sıra"]')
       .first();
     await sortSelect.selectOption('title_asc');
-    await page.waitForTimeout(500);
 
-    const titles = await page
-      .locator('.vault-entry-card')
-      .evaluateAll((cards) =>
-        cards
-          .map(
-            (c) =>
-              c
-                .querySelector('[class*="font-semibold"], [class*="font-bold"]')
-                ?.textContent?.trim() || ''
-          )
-          .filter(Boolean)
-      );
+    await expect(async () => {
+      const titles = await page
+        .locator('.vault-entry-card')
+        .evaluateAll((cards) =>
+          cards
+            .map(
+              (c) =>
+                c
+                  .querySelector('[class*="font-semibold"], [class*="font-bold"]')
+                  ?.textContent?.trim() || ''
+            )
+            .filter(Boolean)
+        );
 
-    if (titles.length >= 2) {
+      expect(titles.length).toBeGreaterThanOrEqual(2);
       const sorted = [...titles].sort((a, b) => a.localeCompare(b));
-      for (let i = 0; i < Math.min(titles.length, sorted.length); i++) {
-        expect(titles[i]).toBe(sorted[i]);
-      }
-    }
+      expect(titles).toEqual(sorted);
+    }).toPass({ timeout: 5000 });
   });
 
   test('should sort entries by name Z-A', async ({ page }) => {
@@ -181,11 +171,25 @@ test.describe('Search, Filter & Sort', () => {
       .locator('select[aria-label*="Sort"], select[aria-label*="Sıra"]')
       .first();
     await sortSelect.selectOption('title_desc');
-    await page.waitForTimeout(500);
 
-    const cards = page.locator('.vault-entry-card');
-    const count = await cards.count();
-    expect(count).toBeGreaterThanOrEqual(3);
+    await expect(async () => {
+      const titles = await page
+        .locator('.vault-entry-card')
+        .evaluateAll((cards) =>
+          cards
+            .map(
+              (c) =>
+                c
+                  .querySelector('[class*="font-semibold"], [class*="font-bold"]')
+                  ?.textContent?.trim() || ''
+            )
+            .filter(Boolean)
+        );
+
+      expect(titles.length).toBeGreaterThanOrEqual(2);
+      const sorted = [...titles].sort((a, b) => b.localeCompare(a));
+      expect(titles).toEqual(sorted);
+    }).toPass({ timeout: 5000 });
   });
 
   test('should toggle view density between comfortable and compact', async ({ page }) => {
@@ -199,10 +203,11 @@ test.describe('Search, Filter & Sort', () => {
     const initialText = await densityBtn.textContent();
 
     await densityBtn.click({ force: true });
-    await page.waitForTimeout(500);
 
-    const newText = await densityBtn.textContent();
-    expect(newText?.trim()).not.toBe(initialText?.trim());
+    await expect(async () => {
+      const newText = await densityBtn.textContent();
+      expect(newText?.trim()).not.toBe(initialText?.trim());
+    }).toPass({ timeout: 5000 });
   });
 
   test('should filter entries by search scope All', async ({ page }) => {
@@ -217,11 +222,9 @@ test.describe('Search, Filter & Sort', () => {
       .locator('input[placeholder*="earch"], input[placeholder*="Ara"]')
       .first();
     await searchInput.fill('gmail');
-    await page.waitForTimeout(500);
 
     const cards = page.locator('.vault-entry-card');
-    const count = await cards.count();
-    expect(count).toBeGreaterThanOrEqual(1);
+    await expect(cards).toHaveCount(1, { timeout: 5000 });
   });
 
   test('should highlight active search scope', async ({ page }) => {
