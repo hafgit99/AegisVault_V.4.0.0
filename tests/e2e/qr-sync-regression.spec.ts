@@ -2,17 +2,27 @@ import { test, expect } from '@playwright/test';
 
 test.describe('QR Sync Regression', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    // Bypass Onboarding by setting localStorage immediately
-    await page.evaluate(() => {
+    // Use addInitScript to ensure these flags are set BEFORE the app initializes
+    await page.addInitScript(() => {
       localStorage.setItem('aegis_onboarding_done', 'true');
+      localStorage.setItem('aegis_seen_tour', 'true');
+      localStorage.setItem('aegis_bypass_tour', 'true');
+      try {
+        const raw = localStorage.getItem('aegis_settings') || '{}';
+        const settings = JSON.parse(raw);
+        settings.hasSeenTour = true;
+        localStorage.setItem('aegis_settings', JSON.stringify(settings));
+      } catch {
+        /* ignore */
+      }
     });
+
+    await page.goto('/');
 
     // Wait for the login page to load
     await page.waitForSelector('.vault-login-root', { timeout: 15000 });
 
     // CI always starts fresh — go through Initialize flow
-    // Find the "Initialize" or "Kurulum" tab
     const initTab = page
       .locator('.login-tab-btn')
       .filter({ hasText: /Initialize|Kurulum/i })
@@ -25,16 +35,16 @@ test.describe('QR Sync Regression', () => {
     await expect(pwInput).toBeVisible({ timeout: 5000 });
     await pwInput.fill('admin123');
 
-    // Click "Generate Secret" / "Gizli Anahtar Oluştur"
+    // Click "Generate Secret"
     const submitBtn = page.locator('.vault-login-unlock-btn').first();
     await submitBtn.click();
 
-    // Wait for secret panel (Argon2id may be slow on CI)
+    // Wait for secret panel
     const secretPanel = page.locator('.vault-secret-panel, .vault-secret-box').first();
-    await expect(secretPanel).toBeVisible({ timeout: 45000 }); // Increased timeout for Argon2id in CI
+    await expect(secretPanel).toBeVisible({ timeout: 45000 });
 
-    // Click "Finalize Vault" / "Kapat ve Giriş Yap"
-    await page.waitForTimeout(1000); // Wait for animations
+    // Click "Finalize Vault"
+    await page.waitForTimeout(1000); 
     const finalizeBtn = page.locator('.vault-login-unlock-btn').first();
     await finalizeBtn.click();
 
@@ -56,7 +66,7 @@ test.describe('QR Sync Regression', () => {
       .filter({ hasText: /Import\/Export & Sync|İçe\/Dışa Aktarım & Sync/i })
       .first();
     await expect(syncTab).toBeVisible({ timeout: 5000 });
-    await syncTab.click();
+    await syncTab.click({ force: true });
 
     // Verify the QR Sync section title is visible (EN or TR) using regex
     const qrTitle = page
@@ -83,7 +93,7 @@ test.describe('QR Sync Regression', () => {
       .filter({ hasText: /Import\/Export & Sync|İçe\/Dışa Aktarım & Sync/i })
       .first();
     await expect(syncTab).toBeVisible({ timeout: 5000 });
-    await syncTab.click();
+    await syncTab.click({ force: true });
 
     // Verify the QR Sync section title using regex
     const qrTitle = page

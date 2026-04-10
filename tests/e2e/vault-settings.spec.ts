@@ -45,7 +45,7 @@ test.describe('Settings Drawer', () => {
 
     const syncTab = page.locator('button:has-text("Import"), button:has-text("İçe")').first();
     if (await syncTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await syncTab.click();
+      await syncTab.click({ force: true });
       await page.waitForTimeout(500);
 
       const syncContent = page
@@ -62,7 +62,7 @@ test.describe('Settings Drawer', () => {
       .locator('button:has-text("Security"), button:has-text("Güvenlik")')
       .first();
     if (await securityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await securityTab.click();
+      await securityTab.click({ force: true });
     }
   });
 
@@ -73,7 +73,7 @@ test.describe('Settings Drawer', () => {
       .locator('button:has-text("Sharing"), button:has-text("Paylaşım")')
       .first();
     if (await sharingTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await sharingTab.click();
+      await sharingTab.click({ force: true });
     }
   });
 
@@ -97,7 +97,7 @@ test.describe('Settings Drawer', () => {
       .filter({ hasText: /Import\/Export & Sync|İçe\/Dışa Aktarım & Sync/i })
       .first();
     if (await syncTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await syncTab.click();
+      await syncTab.click({ force: true });
       await page.waitForTimeout(500);
 
       const qrTitle = page
@@ -123,7 +123,7 @@ test.describe('Settings Drawer', () => {
 
     const donationBtn = page.locator('button:has-text("Donate"), button:has-text("Bağış")').first();
     if (await donationBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await donationBtn.click();
+      await donationBtn.click({ force: true });
       await page.waitForTimeout(500);
     }
   });

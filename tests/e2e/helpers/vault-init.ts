@@ -1,9 +1,11 @@
 import { type Page, expect } from '@playwright/test';
 
 export async function initializeVaultAndGoToDashboard(page: Page) {
-  await page.goto('/');
-  await page.evaluate(() => {
+  // Use addInitScript to ensure these flags are set BEFORE the app initializes
+  await page.addInitScript(() => {
     localStorage.setItem('aegis_onboarding_done', 'true');
+    localStorage.setItem('aegis_seen_tour', 'true');
+    localStorage.setItem('aegis_bypass_tour', 'true');
     try {
       const raw = localStorage.getItem('aegis_settings') || '{}';
       const settings = JSON.parse(raw);
@@ -13,6 +15,8 @@ export async function initializeVaultAndGoToDashboard(page: Page) {
       /* ignore */
     }
   });
+
+  await page.goto('/');
   await page.waitForSelector('.vault-login-root', { timeout: 15000 });
 
   const initTab = page

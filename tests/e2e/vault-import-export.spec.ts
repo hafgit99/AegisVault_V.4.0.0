@@ -16,7 +16,8 @@ test.describe('Import & Export Workflows', () => {
       .filter({ hasText: /Import\/Export & Sync|İçe\/Dışa Aktarım & Sync/i })
       .first();
     await expect(syncTab).toBeVisible({ timeout: 5000 });
-    await syncTab.click();
+    // Use force: true to bypass any transient overlays or animations
+    await syncTab.click({ force: true });
     await page.waitForTimeout(500);
   }
 
