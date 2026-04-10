@@ -259,7 +259,10 @@ test.describe('Entry CRUD Lifecycle', () => {
       username: 'vis@test.com',
       password: 'VisiblePassword!',
     });
-    const entryCard = page.locator('.vault-entry-card').filter({ hasText: 'Visibility Test' }).first();
+    const entryCard = page
+      .locator('.vault-entry-card')
+      .filter({ hasText: 'Visibility Test' })
+      .first();
     await expect(entryCard).toBeVisible({ timeout: 15000 });
 
     const eyeBtn = entryCard.locator('button:has(svg.lucide-eye)').first();

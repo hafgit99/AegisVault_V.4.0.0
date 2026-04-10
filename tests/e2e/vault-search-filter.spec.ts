@@ -43,7 +43,7 @@ test.describe('Search, Filter & Sort', () => {
       .locator('input[placeholder*="earch"], input[placeholder*="Ara"]')
       .first();
     await searchInput.fill('admin@aws');
- 
+
     // Wait for the filtered results with retries to handle debounce timing
     await expect(async () => {
       const cards = page.locator('.vault-entry-card');
@@ -51,13 +51,13 @@ test.describe('Search, Filter & Sort', () => {
       await expect(cards.first()).toContainText('AWS Console');
     }).toPass({ timeout: 10000 });
   });
- 
+
   test('should show no results for non-matching search', async ({ page }) => {
     const searchInput = page
       .locator('input[placeholder*="earch"], input[placeholder*="Ara"]')
       .first();
     await searchInput.fill('nonexistent_entry_xyz');
- 
+
     await expect(page.locator('.vault-entry-card')).toHaveCount(0, { timeout: 5000 });
   });
 
@@ -67,7 +67,7 @@ test.describe('Search, Filter & Sort', () => {
       .first();
     await searchInput.fill('aws');
     await expect(page.locator('.vault-entry-card')).toHaveCount(1, { timeout: 5000 });
- 
+
     await searchInput.fill('');
     await expect(page.locator('.vault-entry-card')).toHaveCount(3, { timeout: 7000 });
   });
