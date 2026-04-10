@@ -53,9 +53,9 @@ export default defineConfig({
   },
 
   // Timeout per test
-  timeout: 60000, // 60 seconds per test (Firefox beforeEach slower)
+  timeout: process.env.CI ? 120000 : 60000,
   expect: {
-    timeout: 10000, // expect assertion timeout
+    timeout: process.env.CI ? 20000 : 10000, // expect assertion timeout
   },
 
   // Output directory

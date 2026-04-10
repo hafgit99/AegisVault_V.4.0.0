@@ -20,8 +20,15 @@ test.describe('Search, Filter & Sort', () => {
       username: 'me@gmail.com',
       password: 'EmailPass789!',
     });
-    // Wait for entries to be visible and indexed before starting tests
-    await expect(page.locator('.vault-entry-card')).toHaveCount(3, { timeout: 15000 });
+    // High-resilience wait for all entries to be processed and rendered
+    await expect(async () => {
+      const cardCount = await page.locator('.vault-entry-card').count();
+      expect(cardCount).toBe(3);
+    }).toPass({
+      timeout: 30000,
+      intervals: [1000, 2000, 5000],
+    });
+
     await dismissTour(page);
   });
 

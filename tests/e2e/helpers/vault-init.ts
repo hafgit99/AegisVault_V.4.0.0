@@ -123,9 +123,17 @@ export async function createEntry(
       '.entry-form-surface button[type="submit"], .entry-form-surface button:has-text("Save"), .entry-form-surface button:has-text("Kaydet")'
     )
     .first();
-  await saveBtn.click({ force: true });
+  await expect(async () => {
+    const closed = (await page.locator('.entry-form-surface').count()) === 0;
+    if (!closed) {
+      await saveBtn.click({ force: true }).catch(() => {});
+    }
+    expect(closed).toBeTruthy();
+  }).toPass({ timeout: 15000 });
 
-  await page
-    .waitForSelector('.entry-form-surface', { state: 'hidden', timeout: 10000 })
-    .catch(() => {});
+  await expect(
+    page.locator('.vault-entry-card').filter({ hasText: opts.title }).first()
+  ).toBeVisible({
+    timeout: 15000,
+  });
 }
