@@ -41,13 +41,9 @@ test.describe('Entry CRUD Lifecycle', () => {
       category: 'General',
     });
 
-    await page.waitForTimeout(2000);
-
-    const entryCard = page.locator('.vault-entry-card').first();
-    await expect(entryCard).toBeVisible({ timeout: 10000 });
-
-    const cardText = await entryCard.textContent();
-    expect(cardText).toContain('Test Website');
+    const entryCard = page.locator('.vault-entry-card').filter({ hasText: 'Test Website' }).first();
+    await expect(entryCard).toBeVisible({ timeout: 15000 });
+    await expect(entryCard).toContainText('testuser@example.com');
   });
 
   test('should show entry count after creating entry', async ({ page }) => {
@@ -57,10 +53,8 @@ test.describe('Entry CRUD Lifecycle', () => {
       password: 'CounterPass123!',
     });
 
-    await page.waitForTimeout(2000);
-
     const entryCount = page.locator('span:has-text("1 entries"), span:has-text("1 giriş")').first();
-    await expect(entryCount).toBeVisible({ timeout: 5000 });
+    await expect(entryCount).toBeVisible({ timeout: 10000 });
   });
 
   test('should create entry with Notes category', async ({ page }) => {

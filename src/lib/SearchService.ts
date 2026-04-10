@@ -174,7 +174,7 @@ export class SearchService {
     // Eğer tam prefix eşleşmesi olan bir set varsa onlara öncelik ver
     const hasPrefixOnlySet = scored.some((item) => item.prefixMatchedAllTokens);
     const resultItems = hasPrefixOnlySet
-      ? scored.filter((item) => item.prefixMatchedAllTokens || item.score > 100)
+      ? scored.filter((item) => item.prefixMatchedAllTokens || item.score >= 40)
       : scored;
 
     return resultItems

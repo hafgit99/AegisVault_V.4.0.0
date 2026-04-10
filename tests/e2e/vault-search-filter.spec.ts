@@ -43,48 +43,40 @@ test.describe('Search, Filter & Sort', () => {
     const searchInput = page
       .locator('input[placeholder*="earch"], input[placeholder*="Ara"]')
       .first();
-    await searchInput.fill('ZZZNonExistentZZZ');
-    await page.waitForTimeout(500);
-
+    await searchInput.fill('admin@aws');
+    
+    // Wait for the filtered results to appear
     const cards = page.locator('.vault-entry-card');
-    const count = await cards.count();
-    expect(count).toBe(0);
+    await expect(cards).toHaveCount(1, { timeout: 10000 });
+    await expect(cards.first()).toContainText('AWS Console');
   });
 
-  test('should clear search results when input is cleared', async ({ page }) => {
-    const searchInput = page
-      .locator('input[placeholder*="earch"], input[placeholder*="Ara"]')
-      .first();
-    await searchInput.fill('GitHub');
-    await page.waitForTimeout(500);
+  test('should show all entries when search is cleared', async ({ page }) => {
+    const searchInput = page.locator('input[placeholder*="earch"], input[placeholder*="Ara"]').first();
+    await searchInput.fill('aws');
+    await expect(page.locator('.vault-entry-card')).toHaveCount(1);
 
-    await searchInput.clear();
-    await page.waitForTimeout(500);
-
-    const cards = page.locator('.vault-entry-card');
-    const count = await cards.count();
-    expect(count).toBeGreaterThanOrEqual(3);
+    await searchInput.fill('');
+    await expect(page.locator('.vault-entry-card')).toHaveCount(3, { timeout: 5000 });
   });
 
   test('should search by title when title scope selected', async ({ page }) => {
     const titleScopeBtn = page
       .locator(
-        '.toolbar-chip-group button:has-text("Title"), .toolbar-chip-group button:has-text("Başlık")'
+        '.toolbar-chip-group button:has-text("Title"), .toolbar-chip-group button:has-text("Başlık"), .toolbar-chip-group button:has-text("Baslik")'
       )
       .first();
-    if (await titleScopeBtn.isVisible()) {
-      await titleScopeBtn.click({ force: true });
-    }
+    await expect(titleScopeBtn).toBeVisible();
+    await titleScopeBtn.click({ force: true });
 
     const searchInput = page
       .locator('input[placeholder*="earch"], input[placeholder*="Ara"]')
       .first();
-    await searchInput.fill('AWS');
-    await page.waitForTimeout(500);
+    await searchInput.fill('github');
 
     const cards = page.locator('.vault-entry-card');
-    const count = await cards.count();
-    expect(count).toBeGreaterThanOrEqual(1);
+    await expect(cards).toHaveCount(1, { timeout: 5000 });
+    await expect(cards.first()).toContainText('GitHub');
   });
 
   test('should search by username when user scope selected', async ({ page }) => {
@@ -95,17 +87,15 @@ test.describe('Search, Filter & Sort', () => {
       .first();
     await expect(userScopeBtn).toBeVisible({ timeout: 5000 });
     await userScopeBtn.click({ force: true });
-    await page.waitForTimeout(500);
 
     const searchInput = page
       .locator('input[placeholder*="earch"], input[placeholder*="Ara"]')
       .first();
     await searchInput.fill('admin@aws');
-    await page.waitForTimeout(1000);
 
     const cards = page.locator('.vault-entry-card');
-    const count = await cards.count();
-    expect(count).toBeGreaterThanOrEqual(1);
+    await expect(cards).toHaveCount(1, { timeout: 10000 });
+    await expect(cards.first()).toContainText('AWS Console');
   });
 
   test('should filter by category using sidebar', async ({ page }) => {

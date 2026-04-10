@@ -3,6 +3,11 @@ import { initializeVaultAndGoToDashboard } from './helpers/vault-init';
 
 test.describe('Onboarding Wizard', () => {
   test.beforeEach(async ({ page }) => {
+    // Bypass the Spotlight tour to prevent it from covering the onboarding dialog
+    await page.addInitScript(() => {
+      localStorage.setItem('aegis_bypass_tour', 'true');
+      localStorage.setItem('aegis_seen_tour', 'true');
+    });
     await page.goto('/');
     await page.waitForSelector('.vault-login-root', { timeout: 10000 });
 
@@ -61,9 +66,8 @@ test.describe('Onboarding Wizard', () => {
       .locator('button:has-text("Devam"), button:has-text("Next"), button[class*="bg-blue-600"]')
       .first();
     await expect(nextBtn).toBeVisible();
-    await nextBtn.click();
+    await nextBtn.click({ force: true });
 
-    await page.waitForTimeout(500);
     const stepTitle = onboardingDialog.locator('h2').first();
     await expect(stepTitle).toBeVisible();
   });
@@ -73,12 +77,12 @@ test.describe('Onboarding Wizard', () => {
     await expect(onboardingDialog).toBeVisible({ timeout: 5000 });
 
     const nextBtn = onboardingDialog.locator('button[class*="bg-blue-600"]').first();
-    await nextBtn.click();
-    await page.waitForTimeout(500);
+    await nextBtn.click({ force: true });
 
     const profileButtons = onboardingDialog.locator(
       'button.group, [class*="bg-white/5"][class*="border"]'
     );
+    await expect(profileButtons.first()).toBeVisible({ timeout: 5000 });
     const count = await profileButtons.count();
     expect(count).toBeGreaterThanOrEqual(2);
   });
@@ -88,16 +92,14 @@ test.describe('Onboarding Wizard', () => {
     await expect(onboardingDialog).toBeVisible({ timeout: 5000 });
 
     const nextBtn = onboardingDialog.locator('button[class*="bg-blue-600"]').first();
-    await nextBtn.click();
-    await page.waitForTimeout(500);
+    await nextBtn.click({ force: true });
 
     const paranoidBtn = onboardingDialog
       .locator('button:has-text("paranoid"), button:has-text("Paranoid")')
       .first();
-    if (await paranoidBtn.isVisible()) {
-      await paranoidBtn.click();
-      await expect(paranoidBtn).toHaveClass(/bg-blue-500|ring-1|border-blue/);
-    }
+    await expect(paranoidBtn).toBeVisible({ timeout: 5000 });
+    await paranoidBtn.click({ force: true });
+    await expect(paranoidBtn).toHaveClass(/bg-blue-500|ring-1|border-blue/);
   });
 
   test('should navigate back with previous button', async ({ page }) => {
@@ -105,16 +107,14 @@ test.describe('Onboarding Wizard', () => {
     await expect(onboardingDialog).toBeVisible({ timeout: 5000 });
 
     const nextBtn = onboardingDialog.locator('button[class*="bg-blue-600"]').first();
-    await nextBtn.click();
-    await page.waitForTimeout(500);
+    await nextBtn.click({ force: true });
 
     const backBtn = onboardingDialog
       .locator('button:has-text("Geri"), button:has-text("Back")')
       .first();
     await expect(backBtn).toBeVisible();
-    await backBtn.click();
+    await backBtn.click({ force: true });
 
-    await page.waitForTimeout(500);
     const stepTitle = onboardingDialog.locator('h2#step-title-0, h2').first();
     await expect(stepTitle).toBeVisible();
   });
@@ -132,25 +132,26 @@ test.describe('Onboarding Wizard', () => {
   });
 
   test('should complete onboarding and close dialog', async ({ page }) => {
-    const onboardingDialog = page.locator('[role="dialog"][aria-modal="true"]');
-    await expect(onboardingDialog).toBeVisible({ timeout: 5000 });
+    const onboardingDialog = page.locator('[role="dialog"]').filter({ hasText: /Hoş Geldiniz|Welcome/i });
+    await expect(onboardingDialog).toBeVisible({ timeout: 15000 });
 
+    // Step 0 -> 1 -> 2 -> 3 -> 4 -> Complete
     for (let i = 0; i < 5; i++) {
       const nextBtn = onboardingDialog
-        .locator('button[class*="bg-blue-600"], button:has-text("Devam"), button:has-text("Next")')
+        .locator('button:has-text("Devam"), button:has-text("Next"), button:has-text("Başla"), button:has-text("Finish"), button[class*="bg-blue-600"]')
         .first();
-      if (await nextBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await nextBtn.click({ force: true });
-        await page.waitForTimeout(800);
-      } else {
-        break;
+      
+      await expect(nextBtn).toBeVisible({ timeout: 5000 });
+      await nextBtn.click({ force: true });
+      
+      if (i < 4) {
+        // Wait for step indicator to change or some content change
+        await page.waitForTimeout(500); 
       }
     }
 
-    await page.waitForTimeout(2000);
-
-    const dialogVisible = await onboardingDialog.isVisible().catch(() => false);
-    expect(dialogVisible).toBe(false);
+    // Wait for the dialog to be hidden or detached
+    await expect(onboardingDialog).toBeHidden({ timeout: 10000 });
 
     const onboardingDone = await page.evaluate(() => localStorage.getItem('aegis_onboarding_done'));
     expect(onboardingDone).toBe('true');
