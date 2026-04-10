@@ -9,8 +9,9 @@ export function SpotlightWalkthrough() {
   // Sadece ilk defa giren kullanıcıya göster (ya da demo amaçlı hep göster)
   useEffect(() => {
     void SecureAppSettings.initialize().then(() => {
-      const skipTour = localStorage.getItem('aegis_bypass_tour') === 'true' || 
-                       localStorage.getItem('aegis_onboarding_done') === 'true';
+      const skipTour =
+        localStorage.getItem('aegis_bypass_tour') === 'true' ||
+        localStorage.getItem('aegis_onboarding_done') === 'true';
       if (!SecureAppSettings.getHasSeenTour() && !skipTour) {
         setTimeout(() => setIsOpen(true), 1500);
       }

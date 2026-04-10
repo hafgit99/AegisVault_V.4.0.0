@@ -44,7 +44,7 @@ test.describe('QR Sync Regression', () => {
     await expect(secretPanel).toBeVisible({ timeout: 45000 });
 
     // Click "Finalize Vault"
-    await page.waitForTimeout(1000); 
+    await page.waitForTimeout(1000);
     const finalizeBtn = page.locator('.vault-login-unlock-btn').first();
     await finalizeBtn.click();
 
