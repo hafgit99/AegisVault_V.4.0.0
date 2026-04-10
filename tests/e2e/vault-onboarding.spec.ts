@@ -132,21 +132,25 @@ test.describe('Onboarding Wizard', () => {
   });
 
   test('should complete onboarding and close dialog', async ({ page }) => {
-    const onboardingDialog = page.locator('[role="dialog"]').filter({ hasText: /Hoş Geldiniz|Welcome/i });
+    const onboardingDialog = page
+      .locator('[role="dialog"]')
+      .filter({ hasText: /Hoş Geldiniz|Welcome/i });
     await expect(onboardingDialog).toBeVisible({ timeout: 15000 });
 
     // Step 0 -> 1 -> 2 -> 3 -> 4 -> Complete
     for (let i = 0; i < 5; i++) {
       const nextBtn = onboardingDialog
-        .locator('button:has-text("Devam"), button:has-text("Next"), button:has-text("Başla"), button:has-text("Finish"), button[class*="bg-blue-600"]')
+        .locator(
+          'button:has-text("Devam"), button:has-text("Next"), button:has-text("Başla"), button:has-text("Finish"), button[class*="bg-blue-600"]'
+        )
         .first();
-      
+
       await expect(nextBtn).toBeVisible({ timeout: 5000 });
       await nextBtn.click({ force: true });
-      
+
       if (i < 4) {
         // Wait for step indicator to change or some content change
-        await page.waitForTimeout(500); 
+        await page.waitForTimeout(500);
       }
     }
 

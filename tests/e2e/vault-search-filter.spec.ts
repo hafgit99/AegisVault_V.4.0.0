@@ -44,7 +44,7 @@ test.describe('Search, Filter & Sort', () => {
       .locator('input[placeholder*="earch"], input[placeholder*="Ara"]')
       .first();
     await searchInput.fill('admin@aws');
-    
+
     // Wait for the filtered results to appear
     const cards = page.locator('.vault-entry-card');
     await expect(cards).toHaveCount(1, { timeout: 10000 });
@@ -52,7 +52,9 @@ test.describe('Search, Filter & Sort', () => {
   });
 
   test('should show all entries when search is cleared', async ({ page }) => {
-    const searchInput = page.locator('input[placeholder*="earch"], input[placeholder*="Ara"]').first();
+    const searchInput = page
+      .locator('input[placeholder*="earch"], input[placeholder*="Ara"]')
+      .first();
     await searchInput.fill('aws');
     await expect(page.locator('.vault-entry-card')).toHaveCount(1);
 
