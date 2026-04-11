@@ -82,3 +82,9 @@ ci-artifacts/
 debug-out.txt
 vitest-results/
 android-aegis-temp/
+
+# Stryker & Research Scripts
+.stryker-tmp/
+reports/
+parse-stryker.*
+vitest-fail.txt
