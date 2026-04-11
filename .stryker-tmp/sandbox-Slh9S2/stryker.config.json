@@ -1,0 +1,23 @@
+{
+  "$schema": "https://stryker-mutator.io/report/stryker-config.schema.json",
+  "packageManager": "npm",
+  "reporters": ["html", "clear-text", "progress"],
+  "testRunner": "vitest",
+  "vitest": {
+    "configFile": "vitest.config.ts"
+  },
+  "mutate": [
+    "src/vaultService.ts",
+    "src/lib/ExtensionBridge.ts",
+    "src/lib/webAuthn.ts",
+    "src/lib/WebAuthnService.ts",
+    "src/lib/SQLiteOPFS.ts",
+    "src/lib/PasskeyBindingService.ts"
+  ],
+  "coverageAnalysis": "perTest",
+  "mutationScoreThresholds": {
+    "high": 80,
+    "low": 60,
+    "break": 50
+  }
+}

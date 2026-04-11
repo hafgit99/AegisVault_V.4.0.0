@@ -1,0 +1,24 @@
+﻿SON KULLANICI LİSANS SÖZLEŞMESİ (EULA)
+
+ÖNEMLİ - DİKKATLİCE OKUYUN: Bu Son Kullanıcı Lisans Sözleşmesi ("EULA"), siz (birey veya tek bir tüzel kişi) ile bu yazılımın ("Aegis Vault") geliştiricisi arasında yapılan ve yukarıda belirtilen ve bilgisayar yazılımını içeren ve ilişkili medyayı, basılı materyalleri ve "çevrimiçi" veya elektronik belgeleri ("YAZILIM ÜRÜNÜ") içerebilecek yazılım ürünü için geçerli yasal bir sözleşmedir.
+
+YAZILIM ÜRÜNÜ'nü kurarak, kopyalayarak veya başka bir şekilde kullanarak, bu EULA'nın şartlarına bağlı kalmayı kabul etmiş olursunuz. Bu EULA'nın şartlarını kabul etmiyorsanız, YAZILIM ÜRÜNÜ'nü kurmayın veya kullanmayın.
+
+1. LİSANSIN VERİLMESİ.
+YAZILIM ÜRÜNÜ satılmamakta, lisanslanmaktadır. Bu EULA size aşağıdaki hakları verir:
+- Kurulum ve Kullanım: YAZILIM ÜRÜNÜ'nün bir kopyasını tek bir bilgisayara kurabilir ve kullanabilirsiniz.
+- Çoğaltma ve Dağıtım: Açık izin olmaksızın YAZILIM ÜRÜNÜ'nün kopyalarını çoğaltamaz veya dağıtamazsınız.
+
+2. DİĞER HAK VE SINIRLAMALARIN AÇIKLAMASI.
+- Ters Mühendislik, Kaynak Koda Dönüştürme ve Parçalara Ayırma Kısıtlamaları: İlgili yasanın bu sınırlamaya rağmen izin verdiği durumlar dışında YAZILIM ÜRÜNÜ'nü ters mühendisliğe tabi tutamaz, kaynak koda dönüştüremez veya parçalara ayıramazsınız.
+- Bileşenlerin Ayrılması: YAZILIM ÜRÜNÜ tek bir ürün olarak lisanslanmıştır. Bileşenleri birden fazla bilgisayarda kullanılmak üzere ayrılamaz.
+- Yazılımla İlgili Devir: Bu EULA kapsamındaki tüm haklarınızı; elinizde hiç kopya tutmamanız, YAZILIM ÜRÜNÜ'nün tamamını (tüm bileşenler, medya ve basılı materğerler, yükseltmeler ve bu EULA dahil) devretmeniz ve alıcının bu EULA'nın şartlarını kabul etmesi koşuluyla kalıcı olarak devredebilirsiniz.
+
+3. TELİF HAKKI.
+YAZILIM ÜRÜNÜ (YAZILIM ÜRÜNÜ'ne dahil edilmiş her türlü görüntü, fotoğraf, animasyon, video, ses, müzik, metin ve "applet"ler dahil ancak bunlarla sınırlı olmamak üzere), beraberindeki basılı materyaller ve YAZILIM ÜRÜNÜ'nün herhangi bir kopyasıyla ilgili tüm mülkiyet ve telif hakları geliştiriciye aittir.
+
+4. GARANTİ REDDİ.
+Geliştirici, YAZILIM ÜRÜNÜ için herhangi bir garantiyi açıkça reddeder. YAZILIM ÜRÜNÜ ve ilgili belgeler, zımni ticari elverişlilik, belirli bir amaca uygunluk veya ihlal etmeme garantileri dahil ancak bunlarla sınırlı olmamak üzere açık veya zımni hiçbir garanti olmaksızın "olduğu gibi" sağlanır.
+
+5. SORUMLULUĞUN SINIRLANDIRILMASI.
+Geçerli yasaların izin verdiği azami ölçüde, geliştirici hiçbir durumda YAZILIM ÜRÜNÜ'nün kullanımından veya kullanılamamasından kaynaklanan hiçbir özel, arızi, dolaylı veya netice kabilinden doğan zarardan (iş karı kaybı, iş kesintisi, iş bilgisi kaybı veya diğer herhangi bir maddi kayıp dahil ancak bunlarla sınırlı olmamak üzere) sorumlu olmayacaktır.

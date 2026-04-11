@@ -1,0 +1,3 @@
+name,url,username,password,note,totp,createTime,modifyTime,vault
+Proton Mail,https://mail.proton.me,user@proton.me,protonSecret123,Private mailbox,,2026-01-05T10:00:00Z,2026-03-10T08:00:00Z,Personal
+Cloud Console,https://console.example.dev,cloud-admin,CloudAdmin789,Admin portal,,2026-02-01T11:30:00Z,2026-03-12T12:45:00Z,Work

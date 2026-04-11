@@ -142,23 +142,26 @@ describe('PasskeyBindingService', () => {
 
   it('normalizes completely corrupted legacy JSON safely to defaults', async () => {
     vi.resetModules();
-    
-    localStorage.setItem('aegis_passkey_bindings_v1', JSON.stringify({
-      'p1::db1': {
-        // Missing everything
-      },
-      'p2::db2': null // Invalid member
-    }));
+
+    localStorage.setItem(
+      'aegis_passkey_bindings_v1',
+      JSON.stringify({
+        'p1::db1': {
+          // Missing everything
+        },
+        'p2::db2': null, // Invalid member
+      })
+    );
     localStorage.setItem('aegis_passkey_audit_v1', '{"not":"array"}');
     localStorage.setItem('aegis_passkey_revocations_v1', '"string_not_array"');
     localStorage.setItem('aegis_passkey_policy_v1', '{"maxBindingAgeDays": "NOT_NUMBER"}');
-    
+
     const { PasskeyBindingService: FreshService } = await import('../PasskeyBindingService');
     await FreshService.initialize();
 
     const bindings = FreshService.listBindings();
-    expect(bindings.some(b => b.bindingKey === 'p1::db1')).toBe(true);
-    expect(bindings.some(b => b.bindingKey === 'p2::db2')).toBe(true);
+    expect(bindings.some((b) => b.bindingKey === 'p1::db1')).toBe(true);
+    expect(bindings.some((b) => b.bindingKey === 'p2::db2')).toBe(true);
 
     const target = FreshService.getBinding('p1', 'db1');
     expect(target?.credentialId).toBe('');
@@ -177,28 +180,42 @@ describe('PasskeyBindingService', () => {
       credentialId: 'cred-viol',
       meta: {
         createdAt: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000).toISOString(), // 100 days old
-        rotatedFromCredentialId: 'old-cred-1'
-      }
+        rotatedFromCredentialId: 'old-cred-1',
+      },
     } as any);
 
-    let violations = PasskeyBindingService.getPolicyViolations(PasskeyBindingService.getBinding('pol', 'db'));
+    let violations = PasskeyBindingService.getPolicyViolations(
+      PasskeyBindingService.getBinding('pol', 'db')
+    );
     expect(violations).toContain('PASSKEY_ROTATION_REQUIRED'); // Because default max is 90
-    
+
     // Test requireRecoveryExportBeforeRotation
     PasskeyBindingService.updatePolicy({ requireRecoveryExportBeforeRotation: true });
-    violations = PasskeyBindingService.getPolicyViolations(PasskeyBindingService.getBinding('pol', 'db'));
+    violations = PasskeyBindingService.getPolicyViolations(
+      PasskeyBindingService.getBinding('pol', 'db')
+    );
     expect(violations).toContain('PASSKEY_RECOVERY_EXPORT_REQUIRED');
 
     // Test revoked credential block
-    PasskeyBindingService.mergeExternalRevocations([{ credentialId: 'cred-viol', revokedAt: '2026', reason: '' }]);
-    violations = PasskeyBindingService.getPolicyViolations(PasskeyBindingService.getBinding('pol', 'db'));
+    PasskeyBindingService.mergeExternalRevocations([
+      { credentialId: 'cred-viol', revokedAt: '2026', reason: '' },
+    ]);
+    violations = PasskeyBindingService.getPolicyViolations(
+      PasskeyBindingService.getBinding('pol', 'db')
+    );
     expect(violations).toContain('PASSKEY_REVOKED');
 
     // Turn off policies
-    PasskeyBindingService.updatePolicy({ maxBindingAgeDays: 120, blockRevokedCredentials: false, requireRecoveryExportBeforeRotation: false });
-    violations = PasskeyBindingService.getPolicyViolations(PasskeyBindingService.getBinding('pol', 'db'));
+    PasskeyBindingService.updatePolicy({
+      maxBindingAgeDays: 120,
+      blockRevokedCredentials: false,
+      requireRecoveryExportBeforeRotation: false,
+    });
+    violations = PasskeyBindingService.getPolicyViolations(
+      PasskeyBindingService.getBinding('pol', 'db')
+    );
     expect(violations).toEqual([]);
-    
+
     // Null binding returns empty
     expect(PasskeyBindingService.getPolicyViolations(null)).toEqual([]);
   });
@@ -206,10 +223,10 @@ describe('PasskeyBindingService', () => {
   it('updateLastUsed updates the time and logs event', () => {
     PasskeyBindingService.saveBinding('u', 'd', { credentialId: 'uid1', meta: {} } as any);
     PasskeyBindingService.updateLastUsed('u', 'd');
-    
+
     const binding = PasskeyBindingService.getBinding('u', 'd');
     expect(binding?.meta.lastUsedAt).toBeDefined();
-    expect(binding?.eventLog?.some(e => e.type === 'used')).toBe(true);
+    expect(binding?.eventLog?.some((e) => e.type === 'used')).toBe(true);
 
     // Call on nonexistent shouldn't crash
     expect(() => PasskeyBindingService.updateLastUsed('missing', 'db')).not.toThrow();
@@ -218,7 +235,7 @@ describe('PasskeyBindingService', () => {
   it('bindSiteCredentialToEntry merges metadata properly', () => {
     const entry = { id: 1, passkeyMetadata: { created_at: '2025' } } as any;
     const bound = PasskeyBindingService.bindSiteCredentialToEntry(entry, 'new-site-cred', 'a.com');
-    
+
     expect(bound.passkeyMetadata.credential_id).toBe('new-site-cred');
     expect(bound.passkeyMetadata.rp_id).toBe('a.com');
     expect(bound.passkeyMetadata.mode).toBe('site_passkey_active');
@@ -228,14 +245,15 @@ describe('PasskeyBindingService', () => {
 
   it('exportRecoveryPackage throws for missing and operates correctly otherwise', async () => {
     vi.spyOn(BackupService, 'encryptBackup').mockResolvedValue('__ENCRYPTED_MOCK__');
-    
-    await expect(PasskeyBindingService.exportRecoveryPackage('missing', 'db', 'pass'))
-      .rejects.toThrow('NO_PASSKEY_BINDING');
+
+    await expect(
+      PasskeyBindingService.exportRecoveryPackage('missing', 'db', 'pass')
+    ).rejects.toThrow('NO_PASSKEY_BINDING');
 
     PasskeyBindingService.saveBinding('exp', 'db', { credentialId: 'cid', meta: {} } as any);
     const result = await PasskeyBindingService.exportRecoveryPackage('exp', 'db', 'pass');
     expect(result).toBe('__ENCRYPTED_MOCK__');
-    
+
     // noteRecoveryExport is called implicitly, so let's check
     const binding = PasskeyBindingService.getBinding('exp', 'db');
     expect(binding?.meta.recoveryLastExportedAt).toBeDefined();
@@ -244,36 +262,51 @@ describe('PasskeyBindingService', () => {
   it('importRecoveryPackage applies rigorous validation on payload', async () => {
     // Empty array
     vi.spyOn(BackupService, 'decryptBackup').mockResolvedValueOnce([]);
-    await expect(PasskeyBindingService.importRecoveryPackage('', '', 'p', 'd')).rejects.toThrow('INVALID_RECOVERY_PACKAGE');
+    await expect(PasskeyBindingService.importRecoveryPackage('', '', 'p', 'd')).rejects.toThrow(
+      'INVALID_RECOVERY_PACKAGE'
+    );
 
     // Missing binding inside array
-    vi.spyOn(BackupService, 'decryptBackup').mockResolvedValueOnce([{ kind: 'aegis-passkey-recovery-v2' }]);
-    await expect(PasskeyBindingService.importRecoveryPackage('', '', 'p', 'd')).rejects.toThrow('INVALID_RECOVERY_PACKAGE');
+    vi.spyOn(BackupService, 'decryptBackup').mockResolvedValueOnce([
+      { kind: 'aegis-passkey-recovery-v2' },
+    ]);
+    await expect(PasskeyBindingService.importRecoveryPackage('', '', 'p', 'd')).rejects.toThrow(
+      'INVALID_RECOVERY_PACKAGE'
+    );
 
     // Profile mismatch
-    vi.spyOn(BackupService, 'decryptBackup').mockResolvedValueOnce([{ kind: 'aegis-passkey-recovery-v2', binding: { meta: { profileId: 'WRONG' } } }]);
-    await expect(PasskeyBindingService.importRecoveryPackage('', '', 'p', 'd')).rejects.toThrow('RECOVERY_PROFILE_MISMATCH');
+    vi.spyOn(BackupService, 'decryptBackup').mockResolvedValueOnce([
+      { kind: 'aegis-passkey-recovery-v2', binding: { meta: { profileId: 'WRONG' } } },
+    ]);
+    await expect(PasskeyBindingService.importRecoveryPackage('', '', 'p', 'd')).rejects.toThrow(
+      'RECOVERY_PROFILE_MISMATCH'
+    );
 
     // DB mismatch
-    vi.spyOn(BackupService, 'decryptBackup').mockResolvedValueOnce([{ kind: 'aegis-passkey-recovery-v2', binding: { meta: { profileId: 'p', dbName: 'WRONG' } } }]);
-    await expect(PasskeyBindingService.importRecoveryPackage('', '', 'p', 'd')).rejects.toThrow('RECOVERY_DB_MISMATCH');
-    
+    vi.spyOn(BackupService, 'decryptBackup').mockResolvedValueOnce([
+      { kind: 'aegis-passkey-recovery-v2', binding: { meta: { profileId: 'p', dbName: 'WRONG' } } },
+    ]);
+    await expect(PasskeyBindingService.importRecoveryPackage('', '', 'p', 'd')).rejects.toThrow(
+      'RECOVERY_DB_MISMATCH'
+    );
+
     // Complete success import
     vi.spyOn(BackupService, 'decryptBackup').mockResolvedValueOnce([
-      { 
-        kind: 'aegis-passkey-recovery-v2', 
+      {
+        kind: 'aegis-passkey-recovery-v2',
         binding: { credentialId: 'recovered-cid', meta: { profileId: 'p', dbName: 'd' } },
         revocations: [{ credentialId: 'old', revokedAt: '2026', reason: 'stolen' }],
         policy: { maxBindingAgeDays: 50 },
-      }
+      },
     ]);
-    
+
     await PasskeyBindingService.importRecoveryPackage('payload', 'pass', 'p', 'd');
-    
+
     const imported = PasskeyBindingService.getBinding('p', 'd');
     expect(imported?.credentialId).toBe('recovered-cid');
-    expect(PasskeyBindingService.listRevocations().some(r => r.credentialId === 'old')).toBe(true);
+    expect(PasskeyBindingService.listRevocations().some((r) => r.credentialId === 'old')).toBe(
+      true
+    );
     expect(PasskeyBindingService.getPolicy().maxBindingAgeDays).toBe(50);
   });
 });
-

@@ -1,0 +1,4 @@
+Group,Title,Username,Password,URL,Notes,TOTP,Icon,Last Modified,Created
+Internet,Example Portal,portal-user,portalSecret123,https://portal.example.com,"Primary line
+Secondary line",,0,2026-03-17,2026-03-01
+Archive,Legacy Admin,admin@example.com,legacyPass456,https://legacy.example.com,Legacy admin account,,0,2026-03-16,2026-02-15

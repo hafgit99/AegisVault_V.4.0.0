@@ -402,7 +402,7 @@ describe('WebAuthnService', () => {
     it('registerSitePasskey logs error properly on reject', async () => {
       const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
       (navigator.credentials as any).create.mockRejectedValue(new Error('Nope'));
-      
+
       await WebAuthnService.registerSitePasskey({ rpId: 'e.com', userName: 'e' });
       expect(spy).toHaveBeenCalledWith(
         '[WebAuthnService] Site passkey registration failed:',
@@ -414,7 +414,7 @@ describe('WebAuthnService', () => {
     it('authenticateSitePasskey logs error properly on reject', async () => {
       const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
       (navigator.credentials as any).get.mockRejectedValue(new Error('AuthNope'));
-      
+
       await WebAuthnService.authenticateSitePasskey({ rpId: 'a.com' });
       expect(spy).toHaveBeenCalledWith(
         '[WebAuthnService] Site passkey authentication failed:',
@@ -427,9 +427,10 @@ describe('WebAuthnService', () => {
       // Mock randomly returning ArrayBuffer instead of Uint8Array for userId
       const origCrypto = window.crypto.getRandomValues;
       (window as any).crypto.getRandomValues = () => new ArrayBuffer(32);
-      
+
       (navigator.credentials as any).create.mockResolvedValue({
-        id: 'mock', response: {}
+        id: 'mock',
+        response: {},
       });
 
       const res = await WebAuthnService.registerSitePasskey({ rpId: 'mock', userName: 'mock' });

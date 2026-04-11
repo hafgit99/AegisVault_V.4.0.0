@@ -913,7 +913,7 @@ describe('VaultService Security & Cryptography', () => {
   it('28. getAuthCredential: SQLite üzerinden credential bilgisini okumalı', async () => {
     (vaultService as any).useSQLite = true;
     (vaultService as any).sqliteDb = {
-      getMetadata: vi.fn().mockReturnValue({ credential: { verificationHash: 'sqlitehash123' } })
+      getMetadata: vi.fn().mockReturnValue({ credential: { verificationHash: 'sqlitehash123' } }),
     };
     const cred = await (vaultService as any).getAuthCredential();
     expect(cred?.verificationHash).toBe('sqlitehash123');
@@ -937,22 +937,25 @@ describe('VaultService Security & Cryptography', () => {
   it('31. encryptAttachmentMetadataList skips encryption if profile does not encrypt attachments', async () => {
     // Override isFieldEncrypted check
     const spy = vi.spyOn(EncryptionProfiles, 'isFieldEncrypted').mockReturnValue(false);
-    
+
     const input = [{ id: 'a', name: 'Original', type: 'doc', size: 10 }];
     const out = await vaultService.encryptAttachmentMetadataList(input);
     expect(out).toBe(input); // Should be exact reference
-    
+
     spy.mockRestore();
   });
 
   it('32. prepareEntryMetadataForUse constructs search_index correctly', async () => {
     await vaultService.initDb(TEST_PASSWORD, SEC_KEY, `meta_test_yes_${dbNameCounter}`, true);
-    
+
     const uiEntry = { id: 1, title: 'MyTitle', username: 'MyUser', search_index: [] } as any;
     const storageEntry = { id: 1 } as any;
-    
+
     const hmacKey = await vaultService.getSearchIndexHmacKey();
-    const expectedHashTitle = await VaultSearchIndexer.hashToken(VaultSearchIndexer.tokenize(['MyTitle'])[0], hmacKey);
+    const expectedHashTitle = await VaultSearchIndexer.hashToken(
+      VaultSearchIndexer.tokenize(['MyTitle'])[0],
+      hmacKey
+    );
 
     const spy = vi.spyOn(VaultCryptoService, 'prepareEntryMetadataForUse').mockResolvedValue({
       uiEntry,

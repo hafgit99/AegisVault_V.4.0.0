@@ -446,7 +446,7 @@ describe('ExtensionBridge', () => {
   it('20. addAllowedExtensionId handles inputs correctly', () => {
     extensionBridge.addAllowedExtensionId('  new_ext_id  ');
     expect(extensionBridge.getAllowedExtensionIds()).toContain('new_ext_id');
-    
+
     extensionBridge.addAllowedExtensionId(' '); // Empty should be ignored
     expect(extensionBridge.getAllowedExtensionIds().length).toBeGreaterThan(0);
   });
@@ -454,7 +454,7 @@ describe('ExtensionBridge', () => {
   it('21. removeAllowedExtensionId clears all ids correctly and falls back to defaults', () => {
     extensionBridge.updateAllowedExtensionIds(['custom_ext_1']);
     expect(extensionBridge.getAllowedExtensionIds()).toContain('custom_ext_1');
-    
+
     extensionBridge.removeAllowedExtensionId('custom_ext_1');
     const ids = extensionBridge.getAllowedExtensionIds();
     expect(ids).toContain('gddgomiecgnihlljfkogfjgakedoielk'); // Default fell back
@@ -479,8 +479,14 @@ describe('ExtensionBridge', () => {
       false,
       ['sign']
     );
-    const sigBuffer = await window.crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
-    const signature = Array.from(new Uint8Array(sigBuffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    const sigBuffer = await window.crypto.subtle.sign(
+      'HMAC',
+      key,
+      new TextEncoder().encode(payload)
+    );
+    const signature = Array.from(new Uint8Array(sigBuffer))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
 
     session.challengeNonceMap.set(nonce, ts + 5000);
     expect(session.challengeNonceMap.has(nonce)).toBe(true);
@@ -514,10 +520,10 @@ describe('ExtensionBridge', () => {
   it('25. getAllowlistStorage respects local changes and edge cases', () => {
     const raw = '   ext1,   ext2  , ext3, ';
     window.localStorage.setItem('aegis_extension_allowlist_v1', raw);
-    
+
     (extensionBridge as any).loadAllowlistFromStorage();
     const ids = extensionBridge.getAllowedExtensionIds();
-    
+
     expect(ids).toContain('ext1');
     expect(ids).toContain('ext2');
     expect(ids).toContain('ext3');
@@ -527,7 +533,7 @@ describe('ExtensionBridge', () => {
   it('26. messageListener logs error if port connection throws', async () => {
     const listener = (extensionBridge as any).messageListener.bind(extensionBridge);
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    
+
     mockRuntime.connect.mockImplementationOnce(() => {
       throw new Error('Connection failed');
     });
@@ -564,9 +570,9 @@ describe('ExtensionBridge', () => {
   it('29. get_decrypted_creds returns partial fallback on missing website', async () => {
     (vaultService.getPasswords as any).mockResolvedValueOnce([
       { title: 'Test', username: 'user', pass: 'p123', website: null }, // Null website
-      { title: 'Test 2', username: 'u2', pass: 'p4', website: 'example.com' }
+      { title: 'Test 2', username: 'u2', pass: 'p4', website: 'example.com' },
     ]);
-    
+
     window.dispatchEvent(
       new MessageEvent('message', {
         data: { type: 'AEGIS_EXTENSION_HELLO', extensionId: 'kjbdjkfijeflhhbnkjgkmccljifidpcc' },
@@ -580,9 +586,21 @@ describe('ExtensionBridge', () => {
     const nonce = mockPort.postMessage.mock.calls[1][0].nonce;
     const ts = Date.now();
     const payload = `get_decrypted_creds:example.com:${nonce}:${ts}`;
-    const key = await window.crypto.subtle.importKey('raw', new TextEncoder().encode(token), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-    const sigBuffer = await window.crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
-    const signature = Array.from(new Uint8Array(sigBuffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    const key = await window.crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(token),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    const sigBuffer = await window.crypto.subtle.sign(
+      'HMAC',
+      key,
+      new TextEncoder().encode(payload)
+    );
+    const signature = Array.from(new Uint8Array(sigBuffer))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
 
     await onMessageListener({
       type: 'get_decrypted_creds',
@@ -596,7 +614,7 @@ describe('ExtensionBridge', () => {
     const response = mockPort.postMessage.mock.calls.find(
       (c) => c[0].type === 'DECRYPTED_CREDS_RESPONSE'
     )[0];
-    
+
     expect(response.data.length).toBe(1);
     expect(response.data[0].website).toBe('example.com');
   });

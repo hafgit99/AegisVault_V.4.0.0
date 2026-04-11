@@ -1,0 +1,16 @@
+node_modules
+dist
+build
+coverage
+playwright-report
+test-results
+vitest-results
+.stryker-tmp
+aegis-wxt/.output
+aegis-wxt/.wxt
+release
+out
+package-lock.json
+aegis-wxt/package-lock.json
+*.min.js
+*.min.css

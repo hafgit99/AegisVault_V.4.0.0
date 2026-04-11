@@ -1,0 +1,3 @@
+folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp
+Work,0,login,Netflix,, ,0,https://netflix.com/login,user@example.com,secretPass123,
+Personal,0,login,GitHub,, ,0,https://github.com/login,octocat,strongPass456,
