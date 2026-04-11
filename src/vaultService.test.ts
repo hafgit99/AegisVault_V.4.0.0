@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { VaultService, vaultService as singletonVaultService } from './vaultService';
 import 'fake-indexeddb/auto';
+import { VaultCryptoService } from './lib/vault/VaultCryptoService';
+import { VaultSearchIndexer } from './lib/vault/VaultSearchIndexer';
+import { SecureAppSettings } from './lib/SecureAppSettings';
+import * as EncryptionProfiles from './config/encryption-profiles';
 
 // Mock sql.js and opfs availability to force IDB fallback immediately
 vi.mock('sql.js', () => ({
@@ -792,7 +796,173 @@ describe('VaultService Security & Cryptography', () => {
 
     expect(entry?.passkeyMetadata).toBeDefined();
     expect(entry?.passkeyMetadata?.rpId).toBe('example.com');
+  });
+
+  it('21. Auth Rate Limiting: Hatalı denemeler sonrası gecikme uygulamalı', async () => {
+    vi.useFakeTimers();
+    const dbName = 'rate_limit_test';
+
+    // Initial failure - should have 1s delay
+    vaultService.registerAuthFailure('unlock', dbName);
+    expect(() => vaultService.enforceAuthRateLimit('unlock', dbName)).toThrow('RATE_LIMITED');
+
+    // Advance 1.1s
+    vi.advanceTimersByTime(1100);
+    expect(() => vaultService.enforceAuthRateLimit('unlock', dbName)).not.toThrow();
+
+    // 3 failures total
+    vaultService.registerAuthFailure('unlock', dbName);
+    vaultService.registerAuthFailure('unlock', dbName);
+
+    // 2^2 seconds = 4s delay
+    expect(() => vaultService.enforceAuthRateLimit('unlock', dbName)).toThrow('RATE_LIMITED');
+
+    vi.advanceTimersByTime(4100);
+    expect(() => vaultService.enforceAuthRateLimit('unlock', dbName)).not.toThrow();
+
+    // Success should clear it
+    vaultService.registerAuthSuccess('unlock', dbName);
+    vaultService.registerAuthFailure('unlock', dbName); // reset to 1
+    vi.advanceTimersByTime(1100);
+    expect(() => vaultService.enforceAuthRateLimit('unlock', dbName)).not.toThrow();
+
+    vi.useRealTimers();
+  });
+
+  it('22. Lock: Tüm hassas materyalleri ve bağlantıları temizlemeli', async () => {
+    const dbName = `lock_test_${dbNameCounter}`;
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
+
+    expect(vaultService.isUnlocked()).toBe(true);
+    expect(vaultService.aesKey).not.toBeNull();
 
     await vaultService.lock();
+
+    expect(vaultService.isUnlocked()).toBe(false);
+    expect(vaultService.aesKey).toBeNull();
+    expect(vaultService.sensitiveMaterial).toBeNull();
+    expect(vaultService.sqliteDb).toBeNull();
+    expect(vaultService.isConnected).toBe(false);
+  });
+
+  it('23. getAuthCredential: SQLite getMetadata opsiyonel zincirlemeyi doğrulamalı', async () => {
+    (vaultService as any).useSQLite = true;
+    (vaultService as any).sqliteDb = {
+      /* getMetadata yok */
+    };
+    const cred = await (vaultService as any).getAuthCredential();
+    expect(cred).toBeNull();
+  });
+
+  it('24. getAuthCredential: opfsMockDb üzerinden kimlik doğrulama bilgisini okumalı', async () => {
+    const mockDb = {
+      get: vi.fn().mockResolvedValue({ credential: { verificationHash: 'hash123' } }),
+    };
+    (vaultService as any).opfsMockDb = mockDb;
+    const cred = await (vaultService as any).getAuthCredential();
+    expect(cred?.verificationHash).toBe('hash123');
+    expect(mockDb.get).toHaveBeenCalledWith('meta', 'auth');
+  });
+
+  it('25. buildSearchIndex: Tokenları gerçekten hashlemeli (undefined dönmemeli)', async () => {
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, `index_test_${dbNameCounter}`, true);
+    const index = await vaultService.buildSearchIndex(
+      'My Title',
+      'user',
+      'example.com',
+      'Finance',
+      ['bank']
+    );
+
+    expect(index.length).toBeGreaterThan(0);
+    index.forEach((token) => {
+      expect(token).toBeTypeOf('string');
+      expect(token).not.toBe('undefined');
+      expect(token.length).toBe(64); // SHA-256 hex length
+    });
+  });
+
+  it('26. prepareEntryMetadataForUse: Title yoksa arama indeksi oluşturmayı atlamalı', async () => {
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, `meta_test_no_${dbNameCounter}`, true);
+    // Title'ı boş bir entry
+    const entry: any = {
+      id: 1,
+      encrypted_password: '...',
+      // search_index yok
+    };
+
+    // Crypto service'i mocklayarak UI entry'sini kontrol edelim
+    const spy = vi.spyOn(VaultCryptoService, 'prepareEntryMetadataForUse').mockResolvedValue({
+      uiEntry: { id: 1, title: '', username: 'user' } as any,
+      decryptedPass: 'pass',
+    });
+
+    const hmacSpy = vi.spyOn(vaultService, 'getSearchIndexHmacKey');
+    await vaultService.prepareEntryMetadataForUse(entry);
+
+    // HmacKey alınmamalı çünkü title yok
+    expect(hmacSpy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('27. dbName getters and setters work correctly', () => {
+    vaultService.setVaultDbName('new_db_name');
+    expect(vaultService.getVaultDbName()).toBe('new_db_name');
+  });
+
+  it('28. getAuthCredential: SQLite üzerinden credential bilgisini okumalı', async () => {
+    (vaultService as any).useSQLite = true;
+    (vaultService as any).sqliteDb = {
+      getMetadata: vi.fn().mockReturnValue({ credential: { verificationHash: 'sqlitehash123' } })
+    };
+    const cred = await (vaultService as any).getAuthCredential();
+    expect(cred?.verificationHash).toBe('sqlitehash123');
+    (vaultService as any).useSQLite = false;
+  });
+
+  it('29. hashSearchToken, buildSearchIndex, buildMetadataAtRest return empty when locked', async () => {
+    (vaultService as any).aesKey = null; // Lock vault
+    expect(await vaultService.hashSearchToken('token')).toBe('');
+    expect(await vaultService.buildSearchIndex('T', 'U', 'W', 'C', ['T'])).toEqual([]);
+    expect(await vaultService.buildMetadataAtRest('T', 'U', 'W', 'C', ['T'])).toEqual({});
+  });
+
+  it('30. resolveArgon2Params returns correctly calibrated params', () => {
+    const params = vaultService.resolveArgon2Params();
+    expect(params.iterations).toBeDefined();
+    expect(params.memorySize).toBeDefined();
+    expect(params.parallelism).toBeDefined();
+  });
+
+  it('31. encryptAttachmentMetadataList skips encryption if profile does not encrypt attachments', async () => {
+    // Override isFieldEncrypted check
+    const spy = vi.spyOn(EncryptionProfiles, 'isFieldEncrypted').mockReturnValue(false);
+    
+    const input = [{ id: 'a', name: 'Original', type: 'doc', size: 10 }];
+    const out = await vaultService.encryptAttachmentMetadataList(input);
+    expect(out).toBe(input); // Should be exact reference
+    
+    spy.mockRestore();
+  });
+
+  it('32. prepareEntryMetadataForUse constructs search_index correctly', async () => {
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, `meta_test_yes_${dbNameCounter}`, true);
+    
+    const uiEntry = { id: 1, title: 'MyTitle', username: 'MyUser', search_index: [] } as any;
+    const storageEntry = { id: 1 } as any;
+    
+    const hmacKey = await vaultService.getSearchIndexHmacKey();
+    const expectedHashTitle = await VaultSearchIndexer.hashToken(VaultSearchIndexer.tokenize(['MyTitle'])[0], hmacKey);
+
+    const spy = vi.spyOn(VaultCryptoService, 'prepareEntryMetadataForUse').mockResolvedValue({
+      uiEntry,
+      storageEntry,
+    } as any);
+
+    const res = await vaultService.prepareEntryMetadataForUse({ id: 1 } as any);
+    expect(res.uiEntry.search_index).toContain(expectedHashTitle);
+    expect(res.storageEntry!.search_index).toEqual(res.uiEntry.search_index);
+
+    spy.mockRestore();
   });
 });

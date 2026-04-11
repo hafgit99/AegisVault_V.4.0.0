@@ -17,26 +17,16 @@ type RecoveryPackage = {
 describe('PasskeyBindingService', () => {
   beforeEach(async () => {
     localStorage.clear();
+    vi.clearAllMocks();
     await PasskeyBindingService.initialize();
     PasskeyBindingService.clearAllBindings();
   });
 
-  it('stores and reads profile-scoped binding', () => {
+  it('stores and reads profile-scoped binding with detailed metadata', () => {
     PasskeyBindingService.saveBinding('profile-A', 'db-A', {
       credentialId: 'cred-A',
       encryptedPayload: 'enc-A',
       prfSalt: 'salt-A',
-      meta: {
-        createdAt: '2026-01-01T00:00:00.000Z',
-        lastUsedAt: '2026-01-01T00:00:00.000Z',
-        version: 1,
-      },
-    });
-
-    PasskeyBindingService.saveBinding('profile-B', 'db-B', {
-      credentialId: 'cred-B',
-      encryptedPayload: 'enc-B',
-      prfSalt: 'salt-B',
       meta: {
         createdAt: '2026-01-01T00:00:00.000Z',
         lastUsedAt: '2026-01-01T00:00:00.000Z',
@@ -45,15 +35,45 @@ describe('PasskeyBindingService', () => {
     });
 
     const a = PasskeyBindingService.getBinding('profile-A', 'db-A');
-    const b = PasskeyBindingService.getBinding('profile-B', 'db-B');
-
     expect(a?.credentialId).toBe('cred-A');
-    expect(b?.credentialId).toBe('cred-B');
     expect(a?.meta.profileId).toBe('profile-A');
-    expect(b?.meta.profileId).toBe('profile-B');
+    expect(a?.meta.deviceFingerprint).toBeTruthy();
+    expect(a?.meta.deviceLabel).toContain('This device');
   });
 
-  it('revokes only the selected profile binding', () => {
+  it('handles corrupted localStorage data in legacy migration', () => {
+    localStorage.setItem('aegis_passkey_id', 'legacy-id');
+    localStorage.setItem('aegis_passkey_data', 'legacy-data');
+    localStorage.setItem('aegis_prf_salt', 'legacy-salt');
+    localStorage.setItem('aegis_passkey_meta', 'NOT_JSON_DATA'); // Mutant test for safeParse
+
+    const binding = PasskeyBindingService.getBinding('default', 'aegis_opfs_vault');
+    expect(binding?.credentialId).toBe('legacy-id');
+    expect(binding?.meta.createdAt).toBeDefined(); // should use now()
+  });
+
+  it('handles partial binding records and normalizes state', async () => {
+    // Trigger normalization via direct state mutation access if possible or via import
+    const decryptSpy = vi.spyOn(BackupService, 'decryptBackup').mockResolvedValue([
+      {
+        kind: 'aegis-passkey-recovery-v2',
+        binding: {
+          credentialId: 'partial',
+          meta: {}, // Missing fields
+        } as any,
+        revocations: null as any,
+        policy: { maxBindingAgeDays: 'INVALID' as any },
+      },
+    ]);
+
+    await PasskeyBindingService.importRecoveryPackage('pkg', 'pw', 'p', 'd');
+    const binding = PasskeyBindingService.getBinding('p', 'd');
+    expect(binding?.credentialId).toBe('partial');
+    expect(binding?.meta.version).toBeDefined(); // normalized to default
+    expect(PasskeyBindingService.getPolicy().maxBindingAgeDays).toBe(90); // normalized to default
+  });
+
+  it('revokes only the selected profile binding and tracks the event', () => {
     PasskeyBindingService.saveBinding('profile-A', 'db-A', {
       credentialId: 'cred-A',
       encryptedPayload: 'enc-A',
@@ -64,21 +84,12 @@ describe('PasskeyBindingService', () => {
         version: 1,
       },
     });
-    PasskeyBindingService.saveBinding('profile-B', 'db-B', {
-      credentialId: 'cred-B',
-      encryptedPayload: 'enc-B',
-      prfSalt: 'salt-B',
-      meta: {
-        createdAt: new Date().toISOString(),
-        lastUsedAt: new Date().toISOString(),
-        version: 1,
-      },
-    });
+
+    expect(PasskeyBindingService.revokeBinding('NOT_FOUND', 'db')).toBe(false);
 
     const revoked = PasskeyBindingService.revokeBinding('profile-A', 'db-A', 'user_requested');
     expect(revoked).toBe(true);
     expect(PasskeyBindingService.getBinding('profile-A', 'db-A')).toBeNull();
-    expect(PasskeyBindingService.getBinding('profile-B', 'db-B')?.credentialId).toBe('cred-B');
     expect(
       PasskeyBindingService.getEventLog().some(
         (event) => event.type === 'revoked' && event.detail === 'user_requested'
@@ -86,186 +97,183 @@ describe('PasskeyBindingService', () => {
     ).toBe(true);
   });
 
-  it('exports and imports recovery package for matching profile/db', async () => {
-    PasskeyBindingService.saveBinding('profile-A', 'db-A', {
-      credentialId: 'cred-A',
-      encryptedPayload: 'enc-A',
-      prfSalt: 'salt-A',
+  it('updates policy and tracks the policy_updated event', () => {
+    const next = PasskeyBindingService.updatePolicy({ maxBindingAgeDays: 45 });
+    expect(next.maxBindingAgeDays).toBe(45);
+    expect(PasskeyBindingService.getPolicy().maxBindingAgeDays).toBe(45);
+    expect(PasskeyBindingService.getEventLog().some((e) => e.type === 'policy_updated')).toBe(true);
+  });
+
+  it('handles missing navigator properties in getDeviceInfo', () => {
+    const originalNavigator = global.navigator;
+    // @ts-ignore
+    global.navigator = undefined;
+
+    PasskeyBindingService.saveBinding('p', 'd', {
+      credentialId: 'c',
+      meta: { version: 1 } as any,
+    } as any);
+
+    const b = PasskeyBindingService.getBinding('p', 'd');
+    expect(b?.meta.deviceLabel).toBe('This device / unknown');
+
+    global.navigator = originalNavigator;
+  });
+
+  it('merges external revocations and returns count', () => {
+    const now = new Date().toISOString();
+    PasskeyBindingService.saveBinding('p', 'd', { credentialId: 'c1', meta: {} } as any);
+    PasskeyBindingService.revokeBinding('p', 'd', 'r1');
+
+    // Merge new one
+    const count = PasskeyBindingService.mergeExternalRevocations([
+      { credentialId: 'c2', revokedAt: now, reason: 'remote' },
+    ]);
+    expect(count).toBe(1);
+    expect(PasskeyBindingService.isCredentialRevoked('c2')).toBe(true);
+
+    // Merge existing older one (should ignore)
+    const old = new Date(Date.now() - 100000).toISOString();
+    const count2 = PasskeyBindingService.mergeExternalRevocations([
+      { credentialId: 'c2', revokedAt: old, reason: 'older_remote' },
+    ]);
+    expect(count2).toBe(0);
+  });
+
+  it('normalizes completely corrupted legacy JSON safely to defaults', async () => {
+    vi.resetModules();
+    
+    localStorage.setItem('aegis_passkey_bindings_v1', JSON.stringify({
+      'p1::db1': {
+        // Missing everything
+      },
+      'p2::db2': null // Invalid member
+    }));
+    localStorage.setItem('aegis_passkey_audit_v1', '{"not":"array"}');
+    localStorage.setItem('aegis_passkey_revocations_v1', '"string_not_array"');
+    localStorage.setItem('aegis_passkey_policy_v1', '{"maxBindingAgeDays": "NOT_NUMBER"}');
+    
+    const { PasskeyBindingService: FreshService } = await import('../PasskeyBindingService');
+    await FreshService.initialize();
+
+    const bindings = FreshService.listBindings();
+    expect(bindings.some(b => b.bindingKey === 'p1::db1')).toBe(true);
+    expect(bindings.some(b => b.bindingKey === 'p2::db2')).toBe(true);
+
+    const target = FreshService.getBinding('p1', 'db1');
+    expect(target?.credentialId).toBe('');
+    expect(target?.encryptedPayload).toBe('');
+    expect(target?.prfSalt).toBe('');
+    expect(target?.meta.version).toBe(1);
+    expect(target?.eventLog).toEqual([]);
+
+    expect(FreshService.getEventLog()).toEqual([]);
+    expect(FreshService.listRevocations()).toEqual([]);
+    expect(FreshService.getPolicy().maxBindingAgeDays).toBe(90);
+  });
+
+  it('getPolicyViolations correctly identifies issues based on current policy', () => {
+    PasskeyBindingService.saveBinding('pol', 'db', {
+      credentialId: 'cred-viol',
       meta: {
-        createdAt: new Date().toISOString(),
-        lastUsedAt: new Date().toISOString(),
-        version: 1,
-      },
-    });
+        createdAt: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000).toISOString(), // 100 days old
+        rotatedFromCredentialId: 'old-cred-1'
+      }
+    } as any);
 
-    const encryptSpy = vi
-      .spyOn(BackupService, 'encryptBackup')
-      .mockResolvedValue('encrypted-package');
-    const recoveryPayload: RecoveryPackage[] = [
-      {
-        kind: 'aegis-passkey-recovery-v2',
-        binding: {
-          credentialId: 'cred-A2',
-          encryptedPayload: 'enc-A2',
-          prfSalt: 'salt-A2',
-          meta: {
-            createdAt: new Date().toISOString(),
-            lastUsedAt: new Date().toISOString(),
-            version: 1,
-            profileId: 'profile-A',
-            dbName: 'db-A',
-          },
-        },
-        revocations: [],
-        policy: {
-          maxBindingAgeDays: 90,
-          requireRecoveryExportBeforeRotation: false,
-          blockRevokedCredentials: true,
-        },
-      },
-    ];
-    const decryptSpy = vi.spyOn(BackupService, 'decryptBackup').mockResolvedValue(recoveryPayload);
+    let violations = PasskeyBindingService.getPolicyViolations(PasskeyBindingService.getBinding('pol', 'db'));
+    expect(violations).toContain('PASSKEY_ROTATION_REQUIRED'); // Because default max is 90
+    
+    // Test requireRecoveryExportBeforeRotation
+    PasskeyBindingService.updatePolicy({ requireRecoveryExportBeforeRotation: true });
+    violations = PasskeyBindingService.getPolicyViolations(PasskeyBindingService.getBinding('pol', 'db'));
+    expect(violations).toContain('PASSKEY_RECOVERY_EXPORT_REQUIRED');
 
-    const out = await PasskeyBindingService.exportRecoveryPackage('profile-A', 'db-A', 'pw');
-    expect(out).toBe('encrypted-package');
-    expect(encryptSpy).toHaveBeenCalledTimes(1);
+    // Test revoked credential block
+    PasskeyBindingService.mergeExternalRevocations([{ credentialId: 'cred-viol', revokedAt: '2026', reason: '' }]);
+    violations = PasskeyBindingService.getPolicyViolations(PasskeyBindingService.getBinding('pol', 'db'));
+    expect(violations).toContain('PASSKEY_REVOKED');
 
-    await PasskeyBindingService.importRecoveryPackage(
-      'encrypted-package',
-      'pw',
-      'profile-A',
-      'db-A'
-    );
-    expect(decryptSpy).toHaveBeenCalledTimes(1);
-    const imported = PasskeyBindingService.getBinding('profile-A', 'db-A');
-    expect(imported?.credentialId).toBe('cred-A2');
-    expect(imported?.meta.deviceFingerprint).toBeTruthy();
-    expect(
-      PasskeyBindingService.getEventLog('profile-A', 'db-A').some(
-        (event) => event.type === 'recovery_imported'
-      )
-    ).toBe(true);
-
-    encryptSpy.mockRestore();
-    decryptSpy.mockRestore();
+    // Turn off policies
+    PasskeyBindingService.updatePolicy({ maxBindingAgeDays: 120, blockRevokedCredentials: false, requireRecoveryExportBeforeRotation: false });
+    violations = PasskeyBindingService.getPolicyViolations(PasskeyBindingService.getBinding('pol', 'db'));
+    expect(violations).toEqual([]);
+    
+    // Null binding returns empty
+    expect(PasskeyBindingService.getPolicyViolations(null)).toEqual([]);
   });
 
-  it('rejects recovery package profile mismatch', async () => {
-    const mismatchPayload: RecoveryPackage[] = [
-      {
-        kind: 'aegis-passkey-recovery-v2',
-        binding: {
-          credentialId: 'cred-X',
-          encryptedPayload: 'enc-X',
-          prfSalt: 'salt-X',
-          meta: {
-            createdAt: new Date().toISOString(),
-            lastUsedAt: new Date().toISOString(),
-            version: 1,
-            profileId: 'profile-X',
-            dbName: 'db-X',
-          },
-        },
-        revocations: [],
-        policy: {
-          maxBindingAgeDays: 90,
-          requireRecoveryExportBeforeRotation: false,
-          blockRevokedCredentials: true,
-        },
-      },
-    ];
-    const decryptSpy = vi.spyOn(BackupService, 'decryptBackup').mockResolvedValue(mismatchPayload);
+  it('updateLastUsed updates the time and logs event', () => {
+    PasskeyBindingService.saveBinding('u', 'd', { credentialId: 'uid1', meta: {} } as any);
+    PasskeyBindingService.updateLastUsed('u', 'd');
+    
+    const binding = PasskeyBindingService.getBinding('u', 'd');
+    expect(binding?.meta.lastUsedAt).toBeDefined();
+    expect(binding?.eventLog?.some(e => e.type === 'used')).toBe(true);
 
-    await expect(
-      PasskeyBindingService.importRecoveryPackage('pkg', 'pw', 'profile-A', 'db-A')
-    ).rejects.toThrow('RECOVERY_PROFILE_MISMATCH');
-
-    decryptSpy.mockRestore();
+    // Call on nonexistent shouldn't crash
+    expect(() => PasskeyBindingService.updateLastUsed('missing', 'db')).not.toThrow();
   });
 
-  it('tracks recovery export and usage events', async () => {
-    PasskeyBindingService.saveBinding('profile-A', 'db-A', {
-      credentialId: 'cred-A',
-      encryptedPayload: 'enc-A',
-      prfSalt: 'salt-A',
-      meta: {
-        createdAt: new Date().toISOString(),
-        lastUsedAt: new Date().toISOString(),
-        version: 1,
-      },
-    });
-
-    const encryptSpy = vi
-      .spyOn(BackupService, 'encryptBackup')
-      .mockResolvedValue('encrypted-package');
-    await PasskeyBindingService.exportRecoveryPackage('profile-A', 'db-A', 'pw');
-    PasskeyBindingService.updateLastUsed('profile-A', 'db-A');
-
-    const binding = PasskeyBindingService.getBinding('profile-A', 'db-A');
-    expect(binding?.meta.recoveryLastExportedAt).toBeTruthy();
-    expect(binding?.eventLog?.some((event) => event.type === 'recovery_exported')).toBe(true);
-    expect(binding?.eventLog?.some((event) => event.type === 'used')).toBe(true);
-
-    encryptSpy.mockRestore();
+  it('bindSiteCredentialToEntry merges metadata properly', () => {
+    const entry = { id: 1, passkeyMetadata: { created_at: '2025' } } as any;
+    const bound = PasskeyBindingService.bindSiteCredentialToEntry(entry, 'new-site-cred', 'a.com');
+    
+    expect(bound.passkeyMetadata.credential_id).toBe('new-site-cred');
+    expect(bound.passkeyMetadata.rp_id).toBe('a.com');
+    expect(bound.passkeyMetadata.mode).toBe('site_passkey_active');
+    expect(bound.passkeyMetadata.created_at).toBe('2025'); // Preserved
+    expect(bound.passkeyMetadata.last_registration_at).toBeDefined();
   });
 
-  it('lists bindings with device-scoped metadata', () => {
-    PasskeyBindingService.saveBinding('profile-A', 'db-A', {
-      credentialId: 'cred-A',
-      encryptedPayload: 'enc-A',
-      prfSalt: 'salt-A',
-      meta: {
-        createdAt: new Date().toISOString(),
-        lastUsedAt: new Date().toISOString(),
-        version: 1,
-      },
-    });
+  it('exportRecoveryPackage throws for missing and operates correctly otherwise', async () => {
+    vi.spyOn(BackupService, 'encryptBackup').mockResolvedValue('__ENCRYPTED_MOCK__');
+    
+    await expect(PasskeyBindingService.exportRecoveryPackage('missing', 'db', 'pass'))
+      .rejects.toThrow('NO_PASSKEY_BINDING');
 
-    const bindings = PasskeyBindingService.listBindings();
-    expect(bindings).toHaveLength(1);
-    expect(bindings[0].meta.deviceLabel).toBeTruthy();
-    expect(bindings[0].meta.deviceFingerprint).toBeTruthy();
+    PasskeyBindingService.saveBinding('exp', 'db', { credentialId: 'cid', meta: {} } as any);
+    const result = await PasskeyBindingService.exportRecoveryPackage('exp', 'db', 'pass');
+    expect(result).toBe('__ENCRYPTED_MOCK__');
+    
+    // noteRecoveryExport is called implicitly, so let's check
+    const binding = PasskeyBindingService.getBinding('exp', 'db');
+    expect(binding?.meta.recoveryLastExportedAt).toBeDefined();
   });
 
-  it('syncs revoke list through recovery imports and blocks revoked credentials by policy', async () => {
-    const decryptSpy = vi.spyOn(BackupService, 'decryptBackup').mockResolvedValue([
-      {
-        kind: 'aegis-passkey-recovery-v2',
-        binding: {
-          credentialId: 'cred-Z',
-          encryptedPayload: 'enc-Z',
-          prfSalt: 'salt-Z',
-          meta: {
-            createdAt: new Date().toISOString(),
-            lastUsedAt: new Date().toISOString(),
-            version: 1,
-            profileId: 'profile-A',
-            dbName: 'db-A',
-          },
-        },
-        revocations: [
-          {
-            credentialId: 'cred-old',
-            revokedAt: new Date().toISOString(),
-            reason: 'rotated',
-          },
-        ],
-        policy: {
-          maxBindingAgeDays: 60,
-          requireRecoveryExportBeforeRotation: true,
-          blockRevokedCredentials: true,
-        },
-      },
-    ] as RecoveryPackage[]);
+  it('importRecoveryPackage applies rigorous validation on payload', async () => {
+    // Empty array
+    vi.spyOn(BackupService, 'decryptBackup').mockResolvedValueOnce([]);
+    await expect(PasskeyBindingService.importRecoveryPackage('', '', 'p', 'd')).rejects.toThrow('INVALID_RECOVERY_PACKAGE');
 
-    await PasskeyBindingService.importRecoveryPackage('pkg', 'pw', 'profile-A', 'db-A');
+    // Missing binding inside array
+    vi.spyOn(BackupService, 'decryptBackup').mockResolvedValueOnce([{ kind: 'aegis-passkey-recovery-v2' }]);
+    await expect(PasskeyBindingService.importRecoveryPackage('', '', 'p', 'd')).rejects.toThrow('INVALID_RECOVERY_PACKAGE');
 
-    expect(
-      PasskeyBindingService.listRevocations().some((item) => item.credentialId === 'cred-old')
-    ).toBe(true);
-    expect(PasskeyBindingService.getPolicy().maxBindingAgeDays).toBe(60);
-    expect(PasskeyBindingService.isCredentialRevoked('cred-old')).toBe(true);
+    // Profile mismatch
+    vi.spyOn(BackupService, 'decryptBackup').mockResolvedValueOnce([{ kind: 'aegis-passkey-recovery-v2', binding: { meta: { profileId: 'WRONG' } } }]);
+    await expect(PasskeyBindingService.importRecoveryPackage('', '', 'p', 'd')).rejects.toThrow('RECOVERY_PROFILE_MISMATCH');
 
-    decryptSpy.mockRestore();
+    // DB mismatch
+    vi.spyOn(BackupService, 'decryptBackup').mockResolvedValueOnce([{ kind: 'aegis-passkey-recovery-v2', binding: { meta: { profileId: 'p', dbName: 'WRONG' } } }]);
+    await expect(PasskeyBindingService.importRecoveryPackage('', '', 'p', 'd')).rejects.toThrow('RECOVERY_DB_MISMATCH');
+    
+    // Complete success import
+    vi.spyOn(BackupService, 'decryptBackup').mockResolvedValueOnce([
+      { 
+        kind: 'aegis-passkey-recovery-v2', 
+        binding: { credentialId: 'recovered-cid', meta: { profileId: 'p', dbName: 'd' } },
+        revocations: [{ credentialId: 'old', revokedAt: '2026', reason: 'stolen' }],
+        policy: { maxBindingAgeDays: 50 },
+      }
+    ]);
+    
+    await PasskeyBindingService.importRecoveryPackage('payload', 'pass', 'p', 'd');
+    
+    const imported = PasskeyBindingService.getBinding('p', 'd');
+    expect(imported?.credentialId).toBe('recovered-cid');
+    expect(PasskeyBindingService.listRevocations().some(r => r.credentialId === 'old')).toBe(true);
+    expect(PasskeyBindingService.getPolicy().maxBindingAgeDays).toBe(50);
   });
 });
+

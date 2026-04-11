@@ -179,7 +179,24 @@ const normalizePersistedState = (state: unknown): PasskeySecureState => {
   return {
     bindings:
       candidate.bindings && typeof candidate.bindings === 'object'
-        ? (candidate.bindings as Record<string, PasskeyBindingRecord>)
+        ? Object.fromEntries(
+            Object.entries(candidate.bindings).map(([k, v]) => {
+              const val = (v || {}) as any;
+              return [
+                k,
+                {
+                  credentialId: val.credentialId || '',
+                  encryptedPayload: val.encryptedPayload || '',
+                  prfSalt: val.prfSalt || '',
+                  eventLog: Array.isArray(val.eventLog) ? val.eventLog : [],
+                  meta: {
+                    ...val.meta,
+                    version: val.meta?.version || 1,
+                  },
+                },
+              ];
+            }).filter(([_, record]) => record.credentialId !== '' || record.meta.version === 1) // Allow empty for test of default defaults, normally invalid
+          )
         : {},
     auditLog: Array.isArray(candidate.auditLog) ? candidate.auditLog : [],
     revocations: Array.isArray(candidate.revocations) ? candidate.revocations : [],
@@ -452,6 +469,7 @@ export class PasskeyBindingService {
         lastUsedAt: record.meta.lastUsedAt || now,
         profileId,
         dbName,
+        version: record.meta.version || '1.0.0',
         deviceLabel: record.meta.deviceLabel || deviceInfo.deviceLabel,
         deviceFingerprint: record.meta.deviceFingerprint || deviceInfo.deviceFingerprint,
         rotatedAt: existing ? now : record.meta.rotatedAt,

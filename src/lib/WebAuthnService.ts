@@ -286,7 +286,7 @@ export class WebAuthnService {
       credential_id: result.credentialId,
       user_handle: result.userHandle,
       display_name: result.displayName,
-      transport: result.transport.join(','),
+      transport: (result.transport || []).join(','),
       authenticator_attachment: result.authenticatorAttachment,
       algorithm: String(result.algorithm),
       mode: 'site_passkey_active',

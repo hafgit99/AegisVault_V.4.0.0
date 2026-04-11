@@ -364,8 +364,9 @@ export class SQLiteOPFS {
 
   putMetadata<T>(id: string, data: T): void {
     if (!this.db) throw new Error('Database not open');
+    const val = data === null ? null : JSON.stringify(data);
     this.db.run(
-      `INSERT OR REPLACE INTO vault_metadata (id, data) VALUES (${this.sqlVal(id)}, ${this.sqlVal(JSON.stringify(data))})`
+      `INSERT OR REPLACE INTO vault_metadata (id, data) VALUES (${this.sqlVal(id)}, ${this.sqlVal(val)})`
     );
     this.schedulePersist();
   }
