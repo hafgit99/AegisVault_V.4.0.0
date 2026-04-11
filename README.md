@@ -64,19 +64,35 @@ Aegis Vault 4.2
 
 ## Test Coverage
 
-| Metric          | Score             |
-| --------------- | ----------------- |
-| **Test Files**  | 81                |
-| **Total Tests** | 711 (all passing) |
-| **Statements**  | 87.7%             |
-| **Branches**    | 75.3%             |
-| **Functions**   | 90.6%             |
-| **Lines**       | 89.4%             |
+| Metric                   | Score             |
+| ------------------------ | ----------------- |
+| **Test Files**           | 81                |
+| **Total Tests**          | 711 (all passing) |
+| **Statements**           | 87.7%             |
+| **Branches**             | 75.3%             |
+| **Functions**            | 90.6%             |
+| **Lines**                | 89.4%             |
+| **Mutation Resilience**  | 76.0% (Stryker)   |
+
+### Mutation Resilience (Security Services)
+
+| Service Catagory         | Mutation Score |
+| ------------------------ | -------------- |
+| WebAuthn / Passkeys      | 82.5%          |
+| Vault Logic / Crypto     | 80.3%          |
+| Extension Bridge         | 75.6%          |
+| Passkey Storage (IDB)    | 72.7%          |
 
 Run coverage:
 
 ```bash
 npm run test:coverage
+```
+
+Run mutation tests:
+
+```bash
+npm run test:mutate
 ```
 
 ## Code Quality

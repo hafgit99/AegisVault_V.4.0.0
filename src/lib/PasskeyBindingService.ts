@@ -197,7 +197,10 @@ const normalizePersistedState = (state: unknown): PasskeySecureState => {
                   },
                 ];
               })
-              .filter(([_, record]) => record.credentialId !== '' || record.meta.version === 1) // Allow empty for test of default defaults, normally invalid
+              .filter(([_, record]) => {
+                const r = record as PasskeyBindingRecord;
+                return r.credentialId !== '' || r.meta.version === 1;
+              })
           )
         : {},
     auditLog: Array.isArray(candidate.auditLog) ? candidate.auditLog : [],
@@ -252,7 +255,11 @@ const schedulePersist = () => {
     .catch(() => undefined)
     .then(async () => {
       if (!hasIndexedDb()) return;
-      await writeStateToIndexedDb(secureStateCache);
+      try {
+        await writeStateToIndexedDb(secureStateCache);
+      } catch (e) {
+        console.error('[PasskeyBindingService] Persist failed:', e);
+      }
     });
   return secureStatePersistPromise;
 };
@@ -471,7 +478,7 @@ export class PasskeyBindingService {
         lastUsedAt: record.meta.lastUsedAt || now,
         profileId,
         dbName,
-        version: record.meta.version || '1.0.0',
+        version: record.meta.version || 1,
         deviceLabel: record.meta.deviceLabel || deviceInfo.deviceLabel,
         deviceFingerprint: record.meta.deviceFingerprint || deviceInfo.deviceFingerprint,
         rotatedAt: existing ? now : record.meta.rotatedAt,

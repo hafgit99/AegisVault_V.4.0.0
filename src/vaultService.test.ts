@@ -968,4 +968,66 @@ describe('VaultService Security & Cryptography', () => {
 
     spy.mockRestore();
   });
+
+  it('33. getSearchIndexHmacKey caches the key', async () => {
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, `hmac_cache_${dbNameCounter}`, true);
+    const key1 = await vaultService.getSearchIndexHmacKey();
+    const key2 = await vaultService.getSearchIndexHmacKey();
+    expect(key1).toBe(key2);
+    expect(key1.type).toBe('secret');
+  });
+
+  it('34. lockAndDisconnect clears database connections and state', async () => {
+    const mockSqlite = { close: vi.fn() };
+    const mockOpfs = { close: vi.fn() };
+    (vaultService as any).sqliteDb = mockSqlite;
+    (vaultService as any).opfsMockDb = mockOpfs;
+    (vaultService as any).useSQLite = true;
+    (vaultService as any).activeVaultDbNames = ['db1'];
+
+    vaultService.lock();
+
+    expect(mockSqlite.close).toHaveBeenCalled();
+    expect(mockOpfs.close).toHaveBeenCalled();
+    expect((vaultService as any).sqliteDb).toBeNull();
+    expect((vaultService as any).opfsMockDb).toBeNull();
+    expect((vaultService as any).useSQLite).toBe(false);
+    expect((vaultService as any).activeVaultDbNames).toEqual([]);
+  });
+
+  it('35. Cache invalidation is triggered by write operations', async () => {
+    (vaultService as any).decryptedEntriesCache = [{ id: 1 }];
+
+    // Mock the write path to simulate actual behavior if possible, or just call the helper if exposed.
+    // In vaultService.ts, many methods like moveToTrash call write op that triggers invalidateCache.
+    // We can use vi.spyOn to check if cache becomes null.
+
+    // Simulating moveToTrash write callback
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, `cache_inv_${dbNameCounter}`, true);
+    (vaultService as any).decryptedEntriesCache = [{ id: 1 }];
+
+    // Add an entry then move to trash
+    await vaultService.addPassword({ title: 'T', username: 'U', pass: 'P', website: 'W' });
+    const passwords = await vaultService.getPasswords();
+    const entryId = passwords[0].id;
+
+    // Manual cache set to verify invalidation
+    (vaultService as any).decryptedEntriesCache = [passwords[0]];
+    expect((vaultService as any).decryptedEntriesCache).not.toBeNull();
+
+    await vaultService.moveToTrash(entryId);
+    expect((vaultService as any).decryptedEntriesCache).toBeNull();
+  });
+
+  it('36. deletePermanently also invalidates cache', async () => {
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, `cache_inv_del_${dbNameCounter}`, true);
+    await vaultService.addPassword({ title: 'T', username: 'U', pass: 'P', website: 'W' });
+    const passwords = await vaultService.getPasswords();
+    const entryId = passwords[0].id;
+    await vaultService.moveToTrash(entryId);
+
+    (vaultService as any).decryptedEntriesCache = [{ id: entryId }];
+    await vaultService.deletePermanently(entryId);
+    expect((vaultService as any).decryptedEntriesCache).toBeNull();
+  });
 });

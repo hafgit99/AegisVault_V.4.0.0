@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { PasskeyBindingService } from '../PasskeyBindingService';
+import 'fake-indexeddb/auto';
 import { BackupService } from '../BackupService';
 import type { PasskeyBindingRecord } from '../PasskeyBindingService';
 
@@ -308,5 +309,65 @@ describe('PasskeyBindingService', () => {
       true
     );
     expect(PasskeyBindingService.getPolicy().maxBindingAgeDays).toBe(50);
+  });
+
+  it('handles default profile and db fallbacks in profileKey', () => {
+    // Proving that passing undefined/null to getBinding maps to the default key
+    PasskeyBindingService.saveBinding('default', 'aegis_opfs_vault', {
+      credentialId: 'explicit-default-cid',
+      meta: {},
+    } as any);
+
+    const b = PasskeyBindingService.getBinding(null, undefined);
+    expect(b?.credentialId).toBe('explicit-default-cid');
+  });
+
+  it('readStateFromIndexedDb handles request errors via initialize catch', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const openSpy = vi.spyOn(indexedDB, 'open').mockImplementation(() => {
+      return { onerror: null, error: new Error('FAIL') } as any;
+    });
+
+    (PasskeyBindingService as any).secureStateInitialized = false;
+    (PasskeyBindingService as any).secureStateInitPromise = null;
+
+    const initPromise = PasskeyBindingService.initialize();
+
+    await vi.waitFor(() => expect(openSpy).toHaveBeenCalled());
+    const req = openSpy.mock.results[0].value;
+    if (req.onerror) req.onerror({ target: req });
+
+    await initPromise;
+
+    openSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it('writeStateToIndexedDb handles persist errors via schedulePersist catch', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const openSpy = vi.spyOn(indexedDB, 'open').mockImplementation(() => {
+      return { onerror: null, error: new Error('WRITE_FAIL') } as any;
+    });
+
+    (PasskeyBindingService as any).secureStateInitialized = true;
+
+    PasskeyBindingService.saveBinding('error-p', 'error-d', { credentialId: 'c', meta: {} } as any);
+
+    await vi.waitFor(() => expect(openSpy).toHaveBeenCalled());
+    const req = openSpy.mock.results[0].value;
+    if (req.onerror) req.onerror({ target: req });
+
+    await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled(), { timeout: 1000 });
+
+    openSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it('listBindings returns formatted keys and records', () => {
+    PasskeyBindingService.saveBinding('p1', 'd1', { credentialId: 'c1', meta: {} } as any);
+    const list = PasskeyBindingService.listBindings();
+    const item = list.find((i) => i.bindingKey === 'p1::d1');
+    expect(item).toBeDefined();
+    expect(item?.credentialId).toBe('c1');
   });
 });
