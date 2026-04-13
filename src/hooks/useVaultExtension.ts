@@ -11,7 +11,7 @@
  *   - CLI operasyon handler
  *   - Cleanup (unmount)
  */
-import { useEffect, type DependencyList } from 'react';
+import { useEffect, useRef } from 'react';
 import { vaultService, type VaultEntry } from '../vaultService';
 import { WebAuthnService } from '../lib/WebAuthnService';
 import type { SitePasskeyAuthResult, SitePasskeyAuthOptions } from '../lib/WebAuthnService';
@@ -134,12 +134,23 @@ interface UseVaultExtensionOptions {
 }
 
 export function useVaultExtension({ passwords, loadPasswords }: UseVaultExtensionOptions): void {
+  const passwordsRef = useRef(passwords);
+  const loadPasswordsRef = useRef(loadPasswords);
+
+  useEffect(() => {
+    passwordsRef.current = passwords;
+  }, [passwords]);
+
+  useEffect(() => {
+    loadPasswordsRef.current = loadPasswords;
+  }, [loadPasswords]);
+
   useEffect(() => {
     // ─── Domain Credential Provider ──────────────────────────
     const getMatchesForDomain = (domain: string) => {
       const normalizedDomain = normalizeDomain(domain);
       if (!normalizedDomain) return [];
-      return passwords
+      return passwordsRef.current
         .filter((p) => p.pass && p.website && isDomainMatch(p.website, normalizedDomain))
         .slice(0, 5)
         .map((p) => ({
@@ -157,7 +168,7 @@ export function useVaultExtension({ passwords, loadPasswords }: UseVaultExtensio
     const getPasskeysForDomain = (domain: string) => {
       const normalizedDomain = normalizeDomain(domain);
       if (!normalizedDomain) return [];
-      return passwords
+      return passwordsRef.current
         .filter((p) => p.website && isDomainMatch(p.website, normalizedDomain) && p.passkeyMetadata)
         .slice(0, 5)
         .map((p) => ({
@@ -170,7 +181,7 @@ export function useVaultExtension({ passwords, loadPasswords }: UseVaultExtensio
 
     // ─── Passkey Auth Handler ────────────────────────────────
     const handlePasskeyAuthRequest = async (options: SitePasskeyAuthOptions) => {
-      if (passwords.length === 0) throw new Error('VAULT_LOCKED');
+      if (passwordsRef.current.length === 0) throw new Error('VAULT_LOCKED');
       return await WebAuthnService.authenticateSitePasskey(options);
     };
 
@@ -184,13 +195,13 @@ export function useVaultExtension({ passwords, loadPasswords }: UseVaultExtensio
       if (!website || !pass) {
         return { saved: false, action: 'rejected', error: 'INVALID_CREDENTIAL' };
       }
-      if (passwords.length === 0) {
+      if (passwordsRef.current.length === 0) {
         return { saved: false, action: 'rejected', error: 'VAULT_LOCKED' };
       }
 
       const normalizedDomain = normalizeDomain(website);
       const normalizedUsername = username.toLowerCase();
-      const existingForSite = passwords.filter((entry) => {
+      const existingForSite = passwordsRef.current.filter((entry) => {
         if (!entry.website) return false;
         if (!isDomainMatch(entry.website, normalizedDomain)) return false;
         const entryUsername = (entry.username || '').toLowerCase().trim();
@@ -218,7 +229,7 @@ export function useVaultExtension({ passwords, loadPasswords }: UseVaultExtensio
           pass,
           website,
         });
-        loadPasswords();
+        loadPasswordsRef.current();
         return { saved: true, action: 'updated', entryId: updateId };
       }
 
@@ -229,7 +240,7 @@ export function useVaultExtension({ passwords, loadPasswords }: UseVaultExtensio
         website,
         category: 'General',
       });
-      loadPasswords();
+      loadPasswordsRef.current();
       return {
         saved: true,
         action: 'created',
@@ -275,6 +286,18 @@ export function useVaultExtension({ passwords, loadPasswords }: UseVaultExtensio
         const found = await findEntryById(entryId);
         if (!found) return { ok: false, error: 'ENTRY_NOT_FOUND' };
         return { ok: true, data: sanitizeCliEntry(found) };
+      }
+
+      if (normalizedOp === 'status') {
+        return {
+          ok: true,
+          data: {
+            isUnlocked: vaultService.isUnlocked(),
+            entryCount: passwordsRef.current.filter((entry) =>
+              Boolean(entry.pass && entry.website && entry.website.trim())
+            ).length,
+          },
+        };
       }
 
       if (normalizedOp === 'generate-alias') {
@@ -338,7 +361,7 @@ export function useVaultExtension({ passwords, loadPasswords }: UseVaultExtensio
             : [],
         };
         const newId = await vaultService.addPassword(entryToCreate);
-        loadPasswords();
+        loadPasswordsRef.current();
         const created = await findEntryById(Number(newId));
         return { ok: true, data: created ? sanitizeCliEntry(created) : { id: Number(newId) } };
       }
@@ -379,7 +402,7 @@ export function useVaultExtension({ passwords, loadPasswords }: UseVaultExtensio
         if (!merged.title || !merged.pass)
           return { ok: false, error: 'TITLE_AND_PASSWORD_REQUIRED' };
         await vaultService.updatePassword(entryId, merged);
-        loadPasswords();
+        loadPasswordsRef.current();
         const updated = await findEntryById(entryId);
         return { ok: true, data: updated ? sanitizeCliEntry(updated) : { id: entryId } };
       }
@@ -388,7 +411,7 @@ export function useVaultExtension({ passwords, loadPasswords }: UseVaultExtensio
         const entryId = Number(payload.entryId);
         if (!Number.isFinite(entryId)) return { ok: false, error: 'INVALID_ENTRY_ID' };
         await vaultService.moveToTrash(entryId);
-        loadPasswords();
+        loadPasswordsRef.current();
         return { ok: true, data: { id: entryId, deleted: true } };
       }
 
@@ -396,7 +419,7 @@ export function useVaultExtension({ passwords, loadPasswords }: UseVaultExtensio
         const entryId = Number(payload.entryId);
         if (!Number.isFinite(entryId)) return { ok: false, error: 'INVALID_ENTRY_ID' };
         await vaultService.restoreFromTrash(entryId);
-        loadPasswords();
+        loadPasswordsRef.current();
         return { ok: true, data: { id: entryId, restored: true } };
       }
 
@@ -415,8 +438,9 @@ export function useVaultExtension({ passwords, loadPasswords }: UseVaultExtensio
       if (electronApi?.syncVaultState) {
         electronApi.syncVaultState({
           unlocked: true,
-          entryCount: passwords.filter((p) => Boolean(p.pass && p.website && p.website.trim()))
-            .length,
+          entryCount: passwordsRef.current.filter((p) =>
+            Boolean(p.pass && p.website && p.website.trim())
+          ).length,
         });
       }
       if (electronApi?.setDomainCredentialProvider) {
@@ -461,5 +485,5 @@ export function useVaultExtension({ passwords, loadPasswords }: UseVaultExtensio
         // cleanup hatası ana akış için kritik değil
       }
     };
-  }, [passwords, loadPasswords]);
+  }, []);
 }

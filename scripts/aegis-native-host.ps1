@@ -83,7 +83,7 @@ function Read-NativeMessage {
 function Write-NativeMessage {
   param(
     [System.IO.Stream]$OutputStream,
-    [hashtable]$Message
+    $Message
   )
 
   $json = ($Message | ConvertTo-Json -Compress -Depth 8)
@@ -202,169 +202,43 @@ while ($true) {
       continue
     }
 
-    if ($type -eq "GET_VAULT_STATUS") {
-      $status = Invoke-NativeBridge -Payload @{
-        type = "GET_VAULT_STATUS"
-        extensionId = $extensionId
-        requestNonce = [string]$message.requestNonce
-        clientInfo = $message.clientInfo
-        clientKeyId = [string]$message.clientKeyId
-        clientTimestamp = [string]$message.clientTimestamp
-        clientNonce = [string]$message.clientNonce
-        clientSignature = [string]$message.clientSignature
-        clientPublicJwk = $message.clientPublicJwk
-      } -RuntimePairingSecret $runtimePairingSecret
+    # Pass-through helper: Electron'dan gelen response'u olduğu gibi iletir.
+    # desktopAuth imzası Electron tarafında response body üzerinden üretildiği için,
+    # burada response'u yeniden yapılandırmak imza uyumsuzluğuna yol açar
+    # (DESKTOP_AUTH_SIGNATURE_INVALID).
 
-      Write-NativeMessage -OutputStream $stdout -Message @{
-        ok = [bool]$status.ok
-        error = if ($status.ok) { $null } else { [string]$status.error }
-        isUnlocked = [bool]$status.isUnlocked
-        entryCount = [int]($status.entryCount)
-        desktopAuth = $status.desktopAuth
-      }
-      continue
+    $bridgePayload = @{
+      type = $type
+      extensionId = $extensionId
+      requestNonce = [string]$message.requestNonce
+      clientInfo = $message.clientInfo
+      clientKeyId = [string]$message.clientKeyId
+      clientTimestamp = [string]$message.clientTimestamp
+      clientNonce = [string]$message.clientNonce
+      clientSignature = [string]$message.clientSignature
+      clientPublicJwk = $message.clientPublicJwk
     }
 
-    if ($type -eq "GET_UI_LANGUAGE") {
-      $result = Invoke-NativeBridge -Payload @{
-        type = "GET_UI_LANGUAGE"
-        extensionId = $extensionId
-        requestNonce = [string]$message.requestNonce
-        clientInfo = $message.clientInfo
-        clientKeyId = [string]$message.clientKeyId
-        clientTimestamp = [string]$message.clientTimestamp
-        clientNonce = [string]$message.clientNonce
-        clientSignature = [string]$message.clientSignature
-        clientPublicJwk = $message.clientPublicJwk
-      } -RuntimePairingSecret $runtimePairingSecret
-
-      Write-NativeMessage -OutputStream $stdout -Message @{
-        ok = [bool]$result.ok
-        error = if ($result.ok) { $null } else { [string]$result.error }
-        language = [string]$result.language
-        desktopAuth = $result.desktopAuth
-      }
-      continue
-    }
-
-    if ($type -eq "INIT_PAIRING") {
-      $result = Invoke-NativeBridge -Payload @{
-        type = "INIT_PAIRING"
-        extensionId = $extensionId
-        browserName = [string]$message.browserName
-        clientInfo = $message.clientInfo
-        clientKeyId = [string]$message.clientKeyId
-        clientTimestamp = [string]$message.clientTimestamp
-        clientNonce = [string]$message.clientNonce
-        clientSignature = [string]$message.clientSignature
-        clientPublicJwk = $message.clientPublicJwk
-      } -RuntimePairingSecret $runtimePairingSecret
-
-      Write-NativeMessage -OutputStream $stdout -Message @{
-        ok = [bool]$result.ok
-        error = if ($result.ok) { $null } else { [string]$result.error }
-        paired = [bool]$result.paired
-        secret = [string]$result.secret
-        pairedAt = [string]$result.pairedAt
-        riskFlags = $result.riskFlags
-        deviceFingerprint = [string]$result.deviceFingerprint
-        pairingMode = [string]$result.pairingMode
-        clientKeyId = [string]$result.clientKeyId
-        desktopAuth = $result.desktopAuth
-      }
-      continue
-    }
-
-    if ($type -eq "CLEAR_PAIRING") {
-      $result = Invoke-NativeBridge -Payload @{
-        type = "CLEAR_PAIRING"
-        extensionId = $extensionId
-        clientInfo = $message.clientInfo
-        clientKeyId = [string]$message.clientKeyId
-        clientTimestamp = [string]$message.clientTimestamp
-        clientNonce = [string]$message.clientNonce
-        clientSignature = [string]$message.clientSignature
-        clientPublicJwk = $message.clientPublicJwk
-      } -RuntimePairingSecret $runtimePairingSecret
-
-      Write-NativeMessage -OutputStream $stdout -Message @{
-        ok = [bool]$result.ok
-        error = if ($result.ok) { $null } else { [string]$result.error }
-        cleared = [bool]$result.cleared
-        desktopAuth = $result.desktopAuth
-      }
-      continue
-    }
-
-    if ($type -eq "GET_PAIRING_STATUS") {
-      $result = Invoke-NativeBridge -Payload @{
-        type = "GET_PAIRING_STATUS"
-        extensionId = $extensionId
-        clientInfo = $message.clientInfo
-        clientKeyId = [string]$message.clientKeyId
-        clientTimestamp = [string]$message.clientTimestamp
-        clientNonce = [string]$message.clientNonce
-        clientSignature = [string]$message.clientSignature
-        clientPublicJwk = $message.clientPublicJwk
-      } -RuntimePairingSecret $runtimePairingSecret
-
-      Write-NativeMessage -OutputStream $stdout -Message @{
-        ok = [bool]$result.ok
-        error = if ($result.ok) { $null } else { [string]$result.error }
-        paired = [bool]$result.paired
-        pairedAt = [string]$result.pairedAt
-        pairingMode = [string]$result.pairingMode
-        clientKeyId = [string]$result.clientKeyId
-        clientLabel = [string]$result.clientLabel
-        deviceFingerprint = [string]$result.deviceFingerprint
-        lastUsedAt = [string]$result.lastUsedAt
-        lastApprovedAt = [string]$result.lastApprovedAt
-        riskFlags = $result.riskFlags
-        riskLevel = [string]$result.riskLevel
-        pairingHistory = $result.pairingHistory
-        secretSource = [string]$result.secretSource
-        desktopAuth = $result.desktopAuth
-      }
-      continue
-    }
-
-    if ($type -eq "GET_DOMAIN_CREDS") {
+    if ($type -eq "GET_DOMAIN_CREDS" -or $type -eq "GET_DOMAIN_PASSKEYS") {
       $domain = Normalize-Domain -InputValue ([string]$message.domain)
       if ([string]::IsNullOrWhiteSpace($domain)) {
         Write-NativeMessage -OutputStream $stdout -Message @{ ok = $false; error = "INVALID_DOMAIN"; data = @() }
         continue
       }
-
-      $data = Invoke-NativeBridge -Payload @{
-        type = "GET_DOMAIN_CREDS"
-        extensionId = $extensionId
-        domain = $domain
-        clientInfo = $message.clientInfo
-        requestNonce = [string]$message.requestNonce
-        clientKeyId = [string]$message.clientKeyId
-        clientTimestamp = [string]$message.clientTimestamp
-        clientNonce = [string]$message.clientNonce
-        clientSignature = [string]$message.clientSignature
-        clientPublicJwk = $message.clientPublicJwk
-      } -RuntimePairingSecret $runtimePairingSecret
-
-      $resultData = @()
-      if ($data.data -is [System.Array]) {
-        $resultData = $data.data
-      } elseif ($null -ne $data.data) {
-        $resultData = @($data.data)
-      }
-
-      Write-NativeMessage -OutputStream $stdout -Message @{
-        ok = [bool]$data.ok
-        error = if ($data.ok) { $null } else { [string]$data.error }
-        data = $resultData
-        desktopAuth = $data.desktopAuth
-      }
-      continue
+      $bridgePayload.domain = $domain
     }
 
-    Write-NativeMessage -OutputStream $stdout -Message @{ ok = $false; error = "UNSUPPORTED_MESSAGE_TYPE" }
+    if ($type -eq "INIT_PAIRING") {
+      $bridgePayload.browserName = [string]$message.browserName
+    }
+
+    $result = Invoke-NativeBridge -Payload $bridgePayload -RuntimePairingSecret $runtimePairingSecret
+
+    if ($null -eq $result) {
+      Write-NativeMessage -OutputStream $stdout -Message @{ ok = $false; error = "NATIVE_HOST_ERROR" }
+    } else {
+      Write-NativeMessage -OutputStream $stdout -Message $result
+    }
   } catch {
     Write-NativeMessage -OutputStream $stdout -Message @{
       ok = $false

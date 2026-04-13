@@ -255,10 +255,75 @@ const formatBridgeError = (code: string) => {
       popupLanguage === 'tr'
         ? 'Masaustu koprusu istemci imzasini dogrulayamadı.'
         : 'Desktop bridge could not verify the client signature.',
+    DESKTOP_AUTH_SIGNATURE_INVALID:
+      popupLanguage === 'tr'
+        ? 'Masaustu kopru imzasi dogrulanamadi. Eslestirmeyi kaldirip yeniden deneyin.'
+        : 'Desktop bridge signature verification failed. Try removing and re-pairing.',
   };
 
   const detail = map[normalized] || normalized;
   return `${POPUP_I18N.bridgeErrorPrefix}: ${detail}`;
+};
+
+const formatAliasError = (code: string) => {
+  const normalized = (code || '').trim();
+  if (!normalized) return POPUP_I18N.aliasFailed;
+
+  const map: Record<string, string> = {
+    VAULT_LOCKED:
+      popupLanguage === 'tr'
+        ? 'Kasa kilitli. Masaustu uygulamasini acip giris yapin.'
+        : 'Vault is locked. Open the desktop app and unlock it.',
+    INVALID_DOMAIN:
+      popupLanguage === 'tr'
+        ? 'Gecerli bir site alan adi bulunamadi.'
+        : 'No valid site domain found.',
+    NO_EDITABLE_FIELD: POPUP_I18N.aliasNoEditableField,
+    NATIVE_HOST_UNAVAILABLE:
+      popupLanguage === 'tr'
+        ? 'Masaustu koprusu kullanilamiyor.'
+        : 'Desktop bridge is unavailable.',
+    MAIN_WINDOW_NOT_AVAILABLE:
+      popupLanguage === 'tr'
+        ? 'Masaustu uygulama penceresi hazir degil.'
+        : 'Desktop app window is not ready.',
+    TIMEOUT:
+      popupLanguage === 'tr' ? 'Alias istegi zaman asimina ugradi.' : 'Alias request timed out.',
+    VAULT_CLI_HANDLER_NOT_SET:
+      popupLanguage === 'tr'
+        ? 'Alias servisi hazirlaniyor. Bir saniye sonra tekrar deneyin.'
+        : 'Alias service is still starting. Try again in a moment.',
+    ALIAS_GENERATION_UNAVAILABLE:
+      popupLanguage === 'tr'
+        ? 'Alias olusturma bu kopru modunda kullanilamiyor.'
+        : 'Alias generation is unavailable in this bridge mode.',
+    STATUS_REFRESH_FAILED:
+      popupLanguage === 'tr'
+        ? 'Masaustu uygulama durumu okunamadi.'
+        : 'Desktop app status could not be read.',
+    IPC_SEND_FAILED:
+      popupLanguage === 'tr'
+        ? 'Masaustu uygulamasina istek gonderilemedi.'
+        : 'Request could not be sent to the desktop app.',
+    INVALID_RENDERER_RESPONSE:
+      popupLanguage === 'tr'
+        ? 'Masaustu uygulamasi gecersiz bir yanit dondurdu.'
+        : 'Desktop app returned an invalid response.',
+    CLI_OPERATION_FAILED:
+      popupLanguage === 'tr'
+        ? 'Alias islemi masaustu uygulamada tamamlanamadi.'
+        : 'Alias operation could not be completed in the desktop app.',
+    INVALID_NATIVE_RESPONSE:
+      popupLanguage === 'tr'
+        ? 'Native host gecersiz bir yanit dondurdu.'
+        : 'Native host returned an invalid response.',
+    DESKTOP_AUTH_SIGNATURE_INVALID:
+      popupLanguage === 'tr'
+        ? 'Masaustu kopru imzasi dogrulanamadi.'
+        : 'Desktop bridge signature could not be verified.',
+  };
+
+  return map[normalized] || `${POPUP_I18N.aliasFailed} (${normalized})`;
 };
 
 const getPopupRoot = () => {
@@ -686,9 +751,7 @@ const bootPopup = async () => {
         );
       } catch (error) {
         const code = error instanceof Error ? error.message : 'ALIAS_GENERATION_FAILED';
-        const detail =
-          code === 'NO_EDITABLE_FIELD' ? POPUP_I18N.aliasNoEditableField : POPUP_I18N.aliasFailed;
-        setAliasState(POPUP_I18N.aliasFailed, detail, '#f59e0b');
+        setAliasState(POPUP_I18N.aliasFailed, formatAliasError(code), '#f59e0b');
       } finally {
         setButtonBusy(button, false, POPUP_I18N.aliasGenerate);
       }

@@ -514,6 +514,24 @@ function requestVaultCliOperationFromRenderer(operation, payload = {}) {
   });
 }
 
+async function refreshVaultStateFromRenderer() {
+  const result = await requestVaultCliOperationFromRenderer('status');
+  const isUnlocked = Boolean(result?.ok && result?.data?.isUnlocked);
+  const entryCount = Number.isFinite(Number(result?.data?.entryCount))
+    ? Math.max(0, Number(result.data.entryCount))
+    : 0;
+
+  vaultState.unlocked = isUnlocked;
+  vaultState.entryCount = isUnlocked ? entryCount : 0;
+
+  return {
+    ok: Boolean(result?.ok),
+    isUnlocked,
+    entryCount,
+    error: result?.ok ? undefined : String(result?.error || 'STATUS_REFRESH_FAILED'),
+  };
+}
+
 function getNativeBridgeSocketPath() {
   if (nativeBridgeSocketPath) {
     return nativeBridgeSocketPath;
@@ -1348,6 +1366,9 @@ async function handleNativeBridgeRequest(message) {
   }
 
   if (type === 'GET_VAULT_STATUS') {
+    if (!vaultState.unlocked) {
+      await refreshVaultStateFromRenderer().catch(() => undefined);
+    }
     touchPairingUsage(extensionId, clientInfo, 'status-check');
     return {
       ok: true,
@@ -1365,7 +1386,14 @@ async function handleNativeBridgeRequest(message) {
       return { ok: false, error: 'INVALID_DOMAIN' };
     }
     if (!vaultState.unlocked) {
-      return { ok: false, error: 'VAULT_LOCKED' };
+      const refreshed = await refreshVaultStateFromRenderer().catch(() => ({
+        ok: false,
+        isUnlocked: false,
+        error: 'STATUS_REFRESH_FAILED',
+      }));
+      if (!refreshed.isUnlocked) {
+        return { ok: false, error: refreshed.error || 'VAULT_LOCKED' };
+      }
     }
 
     const result = await requestVaultCliOperationFromRenderer('generate-alias', {
@@ -1879,18 +1907,9 @@ function buildNativeBridgePayload(message) {
               : 'browser_form',
         }
       : null;
-  const entry =
-    message?.entry && typeof message.entry === 'object'
-      ? sanitizeVaultEntryInput(message.entry)
-      : null;
-  const entryId = Number.isFinite(Number(message?.entryId)) ? Number(message.entryId) : null;
-  const listQuery = typeof message?.query === 'string' ? message.query.slice(0, 256) : '';
-  const listCategory = typeof message?.category === 'string' ? message.category.slice(0, 64) : '';
-  const listScope = typeof message?.scope === 'string' ? message.scope.slice(0, 16) : '';
-  const listSearchScope =
-    typeof message?.searchScope === 'string' ? message.searchScope.slice(0, 16) : '';
-  const listLimit = Number.isFinite(Number(message?.limit)) ? Number(message.limit) : 0;
-  const requestedTitle = typeof message?.title === 'string' ? message.title.slice(0, 256) : '';
+  // ⚠️ Bu payload, Chrome eklentisinin buildSignedNativeBridgePayload fonksiyonu ile
+  // BİREBİR aynı field yapısına sahip olmalıdır. Eklenti sadece aşağıdaki 10 alanı
+  // imzalar. Ekstra alanlar (entry, entryId, query vs.) imza uyumsuzluğuna yol açar.
   return JSON.stringify({
     type: typeof message?.type === 'string' ? message.type : '',
     extensionId: typeof message?.extensionId === 'string' ? message.extensionId.trim() : '',
@@ -1911,14 +1930,6 @@ function buildNativeBridgePayload(message) {
     },
     clientPublicJwk,
     credential,
-    entry,
-    entryId,
-    query: listQuery,
-    category: listCategory,
-    scope: listScope,
-    searchScope: listSearchScope,
-    limit: listLimit,
-    title: requestedTitle,
   });
 }
 
@@ -2007,13 +2018,27 @@ function verifyNativeBridgeProof(message) {
       return { ok: false, error: 'CLIENT_KEY_ID_MISMATCH' };
     }
     try {
+      const verificationPayload = buildNativeBridgePayload(message);
+      console.log(
+        '[Aegis Native Bridge] 🔍 VERIFY PAYLOAD:',
+        verificationPayload.substring(0, 500)
+      );
+      console.log(
+        '[Aegis Native Bridge] 🔍 CLIENT SIGNATURE HEX:',
+        clientSignature.substring(0, 40) + '...'
+      );
+      console.log('[Aegis Native Bridge] 🔍 PUBLIC JWK:', JSON.stringify(normalizedPublicJwk));
       const verifier = crypto.createVerify('SHA256');
-      verifier.update(buildNativeBridgePayload(message));
+      verifier.update(verificationPayload);
       verifier.end();
       const publicKey = crypto.createPublicKey({ key: normalizedPublicJwk, format: 'jwk' });
       const signatureBuffer = Buffer.from(clientSignature, 'hex');
       const ok = verifier.verify(publicKey, signatureBuffer);
       if (!ok) {
+        console.error(
+          '[Aegis Native Bridge] ❌ Signature verification FAILED! Payload length:',
+          verificationPayload.length
+        );
         return { ok: false, error: 'INVALID_NATIVE_BRIDGE_SIGNATURE' };
       }
       return {
@@ -2022,7 +2047,8 @@ function verifyNativeBridgeProof(message) {
         clientKeyId: derivedKeyId,
         clientPublicJwk: normalizedPublicJwk,
       };
-    } catch {
+    } catch (verifyErr) {
+      console.error('[Aegis Native Bridge] ❌ Signature verification THREW:', verifyErr?.message);
       return { ok: false, error: 'INVALID_NATIVE_BRIDGE_SIGNATURE' };
     }
   };

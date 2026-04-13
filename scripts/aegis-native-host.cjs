@@ -105,26 +105,6 @@ function buildBridgeProof(message, pairingSecret = '') {
                 : 'browser_form',
           }
         : null,
-    entry:
-      message?.entry && typeof message.entry === 'object'
-        ? {
-            title: typeof message.entry.title === 'string' ? message.entry.title : '',
-            username: typeof message.entry.username === 'string' ? message.entry.username : '',
-            pass: typeof message.entry.pass === 'string' ? message.entry.pass : '',
-            website: typeof message.entry.website === 'string' ? message.entry.website : '',
-            category: typeof message.entry.category === 'string' ? message.entry.category : '',
-            tags: Array.isArray(message.entry.tags)
-              ? message.entry.tags.map((item) => String(item || ''))
-              : [],
-          }
-        : null,
-    entryId: Number.isFinite(Number(message?.entryId)) ? Number(message.entryId) : 0,
-    query: typeof message?.query === 'string' ? message.query : '',
-    category: typeof message?.category === 'string' ? message.category : '',
-    scope: typeof message?.scope === 'string' ? message.scope : '',
-    searchScope: typeof message?.searchScope === 'string' ? message.searchScope : '',
-    limit: Number.isFinite(Number(message?.limit)) ? Number(message.limit) : 0,
-    title: typeof message?.title === 'string' ? message.title.slice(0, 256) : '',
   });
 
   return crypto
@@ -311,6 +291,20 @@ async function handleMessageWithDeps(
     return;
   }
 
+  /**
+   * Pass-through helper: Electron response'unu olduğu gibi iletir.
+   * desktopAuth imzası Electron tarafında response body üzerinden üretildiği için,
+   * burada response'u yeniden yapılandırmak imza uyumsuzluğuna yol açar
+   * (DESKTOP_AUTH_SIGNATURE_INVALID). Her field'ı birebir koruyoruz.
+   */
+  const forwardResult = (result, fallbackError = 'NATIVE_HOST_ERROR') => {
+    if (!result || typeof result !== 'object') {
+      deps.writeMessage({ ok: false, error: fallbackError });
+      return;
+    }
+    deps.writeMessage(result);
+  };
+
   try {
     if (type === 'INIT_PAIRING') {
       const result = await deps.sendNativeBridgeMessage(
@@ -319,20 +313,7 @@ async function handleMessageWithDeps(
         }),
         pairingSecret
       );
-      deps.writeMessage({
-        ok: Boolean(result?.ok),
-        error: result?.ok ? undefined : String(result?.error || 'PAIRING_FAILED'),
-        paired: Boolean(result?.paired),
-        secret: typeof result?.secret === 'string' ? result.secret : '',
-        pairedAt: typeof result?.pairedAt === 'string' ? result.pairedAt : '',
-        riskFlags: Array.isArray(result?.riskFlags) ? result.riskFlags : [],
-        deviceFingerprint:
-          typeof result?.deviceFingerprint === 'string' ? result.deviceFingerprint : '',
-        pairingMode:
-          typeof result?.pairingMode === 'string' ? result.pairingMode : 'signed-p256-v1',
-        clientKeyId: typeof result?.clientKeyId === 'string' ? result.clientKeyId : '',
-        desktopAuth: result?.desktopAuth || null,
-      });
+      forwardResult(result, 'PAIRING_FAILED');
       return;
     }
 
@@ -343,12 +324,7 @@ async function handleMessageWithDeps(
         }),
         pairingSecret
       );
-      deps.writeMessage({
-        ok: Boolean(result?.ok),
-        error: result?.ok ? undefined : String(result?.error || 'CLEAR_PAIRING_FAILED'),
-        cleared: Boolean(result?.cleared),
-        desktopAuth: result?.desktopAuth || null,
-      });
+      forwardResult(result, 'CLEAR_PAIRING_FAILED');
       return;
     }
 
@@ -359,41 +335,18 @@ async function handleMessageWithDeps(
         }),
         pairingSecret
       );
-      deps.writeMessage({
-        ok: Boolean(result?.ok),
-        error: result?.ok ? undefined : String(result?.error || 'PAIRING_STATUS_FAILED'),
-        paired: Boolean(result?.paired),
-        pairedAt: typeof result?.pairedAt === 'string' ? result.pairedAt : '',
-        pairingMode: typeof result?.pairingMode === 'string' ? result.pairingMode : 'none',
-        clientKeyId: typeof result?.clientKeyId === 'string' ? result.clientKeyId : '',
-        clientLabel: typeof result?.clientLabel === 'string' ? result.clientLabel : '',
-        deviceFingerprint:
-          typeof result?.deviceFingerprint === 'string' ? result.deviceFingerprint : '',
-        lastUsedAt: typeof result?.lastUsedAt === 'string' ? result.lastUsedAt : '',
-        lastApprovedAt: typeof result?.lastApprovedAt === 'string' ? result.lastApprovedAt : '',
-        riskFlags: Array.isArray(result?.riskFlags) ? result.riskFlags : [],
-        riskLevel: typeof result?.riskLevel === 'string' ? result.riskLevel : 'low',
-        pairingHistory: Array.isArray(result?.pairingHistory) ? result.pairingHistory : [],
-        secretSource: typeof result?.secretSource === 'string' ? result.secretSource : 'none',
-        desktopAuth: result?.desktopAuth || null,
-      });
+      forwardResult(result, 'PAIRING_STATUS_FAILED');
       return;
     }
 
     if (type === 'GET_VAULT_STATUS') {
-      const status = await deps.sendNativeBridgeMessage(
+      const result = await deps.sendNativeBridgeMessage(
         buildForwardBridgeMessage(message, {
           type: 'GET_VAULT_STATUS',
         }),
         pairingSecret
       );
-      deps.writeMessage({
-        ok: Boolean(status?.ok),
-        error: status?.ok ? undefined : String(status?.error || 'STATUS_FAILED'),
-        isUnlocked: Boolean(status?.isUnlocked),
-        entryCount: Number(status?.entryCount || 0),
-        desktopAuth: status?.desktopAuth || null,
-      });
+      forwardResult(result, 'STATUS_FAILED');
       return;
     }
 
@@ -404,12 +357,7 @@ async function handleMessageWithDeps(
         }),
         pairingSecret
       );
-      deps.writeMessage({
-        ok: Boolean(result?.ok),
-        error: result?.ok ? undefined : String(result?.error || 'UI_LANGUAGE_FAILED'),
-        language: typeof result?.language === 'string' ? result.language : 'en',
-        desktopAuth: result?.desktopAuth || null,
-      });
+      forwardResult(result, 'UI_LANGUAGE_FAILED');
       return;
     }
 
@@ -431,17 +379,7 @@ async function handleMessageWithDeps(
         }),
         pairingSecret
       );
-      deps.writeMessage({
-        ok: Boolean(result?.ok),
-        error: result?.ok ? undefined : String(result?.error || 'ALIAS_GENERATION_FAILED'),
-        alias: typeof result?.alias === 'string' ? result.alias : '',
-        providerLabel: typeof result?.providerLabel === 'string' ? result.providerLabel : '',
-        providerSyncStatus:
-          typeof result?.providerSyncStatus === 'string' ? result.providerSyncStatus : 'manual',
-        providerManagementUrl:
-          typeof result?.providerManagementUrl === 'string' ? result.providerManagementUrl : '',
-        desktopAuth: result?.desktopAuth || null,
-      });
+      forwardResult(result, 'ALIAS_GENERATION_FAILED');
       return;
     }
 
@@ -452,19 +390,14 @@ async function handleMessageWithDeps(
         return;
       }
 
-      const data = await deps.sendNativeBridgeMessage(
+      const result = await deps.sendNativeBridgeMessage(
         buildForwardBridgeMessage(message, {
           type: 'GET_DOMAIN_CREDS',
           domain,
         }),
         pairingSecret
       );
-      deps.writeMessage({
-        ok: Boolean(data?.ok),
-        error: data?.ok ? undefined : String(data?.error || 'DOMAIN_FAILED'),
-        data: Array.isArray(data?.data) ? data.data : [],
-        desktopAuth: data?.desktopAuth || null,
-      });
+      forwardResult(result, 'DOMAIN_FAILED');
       return;
     }
 
@@ -475,19 +408,14 @@ async function handleMessageWithDeps(
         return;
       }
 
-      const data = await deps.sendNativeBridgeMessage(
+      const result = await deps.sendNativeBridgeMessage(
         buildForwardBridgeMessage(message, {
           type: 'GET_DOMAIN_PASSKEYS',
           domain,
         }),
         pairingSecret
       );
-      deps.writeMessage({
-        ok: Boolean(data?.ok),
-        error: data?.ok ? undefined : String(data?.error || 'DOMAIN_FAILED'),
-        data: Array.isArray(data?.data) ? data.data : [],
-        desktopAuth: data?.desktopAuth || null,
-      });
+      forwardResult(result, 'DOMAIN_FAILED');
       return;
     }
 
@@ -521,14 +449,7 @@ async function handleMessageWithDeps(
         }),
         pairingSecret
       );
-      deps.writeMessage({
-        ok: Boolean(result?.ok),
-        saved: Boolean(result?.saved),
-        action: typeof result?.action === 'string' ? result.action : 'none',
-        entryId: Number.isFinite(Number(result?.entryId)) ? Number(result.entryId) : undefined,
-        error: result?.ok ? undefined : String(result?.error || 'AUTOSAVE_FAILED'),
-        desktopAuth: result?.desktopAuth || null,
-      });
+      forwardResult(result, 'AUTOSAVE_FAILED');
       return;
     }
 
@@ -539,12 +460,7 @@ async function handleMessageWithDeps(
         }),
         pairingSecret
       );
-      deps.writeMessage({
-        ok: Boolean(result?.ok),
-        error: result?.ok ? undefined : String(result?.error || 'CLI_LIST_FAILED'),
-        data: Array.isArray(result?.data) ? result.data : [],
-        desktopAuth: result?.desktopAuth || null,
-      });
+      forwardResult(result, 'CLI_LIST_FAILED');
       return;
     }
 
@@ -561,12 +477,7 @@ async function handleMessageWithDeps(
         }),
         pairingSecret
       );
-      deps.writeMessage({
-        ok: Boolean(result?.ok),
-        error: result?.ok ? undefined : String(result?.error || 'CLI_GET_FAILED'),
-        data: result?.data || null,
-        desktopAuth: result?.desktopAuth || null,
-      });
+      forwardResult(result, 'CLI_GET_FAILED');
       return;
     }
 
@@ -586,12 +497,7 @@ async function handleMessageWithDeps(
         }),
         pairingSecret
       );
-      deps.writeMessage({
-        ok: Boolean(result?.ok),
-        error: result?.ok ? undefined : String(result?.error || 'CLI_WRITE_FAILED'),
-        data: result?.data || null,
-        desktopAuth: result?.desktopAuth || null,
-      });
+      forwardResult(result, 'CLI_WRITE_FAILED');
       return;
     }
 
@@ -608,12 +514,7 @@ async function handleMessageWithDeps(
         }),
         pairingSecret
       );
-      deps.writeMessage({
-        ok: Boolean(result?.ok),
-        error: result?.ok ? undefined : String(result?.error || 'CLI_MUTATION_FAILED'),
-        data: result?.data || null,
-        desktopAuth: result?.desktopAuth || null,
-      });
+      forwardResult(result, 'CLI_MUTATION_FAILED');
       return;
     }
 
@@ -624,12 +525,7 @@ async function handleMessageWithDeps(
         }),
         pairingSecret
       );
-      deps.writeMessage({
-        ok: Boolean(result?.ok),
-        error: result?.ok ? undefined : String(result?.error || 'CLI_EMPTY_TRASH_FAILED'),
-        data: result?.data || null,
-        desktopAuth: result?.desktopAuth || null,
-      });
+      forwardResult(result, 'CLI_EMPTY_TRASH_FAILED');
       return;
     }
 

@@ -459,6 +459,14 @@ export default defineBackground({
       return runtimeDesktopBridgeIdentity;
     };
 
+    const clearRuntimeDesktopBridgeIdentity = async () => {
+      runtimeDesktopBridgeIdentity = null;
+      await browser.storage.local.remove([
+        DESKTOP_BRIDGE_PUBLIC_JWK_STORAGE_KEY,
+        DESKTOP_BRIDGE_KEY_ID_STORAGE_KEY,
+      ]);
+    };
+
     const ensureRuntimePairingKeyMaterial = async () => {
       if (runtimePairingKeyMaterial) return runtimePairingKeyMaterial;
       const loaded = await loadRuntimePairingKeyMaterial();
@@ -639,6 +647,12 @@ export default defineBackground({
         nonce,
         includePublicKey ? keyMaterial.publicJwk : null
       );
+      console.log('[Aegis Extension] 🔍 SIGN PAYLOAD:', payload.substring(0, 500));
+      console.log('[Aegis Extension] 🔍 CLIENT KEY ID:', keyMaterial.keyId);
+      console.log(
+        '[Aegis Extension] 🔍 PUBLIC JWK:',
+        JSON.stringify(includePublicKey ? keyMaterial.publicJwk : null)
+      );
       const privateKey = await crypto.subtle.importKey(
         'jwk',
         keyMaterial.privateJwk,
@@ -749,7 +763,7 @@ export default defineBackground({
         false,
         ['verify']
       );
-      const signature = hexToUint8(signatureHex);
+      const signature = convertDerSignatureToP1363(hexToUint8(signatureHex));
       const ok = await crypto.subtle.verify(
         { name: 'ECDSA', hash: 'SHA-256' },
         verifyKey,
@@ -802,6 +816,69 @@ export default defineBackground({
         bytes[i / 2] = parseInt(normalized.substring(i, i + 2), 16);
       }
       return bytes;
+    };
+
+    const decodeDerLength = (bytes: Uint8Array, offset: number) => {
+      const first = bytes[offset];
+      if (typeof first !== 'number') throw new Error('INVALID_DER_LENGTH');
+      if ((first & 0x80) === 0) {
+        return { length: first, bytesRead: 1 };
+      }
+      const octetCount = first & 0x7f;
+      if (octetCount <= 0 || octetCount > 4 || offset + 1 + octetCount > bytes.length) {
+        throw new Error('INVALID_DER_LENGTH');
+      }
+      let length = 0;
+      for (let i = 0; i < octetCount; i += 1) {
+        length = (length << 8) | bytes[offset + 1 + i];
+      }
+      return { length, bytesRead: 1 + octetCount };
+    };
+
+    const normalizeDerInteger = (value: Uint8Array, size: number) => {
+      let normalized = value;
+      while (normalized.length > 0 && normalized[0] === 0) {
+        normalized = normalized.slice(1);
+      }
+      if (normalized.length > size) throw new Error('INVALID_DER_INTEGER');
+      const result = new Uint8Array(size);
+      result.set(normalized, size - normalized.length);
+      return result;
+    };
+
+    const convertDerSignatureToP1363 = (signature: Uint8Array, size = 32) => {
+      if (signature.length < 8 || signature[0] !== 0x30) {
+        throw new Error('INVALID_DER_SIGNATURE');
+      }
+      const sequenceLength = decodeDerLength(signature, 1);
+      let offset = 1 + sequenceLength.bytesRead;
+      if (offset + sequenceLength.length > signature.length) {
+        throw new Error('INVALID_DER_SIGNATURE');
+      }
+      if (signature[offset] !== 0x02) {
+        throw new Error('INVALID_DER_SIGNATURE');
+      }
+      const rLength = decodeDerLength(signature, offset + 1);
+      const rStart = offset + 1 + rLength.bytesRead;
+      const rEnd = rStart + rLength.length;
+      if (rEnd > signature.length) {
+        throw new Error('INVALID_DER_SIGNATURE');
+      }
+      const r = signature.slice(rStart, rEnd);
+      offset = rEnd;
+      if (signature[offset] !== 0x02) {
+        throw new Error('INVALID_DER_SIGNATURE');
+      }
+      const sLength = decodeDerLength(signature, offset + 1);
+      const sStart = offset + 1 + sLength.bytesRead;
+      const sEnd = sStart + sLength.length;
+      if (sEnd > signature.length) {
+        throw new Error('INVALID_DER_SIGNATURE');
+      }
+      const s = signature.slice(sStart, sEnd);
+      const normalizedR = normalizeDerInteger(r, size);
+      const normalizedS = normalizeDerInteger(s, size);
+      return Uint8Array.from([...normalizedR, ...normalizedS]);
     };
 
     const toHex = (buffer: ArrayBuffer) => {
@@ -873,8 +950,16 @@ export default defineBackground({
       }
     };
 
-    const sendNativeHostMessage = async (message: Record<string, unknown>) => {
-      if (!NATIVE_MESSAGING_ENABLED || !NATIVE_HOST_NAME || !EXTENSION_ID) return null;
+    const sendNativeHostMessage = async (
+      message: Record<string, unknown>,
+      allowRecovery: boolean = true
+    ) => {
+      if (!NATIVE_MESSAGING_ENABLED || !NATIVE_HOST_NAME || !EXTENSION_ID) {
+        return {
+          ok: false,
+          error: 'NATIVE_HOST_UNAVAILABLE',
+        } satisfies NativeHostResponse;
+      }
       try {
         const runtimeApi = browser.runtime as typeof browser.runtime & {
           sendNativeMessage?: (
@@ -882,7 +967,12 @@ export default defineBackground({
             message: Record<string, unknown>
           ) => Promise<NativeHostResponse>;
         };
-        if (typeof runtimeApi?.sendNativeMessage !== 'function') return null;
+        if (typeof runtimeApi?.sendNativeMessage !== 'function') {
+          return {
+            ok: false,
+            error: 'NATIVE_HOST_UNAVAILABLE',
+          } satisfies NativeHostResponse;
+        }
         const activePairingSecret = await ensureActivePairingSecret();
         const clientInfo = await buildClientInfo();
         const signedEnvelope = await signNativeBridgeMessage(message, clientInfo);
@@ -894,7 +984,12 @@ export default defineBackground({
           ...(activePairingSecret ? { pairingSecret: activePairingSecret } : {}),
         };
         const rawResponse = await runtimeApi.sendNativeMessage(NATIVE_HOST_NAME, requestMessage);
-        if (!rawResponse || typeof rawResponse !== 'object') return null;
+        if (!rawResponse || typeof rawResponse !== 'object') {
+          return {
+            ok: false,
+            error: 'INVALID_NATIVE_RESPONSE',
+          } satisfies NativeHostResponse;
+        }
         if (!('desktopAuth' in rawResponse) || rawResponse.desktopAuth == null) {
           if (!warnedAboutLegacyNativeResponse) {
             warnedAboutLegacyNativeResponse = true;
@@ -904,9 +999,63 @@ export default defineBackground({
           }
           return rawResponse;
         }
-        return await verifyDesktopBridgeResponse(requestMessage, rawResponse);
-      } catch {
-        return null;
+        try {
+          return await verifyDesktopBridgeResponse(requestMessage, rawResponse);
+        } catch (error) {
+          const errorCode = error instanceof Error ? error.message : 'NATIVE_HOST_UNAVAILABLE';
+          const canRecover =
+            allowRecovery &&
+            errorCode !== 'DESKTOP_AUTH_MISSING' &&
+            errorCode !== 'DESKTOP_AUTH_INVALID' &&
+            errorCode !== 'DESKTOP_AUTH_EXPIRED' &&
+            errorCode !== 'DESKTOP_AUTH_CONTEXT_MISMATCH';
+
+          if (canRecover) {
+            try {
+              await clearRuntimeDesktopBridgeIdentity();
+              if (message.type !== 'GET_PAIRING_STATUS') {
+                const pairingStatusRequest = {
+                  type: 'GET_PAIRING_STATUS',
+                };
+                const pairingClientInfo = await buildClientInfo();
+                const pairingSignedEnvelope = await signNativeBridgeMessage(
+                  pairingStatusRequest,
+                  pairingClientInfo
+                );
+                const pairingRequestMessage = {
+                  ...pairingStatusRequest,
+                  extensionId: EXTENSION_ID,
+                  clientInfo: pairingClientInfo,
+                  ...pairingSignedEnvelope,
+                  ...(activePairingSecret ? { pairingSecret: activePairingSecret } : {}),
+                };
+                const pairingStatusResponse = await runtimeApi.sendNativeMessage(
+                  NATIVE_HOST_NAME,
+                  pairingRequestMessage
+                );
+                if (pairingStatusResponse && typeof pairingStatusResponse === 'object') {
+                  await verifyDesktopBridgeResponse(pairingRequestMessage, pairingStatusResponse);
+                }
+              }
+              return await sendNativeHostMessage(message, false);
+            } catch {
+              return {
+                ok: false,
+                error: errorCode,
+              } satisfies NativeHostResponse;
+            }
+          }
+
+          return {
+            ok: false,
+            error: errorCode,
+          } satisfies NativeHostResponse;
+        }
+      } catch (error) {
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : 'NATIVE_HOST_UNAVAILABLE',
+        } satisfies NativeHostResponse;
       }
     };
 
@@ -1678,11 +1827,6 @@ export default defineBackground({
       }
       if (!NATIVE_MESSAGING_ENABLED) {
         throw new Error('ALIAS_GENERATION_UNAVAILABLE');
-      }
-
-      const nativeStatus = await getNativeVaultStatus();
-      if (!nativeStatus?.isUnlocked) {
-        throw new Error('VAULT_LOCKED');
       }
 
       const response = await sendNativeHostMessage({
