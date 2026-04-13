@@ -588,7 +588,7 @@ describe('SQLiteOPFS', () => {
     // The exact expected string if NO mutations occurred.
     // If a literal like 'General' changes to '', or new Date().toISOString() changes, this kills it.
     expect(fakeDb.lastSql).toContain(
-      "VALUES (999, 'Untitled', NULL, NULL, '', NULL, NULL, NULL, NULL, 'General', NULL, NULL, '', NULL, NULL, NULL, NULL, '[]', '2026-01-01T00:00:00.000Z', 0, '[]', 0, '[]', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
+      "VALUES (999, 'Untitled', NULL, NULL, '', NULL, NULL, NULL, NULL, 'General', NULL, NULL, '', NULL, NULL, NULL, NULL, '[]', '2026-01-01T00:00:00.000Z', 0, '[]', 0, '[]', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
     );
 
     // Now test with specific values to ensure they do not trigger fallbacks
@@ -604,7 +604,7 @@ describe('SQLiteOPFS', () => {
     } as any);
 
     expect(fakeDb.lastSql).toContain(
-      "VALUES (888, 'T', NULL, NULL, 'usr', NULL, NULL, NULL, NULL, 'Work', NULL, NULL, 'a.com', NULL, NULL, NULL, NULL, '[]', '2026-01-01T00:00:00.000Z', 0, '[\"a\"]', 0, '[{\"id\":\"1\"}]', 'del', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
+      "VALUES (888, 'T', NULL, NULL, 'usr', NULL, NULL, NULL, NULL, 'Work', NULL, NULL, 'a.com', NULL, NULL, NULL, NULL, '[]', '2026-01-01T00:00:00.000Z', 0, '[\"a\"]', 0, '[{\"id\":\"1\"}]', 'del', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
     );
 
     vi.useRealTimers();
