@@ -52,6 +52,14 @@ type PopupI18n = {
   autosaveSaved: string;
   autosaveFailed: string;
   autosaveNoUser: string;
+  aliasTitle: string;
+  aliasHint: string;
+  aliasGenerate: string;
+  aliasGenerating: string;
+  aliasApplied: string;
+  aliasCopiedHint: string;
+  aliasNoEditableField: string;
+  aliasFailed: string;
 };
 
 const normalizeUiLanguage = (value: unknown) =>
@@ -120,6 +128,20 @@ const buildPopupI18n = (language: 'tr' | 'en'): PopupI18n => {
     autosaveSaved: isTurkishLocale ? 'Kayit uygulandi' : 'Credential saved',
     autosaveFailed: isTurkishLocale ? 'Kayit basarisiz' : 'Save failed',
     autosaveNoUser: isTurkishLocale ? 'Kullanici adi yok' : 'No username',
+    aliasTitle: isTurkishLocale ? 'Site Alias Araci' : 'Site Alias Tool',
+    aliasHint: isTurkishLocale
+      ? 'Aktif site icin maskeli e-posta uretip acik kullanici alanina yerlestirin.'
+      : 'Generate a masked email for the active site and place it into the visible username field.',
+    aliasGenerate: isTurkishLocale ? 'Alias Olustur' : 'Generate Alias',
+    aliasGenerating: isTurkishLocale ? 'Alias uretiliyor...' : 'Generating alias...',
+    aliasApplied: isTurkishLocale ? 'Alias alana yerlestirildi' : 'Alias inserted into the field',
+    aliasCopiedHint: isTurkishLocale
+      ? 'Uretilen alias aktif forma yazildi.'
+      : 'The generated alias was written into the active form.',
+    aliasNoEditableField: isTurkishLocale
+      ? 'Duzenlenebilir e-posta veya kullanici adi alani bulunamadi.'
+      : 'No editable email or username field was found.',
+    aliasFailed: isTurkishLocale ? 'Alias olusturulamadi' : 'Alias could not be generated',
   };
 };
 
@@ -334,6 +356,14 @@ const bootPopup = async () => {
                     <span id="autosave-status-chip" style="font-size:10px;font-weight:700;color:${t.accent};background:${t.chipBg};padding:3px 8px;border-radius:999px;">0</span>
                 </div>
                 <div id="autosave-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+            </section>
+            <section id="alias-panel" style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;background:${t.panelBg};border:1px solid ${t.border};">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                    <strong style="font-size:12px;color:${t.text};">${POPUP_I18N.aliasTitle}</strong>
+                    <span id="alias-status-chip" style="font-size:10px;font-weight:700;color:${t.accent};background:${t.chipBg};padding:3px 8px;border-radius:999px;">${POPUP_I18N.waiting}</span>
+                </div>
+                <div id="alias-meta" style="font-size:11px;color:${t.textMuted};line-height:1.4;">${POPUP_I18N.aliasHint}</div>
+                <button id="generate-alias-btn" style="border:0;border-radius:10px;padding:10px 12px;background:${t.buttonPrimaryBg};color:${t.buttonPrimaryText};font-size:11px;font-weight:700;cursor:pointer;transition:opacity 0.2s;">${POPUP_I18N.aliasGenerate}</button>
             </section>
             <section id="cards-container" style="display: flex; flex-direction: column; gap: 8px;">
                <div style="text-align: center; padding: 25px 0; color: ${t.textMuted}; font-size: 12px;">${POPUP_I18N.loading}</div>
@@ -603,6 +633,68 @@ const bootPopup = async () => {
     }
   };
 
+  const wireAliasGenerator = (
+    tabId: number | undefined,
+    tabUrl: string,
+    tabTitle: string,
+    currentDomain: string
+  ) => {
+    const button = document.getElementById('generate-alias-btn') as HTMLButtonElement | null;
+    const metaEl = document.getElementById('alias-meta');
+    const chipEl = document.getElementById('alias-status-chip');
+    if (!button || !metaEl || !chipEl) return;
+
+    const setAliasState = (chip: string, detail: string, chipColor?: string) => {
+      chipEl.textContent = chip;
+      chipEl.style.color = chipColor || getT().accent;
+      metaEl.textContent = detail;
+    };
+
+    if (!tabId || !tabUrl || !currentDomain) {
+      button.disabled = true;
+      button.style.opacity = '0.5';
+      setAliasState(POPUP_I18N.aliasFailed, POPUP_I18N.unknownSite, '#f59e0b');
+      return;
+    }
+
+    button.addEventListener('click', async () => {
+      setButtonBusy(button, true, POPUP_I18N.aliasGenerating);
+      setAliasState(POPUP_I18N.aliasGenerating, POPUP_I18N.aliasHint);
+      try {
+        const result = await browser.runtime.sendMessage({
+          type: 'GENERATE_ALIAS',
+          tabId,
+          tabUrl,
+          tabTitle,
+        });
+        if (!result?.success) {
+          throw new Error(result?.error || 'ALIAS_GENERATION_FAILED');
+        }
+
+        const providerLabel =
+          typeof result.providerLabel === 'string' && result.providerLabel.trim()
+            ? result.providerLabel
+            : 'Alias Provider';
+        const aliasValue = typeof result.alias === 'string' ? result.alias : '';
+
+        setAliasState(
+          POPUP_I18N.aliasApplied,
+          aliasValue
+            ? `${aliasValue} - ${providerLabel}. ${POPUP_I18N.aliasCopiedHint}`
+            : POPUP_I18N.aliasCopiedHint,
+          '#22c55e'
+        );
+      } catch (error) {
+        const code = error instanceof Error ? error.message : 'ALIAS_GENERATION_FAILED';
+        const detail =
+          code === 'NO_EDITABLE_FIELD' ? POPUP_I18N.aliasNoEditableField : POPUP_I18N.aliasFailed;
+        setAliasState(POPUP_I18N.aliasFailed, detail, '#f59e0b');
+      } finally {
+        setButtonBusy(button, false, POPUP_I18N.aliasGenerate);
+      }
+    });
+  };
+
   const loadPopup = async () => {
     const domainEl = document.getElementById('active-domain');
     const statusEl = document.getElementById('vault-status');
@@ -614,8 +706,10 @@ const bootPopup = async () => {
       const currentUrl = tab?.url || '';
       const currentDomain = getDomain(currentUrl);
       const tabId = tab?.id;
+      const tabTitle = tab?.title || currentDomain || '';
 
       if (domainEl) domainEl.innerText = currentDomain || POPUP_I18N.unknownSite;
+      wireAliasGenerator(tabId, currentUrl, tabTitle, currentDomain);
 
       // Kasa durumu
       const vaultStatus = await browser.runtime.sendMessage({ type: 'GET_VAULT_STATUS' });

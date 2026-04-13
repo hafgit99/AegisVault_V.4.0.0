@@ -14,6 +14,7 @@ interface SecurityCenterPanelProps {
   onReviewPasswords: () => void;
   onReviewPasskeys: () => void;
   onReviewSharing: () => void;
+  onReviewAliases: () => void;
   onReviewDevices: () => void;
   onReviewLocalRisk: () => void;
   onOpenTriageItem: (item: SecurityCenterTriageItem) => void;
@@ -27,6 +28,7 @@ export function SecurityCenterPanel({
   onReviewPasswords,
   onReviewPasskeys,
   onReviewSharing,
+  onReviewAliases,
   onReviewDevices,
   onReviewLocalRisk,
   onOpenTriageItem,
@@ -75,6 +77,10 @@ export function SecurityCenterPanel({
       onReviewSharing();
       return;
     }
+    if (actionKey === 'securityCenterActionReviewAliases') {
+      onReviewAliases();
+      return;
+    }
     if (actionKey === 'securityCenterActionReviewDevices') {
       onReviewDevices();
       return;
@@ -90,9 +96,29 @@ export function SecurityCenterPanel({
     if (type === 'missing_second_factor') return t('securityCenterMetric2fa', 'Missing 2FA');
     if (type === 'passkey_ready') return t('securityCenterMetricPasskeys', 'Passkey ready');
     if (type === 'aging_credentials') return t('securityCenterMetricAging', 'Aging passwords');
+    if (type === 'alias_exposure') return t('securityCenterMetricAliasExposure', 'Alias exposure');
+    if (type === 'alias_rotation') return t('securityCenterMetricAliasRotation', 'Alias rotation');
     if (type === 'device_trust') return t('securityCenterMetricDeviceTrust', 'Device trust');
     if (type === 'local_risk_activity') return t('securityCenterMetricLocalRisk', 'Local risk');
     return t('securityCenterMetricSharing', 'Sharing gaps');
+  };
+  const issueActionLabel = (actionKey: string) => {
+    if (actionKey === 'securityCenterActionReviewPasskeys') {
+      return t('securityCenterActionReviewPasskeys', 'Review passkeys');
+    }
+    if (actionKey === 'securityCenterActionReviewSharing') {
+      return t('securityCenterActionReviewSharing', 'Review sharing');
+    }
+    if (actionKey === 'securityCenterActionReviewAliases') {
+      return t('securityCenterActionReviewAliases', 'Review aliases');
+    }
+    if (actionKey === 'securityCenterActionReviewDevices') {
+      return t('securityCenterActionReviewDevices', 'Review devices');
+    }
+    if (actionKey === 'securityCenterActionReviewLocalRisk') {
+      return t('securityCenterActionReviewLocalRisk', 'Review sync audit');
+    }
+    return t('securityCenterActionReviewPasswords', 'Review passwords');
   };
 
   const filteredTriageItems = useMemo(
@@ -141,7 +167,7 @@ export function SecurityCenterPanel({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:min-w-[260px] xl:min-w-[280px]">
+          <div className="grid grid-cols-2 gap-3 sm:min-w-[260px] xl:min-w-[340px]">
             <div className="settings-card-surface rounded-2xl px-4 py-3">
               <div className="text-[10px] font-bold uppercase tracking-widest opacity-50">
                 {t('securityCenterMetric2fa', 'Missing 2FA')}
@@ -172,6 +198,22 @@ export function SecurityCenterPanel({
               </div>
               <div className="mt-2 text-lg font-bold text-red-500">
                 {summary.metrics.sensitiveSharing}
+              </div>
+            </div>
+            <div className="settings-card-surface rounded-2xl px-4 py-3">
+              <div className="text-[10px] font-bold uppercase tracking-widest opacity-50">
+                {t('securityCenterMetricAliasExposure', 'Alias exposure')}
+              </div>
+              <div className="mt-2 text-lg font-bold text-red-500">
+                {summary.metrics.aliasExposure}
+              </div>
+            </div>
+            <div className="settings-card-surface rounded-2xl px-4 py-3">
+              <div className="text-[10px] font-bold uppercase tracking-widest opacity-50">
+                {t('securityCenterMetricAliasRotation', 'Alias rotation')}
+              </div>
+              <div className="mt-2 text-lg font-bold text-sky-600">
+                {summary.metrics.aliasRotation}
               </div>
             </div>
           </div>
@@ -211,15 +253,7 @@ export function SecurityCenterPanel({
                     onClick={() => handleAction(issue.actionKey)}
                     className="settings-pill-secondary w-full rounded-xl px-4 py-2 text-xs font-bold active:scale-95 sm:w-auto"
                   >
-                    {issue.actionKey === 'securityCenterActionReviewPasskeys'
-                      ? t('securityCenterActionReviewPasskeys', 'Review passkeys')
-                      : issue.actionKey === 'securityCenterActionReviewSharing'
-                        ? t('securityCenterActionReviewSharing', 'Review sharing')
-                        : issue.actionKey === 'securityCenterActionReviewDevices'
-                          ? t('securityCenterActionReviewDevices', 'Review devices')
-                          : issue.actionKey === 'securityCenterActionReviewLocalRisk'
-                            ? t('securityCenterActionReviewLocalRisk', 'Review sync audit')
-                            : t('securityCenterActionReviewPasswords', 'Review passwords')}
+                    {issueActionLabel(issue.actionKey)}
                   </button>
                 </div>
               </div>

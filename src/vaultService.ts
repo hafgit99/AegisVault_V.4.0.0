@@ -8,6 +8,7 @@ import { AegisError } from './lib/AegisError';
 import type { AegisErrorCode } from './lib/AegisError';
 import type {
   VaultEntry,
+  VaultAliasDetails,
   VaultCardDetails,
   VaultIdentityDetails,
   VaultAttachmentMeta,
@@ -16,6 +17,7 @@ import type {
 
 export type {
   VaultEntry,
+  VaultAliasDetails,
   VaultCardDetails,
   VaultIdentityDetails,
   VaultAttachmentMeta,
@@ -358,6 +360,7 @@ export class VaultService {
           this.buildMetadataAtRest(title, username, website, category, tags),
         normalizeCardDetails: (details) => VaultCryptoService.normalizeCardDetails(details),
         normalizeIdentityDetails: (details) => VaultCryptoService.normalizeIdentityDetails(details),
+        normalizeAliasDetails: (details) => VaultCryptoService.normalizeAliasDetails(details),
         encryptAttachmentMetadataList: (attachments) =>
           this.encryptAttachmentMetadataList(attachments),
       });

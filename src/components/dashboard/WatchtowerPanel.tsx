@@ -1,4 +1,12 @@
-import { ShieldAlert, AlertTriangle, KeyRound, Clock4, Globe } from 'lucide-react';
+import {
+  ShieldAlert,
+  AlertTriangle,
+  KeyRound,
+  Clock4,
+  Globe,
+  AtSign,
+  RefreshCw,
+} from 'lucide-react';
 import { GlowCard } from '../ui/GlowCard';
 import { useVault } from '../../contexts/VaultContext';
 import { useTranslation } from 'react-i18next';
@@ -81,6 +89,34 @@ export function WatchtowerPanel() {
           </div>
           <span className={`font-bold ${watchtower.pwned > 0 ? 'text-red-500' : 'text-black/50'}`}>
             {watchtower.pwned}
+          </span>
+        </div>
+
+        <div className="watchtower-item flex justify-between items-center p-3 rounded-xl">
+          <div className="flex items-center gap-2">
+            <AtSign
+              className={`w-4 h-4 ${watchtower.aliasAtRisk > 0 ? 'text-amber-500' : 'text-[var(--color-sage-green)]'}`}
+            />
+            <span className="text-sm font-semibold">{t('watchtowerAliasAtRisk')}</span>
+          </div>
+          <span
+            className={`font-bold ${watchtower.aliasAtRisk > 0 ? 'text-amber-500' : 'text-black/50'}`}
+          >
+            {watchtower.aliasAtRisk}
+          </span>
+        </div>
+
+        <div className="watchtower-item flex justify-between items-center p-3 rounded-xl">
+          <div className="flex items-center gap-2">
+            <RefreshCw
+              className={`w-4 h-4 ${watchtower.aliasNeedsRotation > 0 ? 'text-sky-500' : 'text-[var(--color-sage-green)]'}`}
+            />
+            <span className="text-sm font-semibold">{t('watchtowerAliasNeedsRotation')}</span>
+          </div>
+          <span
+            className={`font-bold ${watchtower.aliasNeedsRotation > 0 ? 'text-sky-500' : 'text-black/50'}`}
+          >
+            {watchtower.aliasNeedsRotation}
           </span>
         </div>
       </div>

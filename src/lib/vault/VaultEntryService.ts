@@ -3,6 +3,7 @@ import type { SQLiteOPFS } from '../SQLiteOPFS';
 import type {
   StoredCredential,
   VaultAttachmentMeta,
+  VaultAliasDetails,
   VaultCardDetails,
   VaultEntry,
   VaultIdentityDetails,
@@ -37,6 +38,9 @@ export class VaultEntryService {
     normalizeIdentityDetails: (
       details?: Partial<VaultIdentityDetails> | null
     ) => VaultIdentityDetails | null;
+    normalizeAliasDetails: (
+      details?: Partial<VaultAliasDetails> | null
+    ) => VaultAliasDetails | null;
     encryptAttachmentMetadataList: (
       attachments: VaultAttachmentMeta[]
     ) => Promise<VaultAttachmentMeta[]>;
@@ -52,6 +56,7 @@ export class VaultEntryService {
       buildMetadataAtRest,
       normalizeCardDetails,
       normalizeIdentityDetails,
+      normalizeAliasDetails,
       encryptAttachmentMetadataList,
     } = args;
 
@@ -207,6 +212,24 @@ export class VaultEntryService {
     } else if (entry.encrypted_identity_details) {
       newEntry.encrypted_identity_details = entry.encrypted_identity_details;
       newEntry.identity_details_iv = entry.identity_details_iv;
+    }
+
+    const normalizedAliasDetails = normalizeAliasDetails(entry.aliasDetails);
+    if (normalizedAliasDetails) {
+      const aliasDetailsIv = generateRandomBytes(12);
+      const aliasDetailsCipher = await window.crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: toBufferSource(aliasDetailsIv) },
+        aesKey,
+        toBufferSource(enc.encode(JSON.stringify(normalizedAliasDetails)))
+      );
+      newEntry.encrypted_alias_details = bufferToHex(aliasDetailsCipher);
+      newEntry.alias_details_iv = bufferToHex(aliasDetailsIv);
+    } else if ('aliasDetails' in entry) {
+      newEntry.encrypted_alias_details = undefined;
+      newEntry.alias_details_iv = undefined;
+    } else if (entry.encrypted_alias_details) {
+      newEntry.encrypted_alias_details = entry.encrypted_alias_details;
+      newEntry.alias_details_iv = entry.alias_details_iv;
     }
 
     if (entry.attachments) {

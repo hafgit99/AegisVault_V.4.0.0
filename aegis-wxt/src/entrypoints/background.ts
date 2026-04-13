@@ -103,6 +103,11 @@ export default defineBackground({
       title: 'Aegis: Bu sayfayı analiz et ve doldur',
       contexts: ['page', 'editable'],
     });
+    browser.contextMenus.create({
+      id: 'aegis-generate-alias',
+      title: 'Aegis: Bu site icin alias olustur',
+      contexts: ['page', 'editable'],
+    });
 
     // ─── RUNTIME ENJEKSİYON (P0-3: Attack Surface Reduction) ───
     // Kullanıcı ikona tıkladığında veya sağ tık menüsünü kullandığında
@@ -136,6 +141,10 @@ export default defineBackground({
     browser.contextMenus.onClicked.addListener((info, tab) => {
       if (info.menuItemId === 'aegis-fill' && tab?.id) {
         injectContentScript(tab.id);
+        return;
+      }
+      if (info.menuItemId === 'aegis-generate-alias' && tab?.id && tab.url) {
+        void generateAliasForTab(tab.id, tab.url, tab.title || '');
       }
     });
 
@@ -1583,6 +1592,159 @@ export default defineBackground({
       };
     };
 
+    const fillAliasIntoTab = async (tabId: number, aliasEmail: string) => {
+      const [result] = await browser.scripting.executeScript({
+        target: { tabId },
+        func: (value: string) => {
+          const fillField = (el: HTMLInputElement, nextValue: string) => {
+            el.focus();
+            const nativeSetter = Object.getOwnPropertyDescriptor(
+              window.HTMLInputElement.prototype,
+              'value'
+            )?.set;
+            if (nativeSetter) nativeSetter.call(el, nextValue);
+            else el.value = nextValue;
+
+            ['input', 'change'].forEach((eventName) => {
+              el.dispatchEvent(new Event(eventName, { bubbles: true, cancelable: true }));
+            });
+            el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
+            el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+            el.dispatchEvent(new Event('blur', { bubbles: true }));
+          };
+
+          const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input')).filter(
+            (input) => {
+              const style = window.getComputedStyle(input);
+              return (
+                style.display !== 'none' &&
+                style.visibility !== 'hidden' &&
+                input.offsetParent !== null &&
+                !input.disabled &&
+                !input.readOnly
+              );
+            }
+          );
+
+          const activeInput =
+            document.activeElement instanceof HTMLInputElement ? document.activeElement : null;
+          const isAliasTarget = (input: HTMLInputElement) => {
+            const type = (input.type || 'text').toLowerCase();
+            const autocomplete = (input.autocomplete || '').toLowerCase();
+            const descriptor = [
+              input.name || '',
+              input.id || '',
+              input.placeholder || '',
+              autocomplete,
+            ]
+              .join(' ')
+              .toLowerCase();
+            return (
+              type === 'email' ||
+              type === 'text' ||
+              type === 'username' ||
+              autocomplete.includes('email') ||
+              autocomplete.includes('username') ||
+              /(email|mail|user|login|account)/.test(descriptor)
+            );
+          };
+
+          const target =
+            (activeInput && isAliasTarget(activeInput) ? activeInput : null) ||
+            inputs.find((input) => (input.type || '').toLowerCase() === 'email') ||
+            inputs.find(isAliasTarget) ||
+            null;
+
+          if (!target) {
+            return { success: false, reason: 'NO_EDITABLE_FIELD' };
+          }
+
+          fillField(target, value);
+          return { success: true };
+        },
+        args: [aliasEmail],
+      });
+
+      return (result?.result || { success: false, reason: 'UNKNOWN' }) as {
+        success: boolean;
+        reason?: string;
+      };
+    };
+
+    const requestGeneratedAlias = async (domain: string, requestedTitle = '') => {
+      const normalizedDomain = normalizeBridgeDomain(domain);
+      if (!normalizedDomain) {
+        throw new Error('INVALID_DOMAIN');
+      }
+      if (!NATIVE_MESSAGING_ENABLED) {
+        throw new Error('ALIAS_GENERATION_UNAVAILABLE');
+      }
+
+      const nativeStatus = await getNativeVaultStatus();
+      if (!nativeStatus?.isUnlocked) {
+        throw new Error('VAULT_LOCKED');
+      }
+
+      const response = await sendNativeHostMessage({
+        type: 'GENERATE_ALIAS',
+        domain: normalizedDomain,
+        requestNonce: generateRequestNonce(),
+        title: requestedTitle || normalizedDomain,
+      });
+
+      if (!response || typeof response !== 'object' || !response.ok) {
+        throw new Error(
+          response && typeof response === 'object' && typeof response.error === 'string'
+            ? response.error
+            : 'ALIAS_GENERATION_FAILED'
+        );
+      }
+
+      const alias =
+        typeof response.alias === 'string'
+          ? response.alias
+          : typeof response.email === 'string'
+            ? response.email
+            : '';
+      if (!alias) {
+        throw new Error('ALIAS_GENERATION_FAILED');
+      }
+
+      return {
+        alias,
+        providerLabel:
+          typeof response.providerLabel === 'string' ? response.providerLabel : 'Alias Provider',
+        providerSyncStatus:
+          typeof response.providerSyncStatus === 'string' ? response.providerSyncStatus : 'manual',
+      };
+    };
+
+    const generateAliasForTab = async (tabId: number, rawUrl: string, tabTitle = '') => {
+      const domain = getDomain(rawUrl);
+      if (!domain) {
+        return { success: false, error: 'INVALID_DOMAIN' };
+      }
+
+      const generated = await requestGeneratedAlias(domain, tabTitle || domain);
+      const fillResult = await fillAliasIntoTab(tabId, generated.alias);
+      if (!fillResult.success) {
+        return {
+          success: false,
+          error: fillResult.reason || 'NO_EDITABLE_FIELD',
+          alias: generated.alias,
+          providerLabel: generated.providerLabel,
+          providerSyncStatus: generated.providerSyncStatus,
+        };
+      }
+
+      return {
+        success: true,
+        alias: generated.alias,
+        providerLabel: generated.providerLabel,
+        providerSyncStatus: generated.providerSyncStatus,
+      };
+    };
+
     // Badge güncelleyici - SADECE cache'den çalışır
     const updateBadge = async (tabId: number, url?: string) => {
       if (!isVaultUnlocked || vaultCache.length === 0) {
@@ -2087,6 +2249,35 @@ export default defineBackground({
             sendResponse({
               isUnlocked: isVaultUnlocked,
               entryCount: isVaultUnlocked ? vaultCache.length : 0,
+            })
+          );
+        return true;
+      } else if (message.type === 'GENERATE_ALIAS') {
+        const senderUrl =
+          typeof sender?.tab?.url === 'string'
+            ? sender.tab.url
+            : typeof sender?.url === 'string'
+              ? sender.url
+              : '';
+        const tabId = Number.isFinite(Number(message?.tabId))
+          ? Number(message.tabId)
+          : sender?.tab?.id;
+        const tabUrl =
+          typeof message?.tabUrl === 'string' && message.tabUrl.trim() ? message.tabUrl : senderUrl;
+        const tabTitle =
+          typeof message?.tabTitle === 'string' ? message.tabTitle : sender?.tab?.title || '';
+
+        if (!Number.isFinite(Number(tabId)) || !tabUrl) {
+          sendResponse({ success: false, error: 'INVALID_TAB_CONTEXT' });
+          return false;
+        }
+
+        generateAliasForTab(Number(tabId), tabUrl, tabTitle)
+          .then((result) => sendResponse(result))
+          .catch((error) =>
+            sendResponse({
+              success: false,
+              error: error instanceof Error ? error.message : 'ALIAS_GENERATION_FAILED',
             })
           );
         return true;

@@ -141,6 +141,50 @@ export function useVaultData() {
               expires_at: DOMPurify.sanitize(entry.identityDetails.expires_at || ''),
             }
           : undefined,
+        aliasDetails: entry.aliasDetails
+          ? {
+              providerId: DOMPurify.sanitize(entry.aliasDetails.providerId || ''),
+              providerLabel: DOMPurify.sanitize(entry.aliasDetails.providerLabel || ''),
+              email: DOMPurify.sanitize(entry.aliasDetails.email || ''),
+              website: DOMPurify.sanitize(entry.aliasDetails.website || ''),
+              notes: DOMPurify.sanitize(entry.aliasDetails.notes || ''),
+              forwardTo: DOMPurify.sanitize(entry.aliasDetails.forwardTo || ''),
+              status: entry.aliasDetails.status || 'active',
+              exposureCategory: entry.aliasDetails.exposureCategory || 'none',
+              exposureCount: Number(entry.aliasDetails.exposureCount || 0),
+              createdAt: DOMPurify.sanitize(entry.aliasDetails.createdAt || ''),
+              updatedAt: DOMPurify.sanitize(entry.aliasDetails.updatedAt || ''),
+              lastUsedAt: DOMPurify.sanitize(entry.aliasDetails.lastUsedAt || ''),
+              lastRotatedAt: DOMPurify.sanitize(entry.aliasDetails.lastRotatedAt || ''),
+              linkedEntryId: entry.aliasDetails.linkedEntryId,
+              providerAliasId: DOMPurify.sanitize(entry.aliasDetails.providerAliasId || ''),
+              providerSyncStatus: entry.aliasDetails.providerSyncStatus || 'manual',
+              providerManagementUrl: DOMPurify.sanitize(
+                entry.aliasDetails.providerManagementUrl || ''
+              ),
+              watchtowerScore: Number(entry.aliasDetails.watchtowerScore || 0),
+              watchtowerState: entry.aliasDetails.watchtowerState || 'healthy',
+              history: Array.isArray(entry.aliasDetails.history)
+                ? entry.aliasDetails.history.map((item) => ({
+                    id: DOMPurify.sanitize(item.id || ''),
+                    at: DOMPurify.sanitize(item.at || ''),
+                    type: item.type || 'created',
+                    email: DOMPurify.sanitize(item.email || ''),
+                    providerAliasId: DOMPurify.sanitize(item.providerAliasId || ''),
+                    reason: DOMPurify.sanitize(item.reason || ''),
+                  }))
+                : [],
+              rotationQueue: Array.isArray(entry.aliasDetails.rotationQueue)
+                ? entry.aliasDetails.rotationQueue.map((item) => ({
+                    id: DOMPurify.sanitize(item.id || ''),
+                    requestedAt: DOMPurify.sanitize(item.requestedAt || ''),
+                    reason: item.reason || 'manual',
+                    status: item.status || 'queued',
+                    candidateEmail: DOMPurify.sanitize(item.candidateEmail || ''),
+                  }))
+                : [],
+            }
+          : undefined,
         sharing: Array.isArray(entry.sharing)
           ? entry.sharing.map((assignment) => ({
               ...assignment,

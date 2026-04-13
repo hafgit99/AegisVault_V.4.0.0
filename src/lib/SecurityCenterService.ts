@@ -5,6 +5,8 @@ export type SecurityCenterIssueType =
   | 'passkey_ready'
   | 'aging_credentials'
   | 'sensitive_sharing'
+  | 'alias_exposure'
+  | 'alias_rotation'
   | 'device_trust'
   | 'local_risk_activity';
 
@@ -37,6 +39,8 @@ export interface SecurityCenterSummary {
     passkeyReady: number;
     agingCredentials: number;
     sensitiveSharing: number;
+    aliasExposure: number;
+    aliasRotation: number;
   };
   issues: SecurityCenterIssueSummary[];
   triageItems: SecurityCenterTriageItem[];
@@ -76,6 +80,23 @@ function isAgingCredential(entry: VaultEntry): boolean {
 function hasSensitiveSharingGap(entry: VaultEntry): boolean {
   return Boolean(
     entry.sharing?.some((assignment) => assignment.is_sensitive && !assignment.emergency_access)
+  );
+}
+
+function hasAliasExposure(entry: VaultEntry): boolean {
+  return Boolean(
+    entry.aliasDetails?.status === 'compromised' ||
+    entry.aliasDetails?.exposureCategory === 'breach' ||
+    entry.aliasDetails?.exposureCategory === 'spam'
+  );
+}
+
+function needsAliasRotation(entry: VaultEntry): boolean {
+  if (!entry.aliasDetails?.email) return false;
+  return Boolean(
+    entry.aliasDetails.status === 'compromised' ||
+    entry.aliasDetails.watchtowerState === 'rotation_required' ||
+    entry.aliasDetails.rotationQueue?.some((item) => item.status === 'queued')
   );
 }
 
@@ -139,7 +160,13 @@ function getReviewMeta(reviewed: Record<string, string>, reviewKey: string) {
 }
 
 function getSeverityForIssue(issueType: SecurityCenterIssueType): 'low' | 'medium' | 'high' {
-  if (issueType === 'missing_second_factor' || issueType === 'sensitive_sharing') return 'high';
+  if (
+    issueType === 'missing_second_factor' ||
+    issueType === 'sensitive_sharing' ||
+    issueType === 'alias_exposure'
+  ) {
+    return 'high';
+  }
   return 'medium';
 }
 
@@ -148,6 +175,9 @@ function getActionForIssue(issueType: SecurityCenterIssueType): string {
     return 'securityCenterActionReviewPasskeys';
   }
   if (issueType === 'sensitive_sharing') return 'securityCenterActionReviewSharing';
+  if (issueType === 'alias_exposure' || issueType === 'alias_rotation') {
+    return 'securityCenterActionReviewAliases';
+  }
   return 'securityCenterActionReviewPasswords';
 }
 
@@ -155,6 +185,8 @@ function getDetailKeyForIssue(issueType: SecurityCenterIssueType): string {
   if (issueType === 'missing_second_factor') return 'securityCenterTriageMissingSecondFactor';
   if (issueType === 'passkey_ready') return 'securityCenterTriagePasskeyReady';
   if (issueType === 'aging_credentials') return 'securityCenterTriageAgingCredential';
+  if (issueType === 'alias_exposure') return 'securityCenterTriageAliasExposure';
+  if (issueType === 'alias_rotation') return 'securityCenterTriageAliasRotation';
   return 'securityCenterTriageSensitiveSharing';
 }
 
@@ -167,7 +199,9 @@ function parseReviewKey(
     (issueType !== 'missing_second_factor' &&
       issueType !== 'passkey_ready' &&
       issueType !== 'aging_credentials' &&
-      issueType !== 'sensitive_sharing') ||
+      issueType !== 'sensitive_sharing' &&
+      issueType !== 'alias_exposure' &&
+      issueType !== 'alias_rotation') ||
     Number.isNaN(itemId)
   ) {
     return null;
@@ -190,12 +224,16 @@ export class SecurityCenterService {
     const passkeyReady = credentialEntries.filter(isPasskeyReady).length;
     const agingCredentials = credentialEntries.filter(isAgingCredential).length;
     const sensitiveSharing = activeEntries.filter(hasSensitiveSharingGap).length;
+    const aliasExposure = activeEntries.filter(hasAliasExposure).length;
+    const aliasRotation = activeEntries.filter(needsAliasRotation).length;
 
     const penalty =
       missingSecondFactor * 8 +
       passkeyReady * 4 +
       agingCredentials * 5 +
       sensitiveSharing * 10 +
+      aliasExposure * 9 +
+      aliasRotation * 6 +
       riskyDesktopPairings.length * 6 +
       recentLocalRiskEvents.length * 3;
     const score = Math.max(0, 100 - penalty);
@@ -300,6 +338,54 @@ export class SecurityCenterService {
         });
     }
 
+    if (aliasExposure > 0) {
+      issues.push({
+        type: 'alias_exposure',
+        count: aliasExposure,
+        severity: 'high',
+        messageKey: 'securityCenterIssueAliasExposure',
+        actionKey: 'securityCenterActionReviewAliases',
+      });
+      activeEntries
+        .filter(hasAliasExposure)
+        .slice(0, 6)
+        .forEach((entry) => {
+          triageItems.push({
+            issueType: 'alias_exposure',
+            itemId: entry.id,
+            title: entry.title || 'Untitled',
+            severity: 'high',
+            actionKey: 'securityCenterActionReviewAliases',
+            detailKey: 'securityCenterTriageAliasExposure',
+            reviewKey: `alias_exposure:${entry.id}`,
+          });
+        });
+    }
+
+    if (aliasRotation > 0) {
+      issues.push({
+        type: 'alias_rotation',
+        count: aliasRotation,
+        severity: 'medium',
+        messageKey: 'securityCenterIssueAliasRotation',
+        actionKey: 'securityCenterActionReviewAliases',
+      });
+      activeEntries
+        .filter(needsAliasRotation)
+        .slice(0, 6)
+        .forEach((entry) => {
+          triageItems.push({
+            issueType: 'alias_rotation',
+            itemId: entry.id,
+            title: entry.title || 'Untitled',
+            severity: 'medium',
+            actionKey: 'securityCenterActionReviewAliases',
+            detailKey: 'securityCenterTriageAliasRotation',
+            reviewKey: `alias_rotation:${entry.id}`,
+          });
+        });
+    }
+
     if (riskyDesktopPairings.length > 0) {
       issues.push({
         type: 'device_trust',
@@ -395,6 +481,8 @@ export class SecurityCenterService {
         passkeyReady,
         agingCredentials,
         sensitiveSharing,
+        aliasExposure,
+        aliasRotation,
       },
       issues,
       triageItems: filteredTriageItems,

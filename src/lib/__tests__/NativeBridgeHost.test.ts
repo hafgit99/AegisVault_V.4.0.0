@@ -144,6 +144,7 @@ describe('Aegis Native Host Bridge', () => {
         type: 'GET_DOMAIN_CREDS',
         extensionId: 'ext-1',
         domain: 'example.com',
+        title: 'Example Login',
         requestNonce: 'nonce-1',
         browserName: 'Chrome',
         clientInfo: { installId: 'install-1' },
@@ -163,6 +164,7 @@ describe('Aegis Native Host Bridge', () => {
       type: 'GET_VAULT_STATUS',
       extensionId: 'ext-1',
       domain: 'example.com',
+      title: 'Example Login',
       requestNonce: 'nonce-1',
       browserName: 'Firefox',
       clientKeyId: 'key-1',
@@ -425,6 +427,48 @@ describe('Aegis Native Host Bridge', () => {
       })
     );
     expect(writeMessage).toHaveBeenNthCalledWith(4, { ok: false, error: 'BRIDGE_DOWN' });
+  });
+
+  it('forwards alias generation requests through handleMessageWithDeps', async () => {
+    const writeMessage = vi.fn();
+    const sendNativeBridgeMessage = vi.fn().mockResolvedValue({
+      ok: true,
+      alias: 'github-test@mask.example',
+      providerLabel: 'SimpleLogin',
+      providerSyncStatus: 'linked',
+      providerManagementUrl: 'https://provider.example/manage?alias=github-test%40mask.example',
+      desktopAuth: { keyId: 'desktop-key-11' },
+    });
+
+    await hostModule.handleMessageWithDeps(
+      {
+        type: 'GENERATE_ALIAS',
+        extensionId: 'allowed-ext',
+        domain: 'https://www.github.com/login',
+        title: 'GitHub Login',
+      },
+      {
+        sendNativeBridgeMessage,
+        writeMessage,
+        isAllowlistedExtensionId: () => true,
+      }
+    );
+
+    expect(sendNativeBridgeMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'GENERATE_ALIAS',
+        domain: 'github.com',
+        title: 'GitHub Login',
+      }),
+      ''
+    );
+    expect(writeMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ok: true,
+        alias: 'github-test@mask.example',
+        providerSyncStatus: 'linked',
+      })
+    );
   });
 
   it('maps init and clear pairing responses through handleMessageWithDeps', async () => {

@@ -9,6 +9,7 @@ import { vaultService, type VaultEntry } from '../vaultService';
 import { breachChecker } from '../lib/breach-check';
 import { SecureAppSettings } from '../lib/SecureAppSettings';
 import { SecurityModePolicy } from '../lib/SecurityModePolicy';
+import { AliasProviderService } from '../lib/AliasProviderService';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import type { SecurityModeProfile } from '../lib/SecureAppSettings';
@@ -18,6 +19,9 @@ export interface WatchtowerData {
   reused: number;
   old: number;
   pwned: number;
+  aliasCompromised: number;
+  aliasNeedsRotation: number;
+  aliasAtRisk: number;
   score: number;
 }
 
@@ -85,6 +89,9 @@ export function useVaultSecurity(
     let reusedCount = 0;
     let oldCount = 0;
     let pwnedCount = 0;
+    let aliasCompromisedCount = 0;
+    let aliasRotationCount = 0;
+    let aliasAtRiskCount = 0;
 
     const seenPasswords = new Set<string>();
     const reusedSet = new Set<string>();
@@ -106,6 +113,12 @@ export function useVaultSecurity(
       const isReused = p.pass && reusedSet.has(p.pass);
       const isOld = p.updated_at && Date.now() - new Date(p.updated_at).getTime() > oneYearMs;
       const isPwned = (p.pwned_count || 0) > 0;
+      const aliasRisk = p.aliasDetails
+        ? AliasProviderService.evaluateAliasRisk(p.aliasDetails)
+        : null;
+      const hasCompromisedAlias = p.aliasDetails?.status === 'compromised';
+      const aliasNeedsRotation = Boolean(aliasRisk?.needsRotation);
+      const aliasAtRisk = Boolean(aliasRisk && aliasRisk.score < 75);
 
       if (isPwned) {
         pwnedCount++;
@@ -123,13 +136,34 @@ export function useVaultSecurity(
         oldCount++;
         pwdScore -= 10;
       }
+      if (hasCompromisedAlias) {
+        aliasCompromisedCount++;
+        pwdScore -= 25;
+      }
+      if (aliasNeedsRotation) {
+        aliasRotationCount++;
+        pwdScore -= 12;
+      }
+      if (aliasAtRisk) {
+        aliasAtRiskCount++;
+        pwdScore -= 8;
+      }
 
       totalScore += Math.max(0, pwdScore);
     });
 
     const score = passwords.length > 0 ? Math.round(totalScore / passwords.length) : 100;
 
-    return { weak: weakCount, reused: reusedCount, old: oldCount, pwned: pwnedCount, score };
+    return {
+      weak: weakCount,
+      reused: reusedCount,
+      old: oldCount,
+      pwned: pwnedCount,
+      aliasCompromised: aliasCompromisedCount,
+      aliasNeedsRotation: aliasRotationCount,
+      aliasAtRisk: aliasAtRiskCount,
+      score,
+    };
   }, [passwords]);
 
   // ─── HIBP Tarama ───

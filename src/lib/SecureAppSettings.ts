@@ -3,6 +3,8 @@ import type {
   CanonicalSharedMember,
   CanonicalSharedSpace,
 } from './canonical-schema';
+import type { AliasAuditEvent, AliasProviderProfile } from './alias-types';
+import { DEFAULT_ALIAS_PROVIDER_PROFILES } from './alias-types';
 
 type ViewDensity = 'comfortable' | 'compact';
 type TotpVaultMode = 'same_vault' | 'separate_2fa_vault';
@@ -196,6 +198,8 @@ interface SecureAppSettingsState {
   releaseTrustChecklist: Record<string, string>;
   releaseTrustApprovals: Record<string, string>;
   releaseTrustHistory: ReleaseTrustHistoryEvent[];
+  aliasProviders: AliasProviderProfile[];
+  aliasAudit: AliasAuditEvent[];
   emergencyAccessContacts: EmergencyAccessContact[];
   emergencyAccessRequests: EmergencyAccessRequest[];
   emergencyAccessAudit: EmergencyAccessAuditEvent[];
@@ -265,6 +269,8 @@ const DEFAULT_STATE: SecureAppSettingsState = {
   releaseTrustChecklist: {},
   releaseTrustApprovals: {},
   releaseTrustHistory: [],
+  aliasProviders: DEFAULT_ALIAS_PROVIDER_PROFILES.map((profile) => ({ ...profile })),
+  aliasAudit: [],
   emergencyAccessContacts: [],
   emergencyAccessRequests: [],
   emergencyAccessAudit: [],
@@ -347,6 +353,15 @@ const cloneState = (state: SecureAppSettingsState): SecureAppSettingsState => ({
   releaseTrustChecklist: { ...state.releaseTrustChecklist },
   releaseTrustApprovals: { ...state.releaseTrustApprovals },
   releaseTrustHistory: state.releaseTrustHistory.map((event) => ({ ...event })),
+  aliasProviders: state.aliasProviders.map((profile) => ({
+    ...profile,
+    domains: [...profile.domains],
+    capabilities: profile.capabilities ? { ...profile.capabilities } : undefined,
+  })),
+  aliasAudit: state.aliasAudit.map((event) => ({
+    ...event,
+    metadata: event.metadata ? { ...event.metadata } : undefined,
+  })),
   emergencyAccessContacts: state.emergencyAccessContacts.map((contact) => ({ ...contact })),
   emergencyAccessRequests: state.emergencyAccessRequests.map((request) => ({
     ...request,
@@ -389,6 +404,138 @@ const normalizeEmergencyAccessContact = (value: unknown): EmergencyAccessContact
     updated_at: candidate.updated_at,
     last_requested_at:
       typeof candidate.last_requested_at === 'string' ? candidate.last_requested_at : undefined,
+  };
+};
+
+const normalizeAliasProviderProfile = (value: unknown): AliasProviderProfile | null => {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<AliasProviderProfile>;
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof candidate.name !== 'string' ||
+    typeof candidate.kind !== 'string' ||
+    !Array.isArray(candidate.domains) ||
+    typeof candidate.defaultDomain !== 'string' ||
+    typeof candidate.generationStrategy !== 'string' ||
+    typeof candidate.createdAt !== 'string' ||
+    typeof candidate.updatedAt !== 'string'
+  ) {
+    return null;
+  }
+
+  const domains = candidate.domains
+    .map((domain) =>
+      String(domain || '')
+        .trim()
+        .toLowerCase()
+    )
+    .filter(Boolean);
+  if (domains.length === 0) return null;
+
+  const defaultDomain = String(candidate.defaultDomain || '')
+    .trim()
+    .toLowerCase();
+  if (!defaultDomain) return null;
+
+  return {
+    id: candidate.id,
+    name: candidate.name.trim(),
+    kind:
+      candidate.kind === 'simplelogin' ||
+      candidate.kind === 'addy' ||
+      candidate.kind === 'duckduckgo' ||
+      candidate.kind === 'firefox_relay' ||
+      candidate.kind === 'custom'
+        ? candidate.kind
+        : 'custom',
+    domains,
+    defaultDomain: domains.includes(defaultDomain) ? defaultDomain : domains[0],
+    forwardTo: typeof candidate.forwardTo === 'string' ? candidate.forwardTo.trim() : undefined,
+    generationStrategy:
+      candidate.generationStrategy === 'random' ||
+      candidate.generationStrategy === 'site_name' ||
+      candidate.generationStrategy === 'site_plus_random'
+        ? candidate.generationStrategy
+        : 'site_plus_random',
+    description:
+      typeof candidate.description === 'string' ? candidate.description.trim() : undefined,
+    enabled: candidate.enabled !== false,
+    isDefault: Boolean(candidate.isDefault),
+    syncMode: candidate.syncMode === 'api' ? 'api' : 'manual',
+    syncStatus:
+      candidate.syncStatus === 'ready' ||
+      candidate.syncStatus === 'linked' ||
+      candidate.syncStatus === 'error'
+        ? candidate.syncStatus
+        : candidate.syncMode === 'api'
+          ? 'ready'
+          : 'manual',
+    accountLabel:
+      typeof candidate.accountLabel === 'string' ? candidate.accountLabel.trim() : undefined,
+    apiBaseUrl: typeof candidate.apiBaseUrl === 'string' ? candidate.apiBaseUrl.trim() : undefined,
+    apiToken: typeof candidate.apiToken === 'string' ? candidate.apiToken.trim() : undefined,
+    managementUrl:
+      typeof candidate.managementUrl === 'string' ? candidate.managementUrl.trim() : undefined,
+    capabilities:
+      candidate.capabilities && typeof candidate.capabilities === 'object'
+        ? {
+            canProvision:
+              (candidate.capabilities as { canProvision?: boolean }).canProvision !== false,
+            canRotate: (candidate.capabilities as { canRotate?: boolean }).canRotate !== false,
+            canDeactivate:
+              (candidate.capabilities as { canDeactivate?: boolean }).canDeactivate !== false,
+            canManageOnline:
+              (candidate.capabilities as { canManageOnline?: boolean }).canManageOnline !== false,
+          }
+        : undefined,
+    createdAt: candidate.createdAt,
+    updatedAt: candidate.updatedAt,
+  };
+};
+
+const normalizeAliasAuditEvent = (value: unknown): AliasAuditEvent | null => {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<AliasAuditEvent>;
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof candidate.at !== 'string' ||
+    typeof candidate.type !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    id: candidate.id,
+    at: candidate.at,
+    type:
+      candidate.type === 'provider_saved' ||
+      candidate.type === 'provider_deleted' ||
+      candidate.type === 'alias_generated' ||
+      candidate.type === 'alias_attached' ||
+      candidate.type === 'alias_rotated' ||
+      candidate.type === 'alias_marked_exposed' ||
+      candidate.type === 'alias_cleared'
+        ? candidate.type
+        : 'alias_generated',
+    aliasEmail: typeof candidate.aliasEmail === 'string' ? candidate.aliasEmail : undefined,
+    providerId: typeof candidate.providerId === 'string' ? candidate.providerId : undefined,
+    entryId:
+      typeof candidate.entryId === 'number' && Number.isFinite(candidate.entryId)
+        ? candidate.entryId
+        : undefined,
+    detail: typeof candidate.detail === 'string' ? candidate.detail : undefined,
+    metadata:
+      candidate.metadata && typeof candidate.metadata === 'object'
+        ? Object.fromEntries(
+            Object.entries(candidate.metadata).filter(
+              ([, item]) =>
+                item === undefined ||
+                typeof item === 'string' ||
+                typeof item === 'number' ||
+                typeof item === 'boolean'
+            )
+          )
+        : undefined,
   };
 };
 
@@ -582,6 +729,16 @@ const normalizeState = (value: unknown): SecureAppSettingsState => {
     candidate.hibpCache && typeof candidate.hibpCache === 'object'
       ? (candidate.hibpCache as HibpCacheState)
       : null;
+  const aliasProviders = Array.isArray(candidate.aliasProviders)
+    ? candidate.aliasProviders
+        .map((profile) => normalizeAliasProviderProfile(profile))
+        .filter((profile): profile is AliasProviderProfile => Boolean(profile))
+    : [];
+  const aliasAudit = Array.isArray(candidate.aliasAudit)
+    ? candidate.aliasAudit
+        .map((event) => normalizeAliasAuditEvent(event))
+        .filter((event): event is AliasAuditEvent => Boolean(event))
+    : [];
   const vaultProfiles = Array.isArray(candidate.vaultProfiles)
     ? candidate.vaultProfiles
         .filter(
@@ -862,6 +1019,11 @@ const normalizeState = (value: unknown): SecureAppSettingsState => {
     releaseTrustChecklist,
     releaseTrustApprovals,
     releaseTrustHistory,
+    aliasProviders:
+      aliasProviders.length > 0
+        ? aliasProviders
+        : DEFAULT_ALIAS_PROVIDER_PROFILES.map((profile) => ({ ...profile })),
+    aliasAudit,
     emergencyAccessContacts,
     emergencyAccessRequests,
     emergencyAccessAudit,
@@ -1007,6 +1169,8 @@ const loadLegacyState = (): SecureAppSettingsState => {
           return [];
         }
       })(),
+      aliasProviders: DEFAULT_ALIAS_PROVIDER_PROFILES,
+      aliasAudit: [],
       emergencyAccessContacts: (() => {
         const raw = localStorage.getItem(LEGACY_KEYS.emergencyAccessContacts);
         if (!raw) return [];
@@ -1443,6 +1607,42 @@ export class SecureAppSettings {
   static setReleaseTrustHistory(events: ReleaseTrustHistoryEvent[]): void {
     ensureMutableState();
     stateCache.releaseTrustHistory = events.map((event) => ({ ...event }));
+    void schedulePersist();
+  }
+
+  static getAliasProviders(): AliasProviderProfile[] {
+    ensureBootstrapped();
+    return stateCache.aliasProviders.map((profile) => ({
+      ...profile,
+      domains: [...profile.domains],
+      capabilities: profile.capabilities ? { ...profile.capabilities } : undefined,
+    }));
+  }
+
+  static setAliasProviders(profiles: AliasProviderProfile[]): void {
+    ensureMutableState();
+    stateCache.aliasProviders = profiles.map((profile) => ({
+      ...profile,
+      domains: [...profile.domains],
+      capabilities: profile.capabilities ? { ...profile.capabilities } : undefined,
+    }));
+    void schedulePersist();
+  }
+
+  static getAliasAudit(): AliasAuditEvent[] {
+    ensureBootstrapped();
+    return stateCache.aliasAudit.map((event) => ({
+      ...event,
+      metadata: event.metadata ? { ...event.metadata } : undefined,
+    }));
+  }
+
+  static setAliasAudit(events: AliasAuditEvent[]): void {
+    ensureMutableState();
+    stateCache.aliasAudit = events.map((event) => ({
+      ...event,
+      metadata: event.metadata ? { ...event.metadata } : undefined,
+    }));
     void schedulePersist();
   }
 

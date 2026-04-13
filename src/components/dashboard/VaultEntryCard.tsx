@@ -1,4 +1,5 @@
 import {
+  AtSign,
   Copy,
   Check,
   Eye,
@@ -145,6 +146,15 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
               )}
             </p>
             <span className="hidden md:block w-1.5 h-1.5 rounded-full entry-divider shrink-0" />
+            {p.aliasDetails?.email ? (
+              <>
+                <span className="rounded-full bg-sky-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-sky-700 dark:text-sky-300 flex items-center gap-1">
+                  <AtSign className="w-3 h-3" />
+                  {t('aliasBadge')}
+                </span>
+                <span className="hidden md:block w-1.5 h-1.5 rounded-full entry-divider shrink-0" />
+              </>
+            ) : null}
             <div className="flex items-center gap-2">
               <span
                 className={`pass-font ${compact ? 'text-xs' : 'text-sm'} rounded-md select-all transition-all duration-300 ${
@@ -213,6 +223,19 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                 ) : null}
               </div>
             )}
+
+            {p.aliasDetails?.email ? (
+              <div className="vault-entry-notes-box flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-lg">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-sky-700 dark:text-sky-300">
+                  {t('aliasBadge')}
+                </span>
+                <span className="text-[11px] font-mono">{p.aliasDetails.email}</span>
+                <span className="text-[11px] opacity-70">{p.aliasDetails.providerLabel}</span>
+                <span className="text-[11px] opacity-70">
+                  {t(`aliasStatus.${p.aliasDetails.status}`)}
+                </span>
+              </div>
+            ) : null}
 
             {/* Attachments */}
             {p.attachments && p.attachments.length > 0 && (

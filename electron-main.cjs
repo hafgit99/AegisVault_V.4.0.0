@@ -1357,6 +1357,43 @@ async function handleNativeBridgeRequest(message) {
     };
   }
 
+  if (type === 'GENERATE_ALIAS') {
+    const requestDomain = normalizeDomain(
+      typeof message?.domain === 'string' ? message.domain : ''
+    );
+    if (!requestDomain) {
+      return { ok: false, error: 'INVALID_DOMAIN' };
+    }
+    if (!vaultState.unlocked) {
+      return { ok: false, error: 'VAULT_LOCKED' };
+    }
+
+    const result = await requestVaultCliOperationFromRenderer('generate-alias', {
+      domain: requestDomain,
+      website: `https://${requestDomain}`,
+      title:
+        typeof message?.title === 'string' && message.title.trim()
+          ? message.title.trim()
+          : requestDomain,
+    });
+    touchPairingUsage(extensionId, clientInfo, 'generate-alias');
+    return {
+      ok: Boolean(result?.ok),
+      error: result?.ok ? undefined : String(result?.error || 'ALIAS_GENERATION_FAILED'),
+      alias: typeof result?.data?.alias === 'string' ? result.data.alias : '',
+      providerLabel:
+        typeof result?.data?.providerLabel === 'string' ? result.data.providerLabel : '',
+      providerSyncStatus:
+        typeof result?.data?.providerSyncStatus === 'string'
+          ? result.data.providerSyncStatus
+          : 'manual',
+      providerManagementUrl:
+        typeof result?.data?.providerManagementUrl === 'string'
+          ? result.data.providerManagementUrl
+          : '',
+    };
+  }
+
   if (type === 'GET_DOMAIN_CREDS') {
     const requestDomain = normalizeDomain(
       typeof message?.domain === 'string' ? message.domain : ''
@@ -1853,6 +1890,7 @@ function buildNativeBridgePayload(message) {
   const listSearchScope =
     typeof message?.searchScope === 'string' ? message.searchScope.slice(0, 16) : '';
   const listLimit = Number.isFinite(Number(message?.limit)) ? Number(message.limit) : 0;
+  const requestedTitle = typeof message?.title === 'string' ? message.title.slice(0, 256) : '';
   return JSON.stringify({
     type: typeof message?.type === 'string' ? message.type : '',
     extensionId: typeof message?.extensionId === 'string' ? message.extensionId.trim() : '',
@@ -1880,6 +1918,7 @@ function buildNativeBridgePayload(message) {
     scope: listScope,
     searchScope: listSearchScope,
     limit: listLimit,
+    title: requestedTitle,
   });
 }
 

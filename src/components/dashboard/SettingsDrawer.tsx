@@ -41,6 +41,7 @@ import { EmergencyAccessPanel } from './EmergencyAccessPanel';
 import { PasskeySiteInventoryModal } from './PasskeySiteInventoryModal';
 import { SecurityCenterPanel } from './SecurityCenterPanel';
 import { ReleaseTrustPanel } from './ReleaseTrustPanel';
+import { AliasPrivacyPanel } from './AliasPrivacyPanel';
 import { VaultManager } from '../../lib/VaultManager';
 import { PasskeyBindingService } from '../../lib/PasskeyBindingService';
 import { PasskeyInventoryService } from '../../lib/PasskeyInventoryService';
@@ -268,6 +269,7 @@ export function SettingsDrawer({
   const passkeyRevocationRef = useRef<HTMLDivElement | null>(null);
   const passkeyPolicyRef = useRef<HTMLDivElement | null>(null);
   const desktopPairingsRef = useRef<HTMLDivElement | null>(null);
+  const aliasPrivacyPanelRef = useRef<HTMLDivElement | null>(null);
   const importReportRef = useRef<HTMLDivElement | null>(null);
   const qrAuditPanelRef = useRef<HTMLDivElement | null>(null);
   const migrationReportRef = useRef<HTMLDivElement | null>(null);
@@ -1926,6 +1928,10 @@ export function SettingsDrawer({
                   {/* Advanced Generator Section */}
                   <PasswordGenerator isOpen={isOpen} />
 
+                  <div ref={aliasPrivacyPanelRef}>
+                    <AliasPrivacyPanel passwords={passwords} onEditEntry={onEditEntry} />
+                  </div>
+
                   {/* Watchtower Issues */}
                   <div className="settings-danger-panel border rounded-3xl p-6 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
@@ -1936,7 +1942,13 @@ export function SettingsDrawer({
                         </h3>
                       </div>
                       <span className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-                        {t('issuesFoundLabel', { count: watchtower.weak + watchtower.pwned })}
+                        {t('issuesFoundLabel', {
+                          count:
+                            watchtower.weak +
+                            watchtower.pwned +
+                            watchtower.aliasCompromised +
+                            watchtower.aliasNeedsRotation,
+                        })}
                       </span>
                     </div>
                     <p className="watchtower-issues-desc text-xs opacity-80 mb-4 text-red-700">
@@ -1944,7 +1956,13 @@ export function SettingsDrawer({
                     </p>
                     <button
                       onClick={() => setShowWeakPasswordsPopup(true)}
-                      disabled={watchtower.weak + watchtower.pwned === 0}
+                      disabled={
+                        watchtower.weak +
+                          watchtower.pwned +
+                          watchtower.aliasCompromised +
+                          watchtower.aliasNeedsRotation ===
+                        0
+                      }
                       className="w-full py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:grayscale"
                     >
                       {t('viewIssuesBtn')}
@@ -1960,6 +1978,12 @@ export function SettingsDrawer({
                       setFocusedSharedSpaceContext(null);
                       setSelectedSharingIssueKey(null);
                       setShowSharedSpacesModal(true);
+                    }}
+                    onReviewAliases={() => {
+                      aliasPrivacyPanelRef.current?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                      });
                     }}
                     onReviewDevices={() => {
                       desktopPairingsRef.current?.scrollIntoView({

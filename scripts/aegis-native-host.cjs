@@ -124,6 +124,7 @@ function buildBridgeProof(message, pairingSecret = '') {
     scope: typeof message?.scope === 'string' ? message.scope : '',
     searchScope: typeof message?.searchScope === 'string' ? message.searchScope : '',
     limit: Number.isFinite(Number(message?.limit)) ? Number(message.limit) : 0,
+    title: typeof message?.title === 'string' ? message.title.slice(0, 256) : '',
   });
 
   return crypto
@@ -197,6 +198,7 @@ function buildForwardBridgeMessage(message, overrides = {}) {
     scope: typeof message?.scope === 'string' ? message.scope.slice(0, 16) : '',
     searchScope: typeof message?.searchScope === 'string' ? message.searchScope.slice(0, 16) : '',
     limit: Number.isFinite(Number(message?.limit)) ? Number(message.limit) : undefined,
+    title: typeof message?.title === 'string' ? message.title.slice(0, 256) : '',
   };
 }
 
@@ -406,6 +408,38 @@ async function handleMessageWithDeps(
         ok: Boolean(result?.ok),
         error: result?.ok ? undefined : String(result?.error || 'UI_LANGUAGE_FAILED'),
         language: typeof result?.language === 'string' ? result.language : 'en',
+        desktopAuth: result?.desktopAuth || null,
+      });
+      return;
+    }
+
+    if (type === 'GENERATE_ALIAS') {
+      const domain = normalizeDomain(typeof message?.domain === 'string' ? message.domain : '');
+      if (!domain) {
+        deps.writeMessage({ ok: false, error: 'INVALID_DOMAIN' });
+        return;
+      }
+
+      const result = await deps.sendNativeBridgeMessage(
+        buildForwardBridgeMessage(message, {
+          type: 'GENERATE_ALIAS',
+          domain,
+          title:
+            typeof message?.title === 'string' && message.title.trim()
+              ? message.title.trim()
+              : domain,
+        }),
+        pairingSecret
+      );
+      deps.writeMessage({
+        ok: Boolean(result?.ok),
+        error: result?.ok ? undefined : String(result?.error || 'ALIAS_GENERATION_FAILED'),
+        alias: typeof result?.alias === 'string' ? result.alias : '',
+        providerLabel: typeof result?.providerLabel === 'string' ? result.providerLabel : '',
+        providerSyncStatus:
+          typeof result?.providerSyncStatus === 'string' ? result.providerSyncStatus : 'manual',
+        providerManagementUrl:
+          typeof result?.providerManagementUrl === 'string' ? result.providerManagementUrl : '',
         desktopAuth: result?.desktopAuth || null,
       });
       return;

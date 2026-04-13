@@ -16,6 +16,7 @@ import { vaultService, type VaultEntry } from '../vaultService';
 import { WebAuthnService } from '../lib/WebAuthnService';
 import type { SitePasskeyAuthResult, SitePasskeyAuthOptions } from '../lib/WebAuthnService';
 import type { CanonicalPasskeyFields } from '../lib/canonical-schema';
+import { AliasProviderService } from '../lib/AliasProviderService';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -274,6 +275,45 @@ export function useVaultExtension({ passwords, loadPasswords }: UseVaultExtensio
         const found = await findEntryById(entryId);
         if (!found) return { ok: false, error: 'ENTRY_NOT_FOUND' };
         return { ok: true, data: sanitizeCliEntry(found) };
+      }
+
+      if (normalizedOp === 'generate-alias') {
+        const website =
+          typeof payload.website === 'string'
+            ? payload.website
+            : typeof payload.domain === 'string'
+              ? `https://${payload.domain}`
+              : '';
+        const title =
+          typeof payload.title === 'string' && payload.title.trim()
+            ? payload.title.trim()
+            : typeof payload.domain === 'string'
+              ? payload.domain
+              : 'Alias';
+        const aliasSeed = AliasProviderService.createAliasDetails({
+          website,
+          title,
+          notes: 'Browser extension requested alias generation',
+        });
+        const provisioned = await AliasProviderService.provisionAlias({
+          providerId: aliasSeed.providerId,
+          website,
+          title,
+          notes: 'Browser extension requested alias generation',
+        });
+        return {
+          ok: true,
+          data: {
+            alias: provisioned.email,
+            providerId: provisioned.provider?.id || aliasSeed.providerId,
+            providerLabel: provisioned.provider?.name || aliasSeed.providerLabel,
+            providerAliasId: provisioned.providerAliasId,
+            providerSyncStatus: provisioned.providerSyncStatus,
+            providerManagementUrl:
+              provisioned.providerManagementUrl ||
+              AliasProviderService.buildManagementUrl(aliasSeed, provisioned.provider),
+          },
+        };
       }
 
       if (normalizedOp === 'create') {

@@ -259,6 +259,8 @@ export interface VaultIdentityDetails {
 }
 
 import type { CanonicalPasskeyFields } from './canonical-schema';
+import type { VaultAliasDetails } from './alias-types';
+export type { VaultAliasDetails } from './alias-types';
 
 export interface VaultEntry {
   id: number;
@@ -303,6 +305,8 @@ export interface VaultEntry {
   card_details_iv?: string; // IV for card details encryption
   encrypted_identity_details?: string; // AES-GCM encrypted identity card details JSON
   identity_details_iv?: string; // IV for identity details encryption
+  encrypted_alias_details?: string; // AES-GCM encrypted alias metadata JSON
+  alias_details_iv?: string; // IV for alias metadata encryption
 
   // Decrypted fields for UI (never persisted)
   pass?: string;
@@ -311,6 +315,7 @@ export interface VaultEntry {
   passkeyMetadata?: CanonicalPasskeyFields | null; // Decrypted passkey metadata for site-passkey MVP
   cardDetails?: VaultCardDetails | null; // Decrypted card details (only in memory)
   identityDetails?: VaultIdentityDetails | null; // Decrypted identity details (only in memory)
+  aliasDetails?: VaultAliasDetails | null; // Decrypted alias metadata (only in memory)
   sharing?: any[]; // Canonical sharing metadata for UI/export helpers
   ui_focus_context?: 'sharing_issue' | 'sharing_audit'; // Transient UI hint for edit flows
   ui_focus_label?: string; // Transient UI label shown in edit flows

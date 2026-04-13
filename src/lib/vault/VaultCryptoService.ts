@@ -1,5 +1,6 @@
 import type {
   VaultAttachmentMeta,
+  VaultAliasDetails,
   VaultCardDetails,
   VaultEntry,
   VaultIdentityDetails,
@@ -115,6 +116,115 @@ export class VaultCryptoService {
     return hasData ? normalized : null;
   }
 
+  static normalizeAliasDetails(
+    details?: Partial<VaultAliasDetails> | null
+  ): VaultAliasDetails | null {
+    if (!details || typeof details !== 'object') return null;
+
+    const normalized: VaultAliasDetails = {
+      providerId: String(details.providerId || '').trim(),
+      providerLabel: String(details.providerLabel || '').trim(),
+      email: String(details.email || '')
+        .trim()
+        .toLowerCase(),
+      website: String(details.website || '').trim() || undefined,
+      notes: String(details.notes || '').trim() || undefined,
+      forwardTo: String(details.forwardTo || '').trim() || undefined,
+      status:
+        details.status === 'rotated' ||
+        details.status === 'compromised' ||
+        details.status === 'disabled'
+          ? details.status
+          : 'active',
+      exposureCategory:
+        details.exposureCategory === 'spam' ||
+        details.exposureCategory === 'breach' ||
+        details.exposureCategory === 'manual'
+          ? details.exposureCategory
+          : 'none',
+      exposureCount: Number.isFinite(Number(details.exposureCount))
+        ? Math.max(0, Number(details.exposureCount))
+        : 0,
+      createdAt: String(details.createdAt || '').trim(),
+      updatedAt: String(details.updatedAt || '').trim(),
+      lastUsedAt: String(details.lastUsedAt || '').trim() || undefined,
+      lastRotatedAt: String(details.lastRotatedAt || '').trim() || undefined,
+      linkedEntryId: Number.isFinite(Number(details.linkedEntryId))
+        ? Number(details.linkedEntryId)
+        : undefined,
+      providerAliasId: String(details.providerAliasId || '').trim() || undefined,
+      providerSyncStatus:
+        details.providerSyncStatus === 'ready' ||
+        details.providerSyncStatus === 'linked' ||
+        details.providerSyncStatus === 'error'
+          ? details.providerSyncStatus
+          : 'manual',
+      providerManagementUrl: String(details.providerManagementUrl || '').trim() || undefined,
+      watchtowerScore: Number.isFinite(Number(details.watchtowerScore))
+        ? Math.max(0, Math.min(100, Number(details.watchtowerScore)))
+        : undefined,
+      watchtowerState:
+        details.watchtowerState === 'review' ||
+        details.watchtowerState === 'rotation_required' ||
+        details.watchtowerState === 'compromised'
+          ? details.watchtowerState
+          : 'healthy',
+      history: Array.isArray(details.history)
+        ? details.history
+            .filter(
+              (item) =>
+                item &&
+                typeof item === 'object' &&
+                typeof item.id === 'string' &&
+                typeof item.at === 'string' &&
+                typeof item.email === 'string'
+            )
+            .map((item) => ({
+              id: String(item.id),
+              at: String(item.at),
+              type:
+                item.type === 'rotated' ||
+                item.type === 'rollback' ||
+                item.type === 'exposed' ||
+                item.type === 'provider_sync'
+                  ? item.type
+                  : 'created',
+              email: String(item.email).toLowerCase(),
+              providerAliasId: String(item.providerAliasId || '').trim() || undefined,
+              reason: String(item.reason || '').trim() || undefined,
+            }))
+        : [],
+      rotationQueue: Array.isArray(details.rotationQueue)
+        ? details.rotationQueue
+            .filter(
+              (item) =>
+                item &&
+                typeof item === 'object' &&
+                typeof item.id === 'string' &&
+                typeof item.requestedAt === 'string'
+            )
+            .map((item) => ({
+              id: String(item.id),
+              requestedAt: String(item.requestedAt),
+              reason:
+                item.reason === 'breach' || item.reason === 'spam' || item.reason === 'watchtower'
+                  ? item.reason
+                  : 'manual',
+              status:
+                item.status === 'completed' || item.status === 'cancelled' ? item.status : 'queued',
+              candidateEmail:
+                String(item.candidateEmail || '')
+                  .trim()
+                  .toLowerCase() || undefined,
+            }))
+        : [],
+    };
+
+    if (!normalized.providerId || !normalized.providerLabel || !normalized.email) return null;
+    if (!normalized.createdAt || !normalized.updatedAt) return null;
+    return normalized;
+  }
+
   static async hydrateRichSensitiveFields(
     entries: VaultEntry[],
     aesKey: CryptoKey | null,
@@ -123,7 +233,10 @@ export class VaultCryptoService {
     ) => VaultCardDetails | null = VaultCryptoService.normalizeCardDetails,
     normalizeIdentity: (
       details?: Partial<VaultIdentityDetails> | null
-    ) => VaultIdentityDetails | null = VaultCryptoService.normalizeIdentityDetails
+    ) => VaultIdentityDetails | null = VaultCryptoService.normalizeIdentityDetails,
+    normalizeAlias: (
+      details?: Partial<VaultAliasDetails> | null
+    ) => VaultAliasDetails | null = VaultCryptoService.normalizeAliasDetails
   ): Promise<void> {
     if (!aesKey || entries.length === 0) return;
     const dec = new TextDecoder();
@@ -230,6 +343,26 @@ export class VaultCryptoService {
               dec.decode(identityDetailsPlain)
             ) as Partial<VaultIdentityDetails>;
             entry.identityDetails = normalizeIdentity(parsed);
+          } catch {
+            /* skip */
+          }
+        }
+
+        if (!entry.aliasDetails && entry.encrypted_alias_details && entry.alias_details_iv) {
+          try {
+            const aliasDetailsCipher = isLikelyHexUtil(entry.encrypted_alias_details)
+              ? hexToBuffer(entry.encrypted_alias_details)
+              : Uint8Array.from(atob(entry.encrypted_alias_details), (c) => c.charCodeAt(0));
+            const aliasDetailsIv = isLikelyHexUtil(entry.alias_details_iv)
+              ? hexToBuffer(entry.alias_details_iv)
+              : Uint8Array.from(atob(entry.alias_details_iv), (c) => c.charCodeAt(0));
+            const aliasDetailsPlain = await window.crypto.subtle.decrypt(
+              { name: 'AES-GCM', iv: toBufferSource(aliasDetailsIv) },
+              aesKey,
+              toBufferSource(aliasDetailsCipher)
+            );
+            const parsed = JSON.parse(dec.decode(aliasDetailsPlain)) as Partial<VaultAliasDetails>;
+            entry.aliasDetails = normalizeAlias(parsed);
           } catch {
             /* skip */
           }
@@ -364,6 +497,12 @@ export class VaultCryptoService {
         const wEnc = await fieldEnc(entry.website);
         uiEntry.encrypted_website = wEnc.encrypted;
         uiEntry.website_iv = wEnc.iv;
+      }
+
+      if (entry.aliasDetails) {
+        const aliasEnc = await fieldEnc(JSON.stringify(entry.aliasDetails));
+        uiEntry.encrypted_alias_details = aliasEnc.encrypted;
+        uiEntry.alias_details_iv = aliasEnc.iv;
       }
 
       // We don't generate search_index here because we don't have searchIndexHmacKey.

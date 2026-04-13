@@ -50,6 +50,8 @@ describe('SecurityCenterService', () => {
     expect(summary.metrics.passkeyReady).toBe(2);
     expect(summary.metrics.agingCredentials).toBe(1);
     expect(summary.metrics.sensitiveSharing).toBe(1);
+    expect(summary.metrics.aliasExposure).toBe(0);
+    expect(summary.metrics.aliasRotation).toBe(0);
     expect(summary.issues.map((issue) => issue.type)).toEqual([
       'missing_second_factor',
       'passkey_ready',
@@ -169,5 +171,43 @@ describe('SecurityCenterService', () => {
     expect(summary.issues.map((issue) => issue.type)).toContain('local_risk_activity');
     expect(summary.triageItems.some((item) => item.issueType === 'device_trust')).toBe(true);
     expect(summary.triageItems.some((item) => item.issueType === 'local_risk_activity')).toBe(true);
+  });
+
+  it('surfaces alias exposure and rotation signals', () => {
+    const summary = SecurityCenterService.buildSummary([
+      {
+        id: 9,
+        title: 'Forum',
+        username: 'mask@duck.com',
+        website: 'https://forum.example',
+        category: 'login',
+        pass: 'long-enough-password',
+        updated_at: '2026-03-22T10:00:00.000Z',
+        aliasDetails: {
+          providerId: 'provider-duckduckgo',
+          providerLabel: 'DuckDuckGo',
+          email: 'forum-1@duck.com',
+          status: 'compromised',
+          exposureCategory: 'breach',
+          exposureCount: 2,
+          createdAt: '2026-03-22T10:00:00.000Z',
+          updatedAt: '2026-04-13T10:00:00.000Z',
+          watchtowerState: 'rotation_required',
+          rotationQueue: [
+            {
+              id: 'queue-1',
+              requestedAt: '2026-04-13T10:00:00.000Z',
+              reason: 'breach',
+              status: 'queued',
+            },
+          ],
+        },
+      },
+    ] as never);
+
+    expect(summary.metrics.aliasExposure).toBe(1);
+    expect(summary.metrics.aliasRotation).toBe(1);
+    expect(summary.issues.map((issue) => issue.type)).toContain('alias_exposure');
+    expect(summary.issues.map((issue) => issue.type)).toContain('alias_rotation');
   });
 });

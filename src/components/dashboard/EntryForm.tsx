@@ -24,6 +24,7 @@ import { parseOtpauthUri } from '../../lib/TOTPService';
 import { VaultManager } from '../../lib/VaultManager';
 import { TotpVaultPolicy } from '../../lib/TotpVaultPolicy';
 import { SharedSpaceService } from '../../lib/SharedSpaceService';
+import { AliasIdentityPanel } from '../settings/AliasIdentityPanel';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 
@@ -616,6 +617,10 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
               </div>
             )}
           </div>
+
+          {!isNoteCategory && !isPasskeyCategory ? (
+            <AliasIdentityPanel entry={newEntry} setEntry={setNewEntry} />
+          ) : null}
 
           {isPasskeyCategory ? (
             <>
