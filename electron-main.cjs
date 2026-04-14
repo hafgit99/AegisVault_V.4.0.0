@@ -2039,6 +2039,19 @@ function verifyNativeBridgeProof(message) {
           '[Aegis Native Bridge] ❌ Signature verification FAILED! Payload length:',
           verificationPayload.length
         );
+        try {
+          const fs = require('fs');
+          const path = require('path');
+          const logPath = path.resolve(require('os').homedir(), 'aegis-debug.log');
+          fs.appendFileSync(
+            logPath,
+            '\n--- SIG FAIL ---\nMSG: ' +
+              JSON.stringify(message) +
+              '\nPAYLOAD: ' +
+              verificationPayload +
+              '\n'
+          );
+        } catch (e) {}
         return { ok: false, error: 'INVALID_NATIVE_BRIDGE_SIGNATURE' };
       }
       return {

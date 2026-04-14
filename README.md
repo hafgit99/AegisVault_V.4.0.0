@@ -10,8 +10,8 @@ _Offline-first, end-to-end encrypted credential management for desktop and brows
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-4.2.0-6c5ce7.svg)](https://github.com/hafgit99/AegisVault_V.4.0.0)
-[![Tests](https://img.shields.io/badge/Tests-711%20passed-brightgreen.svg)](#test-coverage)
-[![Coverage](https://img.shields.io/badge/Coverage-89%25%20Lines-green.svg)](#test-coverage)
+[![Tests](https://img.shields.io/badge/Tests-891%20passed-brightgreen.svg)](#test-coverage)
+[![Coverage](https://img.shields.io/badge/Coverage-89.4%25%20Lines-green.svg)](#test-coverage)
 [![Lint](https://img.shields.io/badge/Lint-0%20errors-success.svg)](#code-quality)
 [![Security](https://img.shields.io/badge/Security-Zero--Knowledge-0f766e.svg)](SECURITY.md)
 
@@ -66,10 +66,10 @@ Aegis Vault 4.2
 
 | Metric                  | Score             |
 | ----------------------- | ----------------- |
-| **Test Files**          | 81                |
-| **Total Tests**         | 711 (all passing) |
+| **Test Files**          | 108               |
+| **Total Tests**         | 891 (all passing) |
 | **Statements**          | 87.7%             |
-| **Branches**            | 75.3%             |
+| **Branches**            | 75.4%             |
 | **Functions**           | 90.6%             |
 | **Lines**               | 89.4%             |
 | **Mutation Resilience** | 76.0% (Stryker)   |

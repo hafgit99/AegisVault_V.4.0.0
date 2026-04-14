@@ -144,6 +144,15 @@ function Invoke-NativeBridge {
     clientNonce = [string]$Payload.clientNonce
     clientSignature = [string]$Payload.clientSignature
     clientPublicJwk = $Payload.clientPublicJwk
+    credential = $Payload.credential
+    title = [string]$Payload.title
+    entryId = $Payload.entryId
+    entry = $Payload.entry
+    query = [string]$Payload.query
+    category = [string]$Payload.category
+    scope = [string]$Payload.scope
+    searchScope = [string]$Payload.searchScope
+    limit = $Payload.limit
   }
 
   if (![string]::IsNullOrWhiteSpace($activePairingSecret) -and $activePairingSecret.Length -ge 32) {
@@ -210,13 +219,24 @@ while ($true) {
     $bridgePayload = @{
       type = $type
       extensionId = $extensionId
+      domain = [string]$message.domain
       requestNonce = [string]$message.requestNonce
+      browserName = [string]$message.browserName
       clientInfo = $message.clientInfo
       clientKeyId = [string]$message.clientKeyId
       clientTimestamp = [string]$message.clientTimestamp
       clientNonce = [string]$message.clientNonce
       clientSignature = [string]$message.clientSignature
       clientPublicJwk = $message.clientPublicJwk
+      credential = $message.credential
+      title = [string]$message.title
+      entryId = $message.entryId
+      entry = $message.entry
+      query = [string]$message.query
+      category = [string]$message.category
+      scope = [string]$message.scope
+      searchScope = [string]$message.searchScope
+      limit = $message.limit
     }
 
     if ($type -eq "GET_DOMAIN_CREDS" -or $type -eq "GET_DOMAIN_PASSKEYS") {
@@ -226,10 +246,6 @@ while ($true) {
         continue
       }
       $bridgePayload.domain = $domain
-    }
-
-    if ($type -eq "INIT_PAIRING") {
-      $bridgePayload.browserName = [string]$message.browserName
     }
 
     $result = Invoke-NativeBridge -Payload $bridgePayload -RuntimePairingSecret $runtimePairingSecret

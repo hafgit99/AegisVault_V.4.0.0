@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## [4.2.2] - 2026-04-14
+
+### Fixed
+
+- **Native Bridge Security**: Fixed `INVALID_NATIVE_BRIDGE_SIGNATURE` errors by aligning payload structures and signature verification between the Electron host and Chrome extension.
+- **Payload Normalization**: Ensured consistent serialization of bridge requests to prevent structural mismatches.
+
+### Changed
+
+- **891 unit tests** across 108 test files — all passing (increased from 711)
+- **Coverage**: Updated line coverage to 89.43% with hardened security service tests.
+
 ## [4.2.1] - 2026-04-06
 
 ### Added
