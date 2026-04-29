@@ -21,8 +21,8 @@ export function VirtualizedVaultList({ entries, onEdit, viewDensity }: Virtualiz
   const [containerHeight, setContainerHeight] = useState(600); // Varsayılan height
 
   // Dinamik yükseklik hesaplama (Theme bazlı)
-  const ITEM_HEIGHT = viewDensity === 'compact' ? 88 : 128;
-  const GAP = 16; // 4rem gap
+  const ITEM_HEIGHT = viewDensity === 'compact' ? 116 : 160;
+  const GAP = viewDensity === 'compact' ? 12 : 16;
 
   useEffect(() => {
     const updateHeight = () => {

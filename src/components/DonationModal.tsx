@@ -79,44 +79,43 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        className="donation-surface relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-[2.5rem] border border-white/20 shadow-2xl flex flex-col md:flex-row"
+        className="donation-surface relative w-full max-w-5xl max-h-[92vh] overflow-hidden rounded-[1.75rem] border shadow-2xl flex flex-col md:flex-row"
       >
         {/* Left Side: Info */}
-        <div className="w-full md:w-2/5 p-8 md:p-12 bg-gradient-to-br from-[var(--color-sage-green)] to-[#6b8268] text-white flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-
+        <div className="donation-hero-panel w-full md:w-[38%] p-8 md:p-12 text-white flex flex-col justify-between relative overflow-hidden">
           <div className="relative z-10">
-            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-8 backdrop-blur-md border border-white/20">
+            <div className="donation-hero-icon w-16 h-16 rounded-2xl flex items-center justify-center mb-8">
               <Heart className="w-8 h-8 text-white fill-white/20" />
             </div>
             <h2 className="text-4xl font-bold tracking-tight mb-4">{t('donateTitle')}</h2>
-            <p className="text-white/80 leading-relaxed text-sm">{t('donateDesc')}</p>
+            <p className="text-white/84 leading-relaxed text-sm">{t('donateDesc')}</p>
           </div>
 
           <div className="relative z-10 mt-12">
-            <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 text-xs text-white/90 italic">
+            <div className="donation-quote p-4 rounded-2xl text-xs text-white/90 italic">
               "{t('privacyQuote')}"
             </div>
           </div>
         </div>
 
         {/* Right Side: Crypto Grid */}
-        <div className="donation-right-panel flex-1 p-8 md:p-10 overflow-y-auto custom-scrollbar backdrop-blur-sm">
+        <div className="donation-right-panel flex-1 p-6 md:p-10 overflow-y-auto custom-scrollbar backdrop-blur-sm">
           <div className="flex justify-between items-center mb-8">
             <h3 className="text-xl font-bold text-[var(--color-deep-navy)]">{t('donateBtn')}</h3>
             <button
               onClick={onClose}
-              className="p-2 rounded-full hover:bg-black/5 text-gray-500 transition-colors"
+              className="donation-close-btn p-2 rounded-full transition-colors"
+              aria-label="Close donation modal"
             >
               <X className="w-6 h-6" />
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
             {cryptoAddresses.map((crypto, index) => (
               <div
                 key={crypto.symbol}
-                className="donation-card group p-4 rounded-2xl border shadow-sm hover:shadow-md transition-all"
+                className="donation-card group p-4 rounded-2xl border shadow-sm transition-all"
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -137,13 +136,14 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                   </div>
                   <button
                     onClick={() => setActiveQr(index)}
-                    className="p-2 rounded-lg bg-black/5 hover:bg-[var(--color-sage-green)]/10 text-black/40 hover:text-[var(--color-sage-green)] transition-all"
+                    className="donation-qr-trigger p-2 rounded-lg transition-all"
+                    aria-label={`Show ${crypto.name} QR code`}
                   >
                     <QrCode className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="donation-address font-mono text-[10px] p-2 rounded-lg break-all text-[var(--color-deep-navy)]/70 mb-3 opacity-100 transition-opacity">
+                <div className="donation-address font-mono text-[10px] p-2.5 rounded-lg break-all text-[var(--color-deep-navy)]/70 mb-3 opacity-100 transition-opacity">
                   {crypto.address}
                 </div>
 
@@ -170,17 +170,18 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="donation-qr-surface absolute inset-0 z-[210] bg-white flex flex-col items-center justify-center p-12 text-center"
+              className="donation-qr-surface absolute inset-0 z-[210] flex flex-col items-center justify-center p-8 md:p-12 text-center"
             >
               <button
                 onClick={() => setActiveQr(null)}
-                className="absolute top-8 right-8 p-3 rounded-full hover:bg-black/5 text-gray-500 transition-colors"
+                className="donation-close-btn absolute top-6 right-6 md:top-8 md:right-8 p-3 rounded-full transition-colors"
+                aria-label="Close QR code"
               >
-                <X className="w-8 h-8" />
+                <X className="w-6 h-6 md:w-8 md:h-8" />
               </button>
 
               <div
-                className="w-20 h-20 rounded-3xl flex items-center justify-center text-white text-3xl font-bold mb-6 shadow-xl"
+                className="w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center text-white text-2xl md:text-3xl font-bold mb-5 shadow-xl"
                 style={{ backgroundColor: cryptoAddresses[activeQr].color }}
               >
                 {cryptoAddresses[activeQr].symbol[0]}
@@ -189,13 +190,22 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
               <h4 className="text-3xl font-bold text-[var(--color-deep-navy)] mb-2">
                 {cryptoAddresses[activeQr].name}
               </h4>
-              <p className="opacity-50 text-sm mb-10 max-w-sm">{t('qrScanSupport')}</p>
+              <p className="donation-qr-copy text-sm mb-8 md:mb-10 max-w-sm">
+                {t('qrScanSupport')}
+              </p>
 
-              <div className="p-6 donation-card rounded-[2.5rem] shadow-2xl mb-10">
-                <QRCodeSVG value={cryptoAddresses[activeQr].address} size={220} level="H" />
+              <div className="donation-qr-code-box p-5 md:p-6 rounded-[1.75rem] shadow-2xl mb-8 md:mb-10">
+                <QRCodeSVG
+                  value={cryptoAddresses[activeQr].address}
+                  size={224}
+                  level="H"
+                  includeMargin
+                  bgColor="#ffffff"
+                  fgColor="#000000"
+                />
               </div>
 
-              <div className="bg-black/5 px-6 py-4 rounded-2xl font-mono text-sm text-[var(--color-deep-navy)]/70 mb-10 max-w-md break-all">
+              <div className="donation-qr-address px-5 md:px-6 py-4 rounded-2xl font-mono text-sm text-[var(--color-deep-navy)]/70 mb-8 md:mb-10 max-w-md break-all">
                 {cryptoAddresses[activeQr].address}
               </div>
 

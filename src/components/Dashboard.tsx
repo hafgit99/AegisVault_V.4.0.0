@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
-import { Plus, Trash2 } from 'lucide-react';
+import { ArchiveX, Plus, ShieldCheck, Trash2 } from 'lucide-react';
 import { vaultService, type VaultEntry } from '../vaultService';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
@@ -47,6 +47,7 @@ function DashboardInner() {
     handleLock,
     handleRestoreEntry,
     viewDensity,
+    watchtower,
   } = useVault();
 
   const searchRef = useRef<HTMLInputElement>(null);
@@ -63,18 +64,28 @@ function DashboardInner() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
+  const startNewEntry = () => {
+    setEditEntry({
+      category:
+        categoryFilter && categoryFilter !== 'Trash' && !categoryFilter.startsWith('#')
+          ? categoryFilter
+          : 'General',
+    });
+    setIsAdding(true);
+  };
+
+  const totalSecurityIssues =
+    (watchtower?.weak || 0) +
+    (watchtower?.reused || 0) +
+    (watchtower?.old || 0) +
+    (watchtower?.pwned || 0) +
+    (watchtower?.aliasAtRisk || 0) +
+    (watchtower?.aliasNeedsRotation || 0);
+
   useKeyboardShortcuts({
     onSearch: () => searchRef.current?.focus(),
     onLock: handleLock,
-    onNewEntry: () => {
-      setEditEntry({
-        category:
-          categoryFilter && categoryFilter !== 'Trash' && !categoryFilter.startsWith('#')
-            ? categoryFilter
-            : 'General',
-      });
-      setIsAdding(true);
-    },
+    onNewEntry: startNewEntry,
     onEscape: () => {
       setIsAdding(false);
       setShowSettings(false);
@@ -238,7 +249,7 @@ function DashboardInner() {
   };
 
   return (
-    <div className="w-full min-h-screen overflow-visible bg-[var(--color-cloud-dancer)] text-[var(--color-deep-navy)] px-4 pb-4 pt-8 md:px-8 md:pb-8 md:pt-10 font-[var(--font-geist)] animate-in fade-in duration-700">
+    <div className="w-full min-h-screen overflow-visible bg-[var(--color-cloud-dancer)] text-[var(--color-deep-navy)] px-4 pb-4 pt-5 md:px-8 md:pb-8 md:pt-7 font-[var(--font-geist)] animate-in fade-in duration-700">
       <Suspense fallback={null}>
         <SpotlightWalkthrough />
       </Suspense>
@@ -258,17 +269,15 @@ function DashboardInner() {
         className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 px-4 xl:px-8"
       >
         <GlowCard className="lg:col-span-8 xl:col-span-9 glass-card p-6 md:p-8 flex flex-col gap-6 relative">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--color-sage-green)] opacity-[0.03] blur-3xl rounded-full pointer-events-none group-hover/glow:opacity-10 transition-opacity duration-1000" />
-
-          <div className="flex justify-between items-end">
+          <div className="flex items-end justify-between gap-4">
             <div>
               <h2 className="text-2xl font-semibold mb-1">
                 {categoryFilter === 'Trash' ? t('trash') : t('yourVault')}
               </h2>
-              <p className="text-sm opacity-60 flex items-center gap-2">
+              <p className="flex items-center gap-2 text-sm text-[var(--color-deep-navy)]/65 dark:text-white/70">
                 {t('zeroKnowledge')}
                 {!isDecrypting && (
-                  <span className="bg-black/10 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                  <span className="rounded-full bg-black/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider dark:bg-white/10">
                     {passwords.length} {t('entries')}
                   </span>
                 )}
@@ -287,17 +296,7 @@ function DashboardInner() {
             ) : (
               !isAdding && (
                 <button
-                  onClick={() => {
-                    setEditEntry({
-                      category:
-                        categoryFilter &&
-                        categoryFilter !== 'Trash' &&
-                        !categoryFilter.startsWith('#')
-                          ? categoryFilter
-                          : 'General',
-                    });
-                    setIsAdding(true);
-                  }}
+                  onClick={startNewEntry}
                   className="btn-ink flex items-center gap-2 bg-[var(--color-deep-navy)] text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md hover:bg-opacity-90 transition-all active:scale-95"
                 >
                   <Plus className="w-4 h-4" /> {t('newEntry')}
@@ -327,8 +326,30 @@ function DashboardInner() {
                 ))}
               </div>
             ) : passwords.length === 0 ? (
-              <div className="text-center py-20 opacity-40 text-sm italic mt-4">
-                {categoryFilter === 'Trash' ? t('noTrashItems') : t('noPasswordsFound')}
+              <div className="dashboard-empty-state mt-4">
+                <div className="dashboard-empty-icon">
+                  {categoryFilter === 'Trash' ? (
+                    <ArchiveX className="h-6 w-6" />
+                  ) : (
+                    <ShieldCheck className="h-6 w-6" />
+                  )}
+                </div>
+                <div className="max-w-md text-center">
+                  <h3 className="dashboard-empty-title">
+                    {categoryFilter === 'Trash' ? t('trashEmptyTitle') : t('vaultEmptyTitle')}
+                  </h3>
+                  <p className="dashboard-empty-copy">
+                    {categoryFilter === 'Trash' ? t('trashEmptyDesc') : t('vaultEmptyDesc')}
+                  </p>
+                </div>
+                {categoryFilter !== 'Trash' && !isAdding && (
+                  <button
+                    onClick={startNewEntry}
+                    className="btn-ink flex items-center gap-2 rounded-xl bg-[var(--color-deep-navy)] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-opacity-90 active:scale-95"
+                  >
+                    <Plus className="h-4 w-4" /> {t('newEntry')}
+                  </button>
+                )}
               </div>
             ) : (
               <div className="h-[65vh] mt-4">
@@ -354,11 +375,15 @@ function DashboardInner() {
           aria-label="Categories and security"
           className="lg:col-span-4 xl:col-span-3 flex flex-col gap-6 xl:gap-8"
         >
-          <WatchtowerPanel />
-          <CategorySidebar
-            onDownloadEmergencyKit={downloadEmergencyKit}
-            isGeneratingKit={showEmergencyKit}
-          />
+          <div className={totalSecurityIssues > 0 ? 'order-1' : 'order-2'}>
+            <WatchtowerPanel />
+          </div>
+          <div className={totalSecurityIssues > 0 ? 'order-2' : 'order-1'}>
+            <CategorySidebar
+              onDownloadEmergencyKit={downloadEmergencyKit}
+              isGeneratingKit={showEmergencyKit}
+            />
+          </div>
         </nav>
       </main>
 

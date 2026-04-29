@@ -1,14 +1,31 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { VaultLogin } from './components/VaultLogin';
 import './i18n';
-import { Dashboard } from './components/Dashboard';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { extensionBridge } from './lib/ExtensionBridge';
 import { useAutoLock } from './config/security-settings';
-import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
 
 import { vaultService } from './vaultService';
+
+const Dashboard = lazy(() =>
+  import('./components/Dashboard').then((module) => ({ default: module.Dashboard }))
+);
+const OnboardingWizard = lazy(() =>
+  import('./components/onboarding/OnboardingWizard').then((module) => ({
+    default: module.OnboardingWizard,
+  }))
+);
+
+function AppLoadingFallback() {
+  return (
+    <div className="flex min-h-[240px] w-full items-center justify-center px-6 text-center">
+      <div className="rounded-xl border border-black/10 bg-white/70 px-5 py-4 text-sm font-semibold text-[var(--color-deep-navy)] shadow-sm dark:border-white/10 dark:bg-white/5">
+        Loading secure workspace...
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -41,7 +58,9 @@ function App() {
 
   return (
     <>
-      {showOnboarding && <OnboardingWizard onComplete={handleOnboardingComplete} />}
+      <Suspense fallback={<AppLoadingFallback />}>
+        {showOnboarding && <OnboardingWizard onComplete={handleOnboardingComplete} />}
+      </Suspense>
       <a href="#main-content" className="skip_to_content">
         Skip to main content
       </a>
@@ -51,15 +70,17 @@ function App() {
         aria-label="Aegis Vault Password Manager"
       >
         <div id="main-content" className="w-full flex flex-col items-center flex-1">
-          {isUnlocked ? (
-            <Dashboard onLock={() => setIsUnlocked(false)} />
-          ) : (
-            <VaultLogin
-              onUnlock={() => {
-                setIsUnlocked(true);
-              }}
-            />
-          )}
+          <Suspense fallback={<AppLoadingFallback />}>
+            {isUnlocked ? (
+              <Dashboard onLock={() => setIsUnlocked(false)} />
+            ) : (
+              <VaultLogin
+                onUnlock={() => {
+                  setIsUnlocked(true);
+                }}
+              />
+            )}
+          </Suspense>
         </div>
         <ToastContainer position="bottom-right" theme="light" role="status" aria-live="polite" />
       </div>

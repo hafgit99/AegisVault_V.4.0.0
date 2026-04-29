@@ -21,7 +21,6 @@ import {
   decryptWithPRF,
 } from '../lib/webAuthn';
 import { toast } from 'react-toastify';
-import jsPDF from 'jspdf';
 import { useTranslation } from 'react-i18next';
 import { VaultManager, type VaultProfile } from '../lib/VaultManager';
 import { WipeConfirmationModal } from './WipeConfirmationModal';
@@ -189,7 +188,8 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
     setShowSetupSecret(true);
   };
 
-  const handleDownloadKit = () => {
+  const handleDownloadKit = async () => {
+    const { default: jsPDF } = await import('jspdf');
     const doc = new jsPDF();
     doc.setFont('helvetica');
     doc.text('Aegis Vault - Emergency Kit', 20, 20);

@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const net = require('net');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 // ─────────────────────────────────────────────────────────────────
 // 🔒 GÜVENLİK: Ana süreçte plaintext kasa tutulmaz; yalnızca durum bilgisi ve kısa ömürlü IPC istekleri yönetilir
@@ -82,7 +82,7 @@ if (ALLOWLIST_EXTENSION_IDS.length === 0) {
 // Varsayılan davranış: STRICT allowlist zorunlu.
 // Geriye dönük uyumluluk gerektiğinde AEGIS_STRICT_ALLOWLIST_MODE=0 verilerek gevşetilebilir.
 const STRICT_ALLOWLIST_MODE = (process.env.AEGIS_STRICT_ALLOWLIST_MODE || '1') !== '0';
-const LOOPBACK_SYNC_ENABLED = process.env.AEGIS_ENABLE_LOOPBACK_SYNC !== '0';
+const LOOPBACK_SYNC_ENABLED = process.env.AEGIS_ENABLE_LOOPBACK_SYNC === '1';
 const PAIRING_SECRET = (process.env.AEGIS_EXTENSION_PAIRING_SECRET || '').trim();
 const PAIRING_TTL_MS = 10000;
 
@@ -1725,10 +1725,15 @@ function registerNativeHostWindows() {
     `;
 
     try {
-      execSync(`powershell.exe -NoProfile -Command "${psCommand.replace(/"/g, '\\"')}"`, {
-        timeout: 10000,
-        stdio: 'pipe',
-      });
+      const encodedCommand = Buffer.from(psCommand, 'utf16le').toString('base64');
+      execFileSync(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-EncodedCommand', encodedCommand],
+        {
+          timeout: 10000,
+          stdio: 'pipe',
+        }
+      );
       console.log('[Aegis Auto-Register] Native host registry entries updated');
       fs.writeFileSync(
         regCheckPath,

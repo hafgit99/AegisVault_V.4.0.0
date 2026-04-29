@@ -9,9 +9,9 @@ _Offline-first, end-to-end encrypted credential management for desktop and brows
 <img src="public/icon.png" alt="Aegis Vault" width="100">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-4.2.0-6c5ce7.svg)](https://github.com/hafgit99/AegisVault_V.4.0.0)
+[![Version](https://img.shields.io/badge/Version-4.2.3-6c5ce7.svg)](https://github.com/hafgit99/AegisVault_V.4.0.0)
 [![Tests](https://img.shields.io/badge/Tests-891%20passed-brightgreen.svg)](#test-coverage)
-[![Coverage](https://img.shields.io/badge/Coverage-89.4%25%20Lines-green.svg)](#test-coverage)
+[![Coverage](https://img.shields.io/badge/Coverage-89.43%25%20Lines-green.svg)](#test-coverage)
 [![Lint](https://img.shields.io/badge/Lint-0%20errors-success.svg)](#code-quality)
 [![Security](https://img.shields.io/badge/Security-Zero--Knowledge-0f766e.svg)](SECURITY.md)
 
@@ -28,7 +28,7 @@ _Offline-first, end-to-end encrypted credential management for desktop and brows
 ## Architecture Overview
 
 ```
-Aegis Vault 4.2
+Aegis Vault 4.2.3
 ├── Desktop App (Electron + React 19)
 ├── Browser Extension (Chrome / Firefox / Safari via WXT)
 ├── CLI (Node.js, TR/EN bilingual)
@@ -71,7 +71,7 @@ Aegis Vault 4.2
 | **Statements**          | 87.7%             |
 | **Branches**            | 75.4%             |
 | **Functions**           | 90.6%             |
-| **Lines**               | 89.4%             |
+| **Lines**               | 89.43%            |
 | **Mutation Resilience** | 76.0% (Stryker)   |
 
 ### Mutation Resilience (Security Services)
@@ -103,7 +103,7 @@ npm run test:mutate
 - **E2E Resilience**: Playwright-based end-to-end suite with auto-retrying `toPass` assertions and async state synchronization
 - **CI Quality Gate**: `npm run test:quality-gate` enforces lint + unit + regression + e2e
 
-## What's New in 4.2
+## What's New in 4.2.3
 
 ### Vault Modularization
 
@@ -135,7 +135,7 @@ Dedicated `argon2.worker.ts` for offloaded key derivation, preventing UI blockin
 
 ### E2E Stabilization & Resilience
 
-The v4.2.0 release includes a significantly hardened E2E test suite:
+The v4.2.3 release includes a significantly hardened E2E test suite and premium UI polish:
 
 - **Onboarding Wizard**: Resolved pointer event interception issues and implemented robust, linear step-validation logic.
 - **Search Hardening**: Optimized `SearchService` query normalization to ensure consistent matching for special characters (e.g., `@`).

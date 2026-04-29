@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [4.2.3] - 2026-04-29
+
+### Added
+
+- **Premium UI Polish**: Massive visual overhaul with glassmorphism, enhanced animations, and curated HSL color palettes.
+- **Donation Center**: New premium donation modal with support for multiple cryptocurrencies and QR code integration.
+- **Turkish Localization**: Expanded Turkish translations for all new security and UI components.
+
+### Fixed
+
+- **UI Consistency**: Standardized card density and hover effects across the dashboard.
+- **Category Management**: Improved sidebar navigation and active state tracking.
+
 ## [4.2.2] - 2026-04-14
 
 ### Fixed

@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+﻿import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
@@ -23,9 +23,11 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          // Ağır kütüphaneleri ayrı chunk'lara böl
+          // AÄŸÄ±r kÃ¼tÃ¼phaneleri ayrÄ± chunk'lara bÃ¶l
           'vendor-sql': ['sql.js'],
-          'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas'],
+          'vendor-pdf-core': ['jspdf'],
+          'vendor-pdf-table': ['jspdf-autotable'],
+          'vendor-canvas': ['html2canvas'],
           'vendor-ui': ['react-toastify', 'lucide-react'],
           'vendor-crypto': ['hash-wasm'],
           'vendor-i18n': ['i18next', 'react-i18next'],

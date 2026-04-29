@@ -24,13 +24,13 @@ export function GlowCard({
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setOpacity(1)}
       onMouseLeave={() => setOpacity(0)}
-      className={`relative overflow-hidden group/glow transition-transform duration-500 hover:scale-[1.01] ${className}`}
+      className={`relative overflow-hidden group/glow transition-shadow duration-200 ${className}`}
     >
       <div
         className="pointer-events-none absolute -inset-px transition-opacity duration-500 z-0"
         style={{
           opacity,
-          background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, rgba(135,159,132,0.18), transparent 40%)`,
+          background: `radial-gradient(520px circle at ${position.x}px ${position.y}px, rgba(135,159,132,0.1), transparent 42%)`,
         }}
       />
       <div className="relative z-10 w-full h-full flex flex-col">{children}</div>

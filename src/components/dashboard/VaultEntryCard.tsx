@@ -12,6 +12,8 @@ import {
   Tag,
   X,
   FileText,
+  ShieldCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import { TOTPWidget } from './TOTPWidget';
 import { getCategoryIcon } from '../../lib/getCategoryIcon';
@@ -80,6 +82,10 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
   const isIdentityRecord = p.category === 'Identities' && Boolean(p.identityDetails);
 
   const compact = viewDensity === 'compact';
+  const strength = p.strength || 0;
+  const strengthTone = strength > 80 ? 'strong' : strength > 40 ? 'average' : 'weak';
+  const strengthLabel =
+    strengthTone === 'strong' ? t('strong') : strengthTone === 'average' ? t('average') : t('weak');
 
   const maskCardNumber = (value: string) => {
     const digits = String(value || '').replace(/\D/g, '');
@@ -99,7 +105,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
     <article
       className={`vault-entry-card grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] ${compact ? 'gap-3 p-4' : 'gap-4 p-5 md:p-6'} rounded-[1.25rem] transition-all relative group/item`}
     >
-      <div className="flex items-start gap-5 relative z-10 min-w-0">
+      <div className="flex items-start gap-4 md:gap-5 relative z-10 min-w-0">
         <div
           className={`vault-entry-icon ${compact ? 'w-12 h-12' : 'w-14 h-14 md:w-16 md:h-16'} shrink-0 rounded-[1.25rem] flex items-center justify-center shadow-sm`}
         >
@@ -108,11 +114,13 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
           </div>
         </div>
         <div className="flex-1 min-w-0 flex flex-col gap-3">
-          <div className="min-h-7 flex items-center">
+          <div className="min-h-7 flex flex-wrap items-center gap-2">
             <h3
-              className={`${compact ? 'text-base' : 'text-lg'} font-bold text-[var(--color-deep-navy)] truncate flex items-center gap-2 min-w-0`}
+              className={`${compact ? 'text-base' : 'text-lg'} font-bold text-[var(--color-deep-navy)] truncate min-w-0`}
             >
               {p.title}
+            </h3>
+            <div className="vault-entry-badges flex min-w-0 flex-wrap items-center gap-1.5">
               {sharedSpaceName && (
                 <span className="rounded-full bg-[var(--color-sage-green)]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-sage-green)]">
                   {sharedSpaceName}
@@ -131,12 +139,20 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                   {t('pwned')}
                 </span>
               )}
-            </h3>
+              <span className={`vault-security-pill vault-security-pill-${strengthTone}`}>
+                {isVulnerable ? (
+                  <AlertTriangle className="h-3 w-3" />
+                ) : (
+                  <ShieldCheck className="h-3 w-3" />
+                )}
+                {strengthLabel}
+              </span>
+            </div>
           </div>
           <div
             className={`flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mt-1 ${compact ? 'text-xs' : 'text-sm'}`}
           >
-            <p className="opacity-60 font-[var(--font-geist-mono)] tracking-tight truncate flex items-center gap-2">
+            <p className="vault-entry-meta font-[var(--font-geist-mono)] tracking-tight truncate flex items-center gap-2">
               {isSitePasskeyRecord ? p.passkeyMetadata?.rp_id || p.username : p.username}
               {p.tags && p.tags.length > 0 && (
                 <span className="hidden xl:flex items-center gap-1 opacity-70 border border-black/10 px-1.5 py-0.5 rounded text-[10px] ml-2">
@@ -289,11 +305,11 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
               <div
                 className="h-full"
                 style={{
-                  width: `${p.strength || 0}%`,
+                  width: `${strength}%`,
                   backgroundColor:
-                    (p.strength || 0) > 80
+                    strength > 80
                       ? 'var(--color-sage-green)'
-                      : (p.strength || 0) > 40
+                      : strength > 40
                         ? '#f59e0b'
                         : '#ef4444',
                 }}
@@ -303,18 +319,10 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
               className="text-[11px] uppercase font-bold opacity-80"
               style={{
                 color:
-                  (p.strength || 0) > 80
-                    ? 'var(--color-sage-green)'
-                    : (p.strength || 0) > 40
-                      ? '#f59e0b'
-                      : '#ef4444',
+                  strength > 80 ? 'var(--color-sage-green)' : strength > 40 ? '#f59e0b' : '#ef4444',
               }}
             >
-              {(p.strength || 0) > 80
-                ? t('strong')
-                : (p.strength || 0) > 40
-                  ? t('average')
-                  : t('weak')}
+              {strengthLabel}
             </span>
           </div>
 
@@ -326,7 +334,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                     onEdit({ ...p });
                     toast.info(t('updateNow'));
                   }}
-                  className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-600 text-[10px] font-black uppercase tracking-tighter hover:bg-red-500 hover:text-white transition-all animate-pulse"
+                  className="vault-update-btn px-3 py-1.5 rounded-lg bg-red-500/10 text-red-600 text-[10px] font-black uppercase tracking-tighter hover:bg-red-500 hover:text-white transition-all"
                 >
                   {t('updateNow')}
                 </button>

@@ -27,6 +27,7 @@ native-host/
 # Environment & Secrets
 .env
 .env.*
+!.env.example
 *.p12
 *.pem
 *.jks
