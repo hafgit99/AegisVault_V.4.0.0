@@ -92,14 +92,19 @@ export function EmergencyAccessPanel({
   };
 
   return (
-    <div className="settings-panel rounded-3xl p-6 shadow-sm">
+    <div className="settings-panel v5-workflow-panel rounded-3xl p-6 shadow-sm">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <LifeBuoy className="h-5 w-5 text-[var(--color-sage-green)]" />
-            <h3 className="text-lg font-semibold tracking-tight text-[var(--color-deep-navy)] dark:text-white">
-              {t('emergencyAccessTitle')}
-            </h3>
+          <div className="flex items-center gap-3">
+            <div className="v5-workflow-icon flex h-11 w-11 items-center justify-center rounded-2xl">
+              <LifeBuoy className="h-5 w-5" />
+            </div>
+            <div>
+              <span className="v5-section-kicker">{t('emergencyKitButton')}</span>
+              <h3 className="mt-1 text-lg font-semibold tracking-tight text-[var(--color-deep-navy)] dark:text-white">
+                {t('emergencyAccessTitle')}
+              </h3>
+            </div>
           </div>
           <p className="max-w-2xl text-xs leading-relaxed text-[var(--color-deep-navy)]/70 dark:text-white/70">
             {t('emergencyAccessDesc')}

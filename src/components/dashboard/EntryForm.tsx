@@ -12,6 +12,8 @@ import {
   KeyRound,
   FileText,
   Camera,
+  History,
+  RotateCcw,
 } from 'lucide-react';
 import { useVault } from '../../contexts/VaultContext';
 import {
@@ -78,6 +80,32 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
     : undefined;
   const sharingFocusContext = initialEntry?.ui_focus_context;
   const sharingFocusLabel = initialEntry?.ui_focus_label;
+  const [historyList, setHistoryList] = useState<VaultEntry[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+
+  useState(() => {
+    if (initialEntry?.id) {
+      setIsHistoryLoading(true);
+      vaultService.decryptHistory(initialEntry as VaultEntry).then((list) => {
+        setHistoryList(list);
+        setIsHistoryLoading(false);
+      });
+    }
+  });
+
+  const handleRestore = (version: VaultEntry) => {
+    if (window.confirm(t('restoreConfirm'))) {
+      setNewEntry({
+        ...newEntry,
+        ...version,
+        id: newEntry.id, // Keep current ID
+        updated_at: new Date().toISOString(),
+      });
+      setTotpInput(version.totpSecret || '');
+      setShowTotpSection(!!version.totpSecret);
+      toast.success(t('itemRestored'));
+    }
+  };
 
   const updatePrimarySharing = (
     updater: (
@@ -236,12 +264,18 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
     <>
       <form
         onSubmit={handleSubmit}
-        className="entry-form-surface flex flex-col gap-4 p-5 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-4 duration-300"
+        className="entry-form-surface v5-entry-form flex flex-col gap-4 p-5 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-4 duration-300"
       >
-        <div className="flex justify-between items-center mb-1">
-          <h3 className="font-semibold text-[var(--color-deep-navy)]">
-            {t('createZeroKnowledgeEntry')}
-          </h3>
+        <div className="v5-entry-form-header flex justify-between items-start gap-4 mb-1">
+          <div>
+            <span className="v5-section-kicker">{t('v5EntryRecord')}</span>
+            <h3 className="mt-2 font-semibold text-[var(--color-deep-navy)]">
+              {t('createZeroKnowledgeEntry')}
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-[var(--color-deep-navy)]/60 dark:text-white/60">
+              {t('v5EntryRecordDesc')}
+            </p>
+          </div>
           <button type="button" onClick={onClose} className="p-1 rounded-md entry-action-btn-muted">
             <X className="w-4 h-4" />
           </button>
@@ -262,7 +296,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
           </div>
         ) : null}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="v5-entry-grid grid grid-cols-2 gap-4">
           <input
             required
             type="text"
@@ -493,7 +527,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
           </div>
 
           {/* Sharing Assignment */}
-          <div className="col-span-2 rounded-xl border border-[var(--color-sage-green)]/20 bg-[var(--color-sage-green)]/5 p-4">
+          <div className="v5-entry-section col-span-2 rounded-xl border border-[var(--color-sage-green)]/20 bg-[var(--color-sage-green)]/5 p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <div className="text-[10px] uppercase font-bold tracking-widest text-[var(--color-sage-green)]">
@@ -658,7 +692,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
           ) : null}
 
           {isCardCategory ? (
-            <div className="col-span-2 rounded-xl border border-[var(--color-sage-green)]/20 bg-[var(--color-sage-green)]/5 p-4">
+            <div className="v5-entry-section col-span-2 rounded-xl border border-[var(--color-sage-green)]/20 bg-[var(--color-sage-green)]/5 p-4">
               <div className="mb-3 text-[10px] uppercase font-bold tracking-widest text-[var(--color-sage-green)]">
                 {t('cardDetailsSectionTitle')}
               </div>
@@ -742,7 +776,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
           ) : null}
 
           {isIdentityCategory ? (
-            <div className="col-span-2 rounded-xl border border-[var(--color-sage-green)]/20 bg-[var(--color-sage-green)]/5 p-4">
+            <div className="v5-entry-section col-span-2 rounded-xl border border-[var(--color-sage-green)]/20 bg-[var(--color-sage-green)]/5 p-4">
               <div className="mb-3 text-[10px] uppercase font-bold tracking-widest text-[var(--color-sage-green)]">
                 {t('identityDetailsSectionTitle')}
               </div>
@@ -823,7 +857,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                   <KeyRound className="w-3.5 h-3.5" /> {t('addTOTP', 'Add 2FA (TOTP)')}
                 </button>
               ) : (
-                <div className="entry-totp-box rounded-xl p-3 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="entry-totp-box v5-totp-box rounded-xl p-3 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] uppercase font-bold tracking-widest text-blue-600 flex items-center gap-1">
                       <KeyRound className="w-3 h-3" /> {t('totpSetup', 'TOTP Setup')}
@@ -907,42 +941,53 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
             </div>
           )}
 
-          {/* Secure Notes */}
-          {newEntry.category !== 'Notes' && (
-            <div className="col-span-2">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <FileText className="w-3 h-3 text-amber-500" />
-                <span className="text-[10px] uppercase font-bold tracking-widest text-amber-600">
-                  {t('secureNotes', 'Secure Notes')}
+          {/* Secure Notes & Attachment Upload */}
+          <div className="v5-secure-notes-block v5-notes-attachments-block col-span-2">
+            {newEntry.category !== 'Notes' && (
+              <div className="v5-notes-panel">
+                <div className="mb-2 flex items-center gap-1.5">
+                  <FileText className="w-3 h-3 text-amber-500" />
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-amber-600">
+                    {t('secureNotes', 'Secure Notes')}
+                  </span>
+                </div>
+                <textarea
+                  placeholder={t('secureNotesPlaceholder', 'Add encrypted notes (optional)...')}
+                  value={newEntry.notes || ''}
+                  onChange={(e) => setNewEntry({ ...newEntry, notes: e.target.value })}
+                  className="entry-field w-full rounded-lg py-2.5 px-3 text-sm font-medium outline-none resize-none overflow-y-auto"
+                />
+              </div>
+            )}
+
+            <div className="v5-attachment-block">
+              <div className="mb-3 flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <FileUp className="h-3.5 w-3.5 text-[var(--color-sage-green)]" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-sage-green)]">
+                    {t('encryptedAttachments', 'Şifreli ekler')}
+                  </span>
+                </div>
+                <span className="text-[11px] font-semibold text-[var(--color-deep-navy)]/55 dark:text-white/55">
+                  {t('attachmentMaxSize', 'Maks. 50MB')}
                 </span>
               </div>
-              <textarea
-                placeholder={t('secureNotesPlaceholder', 'Add encrypted notes (optional)...')}
-                value={newEntry.notes || ''}
-                onChange={(e) => setNewEntry({ ...newEntry, notes: e.target.value })}
-                className="entry-field w-full rounded-lg py-2.5 px-3 h-20 text-sm font-medium outline-none resize-none overflow-y-auto"
-              />
-            </div>
-          )}
-
-          {/* Attachment Upload */}
-          <div className="col-span-2 mt-1">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <input
-                  type="file"
-                  id="aegis-file-upload"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
-                <label
-                  htmlFor="aegis-file-upload"
-                  className="cursor-pointer text-xs flex items-center gap-1.5 px-3 py-1.5 totp-btn-secondary transition-all font-bold rounded-lg border border-[var(--color-sage-green)]/30"
-                >
-                  <Paperclip className="w-3.5 h-3.5" /> {t('uploadAttachment')}
-                </label>
-              </div>
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="file"
+                    id="aegis-file-upload"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                  <label
+                    htmlFor="aegis-file-upload"
+                    className="v5-upload-trigger cursor-pointer text-xs flex items-center gap-1.5 px-3 py-2 totp-btn-secondary transition-all font-bold rounded-lg border border-[var(--color-sage-green)]/30"
+                  >
+                    <Paperclip className="w-3.5 h-3.5" /> {t('uploadAttachment')}
+                  </label>
+                </div>
               {newAttachments.length > 0 && (
                 <div className="flex flex-col gap-1.5 mt-2 p-2 entry-notes-box rounded-lg shadow-inner">
                   <div className="text-[10px] uppercase font-bold text-yellow-600 tracking-wider flex items-center gap-1">
@@ -1008,11 +1053,62 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           </div>
+
+          {/* Item Versioning History Section */}
+          {initialEntry?.id && (
+            <div className="v5-entry-section col-span-2 rounded-xl border border-[var(--color-sage-green)]/20 bg-[var(--color-sage-green)]/5 p-4 mt-2">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <History className="h-3.5 w-3.5 text-[var(--color-sage-green)]" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-sage-green)]">
+                    {t('itemHistory')}
+                  </span>
+                </div>
+                {isHistoryLoading && (
+                  <div className="animate-spin h-3 w-3 border-2 border-[var(--color-sage-green)] border-t-transparent rounded-full" />
+                )}
+              </div>
+
+              {historyList.length === 0 ? (
+                <p className="text-xs text-[var(--color-deep-navy)]/50 italic">{t('noHistory')}</p>
+              ) : (
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                  {historyList.map((version, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-2 rounded-lg bg-white/50 border border-black/5 hover:border-[var(--color-sage-green)]/30 transition-all"
+                    >
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-xs font-semibold text-[var(--color-deep-navy)]">
+                          {t('versionFrom', {
+                            date: new Date(version.updated_at || '').toLocaleString(),
+                          })}
+                        </span>
+                        <span className="text-[10px] opacity-60">
+                          {version.username || t('noUsername', 'No username')}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRestore(version)}
+                        className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)] hover:bg-[var(--color-sage-green)]/20 text-[10px] font-bold transition-all"
+                        title={t('restoreVersion')}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        {t('restoreVersion')}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="flex justify-end mt-2">
+        <div className="v5-entry-actions flex justify-end mt-2">
           <button
             type="submit"
             className="flex items-center gap-2 bg-[var(--color-sage-green)] hover:brightness-90 text-[var(--color-deep-navy)] px-5 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all active:scale-95"

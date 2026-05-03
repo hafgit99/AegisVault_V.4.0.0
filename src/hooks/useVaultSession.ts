@@ -122,9 +122,13 @@ export function useVaultSession(
   }, []);
 
   const handleCopyItem = useCallback(
-    (id: number, pass: string) => {
-      copy(id, pass);
-      toast.success(t('copiedClipboard'));
+    async (id: number, pass: string) => {
+      const copied = await copy(id, pass);
+      if (copied) {
+        toast.success(t('copiedClipboard'));
+      } else {
+        toast.error(t('clipboardCopyFailed', 'Clipboard permission denied. Copy failed.'));
+      }
     },
     [copy, t]
   );

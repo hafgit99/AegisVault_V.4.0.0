@@ -22,14 +22,17 @@ export function CategorySidebar({ onDownloadEmergencyKit, isGeneratingKit }: Cat
   return (
     <>
       {/* Categories */}
-      <GlowCard className="category-surface rounded-xl p-5 flex-1 flex flex-col">
-        <h3 className="mb-3 text-sm font-semibold opacity-60 uppercase tracking-widest">
-          {t('categoriesTitle')}
-        </h3>
+      <GlowCard className="category-surface v5-rail-card v5-category-card rounded-xl p-5 flex-1 flex flex-col">
+        <div className="v5-rail-heading mb-4">
+          <Hash className="h-4 w-4" />
+          <h3 className="text-sm font-semibold uppercase tracking-widest">
+            {t('categoriesTitle')}
+          </h3>
+        </div>
         <div className="flex flex-col gap-2.5">
           <button
             onClick={() => setCategoryFilter('')}
-            className={`category-item flex items-center justify-between px-3 py-2.5 rounded-xl transition-all w-full text-left ${
+            className={`category-item v5-category-item flex items-center justify-between px-3 py-2.5 rounded-xl transition-all w-full text-left ${
               categoryFilter === '' ? 'category-item-active shadow-sm' : 'bg-transparent'
             }`}
           >
@@ -42,7 +45,7 @@ export function CategorySidebar({ onDownloadEmergencyKit, isGeneratingKit }: Cat
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
-              className={`category-item flex items-center justify-between px-3 py-2.5 rounded-xl transition-all w-full text-left ${
+              className={`category-item v5-category-item flex items-center justify-between px-3 py-2.5 rounded-xl transition-all w-full text-left ${
                 categoryFilter === cat ? 'category-item-active shadow-sm' : 'bg-transparent'
               }`}
             >
@@ -56,7 +59,7 @@ export function CategorySidebar({ onDownloadEmergencyKit, isGeneratingKit }: Cat
           <div className="h-px sidebar-divider my-1 w-full" />
           <button
             onClick={() => setCategoryFilter('Trash')}
-            className={`category-item flex items-center justify-between px-3 py-2.5 rounded-xl transition-all w-full text-left ${
+            className={`category-item v5-category-item flex items-center justify-between px-3 py-2.5 rounded-xl transition-all w-full text-left ${
               categoryFilter === 'Trash'
                 ? 'category-item-active shadow-sm text-red-600 dark:text-red-400'
                 : 'bg-transparent text-gray-500 dark:text-gray-400'
@@ -94,9 +97,9 @@ export function CategorySidebar({ onDownloadEmergencyKit, isGeneratingKit }: Cat
       </GlowCard>
 
       {/* Offline PWA & Emergency Kit */}
-      <GlowCard className="offline-surface rounded-xl shadow-lg p-5">
+      <GlowCard className="offline-surface v5-rail-card v5-offline-card rounded-xl shadow-lg p-5">
         <div className="flex flex-col items-center text-center gap-3 relative z-10">
-          <div className="w-11 h-11 bg-white/80 dark:bg-white/10 rounded-xl flex items-center justify-center shadow-inner">
+          <div className="v5-offline-icon w-11 h-11 bg-white/80 dark:bg-white/10 rounded-xl flex items-center justify-center shadow-inner">
             <ShieldCheck className="w-6 h-6 text-[var(--color-sage-green)]" />
           </div>
           <div>

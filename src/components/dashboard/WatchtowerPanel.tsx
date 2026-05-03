@@ -32,28 +32,30 @@ export function WatchtowerPanel() {
   const hibpPolicyLocked = securityModeProfile === 'maximum';
 
   return (
-    <GlowCard className="watchtower-surface rounded-xl p-5 relative">
-      <div className="flex items-center gap-2 mb-3">
-        <ShieldAlert className="w-4 h-4 text-[var(--color-deep-navy)]/60" />
-        <h3 className="text-sm font-semibold opacity-60 uppercase tracking-widest">
+    <GlowCard className="watchtower-surface v5-rail-card v5-watchtower-card rounded-xl p-5 relative">
+      <div className="v5-rail-heading mb-4">
+        <ShieldAlert className="w-4 h-4" />
+        <h3 className="text-sm font-semibold uppercase tracking-widest">
           {t('watchtowerTitle')}
         </h3>
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <div className="watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
+        <div className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
           <div className="flex items-center gap-2">
             <AlertTriangle
               className={`w-4 h-4 ${watchtower.weak > 0 ? 'text-red-500' : 'text-[var(--color-sage-green)]'}`}
             />
             <span className="text-sm font-semibold">{t('weakPasswords')}</span>
           </div>
-          <span className={`font-bold ${watchtower.weak > 0 ? 'text-red-500' : 'text-black/50'}`}>
+          <span
+            className={`v5-watchtower-value font-bold ${watchtower.weak > 0 ? 'text-red-500' : 'text-black/50'}`}
+          >
             {watchtower.weak}
           </span>
         </div>
 
-        <div className="watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
+        <div className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
           <div className="flex items-center gap-2">
             <KeyRound
               className={`w-4 h-4 ${watchtower.reused > 0 ? 'text-amber-500' : 'text-[var(--color-sage-green)]'}`}
@@ -61,37 +63,41 @@ export function WatchtowerPanel() {
             <span className="text-sm font-semibold">{t('reusedPasswords')}</span>
           </div>
           <span
-            className={`font-bold ${watchtower.reused > 0 ? 'text-amber-500' : 'text-black/50'}`}
+            className={`v5-watchtower-value font-bold ${watchtower.reused > 0 ? 'text-amber-500' : 'text-black/50'}`}
           >
             {watchtower.reused}
           </span>
         </div>
 
-        <div className="watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
+        <div className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
           <div className="flex items-center gap-2">
             <Clock4
               className={`w-4 h-4 ${watchtower.old > 0 ? 'text-blue-500' : 'text-[var(--color-sage-green)]'}`}
             />
             <span className="text-sm font-semibold">{t('oldPasswords')}</span>
           </div>
-          <span className={`font-bold ${watchtower.old > 0 ? 'text-blue-500' : 'text-black/50'}`}>
+          <span
+            className={`v5-watchtower-value font-bold ${watchtower.old > 0 ? 'text-blue-500' : 'text-black/50'}`}
+          >
             {watchtower.old}
           </span>
         </div>
 
-        <div className="watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
+        <div className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
           <div className="flex items-center gap-2">
             <ShieldAlert
               className={`w-4 h-4 ${watchtower.pwned > 0 ? 'text-red-500' : 'text-[var(--color-sage-green)]'}`}
             />
             <span className="text-sm font-semibold">{t('pwnedPasswords')}</span>
           </div>
-          <span className={`font-bold ${watchtower.pwned > 0 ? 'text-red-500' : 'text-black/50'}`}>
+          <span
+            className={`v5-watchtower-value font-bold ${watchtower.pwned > 0 ? 'text-red-500' : 'text-black/50'}`}
+          >
             {watchtower.pwned}
           </span>
         </div>
 
-        <div className="watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
+        <div className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
           <div className="flex items-center gap-2">
             <AtSign
               className={`w-4 h-4 ${watchtower.aliasAtRisk > 0 ? 'text-amber-500' : 'text-[var(--color-sage-green)]'}`}
@@ -99,13 +105,13 @@ export function WatchtowerPanel() {
             <span className="text-sm font-semibold">{t('watchtowerAliasAtRisk')}</span>
           </div>
           <span
-            className={`font-bold ${watchtower.aliasAtRisk > 0 ? 'text-amber-500' : 'text-black/50'}`}
+            className={`v5-watchtower-value font-bold ${watchtower.aliasAtRisk > 0 ? 'text-amber-500' : 'text-black/50'}`}
           >
             {watchtower.aliasAtRisk}
           </span>
         </div>
 
-        <div className="watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
+        <div className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
           <div className="flex items-center gap-2">
             <RefreshCw
               className={`w-4 h-4 ${watchtower.aliasNeedsRotation > 0 ? 'text-sky-500' : 'text-[var(--color-sage-green)]'}`}
@@ -113,7 +119,7 @@ export function WatchtowerPanel() {
             <span className="text-sm font-semibold">{t('watchtowerAliasNeedsRotation')}</span>
           </div>
           <span
-            className={`font-bold ${watchtower.aliasNeedsRotation > 0 ? 'text-sky-500' : 'text-black/50'}`}
+            className={`v5-watchtower-value font-bold ${watchtower.aliasNeedsRotation > 0 ? 'text-sky-500' : 'text-black/50'}`}
           >
             {watchtower.aliasNeedsRotation}
           </span>

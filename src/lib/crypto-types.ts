@@ -308,6 +308,10 @@ export interface VaultEntry {
   encrypted_alias_details?: string; // AES-GCM encrypted alias metadata JSON
   alias_details_iv?: string; // IV for alias metadata encryption
 
+  // Item Versioning & History (Encrypted)
+  encrypted_history?: string; // AES-GCM encrypted JSON array of previous VaultEntry states
+  history_iv?: string; // IV for history encryption
+
   // Decrypted fields for UI (never persisted)
   pass?: string;
   totpSecret?: string; // Decrypted TOTP secret (only in memory)
@@ -316,6 +320,7 @@ export interface VaultEntry {
   cardDetails?: VaultCardDetails | null; // Decrypted card details (only in memory)
   identityDetails?: VaultIdentityDetails | null; // Decrypted identity details (only in memory)
   aliasDetails?: VaultAliasDetails | null; // Decrypted alias metadata (only in memory)
+  history?: VaultEntry[]; // Decrypted history of previous versions (only in memory)
   sharing?: any[]; // Canonical sharing metadata for UI/export helpers
   ui_focus_context?: 'sharing_issue' | 'sharing_audit'; // Transient UI hint for edit flows
   ui_focus_label?: string; // Transient UI label shown in edit flows

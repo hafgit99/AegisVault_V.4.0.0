@@ -1,47 +1,56 @@
 # Aegis Vault Security Policy
 
-Last updated: 2026-04-01
+Last updated: 2026-05-03
 
 ## Security model
 
-Aegis Vault is designed as an offline-first, local zero-knowledge password manager.
+Aegis Vault is designed as an **offline-first, zero-knowledge password manager** with end-to-end encrypted cross-device sync capabilities.
 
-- Key derivation: `Argon2id`
-- Encryption: `AES-256-GCM`
-- Extension/Desktop bridge: challenge-response with integrity verification
-- Biometric unlock path: `WebAuthn` (device-bound)
+| Layer                  | Implementation                                  |
+| ---------------------- | ----------------------------------------------- |
+| Key derivation         | `Argon2id` (Web Worker + WASM fallback)         |
+| Encryption             | `AES-256-GCM` with per-field IV management      |
+| Vault storage          | `SQLCipher` (WASM) with OPFS / IDB fallback     |
+| Backup integrity       | `HMAC-SHA256` envelope verification             |
+| Sync transport         | `ECDH + AES-GCM` end-to-end encryption         |
+| Sharing transport      | `ECDH` receiver pairing with replay protection  |
+| Extension bridge       | Challenge-response with integrity verification  |
+| Biometric unlock       | `WebAuthn` (device-bound credentials)           |
+| Release signing        | `Ed25519` manifest + trust chain verification   |
 
-Master credentials and decrypted vault data are not intended to leave the user's device as plaintext.
+Master credentials and decrypted vault data **never leave the user's device as plaintext**, including during sync relay operations.
 
 ## Supported versions
 
 Security fixes are currently provided for:
 
 - `main` (development line)
-- Latest production tag (`v4.x`)
+- Latest production tag (`v5.x`)
 
-Older tags may be unsupported for security patches.
+Older tags (`v4.x` and below) are no longer receiving security patches.
 
 ## Private vulnerability reporting
 
-Do not open public issues for security vulnerabilities.
+**Do not open public issues for security vulnerabilities.**
 
 Primary contact:
 
 - Email: `admin@aegisvault.xyz`
 
-Recommended report content:
+### Recommended report content
 
-1. Affected component and version/commit.
-2. Reproduction steps with clear preconditions.
-3. Impact and likely attack path.
-4. Optional PoC and mitigations.
+1. Affected component and version/commit
+2. Reproduction steps with clear preconditions
+3. Impact and likely attack path
+4. Optional PoC and mitigations
 
-Target response times:
+### Target response times
 
-- Acknowledgement: within 48 hours
-- Initial triage: within 5 business days
-- Critical fix target: within 10 days (when feasible)
+| Phase               | Target            |
+| ------------------- | ----------------- |
+| Acknowledgement     | Within 48 hours   |
+| Initial triage      | Within 5 business days |
+| Critical fix target | Within 10 days (when feasible) |
 
 ## Coordinated disclosure policy
 
@@ -56,14 +65,15 @@ We follow coordinated disclosure:
 
 The project is in active independent-audit preparation.
 
-Current policy:
+### Current policy
 
 - Threat model and whitepaper are published in [`guvenlik/belgeler`](guvenlik/belgeler).
 - Static analysis runs in CI (`CodeQL`, `Semgrep`) for pull requests and pushes.
-- High-risk areas (crypto, vault storage, bridge auth, import/export, sync) require explicit security review.
-- Security-impacting changes should include tests and updated documentation.
+- High-risk areas (crypto, vault storage, bridge auth, import/export, sync, alias provisioning) require explicit security review.
+- Security-impacting changes must include tests and updated documentation.
+- Release trust chain (SBOM + Ed25519 signing + provenance verification) is enforced for production builds.
 
-Planned external review channels:
+### Planned external review channels
 
 - OSTIF proposal submission
 - Mozilla MOSS submission
@@ -72,15 +82,16 @@ Planned external review channels:
 
 See:
 
-- [`guvenlik/belgeler/README_AUDIT_PREP_EN.md`](guvenlik/belgeler/README_AUDIT_PREP_EN.md)
 - [`guvenlik/belgeler/AUDIT_APPLICATION_PACK_EN.md`](guvenlik/belgeler/AUDIT_APPLICATION_PACK_EN.md)
 
 ## In-scope components
 
-- `src/vaultService.ts`
-- `src/lib/*` (crypto, import/export, sync, bridge, emergency access)
+- `src/vaultService.ts` and `src/lib/vault/*` (modular vault services)
+- `src/lib/*` (crypto, import/export, sync, bridge, emergency access, alias provisioning, sharing transport)
 - `electron-main.cjs` and native host scripts
 - `aegis-wxt/` browser extension runtime
+- `relay/` sync relay server
+- `scripts/` release signing and trust chain tooling
 
 ## Out-of-scope examples
 
@@ -94,6 +105,10 @@ See:
 - Never commit secrets, signing keys, private certificates, or `.env` credentials.
 - Keep dependency updates and lockfiles reviewed.
 - Run local checks before release candidates:
-  - `npm run lint`
-  - `npm run test:unit`
-  - `npm run test:security-regression`
+  ```bash
+  npm run lint
+  npm run test
+  npm run test:security-regression
+  npm run test:quality-gate
+  npm run release:trust-chain
+  ```

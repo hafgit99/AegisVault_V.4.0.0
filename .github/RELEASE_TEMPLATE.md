@@ -1,60 +1,104 @@
-# 🛡️ Aegis Vault v4.0.0 Release
+# 🛡️ Aegis Vault v5.0.0 Release
 
 ## 🌟 Overview
 
-We are thrilled to announce the official release of **Aegis Vault V.4.0.0**. This version represents a complete overhaul of our security architecture and UI, bringing a premium, military-grade protection experience to your fingertips.
+We are thrilled to announce **Aegis Vault 5.0** — the most significant release in the project's history. This major version brings a completely reimagined Security Center with active remediation, a full-featured alias privacy system, end-to-end encrypted cross-device sync, and a premium V5 design system.
 
 ---
 
-## ✨ What's New?
+## ⚡ Highlights
 
-### 🔒 Security & Privacy
+### 🔒 Security Center 2.0
 
-- **AES-256 Military Encryption**: Upgraded core encryption engine using `hash-wasm` for lightning-fast, secure hashing.
-- **Zero-Knowledge Architecture**: Your master password never leaves your device. Total privacy, guaranteed.
-- **Smart Trash System**: Introducing a 30-day recovery window for accidentally deleted items.
+- **Focused Triage Mode** — Step-through wizard for systematically resolving security issues by severity
+- **Automated Alias Rotation** — One-click API-driven rotation for compromised email aliases
+- **8 Security Metrics** — Missing 2FA, passkey readiness, aging credentials, sharing gaps, alias exposure, alias rotation, device trust, local risk
+- **7-Day Trend Analytics** — Reviewed, reopened, and auto-resolved issue tracking
 
-### 🎨 Design & Experience
+### 🎭 Alias Privacy System
 
-- **Premium Glassmorphism UI**: A stunning new interface with smooth Framer Motion animations.
-- **Sage Green & Cloud Dancer Themes**: Curated color palettes designed for visual excellence and reduced eye strain.
-- **Responsive Navigation**: Seamless switching between Vault, Generator, and Settings.
+- **Quick Alias Modal** — Generate privacy-preserving masked emails in seconds
+- **Multi-Provider Support** — SimpleLogin, Addy.io, Firefox Relay, Apple Hide My Email, and custom providers
+- **API-Driven Provisioning** — Direct integration with provider APIs for real-time alias creation
+- **Watchtower Risk Scoring** — Per-alias risk evaluation with exposure tracking and rotation recommendations
 
-### 🌐 Cross-Platform Harmony
+### ☁️ Sync Relay
 
-- **Desktop (Electron)**: Native experience for Windows, macOS, and Linux.
-- **Browser Extension**: Full support for Chrome, Edge, and Firefox.
-- **Web App / PWA**: Access your vault from any modern browser.
+- **Push/Pull Architecture** — Manual encrypted sync with sequence-based conflict tracking
+- **Self-Hosted Option** — Deploy your own HTTPS-only relay server for full data sovereignty
+- **Zero-Knowledge Transport** — All data encrypted client-side before transmission
+
+### 🎨 V5 Design System
+
+- **Glassmorphism UI** — Premium visual overhaul with Framer Motion micro-animations
+- **Full Dark Mode** — Pixel-perfect dark theme with high-contrast accessibility
+- **Geist Typography** — Professional font stack (Geist Sans / Geist Mono)
+- **Adaptive Layout** — View density controls (compact / comfortable) with responsive design
 
 ---
 
-## 📦 Installation Guide
+## 📊 Quality Metrics
 
-### Windows (Manual)
+| Metric            | Score              |
+| ----------------- | ------------------ |
+| Unit Tests        | 891+ (all passing) |
+| E2E Tests         | 189 (16 spec files)|
+| Statement Coverage| 87.36%             |
+| Line Coverage     | 89.43%             |
+| Mutation Score    | 76.0% (Stryker)    |
+| Lint Errors       | 0                  |
 
-1. Download `Aegis-Vault-Setup-4.0.0.exe` below.
-2. Run the installer and follow the premium setup wizard.
+---
+
+## 📦 Installation
+
+### Windows
+
+1. Download `Aegis-Vault-Setup-5.0.0.exe` below.
+2. Run the installer and follow the setup wizard.
 
 ### macOS
 
-1. Download `Aegis-Vault-4.0.0.dmg`.
+1. Download `Aegis-Vault-5.0.0.dmg`.
 2. Drag **Aegis Vault** to your Applications folder.
 
 ### Linux
 
-1. Download `Aegis-Vault-4.0.0.AppImage`.
-2. Right-click -> Properties -> Permissions -> **Allow executing file as program**.
+1. Download `Aegis-Vault-5.0.0.AppImage`.
+2. Mark as executable: `chmod +x Aegis-Vault-5.0.0.AppImage`
 3. Run the file.
+
+### From Source
+
+```bash
+git clone https://github.com/hafgit99/AegisVault_V.4.0.0.git
+cd aegis-4.0
+npm install
+npm run build
+npm run build:electron
+```
 
 ---
 
-## 🔒 Verification (Check-sums)
+## 🔒 Verification
 
-| Software              | Format    | SHA-256 Checksum     |
+| Platform              | Format    | SHA-256 Checksum     |
 | :-------------------- | :-------- | :------------------- |
 | **Windows Installer** | .exe      | `[HASH_PLACEHOLDER]` |
 | **macOS Disk Image**  | .dmg      | `[HASH_PLACEHOLDER]` |
 | **Linux AppImage**    | .AppImage | `[HASH_PLACEHOLDER]` |
+
+### Release Trust Chain
+
+This release is signed with Ed25519 and includes:
+- **SBOM** — Software Bill of Materials
+- **Provenance** — Build provenance attestation
+- **Signed Manifest** — Ed25519 release manifest
+
+Verify the release:
+```bash
+npm run release:verify
+```
 
 ---
 
@@ -63,9 +107,9 @@ We are thrilled to announce the official release of **Aegis Vault V.4.0.0**. Thi
 Aegis Vault is built with ❤️ by **hafgit99**.
 If you value your digital security, consider supporting us:
 
-- **Crypto Donation**: Use the **Donation Modal** directly inside the application.
+- **Crypto Donation**: Use the **Donation Modal** directly inside the application
 - **Star on GitHub**: Help us grow by starring the repo!
 
 ---
 
-**Full Changelog**: [v3.9.0...v4.0.0](https://github.com/hafgit99/AegisVault_V.4.0.0/compare/v3.9.0...v4.0.0)
+**Full Changelog**: [v4.2.3...v5.0.0](https://github.com/hafgit99/AegisVault_V.4.0.0/compare/v4.2.3...v5.0.0)

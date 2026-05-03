@@ -235,12 +235,12 @@ export function AliasIdentityPanel({ entry, setEntry }: AliasIdentityPanelProps)
         />
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="alias-action-row mt-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={queueAliasRotation}
           disabled={!entry.aliasDetails?.email}
-          className="px-3 py-2 rounded-lg bg-slate-500/10 text-slate-700 dark:text-slate-200 border border-slate-500/20 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
+          className="alias-action-btn px-3 py-2 rounded-lg bg-slate-500/10 text-slate-700 dark:text-slate-200 border border-slate-500/20 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           {t('aliasQueueRotation')}
@@ -249,7 +249,7 @@ export function AliasIdentityPanel({ entry, setEntry }: AliasIdentityPanelProps)
           type="button"
           onClick={rotateAlias}
           disabled={!entry.aliasDetails?.email}
-          className="px-3 py-2 rounded-lg bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/20 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
+          className="alias-action-btn px-3 py-2 rounded-lg bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/20 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           {t('aliasRotate')}
@@ -258,7 +258,7 @@ export function AliasIdentityPanel({ entry, setEntry }: AliasIdentityPanelProps)
           type="button"
           onClick={markCompromised}
           disabled={!entry.aliasDetails?.email}
-          className="px-3 py-2 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
+          className="alias-action-btn px-3 py-2 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
         >
           <ShieldAlert className="w-3.5 h-3.5" />
           {t('aliasMarkExposed')}
@@ -269,7 +269,7 @@ export function AliasIdentityPanel({ entry, setEntry }: AliasIdentityPanelProps)
           disabled={
             !entry.aliasDetails?.history?.some((item) => item.email !== entry.aliasDetails?.email)
           }
-          className="px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
+          className="alias-action-btn px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
         >
           <Undo2 className="w-3.5 h-3.5" />
           {t('aliasRollback')}
@@ -282,7 +282,7 @@ export function AliasIdentityPanel({ entry, setEntry }: AliasIdentityPanelProps)
               aliasDetails: null,
             }))
           }
-          className="px-3 py-2 rounded-lg bg-white/70 text-[var(--color-deep-navy)] border border-black/10 dark:bg-white/10 dark:text-white text-xs font-bold flex items-center gap-1.5"
+          className="alias-action-btn px-3 py-2 rounded-lg bg-white/70 text-[var(--color-deep-navy)] border border-black/10 dark:bg-white/10 dark:text-white text-xs font-bold flex items-center gap-1.5"
         >
           <AtSign className="w-3.5 h-3.5" />
           {t('aliasClear')}

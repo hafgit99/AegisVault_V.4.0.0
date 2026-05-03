@@ -252,7 +252,6 @@ export class SecurityCenterService {
       });
       credentialEntries
         .filter((entry) => !hasSecondFactor(entry))
-        .slice(0, 6)
         .forEach((entry) => {
           triageItems.push({
             issueType: 'missing_second_factor',
@@ -276,7 +275,6 @@ export class SecurityCenterService {
       });
       credentialEntries
         .filter(isPasskeyReady)
-        .slice(0, 6)
         .forEach((entry) => {
           triageItems.push({
             issueType: 'passkey_ready',
@@ -300,7 +298,6 @@ export class SecurityCenterService {
       });
       credentialEntries
         .filter(isAgingCredential)
-        .slice(0, 6)
         .forEach((entry) => {
           triageItems.push({
             issueType: 'aging_credentials',
@@ -324,7 +321,6 @@ export class SecurityCenterService {
       });
       activeEntries
         .filter(hasSensitiveSharingGap)
-        .slice(0, 6)
         .forEach((entry) => {
           triageItems.push({
             issueType: 'sensitive_sharing',
@@ -348,7 +344,6 @@ export class SecurityCenterService {
       });
       activeEntries
         .filter(hasAliasExposure)
-        .slice(0, 6)
         .forEach((entry) => {
           triageItems.push({
             issueType: 'alias_exposure',
@@ -372,7 +367,6 @@ export class SecurityCenterService {
       });
       activeEntries
         .filter(needsAliasRotation)
-        .slice(0, 6)
         .forEach((entry) => {
           triageItems.push({
             issueType: 'alias_rotation',
@@ -394,7 +388,7 @@ export class SecurityCenterService {
         messageKey: 'securityCenterIssueDeviceTrust',
         actionKey: 'securityCenterActionReviewDevices',
       });
-      riskyDesktopPairings.slice(0, 4).forEach((pairing, index) => {
+      riskyDesktopPairings.forEach((pairing, index) => {
         triageItems.push({
           issueType: 'device_trust',
           itemId: -1000 - index,
@@ -416,7 +410,7 @@ export class SecurityCenterService {
         messageKey: 'securityCenterIssueLocalRiskActivity',
         actionKey: 'securityCenterActionReviewLocalRisk',
       });
-      recentLocalRiskEvents.slice(0, 4).forEach((event, index) => {
+      recentLocalRiskEvents.forEach((event, index) => {
         triageItems.push({
           issueType: 'local_risk_activity',
           itemId: -2000 - index,

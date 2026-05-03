@@ -204,6 +204,12 @@ interface SecureAppSettingsState {
   emergencyAccessRequests: EmergencyAccessRequest[];
   emergencyAccessAudit: EmergencyAccessAuditEvent[];
   emergencyAccessPolicy: EmergencyAccessPolicy;
+  syncRelayEnabled: boolean;
+  syncRelaySessionId: string | null;
+  syncRelayUrl: string | null;
+  syncRelayApiKey: string | null;
+  syncRelayLastSequence: number;
+  syncRelayLastTimestamp: string | null;
 }
 
 const DB_NAME = 'aegis-secure-meta-v1';
@@ -280,6 +286,12 @@ const DEFAULT_STATE: SecureAppSettingsState = {
     default_wait_hours: 48,
     grant_ttl_hours: 24,
   },
+  syncRelayEnabled: false,
+  syncRelaySessionId: null,
+  syncRelayUrl: null,
+  syncRelayApiKey: null,
+  syncRelayLastSequence: 0,
+  syncRelayLastTimestamp: null,
 };
 
 const cloneCanonicalSharedMember = (member: CanonicalSharedMember): CanonicalSharedMember => ({
@@ -372,6 +384,12 @@ const cloneState = (state: SecureAppSettingsState): SecureAppSettingsState => ({
     metadata: event.metadata ? { ...event.metadata } : undefined,
   })),
   emergencyAccessPolicy: { ...state.emergencyAccessPolicy },
+  syncRelayEnabled: Boolean(state.syncRelayEnabled),
+  syncRelaySessionId: state.syncRelaySessionId,
+  syncRelayUrl: state.syncRelayUrl,
+  syncRelayApiKey: state.syncRelayApiKey,
+  syncRelayLastSequence: state.syncRelayLastSequence || 0,
+  syncRelayLastTimestamp: state.syncRelayLastTimestamp,
 });
 
 const normalizeEmergencyAccessContact = (value: unknown): EmergencyAccessContact | null => {
@@ -1028,6 +1046,12 @@ const normalizeState = (value: unknown): SecureAppSettingsState => {
     emergencyAccessRequests,
     emergencyAccessAudit,
     emergencyAccessPolicy,
+    syncRelayEnabled: Boolean(candidate.syncRelayEnabled),
+    syncRelaySessionId: typeof candidate.syncRelaySessionId === 'string' ? candidate.syncRelaySessionId : null,
+    syncRelayUrl: typeof candidate.syncRelayUrl === 'string' ? candidate.syncRelayUrl : null,
+    syncRelayApiKey: typeof candidate.syncRelayApiKey === 'string' ? candidate.syncRelayApiKey : null,
+    syncRelayLastSequence: typeof candidate.syncRelayLastSequence === 'number' ? candidate.syncRelayLastSequence : 0,
+    syncRelayLastTimestamp: typeof candidate.syncRelayLastTimestamp === 'string' ? candidate.syncRelayLastTimestamp : null,
   };
 };
 
@@ -1596,6 +1620,72 @@ export class SecureAppSettings {
   static setReleaseTrustApprovals(approvals: Record<string, string>): void {
     ensureMutableState();
     stateCache.releaseTrustApprovals = { ...approvals };
+    void schedulePersist();
+  }
+
+  static getSyncRelayEnabled(): boolean {
+    ensureBootstrapped();
+    return stateCache.syncRelayEnabled;
+  }
+
+  static setSyncRelayEnabled(value: boolean): void {
+    ensureMutableState();
+    stateCache.syncRelayEnabled = value;
+    void schedulePersist();
+  }
+
+  static getSyncRelaySessionId(): string | null {
+    ensureBootstrapped();
+    return stateCache.syncRelaySessionId;
+  }
+
+  static setSyncRelaySessionId(value: string | null): void {
+    ensureMutableState();
+    stateCache.syncRelaySessionId = value;
+    void schedulePersist();
+  }
+
+  static getSyncRelayUrl(): string | null {
+    ensureBootstrapped();
+    return stateCache.syncRelayUrl;
+  }
+
+  static setSyncRelayUrl(value: string | null): void {
+    ensureMutableState();
+    stateCache.syncRelayUrl = value;
+    void schedulePersist();
+  }
+
+  static getSyncRelayApiKey(): string | null {
+    ensureBootstrapped();
+    return stateCache.syncRelayApiKey;
+  }
+
+  static setSyncRelayApiKey(value: string | null): void {
+    ensureMutableState();
+    stateCache.syncRelayApiKey = value;
+    void schedulePersist();
+  }
+
+  static getSyncRelayLastSequence(): number {
+    ensureBootstrapped();
+    return stateCache.syncRelayLastSequence || 0;
+  }
+
+  static setSyncRelayLastSequence(value: number): void {
+    ensureMutableState();
+    stateCache.syncRelayLastSequence = value;
+    void schedulePersist();
+  }
+
+  static getSyncRelayLastTimestamp(): string | null {
+    ensureBootstrapped();
+    return stateCache.syncRelayLastTimestamp;
+  }
+
+  static setSyncRelayLastTimestamp(value: string | null): void {
+    ensureMutableState();
+    stateCache.syncRelayLastTimestamp = value;
     void schedulePersist();
   }
 

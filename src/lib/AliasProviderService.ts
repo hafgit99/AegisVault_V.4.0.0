@@ -504,6 +504,75 @@ export class AliasProviderService {
     });
   }
 
+  static async performAutomatedRotation(
+    details: VaultAliasDetails,
+    vaultService: { addPassword: (entry: VaultEntry) => Promise<number | void> },
+    allEntries: VaultEntry[]
+  ): Promise<{ success: boolean; error?: string; newEmail?: string }> {
+    const entry = allEntries.find((e) => e.id === details.linkedEntryId);
+    if (!entry) return { success: false, error: 'entry_not_found' };
+
+    // 1. Provision a NEW alias via API (or fallback to local gen)
+    const provisioned = await this.provisionAlias({
+      providerId: details.providerId,
+      website: details.website || entry.website,
+      title: entry.title,
+      notes: `Rotated from ${details.email} via Security Triage`,
+    });
+
+    // 2. Prepare the new alias details based on the provisioned data
+    const timestamp = nowIso();
+    const nextDetails: VaultAliasDetails = normalizeAliasState({
+      ...details,
+      email: provisioned.email,
+      providerAliasId: provisioned.providerAliasId,
+      providerSyncStatus: provisioned.providerSyncStatus,
+      providerManagementUrl: provisioned.providerManagementUrl || details.providerManagementUrl,
+      status: 'active', // Reset to active after successful rotation
+      lastRotatedAt: timestamp,
+      updatedAt: timestamp,
+      exposureCategory: 'none',
+      exposureCount: 0,
+      history: [
+        {
+          id: `alias-history-${randomToken(10)}`,
+          at: timestamp,
+          type: 'rotated' as const,
+          email: provisioned.email,
+          providerAliasId: provisioned.providerAliasId,
+          reason: 'automated_triage',
+        },
+        ...cloneHistory(details.history),
+      ].slice(0, 24),
+      rotationQueue: cloneQueue(details.rotationQueue).map((item) =>
+        item.status === 'queued' ? { ...item, status: 'completed' as const } : item
+      ),
+    });
+
+    // 3. Update the vault entry
+    try {
+      await vaultService.addPassword({
+        ...entry,
+        username: provisioned.email, // Automatically update the username/email field
+        aliasDetails: nextDetails,
+      });
+
+      this.appendAuditEvent({
+        id: `alias-audit-${randomToken(12)}`,
+        at: timestamp,
+        type: 'alias_rotated',
+        aliasEmail: provisioned.email,
+        providerId: details.providerId,
+        entryId: entry.id,
+        detail: 'automated_triage_rotation',
+      });
+
+      return { success: true, newEmail: provisioned.email };
+    } catch (err) {
+      return { success: false, error: String(err) };
+    }
+  }
+
   static rotateAlias(
     details: VaultAliasDetails,
     reason: AliasRotationQueueItem['reason'] = 'manual'

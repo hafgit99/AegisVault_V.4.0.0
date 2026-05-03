@@ -6,13 +6,15 @@ import type { IDBPDatabase } from 'idb';
 import type { SQLiteOPFS } from './lib/SQLiteOPFS';
 import { AegisError } from './lib/AegisError';
 import type { AegisErrorCode } from './lib/AegisError';
-import type {
-  VaultEntry,
-  VaultAliasDetails,
-  VaultCardDetails,
-  VaultIdentityDetails,
-  VaultAttachmentMeta,
-  StoredCredential,
+import {
+  type VaultEntry,
+  type VaultAliasDetails,
+  type VaultCardDetails,
+  type VaultIdentityDetails,
+  type VaultAttachmentMeta,
+  type StoredCredential,
+  hexToBuffer,
+  toBufferSource,
 } from './lib/crypto-types';
 
 export type {
@@ -371,6 +373,23 @@ export class VaultService {
 
   async updatePassword(id: number, entry: Partial<VaultEntry>): Promise<number> {
     return this.addPassword({ ...entry, id });
+  }
+
+  async decryptHistory(entry: VaultEntry): Promise<VaultEntry[]> {
+    if (!this.aesKey || !entry.encrypted_history || !entry.history_iv) return [];
+    try {
+      const historyIvArray = hexToBuffer(entry.history_iv);
+      const historyCipherArray = hexToBuffer(entry.encrypted_history);
+      const historyPlainBuffer = await window.crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: toBufferSource(historyIvArray) },
+        this.aesKey,
+        toBufferSource(historyCipherArray)
+      );
+      return JSON.parse(new TextDecoder().decode(historyPlainBuffer));
+    } catch (e) {
+      console.error('[VaultService] History decryption failed:', e);
+      return [];
+    }
   }
 
   async getPasswords(

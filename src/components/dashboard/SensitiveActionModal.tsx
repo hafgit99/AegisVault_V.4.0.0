@@ -25,20 +25,20 @@ export function SensitiveActionModal({
   onClose,
 }: SensitiveActionModalProps) {
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+    <div className="v5-modal-backdrop fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <form
         onSubmit={(event) => {
           event.preventDefault();
           onClose(dialog.kind === 'confirm' ? true : value.trim());
         }}
-        className="w-full max-w-md rounded-xl border border-black/10 bg-white p-5 shadow-2xl dark:border-white/10 dark:bg-[#182233]"
+        className="reauth-surface v5-modal-shell w-full max-w-md rounded-xl border border-black/10 bg-white p-5 shadow-2xl dark:border-white/10 dark:bg-[#182233]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="sensitive-action-title"
       >
-        <div className="mb-4 flex items-start gap-3">
+        <div className="v5-modal-header mb-4 flex items-start gap-3">
           <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+            className={`v5-modal-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
               dialog.danger
                 ? 'bg-red-500/10 text-red-600 dark:text-red-300'
                 : 'bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)]'
@@ -72,7 +72,7 @@ export function SensitiveActionModal({
           </label>
         )}
 
-        <div className="flex justify-end gap-2">
+        <div className="v5-modal-actions flex justify-end gap-2">
           <button
             type="button"
             onClick={() => onClose(null)}

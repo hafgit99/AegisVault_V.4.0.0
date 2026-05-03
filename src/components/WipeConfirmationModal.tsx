@@ -30,7 +30,7 @@ export function WipeConfirmationModal({ onConfirm, onCancel }: WipeConfirmationM
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300"
+      className="v5-modal-backdrop fixed inset-0 z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300"
       role="dialog"
       aria-modal="true"
       aria-labelledby="wipe-modal-title"
@@ -40,7 +40,7 @@ export function WipeConfirmationModal({ onConfirm, onCancel }: WipeConfirmationM
         onClick={onCancel}
         aria-hidden="true"
       />
-      <GlowCard className="wipe-modal-surface max-w-md w-full border border-red-500/40 rounded-[2rem] p-6 relative z-10 shadow-2xl animate-in zoom-in-95 duration-300 slide-in-from-bottom-5">
+      <GlowCard className="wipe-modal-surface v5-modal-shell v5-modal-shell-danger max-w-md w-full border border-red-500/40 rounded-[2rem] p-6 relative z-10 shadow-2xl animate-in zoom-in-95 duration-300 slide-in-from-bottom-5">
         <button
           onClick={onCancel}
           className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 text-gray-500 transition-colors"
@@ -49,9 +49,9 @@ export function WipeConfirmationModal({ onConfirm, onCancel }: WipeConfirmationM
           <X className="w-4 h-4" />
         </button>
 
-        <div className="flex flex-col items-center mb-6 text-center">
+        <div className="v5-modal-header flex flex-col items-center mb-6 text-center">
           <div
-            className="w-16 h-16 bg-red-100/80 text-red-600 rounded-full flex items-center justify-center mb-4 border-4 border-red-500/20 shadow-inner"
+            className="v5-modal-icon v5-modal-icon-danger w-16 h-16 bg-red-100/80 text-red-600 rounded-full flex items-center justify-center mb-4 border-4 border-red-500/20 shadow-inner"
             aria-hidden="true"
           >
             <AlertTriangle className="w-8 h-8 flex-shrink-0" />
@@ -79,7 +79,7 @@ export function WipeConfirmationModal({ onConfirm, onCancel }: WipeConfirmationM
           </ul>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="v5-modal-form flex flex-col gap-4">
           <label
             htmlFor="wipePhraseInput"
             className="text-xs font-bold wipe-modal-label uppercase tracking-widest text-center"

@@ -10,6 +10,7 @@ import {
   Rows2,
   Moon,
   Sun,
+  AtSign,
 } from 'lucide-react';
 import { SecurityScoreGauge } from '../ui/SecurityScoreGauge';
 import { useVault } from '../../contexts/VaultContext';
@@ -34,6 +35,7 @@ const getSafePostMessageTarget = () => {
 interface DashboardHeaderProps {
   onSettingsOpen: () => void;
   onDonationOpen: () => void;
+  onQuickAliasOpen: () => void;
   onLogoClick: () => void;
   themeMode: 'light' | 'dark';
   onThemeToggle: () => void;
@@ -43,6 +45,7 @@ interface DashboardHeaderProps {
 export function DashboardHeader({
   onSettingsOpen,
   onDonationOpen,
+  onQuickAliasOpen,
   onLogoClick,
   themeMode,
   onThemeToggle,
@@ -107,7 +110,7 @@ export function DashboardHeader({
       )}
 
       {/* Header */}
-      <header className="dashboard-header mx-auto mb-6 flex max-w-[1400px] flex-col gap-2 px-4 py-2 xl:px-8">
+      <header className="dashboard-header v5-dashboard-header mx-auto mb-6 flex max-w-[1400px] flex-col gap-3 px-4 py-2 xl:px-8">
         <div className="dashboard-header-main flex items-center justify-between gap-5">
           <div className="dashboard-brand-cluster flex shrink-0 items-center gap-5">
             {watchtower && typeof watchtower.score === 'number' && (
@@ -124,7 +127,10 @@ export function DashboardHeader({
                 />
               </div>
               <div className="min-w-0">
-                <h1 className="whitespace-nowrap text-xl font-bold tracking-tight">Aegis Vault</h1>
+                <span className="v5-dashboard-eyebrow">Aegis Vault 5.0</span>
+                <h1 className="whitespace-nowrap text-xl font-bold tracking-tight">
+                  {t('v5DashboardTitle')}
+                </h1>
                 <div className="mt-1 flex items-center gap-1.5 whitespace-nowrap">
                   <span className="dashboard-storage-chip">WASM SQLCipher</span>
                   <span className="dashboard-storage-dot" aria-hidden="true" />
@@ -159,6 +165,15 @@ export function DashboardHeader({
               aria-label="Settings"
             >
               <Settings className="w-5 h-5" />
+            </button>
+            <button
+              onClick={onQuickAliasOpen}
+              className="toolbar-control flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm transition-all text-[var(--color-sage-green)]"
+              aria-label={t('quickAliasTooltip')}
+              title={t('quickAliasTooltip')}
+            >
+              <AtSign className="w-4 h-4" />
+              <span className="hidden xl:inline">{t('quickAliasTooltip')}</span>
             </button>
             <button
               type="button"
@@ -202,8 +217,8 @@ export function DashboardHeader({
           </div>
         </div>
 
-        <div className="dashboard-search-row flex min-w-0 items-center justify-end gap-2 overflow-x-auto">
-          <div className="group relative min-w-[210px] shrink">
+        <div className="dashboard-search-row v5-dashboard-search-row flex min-w-0 items-center justify-end gap-2 overflow-x-auto">
+          <div className="v5-dashboard-search-box group relative min-w-[210px] shrink">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-50 transition-opacity group-focus-within:opacity-100" />
             <input
               ref={searchRef}
@@ -214,11 +229,11 @@ export function DashboardHeader({
               className="toolbar-control w-full rounded-full py-2 pl-10 pr-4 text-sm font-medium shadow-sm outline-none transition-all"
             />
           </div>
-          <div className="toolbar-chip-group flex shrink-0 items-center gap-1 rounded-full px-1.5 py-1">
+          <div className="toolbar-chip-group v5-search-scope-group flex shrink-0 items-center gap-1 rounded-full px-1.5 py-1">
             <button
               type="button"
               onClick={() => setSearchScope('all')}
-              className={`rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
+              className={`v5-search-scope-btn rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
                 searchScope === 'all'
                   ? 'bg-[var(--color-sage-green)] text-white'
                   : 'text-[var(--color-deep-navy)]/70 hover:bg-white/60'
@@ -229,7 +244,7 @@ export function DashboardHeader({
             <button
               type="button"
               onClick={() => setSearchScope('title')}
-              className={`rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
+              className={`v5-search-scope-btn rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
                 searchScope === 'title'
                   ? 'bg-[var(--color-sage-green)] text-white'
                   : 'text-[var(--color-deep-navy)]/70 hover:bg-white/60'
@@ -240,7 +255,7 @@ export function DashboardHeader({
             <button
               type="button"
               onClick={() => setSearchScope('username')}
-              className={`rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
+              className={`v5-search-scope-btn rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
                 searchScope === 'username'
                   ? 'bg-[var(--color-sage-green)] text-white'
                   : 'text-[var(--color-deep-navy)]/70 hover:bg-white/60'
@@ -251,7 +266,7 @@ export function DashboardHeader({
             <button
               type="button"
               onClick={() => setSearchScope('tags')}
-              className={`rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
+              className={`v5-search-scope-btn rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
                 searchScope === 'tags'
                   ? 'bg-[var(--color-sage-green)] text-white'
                   : 'text-[var(--color-deep-navy)]/70 hover:bg-white/60'

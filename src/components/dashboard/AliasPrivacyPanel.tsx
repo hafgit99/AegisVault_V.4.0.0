@@ -100,11 +100,13 @@ export function AliasPrivacyPanel({ passwords, onEditEntry }: AliasPrivacyPanelP
   };
 
   return (
-    <div className="settings-panel rounded-3xl p-6 shadow-sm">
-      <div className="flex items-start justify-between gap-4 mb-6">
+    <div className="settings-panel v5-alias-panel rounded-3xl p-6 shadow-sm">
+      <div className="v5-alias-hero flex items-start justify-between gap-4 mb-6">
         <div>
-          <div className="flex items-center gap-2">
-            <AtSign className="w-5 h-5 text-[var(--color-sage-green)]" />
+          <div className="flex items-center gap-3">
+            <div className="v5-alias-hero-icon">
+              <AtSign className="w-5 h-5" />
+            </div>
             <h3 className="text-lg font-semibold tracking-tight text-[var(--color-deep-navy)] dark:text-white">
               {t('aliasManagerTitle')}
             </h3>
@@ -116,8 +118,8 @@ export function AliasPrivacyPanel({ passwords, onEditEntry }: AliasPrivacyPanelP
         </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5">
-        <div className="settings-subpanel rounded-2xl border p-4">
+      <div className="v5-alias-metrics grid grid-cols-1 gap-3 mb-5">
+        <div className="settings-subpanel v5-alias-metric rounded-2xl border p-4">
           <div className="text-[10px] uppercase tracking-widest opacity-60">
             {t('aliasSummaryActive')}
           </div>
@@ -125,19 +127,19 @@ export function AliasPrivacyPanel({ passwords, onEditEntry }: AliasPrivacyPanelP
             {aliasSummary.active}
           </div>
         </div>
-        <div className="settings-subpanel rounded-2xl border p-4">
+        <div className="settings-subpanel v5-alias-metric v5-alias-metric-warning rounded-2xl border p-4">
           <div className="text-[10px] uppercase tracking-widest opacity-60">
             {t('aliasSummaryCompromised')}
           </div>
           <div className="mt-2 text-2xl font-bold text-amber-600">{aliasSummary.compromised}</div>
         </div>
-        <div className="settings-subpanel rounded-2xl border p-4">
+        <div className="settings-subpanel v5-alias-metric v5-alias-metric-info rounded-2xl border p-4">
           <div className="text-[10px] uppercase tracking-widest opacity-60">
             {t('aliasSummaryRotated')}
           </div>
           <div className="mt-2 text-2xl font-bold text-sky-600">{aliasSummary.rotated}</div>
         </div>
-        <div className="settings-subpanel rounded-2xl border p-4">
+        <div className="settings-subpanel v5-alias-metric rounded-2xl border p-4">
           <div className="text-[10px] uppercase tracking-widest opacity-60">
             {t('aliasSummaryQueued')}
           </div>
@@ -145,7 +147,7 @@ export function AliasPrivacyPanel({ passwords, onEditEntry }: AliasPrivacyPanelP
             {aliasSummary.queued}
           </div>
         </div>
-        <div className="settings-subpanel rounded-2xl border p-4">
+        <div className="settings-subpanel v5-alias-metric rounded-2xl border p-4">
           <div className="text-[10px] uppercase tracking-widest opacity-60">
             {t('aliasProvidersLabel')}
           </div>
@@ -155,24 +157,24 @@ export function AliasPrivacyPanel({ passwords, onEditEntry }: AliasPrivacyPanelP
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] gap-5">
-        <div className="space-y-4">
+      <div className="v5-alias-layout grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-5">
+        <div className="v5-alias-list space-y-4">
           {aliasEntries.length === 0 ? (
-            <div className="settings-subpanel rounded-2xl border p-5 text-sm opacity-70">
+            <div className="settings-subpanel v5-alias-empty rounded-2xl border p-5 text-sm opacity-70">
               {t('aliasEmptyState')}
             </div>
           ) : (
             aliasEntries.slice(0, 8).map(({ entry, alias, risk }) => (
-              <div key={entry.id} className="settings-subpanel rounded-2xl border p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
+              <div key={entry.id} className="settings-subpanel v5-alias-entry-card rounded-2xl border p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
                     <div className="font-semibold text-[var(--color-deep-navy)] dark:text-white">
                       {entry.title}
                     </div>
-                    <div className="mt-1 font-[var(--font-geist-mono)] text-sm opacity-80">
+                    <div className="v5-alias-email mt-1 font-[var(--font-geist-mono)] text-sm opacity-80">
                       {alias.email}
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] opacity-70">
+                    <div className="v5-alias-tags mt-3 flex flex-wrap gap-2 text-[11px]">
                       <span>{alias.providerLabel}</span>
                       <span>{t(`aliasStatus.${alias.status || 'active'}`)}</span>
                       <span>
@@ -187,24 +189,24 @@ export function AliasPrivacyPanel({ passwords, onEditEntry }: AliasPrivacyPanelP
                       ) : null}
                     </div>
                   </div>
-                  <div className="flex flex-wrap justify-end gap-2">
+                  <div className="v5-alias-card-actions flex flex-wrap justify-end gap-2">
                     <button
                       onClick={() => openRotation(entry)}
-                      className="px-3 py-2 rounded-xl bg-sky-500/10 text-sky-700 dark:text-sky-300 text-xs font-bold flex items-center gap-1.5"
+                      className="v5-alias-action v5-alias-action-info px-3 py-2 rounded-xl bg-sky-500/10 text-sky-700 dark:text-sky-300 text-xs font-bold flex items-center gap-1.5"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
                       {t('aliasQueueRotation')}
                     </button>
                     <button
                       onClick={() => markExposed(entry)}
-                      className="px-3 py-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5"
+                      className="v5-alias-action v5-alias-action-warning px-3 py-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5"
                     >
                       <ShieldAlert className="w-3.5 h-3.5" />
                       {t('aliasMarkExposed')}
                     </button>
                     <button
                       onClick={() => rollbackAlias(entry)}
-                      className="px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5"
+                      className="v5-alias-action v5-alias-action-success px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5"
                     >
                       {t('aliasRollback')}
                     </button>
@@ -215,7 +217,7 @@ export function AliasPrivacyPanel({ passwords, onEditEntry }: AliasPrivacyPanelP
           )}
         </div>
 
-        <div className="settings-subpanel rounded-3xl border p-5">
+        <div className="settings-subpanel v5-alias-provider-panel rounded-3xl border p-5">
           <div className="flex items-center gap-2 mb-4">
             <Plus className="w-4 h-4 text-[var(--color-sage-green)]" />
             <h4 className="font-semibold text-[var(--color-deep-navy)] dark:text-white">
@@ -286,18 +288,18 @@ export function AliasPrivacyPanel({ passwords, onEditEntry }: AliasPrivacyPanelP
             />
             <button
               onClick={saveProvider}
-              className="w-full py-3 rounded-2xl bg-[var(--color-sage-green)] text-[var(--color-deep-navy)] text-sm font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+              className="v5-alias-save-btn w-full py-3 rounded-2xl bg-[var(--color-sage-green)] text-[var(--color-deep-navy)] text-sm font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
             >
               <ShieldCheck className="w-4 h-4" />
               {t('aliasProviderSave')}
             </button>
           </div>
 
-          <div className="mt-5 space-y-2">
+          <div className="v5-alias-provider-list mt-5 space-y-2">
             {providers.map((provider) => (
               <div
                 key={provider.id}
-                className="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-3"
+                className="v5-alias-provider-item rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-3"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div>

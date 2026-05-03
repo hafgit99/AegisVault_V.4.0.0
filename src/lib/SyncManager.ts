@@ -4,6 +4,7 @@ import { SyncEnvelopeUtil } from './SyncEnvelope';
 import type { SyncEnvelope } from './SyncEnvelope';
 import { SyncDeviceService } from './SyncDeviceService';
 import { SyncConflictService } from './SyncConflictService';
+import { SecureAppSettings } from './SecureAppSettings';
 import { vaultService, type VaultEntry } from '../vaultService';
 
 /**
@@ -18,6 +19,9 @@ export class SyncManager {
       .VITE_AEGIS_SYNC_RELAY_KEY || ''
   ).trim();
   private static getRelayUrl(): string {
+    const storedUrl = SecureAppSettings.getSyncRelayUrl();
+    if (storedUrl) return storedUrl.replace(/\/+$/, '');
+
     const relayUrl = (
       (import.meta.env as ImportMetaEnv & { VITE_AEGIS_SYNC_RELAY_URL?: string })
         .VITE_AEGIS_SYNC_RELAY_URL || ''
@@ -25,7 +29,7 @@ export class SyncManager {
 
     if (!relayUrl) {
       throw new Error(
-        '[SyncManager] Missing relay URL. Set VITE_AEGIS_SYNC_RELAY_URL with an HTTPS endpoint.'
+        '[SyncManager] Missing relay URL. Set VITE_AEGIS_SYNC_RELAY_URL or configure in settings.'
       );
     }
 
@@ -33,7 +37,7 @@ export class SyncManager {
     try {
       parsed = new URL(relayUrl);
     } catch {
-      throw new Error('[SyncManager] Invalid relay URL format in VITE_AEGIS_SYNC_RELAY_URL.');
+      throw new Error('[SyncManager] Invalid relay URL format.');
     }
 
     if (parsed.protocol !== 'https:') {
@@ -45,8 +49,11 @@ export class SyncManager {
 
   private static buildRelayHeaders(): HeadersInit {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (this.relayApiKey) {
-      headers['X-Aegis-Relay-Key'] = this.relayApiKey;
+    const storedKey = SecureAppSettings.getSyncRelayApiKey();
+    const apiKey = storedKey || this.relayApiKey;
+
+    if (apiKey) {
+      headers['X-Aegis-Relay-Key'] = apiKey;
     }
     return headers;
   }

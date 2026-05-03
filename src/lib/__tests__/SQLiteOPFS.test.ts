@@ -588,7 +588,7 @@ describe('SQLiteOPFS', () => {
     // The exact expected string if NO mutations occurred.
     // If a literal like 'General' changes to '', or new Date().toISOString() changes, this kills it.
     expect(fakeDb.lastSql).toContain(
-      "VALUES (999, 'Untitled', NULL, NULL, '', NULL, NULL, NULL, NULL, 'General', NULL, NULL, '', NULL, NULL, NULL, NULL, '[]', '2026-01-01T00:00:00.000Z', 0, '[]', 0, '[]', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
+      "VALUES (999, 'Untitled', NULL, NULL, '', NULL, NULL, NULL, NULL, 'General', NULL, NULL, '', NULL, NULL, NULL, NULL, '[]', '2026-01-01T00:00:00.000Z', 0, '[]', 0, '[]', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
     );
 
     // Now test with specific values to ensure they do not trigger fallbacks
@@ -604,7 +604,7 @@ describe('SQLiteOPFS', () => {
     } as any);
 
     expect(fakeDb.lastSql).toContain(
-      "VALUES (888, 'T', NULL, NULL, 'usr', NULL, NULL, NULL, NULL, 'Work', NULL, NULL, 'a.com', NULL, NULL, NULL, NULL, '[]', '2026-01-01T00:00:00.000Z', 0, '[\"a\"]', 0, '[{\"id\":\"1\"}]', 'del', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
+      "VALUES (888, 'T', NULL, NULL, 'usr', NULL, NULL, NULL, NULL, 'Work', NULL, NULL, 'a.com', NULL, NULL, NULL, NULL, '[]', '2026-01-01T00:00:00.000Z', 0, '[\"a\"]', 0, '[{\"id\":\"1\"}]', 'del', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
     );
 
     vi.useRealTimers();
@@ -691,7 +691,7 @@ describe('SQLiteOPFS', () => {
     expect(removeEntry).not.toHaveBeenCalledWith('sqlite');
   });
 
-  it('putPassword correctly maps all 38 fields into the SQL string', () => {
+  it('putPassword correctly maps all 42 fields into the SQL string', () => {
     const sqlite = new SQLiteOPFS('exhaustive-db');
     const fakeDb = new FakeDb();
     (sqlite as any).db = fakeDb;
@@ -735,6 +735,10 @@ describe('SQLiteOPFS', () => {
       card_details_iv: 'CDIV',
       encrypted_identity_details: 'EID',
       identity_details_iv: 'IDIV',
+      encrypted_alias_details: 'EAD',
+      alias_details_iv: 'ADIV',
+      encrypted_history: 'EH',
+      history_iv: 'HIV',
     };
 
     sqlite.putPassword(entry);
@@ -782,6 +786,10 @@ describe('SQLiteOPFS', () => {
     expect(vals[35]).toBe('CDIV');
     expect(vals[36]).toBe('EID');
     expect(vals[37]).toBe('IDIV');
+    expect(vals[38]).toBe('EAD');
+    expect(vals[39]).toBe('ADIV');
+    expect(vals[40]).toBe('EH');
+    expect(vals[41]).toBe('HIV');
   });
 
   it('wipeAll clears all tables and deletes the file from OPFS', async () => {

@@ -1,14 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Info, Laptop, RefreshCw, ShieldCheck, ShieldOff, Smartphone } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { SyncDeviceService } from '../../lib/SyncDeviceService';
 import type { SyncDeviceFingerprint } from '../../lib/SyncDeviceService';
 
-/**
- * SyncDevicesPanel — Aegis 4.2 Faz 2 / Adim 2.2
- *
- * Bagli cihazlar, son sync zamani ve trust revocation UI bileseni.
- */
-
 export const SyncDevicesPanel: React.FC = () => {
+  const { t } = useTranslation();
   const [devices, setDevices] = useState<SyncDeviceFingerprint[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,98 +20,152 @@ export const SyncDevicesPanel: React.FC = () => {
     setLoading(false);
   }
 
+  const activeDevices = useMemo(
+    () => devices.filter((device) => device.status === 'active'),
+    [devices]
+  );
+  const revokedDevices = useMemo(
+    () => devices.filter((device) => device.status === 'revoked'),
+    [devices]
+  );
+
   const handleRevoke = async (id: string) => {
-    if (!window.confirm('Bu cihazın erişimini kaldırmak istediğinize emin misiniz?')) return;
+    if (!window.confirm(t('syncDevicesRevokeConfirm'))) return;
     const success = await SyncDeviceService.revokeDevice(id);
     if (success) {
       loadDevices();
     }
   };
 
-  if (loading) return <div className="p-4 text-center opacity-60">Cihazlar yükleniyor...</div>;
+  if (loading) {
+    return (
+      <div className="v5-workflow-panel rounded-3xl p-6 text-center text-sm font-semibold opacity-70">
+        {t('syncDevicesLoading')}
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-3 p-4">
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="text-lg font-bold">Senkronizasyon Cihazları</h3>
-        <span className="text-xs px-2 py-1 rounded bg-white/10 opacity-70">
-          {devices.filter((d) => d.status === 'active').length} Aktif
-        </span>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        {devices.map((device) => (
-          <div
-            key={device.id}
-            className={`p-3 rounded-xl border flex justify-between items-center transition-all ${
-              device.isCurrent
-                ? 'border-emerald-500/30 bg-emerald-500/5 shadow-sm'
-                : device.status === 'revoked'
-                  ? 'border-red-500/20 bg-red-500/5 opacity-50 grayscale'
-                  : 'border-white/10 bg-white/5 hover:border-white/20'
-            }`}
-          >
-            <div className="flex flex-col overflow-hidden">
-              <span className="font-medium flex items-center gap-2 truncate">
-                {device.label}
-                {device.isCurrent && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold uppercase tracking-wider">
-                    Bu Cihaz
-                  </span>
-                )}
-              </span>
-              <span className="text-[10px] uppercase opacity-40 font-mono tracking-wider">
-                {device.id} • Ekleniş: {new Date(device.addedAt).toLocaleDateString()}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {device.status === 'active' && !device.isCurrent && (
-                <button
-                  onClick={() => handleRevoke(device.id)}
-                  className="p-2 rounded-lg hover:bg-red-500/10 text-red-400 group transition-colors"
-                  title="Erişimi Kaldır"
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10" />
-                  </svg>
-                </button>
-              )}
-              {device.status === 'revoked' && (
-                <span className="text-[10px] px-1.5 py-1 rounded bg-red-500/20 text-red-500 font-bold uppercase tracking-wider">
-                  Kaldırıldı
-                </span>
-              )}
-            </div>
+    <div className="v5-workflow-panel rounded-3xl p-6 shadow-sm">
+      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="v5-workflow-icon flex h-11 w-11 items-center justify-center rounded-2xl">
+            <Laptop className="h-5 w-5" />
           </div>
-        ))}
+          <div>
+            <span className="v5-section-kicker">{t('syncDevicesKicker')}</span>
+            <h3 className="mt-1 text-lg font-semibold tracking-tight text-[var(--color-deep-navy)] dark:text-white">
+              {t('syncDevicesTitle')}
+            </h3>
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-[var(--color-deep-navy)]/65 dark:text-white/65">
+              {t('syncDevicesDesc')}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={loadDevices}
+          className="settings-pill-secondary inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-bold"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          {t('syncDevicesRefresh')}
+        </button>
       </div>
 
-      <div className="mt-2 text-[11px] opacity-40 italic flex items-center gap-2">
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="16" x2="12" y2="12" />
-          <line x1="12" y1="8" x2="12.01" y2="8" />
-        </svg>
-        Cihaz eşleştirme, 4.1'deki QR Setup protokolü ile güvenli ve offline olarak yapılır.
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="v5-workflow-stat rounded-2xl px-4 py-3">
+          <div className="text-[10px] font-bold uppercase tracking-widest opacity-55">
+            {t('syncDevicesActive')}
+          </div>
+          <div className="mt-2 text-2xl font-bold">{activeDevices.length}</div>
+        </div>
+        <div className="v5-workflow-stat rounded-2xl px-4 py-3">
+          <div className="text-[10px] font-bold uppercase tracking-widest opacity-55">
+            {t('syncDevicesRevoked')}
+          </div>
+          <div className="mt-2 text-2xl font-bold">{revokedDevices.length}</div>
+        </div>
+        <div className="v5-workflow-stat rounded-2xl px-4 py-3">
+          <div className="text-[10px] font-bold uppercase tracking-widest opacity-55">
+            {t('syncDevicesTotal')}
+          </div>
+          <div className="mt-2 text-2xl font-bold">{devices.length}</div>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {devices.length === 0 ? (
+          <div className="v5-workflow-empty rounded-2xl border border-dashed px-4 py-5 text-center text-sm">
+            {t('syncDevicesEmpty')}
+          </div>
+        ) : (
+          devices.map((device) => (
+            <div
+              key={device.id}
+              className={`v5-device-card rounded-2xl border p-4 ${
+                device.isCurrent
+                  ? 'v5-device-card-current'
+                  : device.status === 'revoked'
+                    ? 'v5-device-card-revoked'
+                    : ''
+              }`}
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="v5-device-avatar flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl">
+                    <Smartphone className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate text-sm font-semibold text-[var(--color-deep-navy)] dark:text-white">
+                        {device.label}
+                      </span>
+                      {device.isCurrent ? (
+                        <span className="rounded-full bg-emerald-500/12 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-200">
+                          {t('syncDevicesCurrent')}
+                        </span>
+                      ) : null}
+                      {device.status === 'revoked' ? (
+                        <span className="rounded-full bg-red-500/12 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-red-700 dark:text-red-200">
+                          {t('syncDevicesRevokedBadge')}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-[var(--color-deep-navy)]/45 dark:text-white/45">
+                      {device.id}
+                    </div>
+                    <div className="mt-1 text-xs text-[var(--color-deep-navy)]/60 dark:text-white/60">
+                      {t('syncDevicesAddedAt')}: {new Date(device.addedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+
+                {device.status === 'active' && !device.isCurrent ? (
+                  <button
+                    type="button"
+                    onClick={() => handleRevoke(device.id)}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-700 transition-colors hover:bg-red-500/15 dark:text-red-200"
+                  >
+                    <ShieldOff className="h-3.5 w-3.5" />
+                    {t('syncDevicesRevoke')}
+                  </button>
+                ) : (
+                  <div className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--color-sage-green)]/20 bg-[var(--color-sage-green)]/10 px-3 py-2 text-xs font-bold text-[var(--color-sage-green)]">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    {device.status === 'revoked'
+                      ? t('syncDevicesRevokedBadge')
+                      : t('syncDevicesTrusted')}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="v5-workflow-note mt-4 flex items-start gap-2 rounded-2xl px-4 py-3 text-xs leading-relaxed">
+        <Info className="mt-0.5 h-4 w-4 shrink-0" />
+        <span>{t('syncDevicesOfflineHint')}</span>
       </div>
     </div>
   );

@@ -468,9 +468,9 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
   };
 
   return (
-    <div className="vault-login-root relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-cloud-dancer)]">
+    <div className="vault-login-root v5-login-root relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-cloud-dancer)] px-4 py-8">
       {/* Language Toggle */}
-      <div className="absolute top-4 right-4 z-50">
+      <div className="absolute right-4 top-4 z-50">
         <button
           type="button"
           onClick={handleLanguageToggle}
@@ -480,338 +480,390 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
           {i18n.language.startsWith('en') ? 'EN' : 'TR'}
         </button>
       </div>
-      {/* Aurora Background Effect */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-tr from-[rgba(135,159,132,0.15)] via-transparent to-[rgba(10,17,40,0.05)] opacity-80 animate-aurora" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[radial-gradient(ellipse_at_center,_var(--color-sage-green)_0%,_transparent_60%)] opacity-20 blur-[100px] mix-blend-multiply pointer-events-none" />
-      </div>
 
-      <div
-        className={`vault-login-surface relative z-10 w-full max-w-md p-8 glass-card transition-all duration-300 ${isError ? 'animate-shake border-red-500/40 shadow-[0_0_40px_rgba(239,68,68,0.15)] bg-red-50/20' : ''}`}
-      >
-        <div className="flex flex-col items-center text-center">
-          <div className="vault-login-logo-container mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-inner p-1">
-            <img
-              src="./icon.png"
-              alt="Aegis Logo"
-              className="w-full h-full object-contain drop-shadow-md"
-            />
-          </div>
-          <h1 className="mb-2 text-3xl font-semibold tracking-tight text-[var(--color-deep-navy)]">
-            {isSetupMode ? t('setupVault') : t('premiumVault')}
-          </h1>
-          <p className="mb-6 text-sm text-[var(--color-deep-navy)]/70">{t('subtitle')}</p>
+      <div className="v5-login-backdrop absolute inset-0 z-0" aria-hidden="true" />
 
-          {/* ─── Multi-Vault Selector ─── */}
-          {vaultProfiles.length > 0 && activeProfile && (
-            <div className="relative w-full mb-3">
-              <button
-                type="button"
-                onClick={() => setShowVaultSelector(!showVaultSelector)}
-                className="vault-login-field w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all text-left"
-                aria-expanded={showVaultSelector}
-                aria-haspopup="listbox"
-              >
-                <div
-                  className="w-3 h-3 rounded-full shrink-0"
-                  style={{ backgroundColor: activeProfile.color }}
+      <main className="v5-login-shell relative z-10 grid w-full max-w-6xl grid-cols-1 overflow-hidden rounded-2xl border shadow-2xl lg:grid-cols-[minmax(0,1fr)_440px]">
+        <section className="v5-login-intro hidden min-h-[640px] flex-col justify-between p-10 lg:flex xl:p-12">
+          <div>
+            <div className="v5-login-kicker mb-8 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-extrabold uppercase">
+              <Shield className="h-3.5 w-3.5" />
+              {t('v5LoginEyebrow')}
+            </div>
+
+            <div className="mb-10 flex items-center gap-4">
+              <div className="v5-login-brand-icon flex h-16 w-16 items-center justify-center rounded-2xl p-1 shadow-inner">
+                <img
+                  src="./icon.png"
+                  alt="Aegis Logo"
+                  className="h-full w-full object-contain drop-shadow-md"
                 />
-                <span className="text-sm font-semibold text-[var(--color-deep-navy)] flex-1 truncate">
-                  {activeProfile.name}
-                </span>
-                <ChevronDown
-                  className={`w-4 h-4 text-[var(--color-deep-navy)]/40 transition-transform ${showVaultSelector ? 'rotate-180' : ''}`}
-                />
-              </button>
-
-              {showVaultSelector && (
-                <div
-                  className="vault-login-dropdown absolute top-full left-0 right-0 mt-1 rounded-xl shadow-xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
-                  role="listbox"
-                >
-                  {vaultProfiles.map((profile) => (
-                    <div
-                      key={profile.id}
-                      className={`flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--color-sage-green)]/10 transition-colors cursor-pointer group ${profile.id === activeProfile.id ? 'bg-[var(--color-sage-green)]/5' : ''}`}
-                      onClick={() => handleSwitchVault(profile)}
-                      role="option"
-                      aria-selected={profile.id === activeProfile.id}
-                    >
-                      <div
-                        className="w-3 h-3 rounded-full shrink-0"
-                        style={{ backgroundColor: profile.color }}
-                      />
-                      <span className="text-sm font-medium text-[var(--color-deep-navy)] flex-1 truncate">
-                        {profile.name}
-                      </span>
-                      {profile.id === activeProfile.id && (
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-sage-green)] bg-[var(--color-sage-green)]/10 px-2 py-0.5 rounded-full">
-                          {t('active', 'Active')}
-                        </span>
-                      )}
-                      {!profile.isDefault && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteVault(profile.id);
-                          }}
-                          className="p-1 rounded-md hover:bg-red-100 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                          aria-label={t('deleteVault', 'Delete vault')}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-
-                  {/* New Vault */}
-                  {showNewVaultInput ? (
-                    <div className="flex items-center gap-2 px-4 py-2.5 border-t vault-login-dropdown-divider">
-                      <input
-                        autoFocus
-                        type="text"
-                        value={newVaultName}
-                        onChange={(e) => setNewVaultName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleCreateVault();
-                          if (e.key === 'Escape') setShowNewVaultInput(false);
-                        }}
-                        placeholder={t('vaultName', 'Vault name...')}
-                        className="flex-1 text-sm bg-transparent outline-none placeholder:text-gray-400"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleCreateVault}
-                        className="vault-login-create-btn text-[var(--color-sage-green)] text-xs font-bold hover:underline"
-                      >
-                        {t('create', 'Create')}
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowNewVaultInput(true)}
-                      className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-bold text-[var(--color-sage-green)] hover:bg-[var(--color-sage-green)]/5 transition-colors border-t vault-login-dropdown-divider"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> {t('createNewVault', 'Create New Vault')}
-                    </button>
-                  )}
-                </div>
-              )}
+              </div>
+              <div>
+                <p className="text-sm font-extrabold uppercase tracking-[0.22em] text-white/64">
+                  Aegis Vault
+                </p>
+                <h1 className="mt-1 text-4xl font-bold tracking-tight text-white">
+                  {t('v5LoginTitle')}
+                </h1>
+              </div>
             </div>
-          )}
 
-          <div className="vault-login-tabs flex p-1 rounded-xl w-full mb-2">
-            <button
-              type="button"
-              onClick={() => {
-                setIsSetupMode(false);
-                setShowSetupSecret(false);
-                setSecretKey('');
-              }}
-              className={`login-tab-btn flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${!isSetupMode ? 'vault-login-tab-active text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60'}`}
-            >
-              {t('unlock')}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setIsSetupMode(true);
-                setPassword('');
-                setSecretKey('');
-                setShowSetupSecret(false);
-              }}
-              className={`login-tab-btn flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${isSetupMode ? 'vault-login-tab-active text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60'}`}
-            >
-              {t('initialize')}
-            </button>
+            <p className="max-w-xl text-base leading-8 text-white/72">{t('v5LoginDesc')}</p>
           </div>
-        </div>
 
-        <form onSubmit={handleLogin} className="flex flex-col gap-4">
-          {!showSetupSecret ? (
-            <div className="relative group">
-              <Lock
-                className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 transition-colors ${isError ? 'text-red-500/60' : 'text-[var(--color-deep-navy)]/40 group-focus-within:text-[var(--color-sage-green)]'}`}
-              />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                placeholder={isSetupMode ? t('createMasterPassword') : t('masterPassword')}
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (isError) setIsError(false);
-                }}
-                disabled={isDecrypting}
-                className={`vault-login-input w-full rounded-xl py-3.5 pl-11 pr-12 text-sm font-medium outline-none border shadow-inner transition-all disabled:opacity-50 ${isError ? 'border-red-500/50 focus:border-red-500/80 bg-red-50/20 text-red-900' : ''}`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-deep-navy)]/40 hover:text-[var(--color-sage-green)] transition-colors"
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-          ) : null}
-
-          {!isSetupMode && !showSetupSecret && (
-            <div className="relative group">
-              <KeyRound
-                className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 transition-colors ${isError ? 'text-red-500/60' : 'text-[var(--color-deep-navy)]/40 group-focus-within:text-[var(--color-sage-green)]'}`}
-              />
-              <input
-                type="text"
-                placeholder={t('deviceSecretKey')}
-                value={secretKey}
-                onChange={(e) => {
-                  setSecretKey(e.target.value);
-                  if (isError) setIsError(false);
-                }}
-                disabled={isDecrypting}
-                className={`vault-login-input w-full rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium outline-none border shadow-inner transition-all disabled:opacity-50 pass-font ${isError ? 'border-red-500/50 focus:border-red-500/80 bg-red-50/20 text-red-900' : ''}`}
-              />
-            </div>
-          )}
-
-          {isSetupMode && showSetupSecret && !isDecrypting && (
-            <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="vault-secret-panel rounded-xl p-4 flex flex-col items-center text-center">
-                <Shield className="w-8 h-8 text-[var(--color-sage-green)] mb-2" />
-                <h3 className="font-semibold text-sm mb-1 text-[var(--color-deep-navy)]">
-                  {t('twoSecretConcept')}
-                </h3>
-                <p className="text-xs opacity-70 mb-3 px-2">{t('twoSecretDesc')}</p>
-                <div className="vault-secret-box w-full rounded-lg p-3 shadow-inner break-all pass-font text-sm font-bold opacity-80 select-all tracking-wider">
-                  {secretKey}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleDownloadKit}
-                className="vault-login-download-btn flex items-center justify-center gap-2 w-full rounded-xl py-3.5 text-sm font-semibold tracking-wide shadow-sm transition-all active:scale-95"
-              >
-                <FileDown className="w-4 h-4 text-[var(--color-sage-green)]" />
-                {t('downloadKit')}
-              </button>
-            </div>
-          )}
-
-          {isDecrypting ? (
-            <div className="flex flex-col gap-3 mt-4 animate-in fade-in duration-300">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-sage-green)] opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-sage-green)]"></span>
-                  </span>
-                  <span className="text-sm font-semibold text-[var(--color-deep-navy)]/80 animate-pulse">
-                    {progress < 30
-                      ? t('validatingSecrets')
-                      : progress < 70
-                        ? t('derivingKey')
-                        : t('unlockingVault')}
-                  </span>
-                </div>
-                <span className="text-xs font-bold text-[var(--color-deep-navy)]/60">
-                  {progress}%
-                </span>
-              </div>
-
-              {/* Dynamic Sage Green Security Indicator */}
-              <div className="flex gap-1 h-3 w-full">
-                {[...Array(5)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex-1 rounded-sm bg-[var(--color-deep-navy)]/10 overflow-hidden relative shadow-inner"
-                  >
-                    <div
-                      className="absolute inset-y-0 left-0 bg-[var(--color-sage-green)] transition-all duration-300 ease-out"
-                      style={{
-                        width:
-                          progress > i * 20
-                            ? progress > (i + 1) * 20
-                              ? '100%'
-                              : `${(progress - i * 20) * 5}%`
-                            : '0%',
-                        opacity: progress > i * 20 ? 1 : 0.5,
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-between text-[10px] uppercase tracking-widest font-bold opacity-40">
-                <span>Argon2id</span>
-                <span>64MB / M-Hard</span>
+          <div className="grid gap-3">
+            <div className="v5-login-proof-card">
+              <Lock className="h-5 w-5" />
+              <div>
+                <h2>{t('v5LoginProofLocalTitle')}</h2>
+                <p>{t('v5LoginProofLocalDesc')}</p>
               </div>
             </div>
-          ) : isError ? (
-            <div className="mt-2 w-full rounded-xl bg-red-500/10 border border-red-500/20 py-3.5 text-center text-sm font-semibold text-red-600 shadow-sm animate-in fade-in zoom-in-95 duration-200">
-              {t('accessDenied')}
+            <div className="v5-login-proof-card">
+              <KeyRound className="h-5 w-5" />
+              <div>
+                <h2>{t('v5LoginProofTwoSecretTitle')}</h2>
+                <p>{t('v5LoginProofTwoSecretDesc')}</p>
+              </div>
             </div>
-          ) : (
-            <button
-              type="submit"
-              className="vault-login-unlock-btn btn-ink mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-deep-navy)] py-3.5 text-sm font-semibold tracking-wide text-white shadow-lg transition-all hover:bg-[var(--color-deep-navy)]/90 active:scale-95"
-            >
-              {isSetupMode && !showSetupSecret ? (
-                <>
-                  {t('generateSecret')} <ChevronRight className="w-4 h-4 opacity-70" />
-                </>
-              ) : isSetupMode && showSetupSecret ? (
-                <>
-                  {t('finalizeVault')} <Lock className="w-4 h-4 opacity-70" />
-                </>
-              ) : (
-                t('unlockVault')
-              )}
-            </button>
-          )}
+            <div className="v5-login-proof-card">
+              <Fingerprint className="h-5 w-5" />
+              <div>
+                <h2>{t('v5LoginProofPasskeyTitle')}</h2>
+                <p>{t('v5LoginProofPasskeyDesc')}</p>
+              </div>
+            </div>
+          </div>
+        </section>
 
-          {!isSetupMode && !showSetupSecret && !isDecrypting && (
-            <>
-              <button
-                type="button"
-                onClick={handlePasskeyAction}
-                className="vault-login-passkey relative mt-2 flex w-full items-center justify-center gap-3 rounded-xl py-3.5 text-sm font-semibold tracking-wide transition-all shadow-sm active:scale-95 group overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none" />
-                <Fingerprint className="w-5 h-5 text-[var(--color-sage-green)] group-hover:scale-110 transition-transform" />
-                {hasPasskey ? t('biometricsUnlock') : t('biometricsRegister')}
-              </button>
+        <section
+          className={`vault-login-surface v5-login-panel relative w-full p-6 transition-all duration-300 sm:p-8 ${isError ? 'animate-shake border-red-500/40 shadow-[0_0_40px_rgba(239,68,68,0.15)] bg-red-50/20' : ''}`}
+        >
+          <div className="flex flex-col items-center text-center">
+            <div className="vault-login-logo-container mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-inner p-1 lg:hidden">
+              <img
+                src="./icon.png"
+                alt="Aegis Logo"
+                className="w-full h-full object-contain drop-shadow-md"
+              />
+            </div>
+            <h1 className="mb-2 text-3xl font-semibold tracking-tight text-[var(--color-deep-navy)]">
+              {isSetupMode ? t('setupVault') : t('premiumVault')}
+            </h1>
+            <p className="mb-6 text-sm text-[var(--color-deep-navy)]/70">{t('subtitle')}</p>
 
-              {hasPasskey && passkeyNeedsRotation && (
-                <div className="mt-2 w-full rounded-xl border border-amber-300/40 bg-amber-50/60 px-3 py-2 text-[11px] font-medium text-amber-700">
-                  {t('passkeyRotationRecommended')}
-                </div>
-              )}
-
-              {hasPasskey && (
+            {/* ─── Multi-Vault Selector ─── */}
+            {vaultProfiles.length > 0 && activeProfile && (
+              <div className="relative w-full mb-3">
                 <button
                   type="button"
-                  onClick={handleRevokePasskey}
-                  className="mt-2 text-[11px] font-semibold text-[var(--color-deep-navy)]/60 hover:text-red-600 transition-colors"
+                  onClick={() => setShowVaultSelector(!showVaultSelector)}
+                  className="vault-login-field w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all text-left"
+                  aria-expanded={showVaultSelector}
+                  aria-haspopup="listbox"
                 >
-                  {t('passkeyRevokeButton')}
+                  <div
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: activeProfile.color }}
+                  />
+                  <span className="text-sm font-semibold text-[var(--color-deep-navy)] flex-1 truncate">
+                    {activeProfile.name}
+                  </span>
+                  <ChevronDown
+                    className={`w-4 h-4 text-[var(--color-deep-navy)]/40 transition-transform ${showVaultSelector ? 'rotate-180' : ''}`}
+                  />
                 </button>
-              )}
-            </>
-          )}
 
-          {isSetupMode && !isDecrypting && (
-            <button
-              type="button"
-              onClick={() => setShowWipeModal(true)}
-              className="mt-6 text-[10px] font-bold uppercase tracking-[0.2em] text-red-500/60 hover:text-red-600 transition-colors text-center"
-            >
-              {t('factoryResetBtn')}
-            </button>
-          )}
-        </form>
-      </div>
+                {showVaultSelector && (
+                  <div
+                    className="vault-login-dropdown absolute top-full left-0 right-0 mt-1 rounded-xl shadow-xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
+                    role="listbox"
+                  >
+                    {vaultProfiles.map((profile) => (
+                      <div
+                        key={profile.id}
+                        className={`flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--color-sage-green)]/10 transition-colors cursor-pointer group ${profile.id === activeProfile.id ? 'bg-[var(--color-sage-green)]/5' : ''}`}
+                        onClick={() => handleSwitchVault(profile)}
+                        role="option"
+                        aria-selected={profile.id === activeProfile.id}
+                      >
+                        <div
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{ backgroundColor: profile.color }}
+                        />
+                        <span className="text-sm font-medium text-[var(--color-deep-navy)] flex-1 truncate">
+                          {profile.name}
+                        </span>
+                        {profile.id === activeProfile.id && (
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-sage-green)] bg-[var(--color-sage-green)]/10 px-2 py-0.5 rounded-full">
+                            {t('active', 'Active')}
+                          </span>
+                        )}
+                        {!profile.isDefault && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteVault(profile.id);
+                            }}
+                            className="p-1 rounded-md hover:bg-red-100 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                            aria-label={t('deleteVault', 'Delete vault')}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* New Vault */}
+                    {showNewVaultInput ? (
+                      <div className="flex items-center gap-2 px-4 py-2.5 border-t vault-login-dropdown-divider">
+                        <input
+                          autoFocus
+                          type="text"
+                          value={newVaultName}
+                          onChange={(e) => setNewVaultName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleCreateVault();
+                            if (e.key === 'Escape') setShowNewVaultInput(false);
+                          }}
+                          placeholder={t('vaultName', 'Vault name...')}
+                          className="flex-1 text-sm bg-transparent outline-none placeholder:text-gray-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleCreateVault}
+                          className="vault-login-create-btn text-[var(--color-sage-green)] text-xs font-bold hover:underline"
+                        >
+                          {t('create', 'Create')}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowNewVaultInput(true)}
+                        className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-bold text-[var(--color-sage-green)] hover:bg-[var(--color-sage-green)]/5 transition-colors border-t vault-login-dropdown-divider"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> {t('createNewVault', 'Create New Vault')}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="vault-login-tabs flex p-1 rounded-xl w-full mb-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSetupMode(false);
+                  setShowSetupSecret(false);
+                  setSecretKey('');
+                }}
+                className={`login-tab-btn flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${!isSetupMode ? 'vault-login-tab-active text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60'}`}
+              >
+                {t('unlock')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSetupMode(true);
+                  setPassword('');
+                  setSecretKey('');
+                  setShowSetupSecret(false);
+                }}
+                className={`login-tab-btn flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${isSetupMode ? 'vault-login-tab-active text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60'}`}
+              >
+                {t('initialize')}
+              </button>
+            </div>
+          </div>
+
+          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            {!showSetupSecret ? (
+              <div className="relative group">
+                <Lock
+                  className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 transition-colors ${isError ? 'text-red-500/60' : 'text-[var(--color-deep-navy)]/40 group-focus-within:text-[var(--color-sage-green)]'}`}
+                />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder={isSetupMode ? t('createMasterPassword') : t('masterPassword')}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (isError) setIsError(false);
+                  }}
+                  disabled={isDecrypting}
+                  className={`vault-login-input w-full rounded-xl py-3.5 pl-11 pr-12 text-sm font-medium outline-none border shadow-inner transition-all disabled:opacity-50 ${isError ? 'border-red-500/50 focus:border-red-500/80 bg-red-50/20 text-red-900' : ''}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-deep-navy)]/40 hover:text-[var(--color-sage-green)] transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            ) : null}
+
+            {!isSetupMode && !showSetupSecret && (
+              <div className="relative group">
+                <KeyRound
+                  className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 transition-colors ${isError ? 'text-red-500/60' : 'text-[var(--color-deep-navy)]/40 group-focus-within:text-[var(--color-sage-green)]'}`}
+                />
+                <input
+                  type="text"
+                  placeholder={t('deviceSecretKey')}
+                  value={secretKey}
+                  onChange={(e) => {
+                    setSecretKey(e.target.value);
+                    if (isError) setIsError(false);
+                  }}
+                  disabled={isDecrypting}
+                  className={`vault-login-input w-full rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium outline-none border shadow-inner transition-all disabled:opacity-50 pass-font ${isError ? 'border-red-500/50 focus:border-red-500/80 bg-red-50/20 text-red-900' : ''}`}
+                />
+              </div>
+            )}
+
+            {isSetupMode && showSetupSecret && !isDecrypting && (
+              <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="vault-secret-panel rounded-xl p-4 flex flex-col items-center text-center">
+                  <Shield className="w-8 h-8 text-[var(--color-sage-green)] mb-2" />
+                  <h3 className="font-semibold text-sm mb-1 text-[var(--color-deep-navy)]">
+                    {t('twoSecretConcept')}
+                  </h3>
+                  <p className="text-xs opacity-70 mb-3 px-2">{t('twoSecretDesc')}</p>
+                  <div className="vault-secret-box w-full rounded-lg p-3 shadow-inner break-all pass-font text-sm font-bold opacity-80 select-all tracking-wider">
+                    {secretKey}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadKit}
+                  className="vault-login-download-btn flex items-center justify-center gap-2 w-full rounded-xl py-3.5 text-sm font-semibold tracking-wide shadow-sm transition-all active:scale-95"
+                >
+                  <FileDown className="w-4 h-4 text-[var(--color-sage-green)]" />
+                  {t('downloadKit')}
+                </button>
+              </div>
+            )}
+
+            {isDecrypting ? (
+              <div className="flex flex-col gap-3 mt-4 animate-in fade-in duration-300">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-sage-green)] opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-sage-green)]"></span>
+                    </span>
+                    <span className="text-sm font-semibold text-[var(--color-deep-navy)]/80 animate-pulse">
+                      {progress < 30
+                        ? t('validatingSecrets')
+                        : progress < 70
+                          ? t('derivingKey')
+                          : t('unlockingVault')}
+                    </span>
+                  </div>
+                  <span className="text-xs font-bold text-[var(--color-deep-navy)]/60">
+                    {progress}%
+                  </span>
+                </div>
+
+                {/* Dynamic Sage Green Security Indicator */}
+                <div className="flex gap-1 h-3 w-full">
+                  {[...Array(5)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="flex-1 rounded-sm bg-[var(--color-deep-navy)]/10 overflow-hidden relative shadow-inner"
+                    >
+                      <div
+                        className="absolute inset-y-0 left-0 bg-[var(--color-sage-green)] transition-all duration-300 ease-out"
+                        style={{
+                          width:
+                            progress > i * 20
+                              ? progress > (i + 1) * 20
+                                ? '100%'
+                                : `${(progress - i * 20) * 5}%`
+                              : '0%',
+                          opacity: progress > i * 20 ? 1 : 0.5,
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between text-[10px] uppercase tracking-widest font-bold opacity-40">
+                  <span>Argon2id</span>
+                  <span>64MB / M-Hard</span>
+                </div>
+              </div>
+            ) : isError ? (
+              <div className="mt-2 w-full rounded-xl bg-red-500/10 border border-red-500/20 py-3.5 text-center text-sm font-semibold text-red-600 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+                {t('accessDenied')}
+              </div>
+            ) : (
+              <button
+                type="submit"
+                className="vault-login-unlock-btn btn-ink mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-deep-navy)] py-3.5 text-sm font-semibold tracking-wide text-white shadow-lg transition-all hover:bg-[var(--color-deep-navy)]/90 active:scale-95"
+              >
+                {isSetupMode && !showSetupSecret ? (
+                  <>
+                    {t('generateSecret')} <ChevronRight className="w-4 h-4 opacity-70" />
+                  </>
+                ) : isSetupMode && showSetupSecret ? (
+                  <>
+                    {t('finalizeVault')} <Lock className="w-4 h-4 opacity-70" />
+                  </>
+                ) : (
+                  t('unlockVault')
+                )}
+              </button>
+            )}
+
+            {!isSetupMode && !showSetupSecret && !isDecrypting && (
+              <>
+                <button
+                  type="button"
+                  onClick={handlePasskeyAction}
+                  className="vault-login-passkey relative mt-2 flex w-full items-center justify-center gap-3 rounded-xl py-3.5 text-sm font-semibold tracking-wide transition-all shadow-sm active:scale-95 group overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none" />
+                  <Fingerprint className="w-5 h-5 text-[var(--color-sage-green)] group-hover:scale-110 transition-transform" />
+                  {hasPasskey ? t('biometricsUnlock') : t('biometricsRegister')}
+                </button>
+
+                {hasPasskey && passkeyNeedsRotation && (
+                  <div className="mt-2 w-full rounded-xl border border-amber-300/40 bg-amber-50/60 px-3 py-2 text-[11px] font-medium text-amber-700">
+                    {t('passkeyRotationRecommended')}
+                  </div>
+                )}
+
+                {hasPasskey && (
+                  <button
+                    type="button"
+                    onClick={handleRevokePasskey}
+                    className="mt-2 text-[11px] font-semibold text-[var(--color-deep-navy)]/60 hover:text-red-600 transition-colors"
+                  >
+                    {t('passkeyRevokeButton')}
+                  </button>
+                )}
+              </>
+            )}
+
+            {isSetupMode && !isDecrypting && (
+              <button
+                type="button"
+                onClick={() => setShowWipeModal(true)}
+                className="mt-6 text-[10px] font-bold uppercase tracking-[0.2em] text-red-500/60 hover:text-red-600 transition-colors text-center"
+              >
+                {t('factoryResetBtn')}
+              </button>
+            )}
+          </form>
+        </section>
+      </main>
 
       <div className="vault-login-foot absolute bottom-8 text-center text-xs font-medium text-[var(--color-deep-navy)]/50 tracking-widest uppercase">
         {t('protectedBy')}

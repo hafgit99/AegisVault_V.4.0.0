@@ -137,7 +137,9 @@ CREATE TABLE IF NOT EXISTS passwords (
   encrypted_identity_details TEXT,
   identity_details_iv TEXT,
   encrypted_alias_details TEXT,
-  alias_details_iv TEXT
+  alias_details_iv TEXT,
+  encrypted_history TEXT,
+  history_iv TEXT
 );
 
 CREATE TABLE IF NOT EXISTS vault_metadata (
@@ -228,6 +230,8 @@ export class SQLiteOPFS {
       ['identity_details_iv', 'TEXT'],
       ['encrypted_alias_details', 'TEXT'],
       ['alias_details_iv', 'TEXT'],
+      ['encrypted_history', 'TEXT'],
+      ['history_iv', 'TEXT'],
     ];
     for (const [col, type] of requiredCols) {
       if (!existingCols.includes(col)) {
@@ -289,8 +293,8 @@ export class SQLiteOPFS {
     const attachments = JSON.stringify(entry.attachments || []);
 
     const sql = `INSERT OR REPLACE INTO passwords 
-       (id, title, encrypted_title, title_iv, username, encrypted_username, username_iv, encrypted_password, iv, category, encrypted_category, category_iv, website, encrypted_website, website_iv, encrypted_tags, tags_iv, search_index, updated_at, strength, tags, pwned_count, attachments, deleted_at, totp_secret, totp_iv, totp_issuer, totp_algorithm, totp_digits, totp_period, encrypted_notes, notes_iv, encrypted_passkey_meta, passkey_meta_iv, encrypted_card_details, card_details_iv, encrypted_identity_details, identity_details_iv, encrypted_alias_details, alias_details_iv)
-       VALUES (${this.sqlVal(entry.id)}, ${this.sqlVal(entry.title || 'Untitled')}, ${this.sqlVal(entry.encrypted_title || null)}, ${this.sqlVal(entry.title_iv || null)}, ${this.sqlVal(entry.username || '')}, ${this.sqlVal(entry.encrypted_username || null)}, ${this.sqlVal(entry.username_iv || null)}, ${this.sqlVal(entry.encrypted_password || null)}, ${this.sqlVal(entry.iv || null)}, ${this.sqlVal(entry.category || 'General')}, ${this.sqlVal(entry.encrypted_category || null)}, ${this.sqlVal(entry.category_iv || null)}, ${this.sqlVal(entry.website || '')}, ${this.sqlVal(entry.encrypted_website || null)}, ${this.sqlVal(entry.website_iv || null)}, ${this.sqlVal(entry.encrypted_tags || null)}, ${this.sqlVal(entry.tags_iv || null)}, ${this.sqlVal(JSON.stringify(entry.search_index || []))}, ${this.sqlVal(entry.updated_at || new Date().toISOString())}, ${this.sqlVal(entry.strength || 0)}, ${this.sqlVal(tags)}, ${this.sqlVal(entry.pwned_count || 0)}, ${this.sqlVal(attachments)}, ${this.sqlVal(entry.deletedAt || ((entry as SQLitePasswordRow).deleted_at ?? null))}, ${this.sqlVal(entry.totp_secret || null)}, ${this.sqlVal(entry.totp_iv || null)}, ${this.sqlVal(entry.totp_issuer || null)}, ${this.sqlVal(entry.totp_algorithm || null)}, ${this.sqlVal(entry.totp_digits || null)}, ${this.sqlVal(entry.totp_period || null)}, ${this.sqlVal(entry.encrypted_notes || null)}, ${this.sqlVal(entry.notes_iv || null)}, ${this.sqlVal(entry.encrypted_passkey_meta || null)}, ${this.sqlVal(entry.passkey_meta_iv || null)}, ${this.sqlVal(entry.encrypted_card_details || null)}, ${this.sqlVal(entry.card_details_iv || null)}, ${this.sqlVal(entry.encrypted_identity_details || null)}, ${this.sqlVal(entry.identity_details_iv || null)}, ${this.sqlVal(entry.encrypted_alias_details || null)}, ${this.sqlVal(entry.alias_details_iv || null)})`;
+       (id, title, encrypted_title, title_iv, username, encrypted_username, username_iv, encrypted_password, iv, category, encrypted_category, category_iv, website, encrypted_website, website_iv, encrypted_tags, tags_iv, search_index, updated_at, strength, tags, pwned_count, attachments, deleted_at, totp_secret, totp_iv, totp_issuer, totp_algorithm, totp_digits, totp_period, encrypted_notes, notes_iv, encrypted_passkey_meta, passkey_meta_iv, encrypted_card_details, card_details_iv, encrypted_identity_details, identity_details_iv, encrypted_alias_details, alias_details_iv, encrypted_history, history_iv)
+       VALUES (${this.sqlVal(entry.id)}, ${this.sqlVal(entry.title || 'Untitled')}, ${this.sqlVal(entry.encrypted_title || null)}, ${this.sqlVal(entry.title_iv || null)}, ${this.sqlVal(entry.username || '')}, ${this.sqlVal(entry.encrypted_username || null)}, ${this.sqlVal(entry.username_iv || null)}, ${this.sqlVal(entry.encrypted_password || null)}, ${this.sqlVal(entry.iv || null)}, ${this.sqlVal(entry.category || 'General')}, ${this.sqlVal(entry.encrypted_category || null)}, ${this.sqlVal(entry.category_iv || null)}, ${this.sqlVal(entry.website || '')}, ${this.sqlVal(entry.encrypted_website || null)}, ${this.sqlVal(entry.website_iv || null)}, ${this.sqlVal(entry.encrypted_tags || null)}, ${this.sqlVal(entry.tags_iv || null)}, ${this.sqlVal(JSON.stringify(entry.search_index || []))}, ${this.sqlVal(entry.updated_at || new Date().toISOString())}, ${this.sqlVal(entry.strength || 0)}, ${this.sqlVal(tags)}, ${this.sqlVal(entry.pwned_count || 0)}, ${this.sqlVal(attachments)}, ${this.sqlVal(entry.deletedAt || ((entry as SQLitePasswordRow).deleted_at ?? null))}, ${this.sqlVal(entry.totp_secret || null)}, ${this.sqlVal(entry.totp_iv || null)}, ${this.sqlVal(entry.totp_issuer || null)}, ${this.sqlVal(entry.totp_algorithm || null)}, ${this.sqlVal(entry.totp_digits || null)}, ${this.sqlVal(entry.totp_period || null)}, ${this.sqlVal(entry.encrypted_notes || null)}, ${this.sqlVal(entry.notes_iv || null)}, ${this.sqlVal(entry.encrypted_passkey_meta || null)}, ${this.sqlVal(entry.passkey_meta_iv || null)}, ${this.sqlVal(entry.encrypted_card_details || null)}, ${this.sqlVal(entry.card_details_iv || null)}, ${this.sqlVal(entry.encrypted_identity_details || null)}, ${this.sqlVal(entry.identity_details_iv || null)}, ${this.sqlVal(entry.encrypted_alias_details || null)}, ${this.sqlVal(entry.alias_details_iv || null)}, ${this.sqlVal(entry.encrypted_history || null)}, ${this.sqlVal(entry.history_iv || null)})`;
     this.db.run(sql);
     this.schedulePersist();
   }
@@ -323,6 +327,34 @@ export class SQLiteOPFS {
     }
     stmt.free();
     return results;
+  }
+
+  getPassword(id: number): SQLitePasswordRow | null {
+    if (!this.db) return null;
+    const stmt = this.db.prepare('SELECT * FROM passwords WHERE id = ?');
+    stmt.bind([id]);
+    let result: SQLitePasswordRow | null = null;
+    if (stmt.step()) {
+      result = stmt.getAsObject() as SQLitePasswordRow;
+      try {
+        result.tags = JSON.parse(String(result.tags || '[]'));
+      } catch {
+        result.tags = [];
+      }
+      try {
+        result.attachments = JSON.parse(String(result.attachments || '[]'));
+      } catch {
+        result.attachments = [];
+      }
+      try {
+        result.search_index = JSON.parse(String(result.search_index || '[]'));
+      } catch {
+        result.search_index = [];
+      }
+      if (result.deleted_at) result.deletedAt = result.deleted_at;
+    }
+    stmt.free();
+    return result;
   }
 
   deletePassword(id: number): void {

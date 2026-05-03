@@ -1,12 +1,6 @@
 import React from 'react';
+import { AlertTriangle } from 'lucide-react';
 import type { VaultEntry } from '../../vaultService';
-
-/**
- * SyncConflictModal — Aegis 4.2 Faz 2 / Adim 2.3
- *
- * Çatışan senkronizasyon kayıtlarını kullanıcıya gösteren
- * ve manuel birleştirme (merge) imkanı sağlayan UI bileşeni.
- */
 
 interface SyncConflictModalProps {
   conflicts: Array<{ local: VaultEntry; remote: VaultEntry }>;
@@ -24,74 +18,57 @@ export const SyncConflictModal: React.FC<SyncConflictModalProps> = ({
   if (!isOpen || conflicts.length === 0) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="p-6 border-b border-white/5 flex flex-col gap-1">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-amber-400"
-            >
-              <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            Senkronizasyon Çatışması
-          </h2>
-          <p className="text-sm opacity-60">
-            Aynı kayıt için farklı cihazlarda değişiklik yapılmış. Hangi versiyonu saklamak
-            istediğinizi seçin.
-          </p>
+    <div className="v5-modal-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="v5-modal-shell v5-sync-conflict-modal flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl">
+        <div className="v5-modal-header flex items-start gap-3 border-b border-white/5 p-6">
+          <div className="v5-modal-icon text-amber-400">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">Senkronizasyon çakışması</h2>
+            <p className="mt-1 text-sm opacity-60">
+              Aynı kayıt farklı cihazlarda değişmiş. Saklamak istediğiniz versiyonu seçin.
+            </p>
+          </div>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+        <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
           {conflicts.map((conflict, idx) => (
             <div
               key={idx}
-              className="flex flex-col gap-3 p-4 rounded-xl bg-white/5 border border-white/10"
+              className="v5-sync-conflict-card flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
             >
-              <div className="text-sm font-bold opacity-80 uppercase tracking-widest font-mono">
-                {conflict.local.title || 'İsimsiz Kayıt'}
+              <div className="font-mono text-sm font-bold uppercase tracking-widest opacity-80">
+                {conflict.local.title || 'İsimsiz kayıt'}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                {/* Local Card */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <button
                   onClick={() => onResolve([conflict.local])}
-                  className="p-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-left transition-all"
+                  className="v5-sync-conflict-choice rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 text-left transition-all hover:bg-emerald-500/10"
                 >
-                  <div className="text-[10px] font-bold text-emerald-400 uppercase mb-1">
-                    Bu Cihaz (Yerel)
+                  <div className="mb-1 text-[10px] font-bold uppercase text-emerald-400">
+                    Bu cihaz (yerel)
                   </div>
-                  <div className="text-sm truncate font-medium">
+                  <div className="truncate text-sm font-medium">
                     {conflict.local.username || 'Kullanıcı adı yok'}
                   </div>
-                  <div className="text-[10px] opacity-40 mt-2">
+                  <div className="mt-2 text-[10px] opacity-50">
                     Son güncelleme: {new Date(conflict.local.updated_at || 0).toLocaleString()}
                   </div>
                 </button>
 
-                {/* Remote Card */}
                 <button
                   onClick={() => onResolve([conflict.remote])}
-                  className="p-4 rounded-lg border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 text-left transition-all"
+                  className="v5-sync-conflict-choice rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-left transition-all hover:bg-amber-500/10"
                 >
-                  <div className="text-[10px] font-bold text-amber-400 uppercase mb-1">
-                    Diğer Cihaz (Uzak)
+                  <div className="mb-1 text-[10px] font-bold uppercase text-amber-400">
+                    Diğer cihaz (uzak)
                   </div>
-                  <div className="text-sm truncate font-medium">
+                  <div className="truncate text-sm font-medium">
                     {conflict.remote.username || 'Kullanıcı adı yok'}
                   </div>
-                  <div className="text-[10px] opacity-40 mt-2">
+                  <div className="mt-2 text-[10px] opacity-50">
                     Son güncelleme: {new Date(conflict.remote.updated_at || 0).toLocaleString()}
                   </div>
                 </button>
@@ -100,19 +77,18 @@ export const SyncConflictModal: React.FC<SyncConflictModalProps> = ({
           ))}
         </div>
 
-        {/* Footer */}
-        <div className="p-4 bg-white/5 border-t border-white/5 flex justify-end gap-3">
+        <div className="v5-modal-actions flex justify-end gap-3 border-t border-white/5 bg-white/5 p-4">
           <button
             onClick={onCancel}
-            className="px-6 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 transition-all text-sm font-medium"
+            className="rounded-xl border border-white/10 px-6 py-2.5 text-sm font-medium transition-all hover:bg-white/5"
           >
             Vazgeç
           </button>
           <button
             disabled
-            className="px-6 py-2.5 rounded-xl bg-white text-black font-bold text-sm opacity-50 cursor-not-allowed"
+            className="cursor-not-allowed rounded-xl bg-white px-6 py-2.5 text-sm font-bold text-black opacity-50"
           >
-            Tümünü Otomatik Çöz (LWW)
+            Tümünü otomatik çöz (LWW)
           </button>
         </div>
       </div>

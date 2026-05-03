@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { SecureAppSettings } from '../lib/SecureAppSettings';
 
 const clampClipboardTimeout = (value: number): number =>
@@ -13,6 +13,7 @@ export function useClipboard(timeoutSecondsOverride?: number) {
   });
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
+  const copiedTextRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (typeof timeoutSecondsOverride === 'number') {
@@ -33,10 +34,17 @@ export function useClipboard(timeoutSecondsOverride?: number) {
   }, [timeoutSecondsOverride]);
 
   const copy = useCallback(
-    (id: number, text: string) => {
-      navigator.clipboard.writeText(text);
+    async (id: number, text: string): Promise<boolean> => {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        return false;
+      }
+
+      copiedTextRef.current = text;
       setCopiedId(id);
       setTimeLeft(configuredTimeoutSeconds);
+      return true;
     },
     [configuredTimeoutSeconds]
   );
@@ -46,9 +54,24 @@ export function useClipboard(timeoutSecondsOverride?: number) {
       const timer = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
-            // Memory sanitization for clipboard
-            navigator.clipboard.writeText('');
-            setCopiedId(null);
+            const copiedText = copiedTextRef.current;
+
+            void (async () => {
+              try {
+                if (copiedText && typeof navigator.clipboard.readText === 'function') {
+                  const currentClipboard = await navigator.clipboard.readText();
+                  if (currentClipboard !== copiedText) return;
+                }
+
+                await navigator.clipboard.writeText('');
+              } catch {
+                // Clipboard access can be denied by the browser; UI state still expires.
+              } finally {
+                copiedTextRef.current = null;
+                setCopiedId(null);
+              }
+            })();
+
             return 0;
           }
           return prev - 1;

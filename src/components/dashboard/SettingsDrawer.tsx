@@ -115,6 +115,9 @@ const SyncDevicesPanel = lazy(() =>
 const SyncConflictModal = lazy(() =>
   import('./SyncConflictModal').then((m) => ({ default: m.SyncConflictModal }))
 );
+const SyncRelayControl = lazy(() =>
+  import('./SyncRelayControl').then((m) => ({ default: m.SyncRelayControl }))
+);
 
 function SettingsLazyFallback() {
   return (
@@ -2283,15 +2286,16 @@ export function SettingsDrawer({
               </div>
             </div>
           )}
-          <GlowCard className="settings-drawer-surface relative z-10 flex h-[min(94vh,960px)] w-full max-w-[1180px] flex-col overflow-hidden rounded-xl border border-black/10 p-0 shadow-xl animate-in zoom-in-95 duration-300 slide-in-from-bottom-10 dark:border-white/10">
-            <div className="border-b border-white/10 px-5 py-5 lg:px-7">
+          <GlowCard className="settings-drawer-surface v5-settings-surface relative z-10 flex h-[min(94vh,960px)] w-full max-w-[1180px] flex-col overflow-hidden rounded-xl border border-black/10 p-0 shadow-xl animate-in zoom-in-95 duration-300 slide-in-from-bottom-10 dark:border-white/10 dark:bg-[#0a1128]">
+            <div className="v5-settings-header border-b border-white/10 px-5 py-5 lg:px-7">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-4 min-w-0" onClick={handleLogoClick}>
-                  <div className="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-[var(--color-sage-green)] text-white shadow-sm">
+                  <div className="v5-settings-icon flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-[var(--color-sage-green)] text-white shadow-sm">
                     <Settings className="h-6 w-6" />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-2xl lg:text-[2rem] font-bold tracking-tight text-[var(--color-deep-navy)]">
+                    <span className="v5-settings-eyebrow">Aegis Vault 5.0</span>
+                    <h2 className="text-2xl lg:text-[2rem] font-bold tracking-tight text-[var(--color-deep-navy)] dark:text-white">
                       {t('settingsTitle')}
                     </h2>
                     <p className="mt-1 text-sm opacity-70 max-w-2xl">{t('settingsDesc')}</p>
@@ -2305,8 +2309,8 @@ export function SettingsDrawer({
                 </button>
               </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div className="settings-card-surface-muted rounded-xl border px-4 py-3">
+              <div className="v5-settings-overview mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="settings-card-surface-muted v5-settings-overview-card rounded-xl border px-4 py-3">
                   <div className="settings-section-kicker">
                     {t('settingsOverviewVaultRecords', 'Vault records')}
                   </div>
@@ -2315,7 +2319,7 @@ export function SettingsDrawer({
                   </div>
                   <div className="settings-section-copy mt-1">{t('settingsDesc')}</div>
                 </div>
-                <div className="settings-card-surface-muted rounded-xl border px-4 py-3">
+                <div className="settings-card-surface-muted v5-settings-overview-card rounded-xl border px-4 py-3">
                   <div className="settings-section-kicker">
                     {t('settingsOverviewSecurityScore', 'Security score')}
                   </div>
@@ -2328,7 +2332,7 @@ export function SettingsDrawer({
                     )}
                   </div>
                 </div>
-                <div className="settings-card-surface-muted rounded-xl border px-4 py-3">
+                <div className="settings-card-surface-muted v5-settings-overview-card rounded-xl border px-4 py-3">
                   <div className="settings-section-kicker">
                     {t('settingsOverviewReleaseTrust', 'Release trust')}
                   </div>
@@ -2366,7 +2370,7 @@ export function SettingsDrawer({
 
                   <nav
                     aria-label={t('settingsSectionPickerLabel', 'Settings section')}
-                    className="hidden rounded-xl border border-black/10 bg-white/70 p-2 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-[#182233]/90 lg:flex lg:flex-col lg:gap-1"
+                    className="v5-settings-nav hidden rounded-xl border border-black/10 bg-white/70 p-2 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-[#111827] lg:flex lg:flex-col lg:gap-1"
                   >
                     {settingsSections.map((section) => {
                       const SectionIcon = section.icon;
@@ -2415,7 +2419,7 @@ export function SettingsDrawer({
                 </aside>
 
                 <main className="min-w-0">
-                  <div className="settings-page-heading mb-5 rounded-xl border border-black/10 bg-white/70 px-5 py-4 shadow-sm dark:border-white/10 dark:bg-[#182233]/85">
+                  <div className="settings-page-heading v5-settings-page-heading mb-5 rounded-xl border border-black/10 bg-white/70 px-5 py-4 shadow-sm dark:border-white/10 dark:bg-[#182233]/85">
                     <div className="flex items-start gap-3">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)]">
                         <ActiveSectionIcon className="h-5 w-5" />
@@ -3694,49 +3698,39 @@ export function SettingsDrawer({
                                     'desktopPairingEmpty',
                                     'No paired browser extensions were found for this desktop app yet.'
                                   )}
+                                  description={t(
+                                    'desktopPairingEmptyDesc',
+                                    'Trusted browser extensions will appear here with their device and permission details.'
+                                  )}
                                 />
                               )}
                             </div>
                           </div>
 
-                          {/* Phase 2: E2EE Sync Strategy & Devices */}
+                          {/* Aegis Relay: E2EE Cloud Sync */}
                           <div
                             ref={syncDevicesRef}
-                            className="settings-panel mt-4 rounded-xl p-6 shadow-sm"
+                            className="settings-panel mt-4 rounded-xl p-6 shadow-sm overflow-hidden relative"
                           >
-                            <div className="flex items-center gap-2 mb-6">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+                            <div className="flex items-center gap-2 mb-6 relative z-10">
                               <ShieldCheck className="w-5 h-5 text-emerald-500" />
                               <h3 className="text-lg font-semibold tracking-tight">
-                                E2EE Bulut Senkronizasyonu (Faz 2)
+                                {t('syncRelayTitle', 'Aegis Relay Sync')}
                               </h3>
                             </div>
 
-                            <div className="settings-subpanel p-5 rounded-2xl border shadow-inner mb-4">
-                              <div className="flex items-start justify-between gap-4">
-                                <div>
-                                  <h4 className="font-semibold text-sm mb-1 text-[var(--color-deep-navy)]">
-                                    End-to-end encrypted sync
-                                  </h4>
-                                  <p className="text-xs opacity-70 leading-relaxed max-w-md">
-                                    Sync vault data through Aegis Relay with trusted devices. All
-                                    records are encrypted on this device before transport.
-                                  </p>
-                                </div>
-                                <label className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--color-deep-navy)]">
-                                  <input
-                                    type="checkbox"
-                                    checked={e2eSyncEnabled}
-                                    onChange={(e) => setE2eSyncEnabled(e.target.checked)}
-                                    className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500/40"
-                                  />
-                                  Aktif Et
-                                </label>
-                              </div>
-                            </div>
+                            <Suspense fallback={<SettingsLazyFallback />}>
+                              <SyncRelayControl />
+                            </Suspense>
 
-                            {e2eSyncEnabled && (
-                              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                <SyncDevicesPanel />
+                            {SecureAppSettings.getSyncRelayEnabled() && (
+                              <div className="mt-8 animate-in fade-in slide-in-from-top-4 duration-700">
+                                <div className="border-t border-black/5 pt-8">
+                                  <Suspense fallback={<SettingsLazyFallback />}>
+                                    <SyncDevicesPanel />
+                                  </Suspense>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -3823,11 +3817,13 @@ export function SettingsDrawer({
                     )}
 
                     {activeTab === 'sync' && (
-                      <div className="flex flex-col space-y-5 animate-in fade-in duration-500">
+                      <div className="v5-sync-settings-root flex flex-col space-y-5 animate-in fade-in duration-500">
                         {/* Data Management */}
-                        <div className="settings-panel rounded-xl p-6 shadow-sm">
-                          <div className="flex items-center gap-2 mb-6">
-                            <Database className="w-5 h-5 text-[var(--color-sage-green)]" />
+                        <div className="settings-panel v5-sync-management-panel rounded-xl p-6 shadow-sm">
+                          <div className="v5-sync-section-header mb-6">
+                            <div className="v5-sync-section-icon">
+                              <Database className="h-5 w-5" />
+                            </div>
                             <h3 className="text-lg font-semibold tracking-tight">
                               {t('dataManagementTitle')}
                             </h3>
@@ -3835,7 +3831,7 @@ export function SettingsDrawer({
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Export */}
-                            <div className="settings-subpanel p-5 rounded-2xl border flex flex-col justify-between shadow-inner">
+                            <div className="settings-subpanel v5-sync-action-card p-5 rounded-2xl border flex flex-col justify-between shadow-inner">
                               <div>
                                 <h4 className="font-semibold text-sm mb-1 text-[var(--color-deep-navy)]">
                                   {t('exportTitle')}
@@ -3871,7 +3867,7 @@ export function SettingsDrawer({
                             </div>
 
                             {/* Import */}
-                            <div className="settings-subpanel p-5 rounded-2xl border flex flex-col justify-between shadow-inner">
+                            <div className="settings-subpanel v5-sync-action-card p-5 rounded-2xl border flex flex-col justify-between shadow-inner">
                               <div>
                                 <h4 className="font-semibold text-sm mb-1 text-[var(--color-deep-navy)]">
                                   {t('importWizardTitle')}
@@ -3924,7 +3920,7 @@ export function SettingsDrawer({
                             </div>
                           </div>
 
-                          <div className="mt-4 settings-subpanel p-5 rounded-2xl border shadow-inner">
+                          <div className="v5-sync-strategy-panel mt-4 settings-subpanel p-5 rounded-2xl border shadow-inner">
                             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                               <div className="max-w-2xl">
                                 <div className="flex items-center gap-2 flex-wrap">
@@ -4045,7 +4041,7 @@ export function SettingsDrawer({
                                 </div>
                               </div>
                             </div>
-                            <div className="mt-4 rounded-2xl border border-dashed settings-card-surface px-4 py-3 text-xs opacity-75">
+                            <div className="v5-sync-policy-note mt-4 rounded-2xl border border-dashed settings-card-surface px-4 py-3 text-xs opacity-75">
                               {t(
                                 AEGIS_SYNC_STRATEGY.conflictPolicyKey,
                                 AEGIS_SYNC_STRATEGY.conflictPolicyDefault
@@ -4156,7 +4152,7 @@ export function SettingsDrawer({
                               </div>
                             </div>
                           ) : (
-                            <div className="mt-6 flex flex-col items-center justify-between gap-6 overflow-hidden rounded-xl border watchtower-status-box p-6 shadow-inner md:flex-row">
+                            <div className="v5-qr-sync-launch mt-6 flex flex-col items-center justify-between gap-6 overflow-hidden rounded-xl border watchtower-status-box p-6 shadow-inner md:flex-row">
                               <div>
                                 <h4 className="font-bold text-[var(--color-deep-navy)] text-base mb-1">
                                   {t('qrSyncTitle')}
@@ -4216,7 +4212,7 @@ export function SettingsDrawer({
                           <div className="mt-6 grid grid-cols-1 xl:grid-cols-2 gap-4">
                             <div
                               ref={qrAuditPanelRef}
-                              className="settings-subpanel p-5 rounded-2xl border shadow-inner"
+                              className="settings-subpanel v5-sync-audit-card p-5 rounded-2xl border shadow-inner"
                             >
                               <div className="flex items-center justify-between gap-3 mb-4">
                                 <div>
@@ -4241,6 +4237,10 @@ export function SettingsDrawer({
                                     title={t(
                                       'qrSyncHistoryEmpty',
                                       'No QR transfer history recorded yet.'
+                                    )}
+                                    description={t(
+                                      'qrSyncHistoryEmptyDesc',
+                                      'Completed exports and imports will appear here as session history.'
                                     )}
                                   />
                                 ) : (
@@ -4353,7 +4353,7 @@ export function SettingsDrawer({
                               </div>
                             </div>
 
-                            <div className="settings-subpanel p-5 rounded-2xl border shadow-inner">
+                            <div className="settings-subpanel v5-sync-audit-card p-5 rounded-2xl border shadow-inner">
                               <div className="flex items-center justify-between gap-3 mb-4">
                                 <div>
                                   <h4 className="font-semibold text-sm text-[var(--color-deep-navy)]">
@@ -4377,6 +4377,10 @@ export function SettingsDrawer({
                                     title={t(
                                       'qrSyncAuditEmpty',
                                       'No QR sync audit events recorded yet.'
+                                    )}
+                                    description={t(
+                                      'qrSyncAuditEmptyDesc',
+                                      'Creation, import, revoke, and rejection events will be tracked here.'
                                     )}
                                   />
                                 ) : (
@@ -4454,7 +4458,7 @@ export function SettingsDrawer({
                               </div>
                             </div>
 
-                            <div className="settings-subpanel p-5 rounded-2xl border shadow-inner">
+                            <div className="settings-subpanel v5-sync-audit-card p-5 rounded-2xl border shadow-inner">
                               <div className="flex items-center justify-between gap-3 mb-4">
                                 <div>
                                   <h4 className="font-semibold text-sm text-[var(--color-deep-navy)]">
@@ -4528,6 +4532,10 @@ export function SettingsDrawer({
                                       'syncAuditEmpty',
                                       'No sync audit events recorded yet.'
                                     )}
+                                    description={t(
+                                      'syncAuditEmptyDesc',
+                                      'Import, restore, and QR workflows will be recorded here after they complete.'
+                                    )}
                                   />
                                 ) : (
                                   filteredSyncAuditEvents.slice(0, 6).map((event) => (
@@ -4600,7 +4608,7 @@ export function SettingsDrawer({
                           {importReport && (
                             <div
                               ref={importReportRef}
-                              className="import-report-card mt-5 p-5 rounded-2xl border animate-in fade-in zoom-in-95 duration-500 shadow-sm relative overflow-hidden"
+                              className="import-report-card v5-sync-report-card mt-5 p-5 rounded-2xl border animate-in fade-in zoom-in-95 duration-500 shadow-sm relative overflow-hidden"
                             >
                               <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
                               <div className="flex items-start gap-4 relative z-10">
@@ -4737,7 +4745,7 @@ export function SettingsDrawer({
                           {latestMigrationReport && (
                             <div
                               ref={migrationReportRef}
-                              className="import-report-card mt-5 p-5 rounded-2xl border animate-in fade-in zoom-in-95 duration-500 shadow-sm relative overflow-hidden"
+                              className="import-report-card v5-sync-report-card v5-sync-report-card-success mt-5 p-5 rounded-2xl border animate-in fade-in zoom-in-95 duration-500 shadow-sm relative overflow-hidden"
                             >
                               <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-sage-green)]/5 rounded-full blur-2xl pointer-events-none" />
                               <div className="flex items-start gap-4 relative z-10">
@@ -4898,20 +4906,20 @@ export function SettingsDrawer({
 
         {/* Weak Passwords Popup */}
         {showWeakPasswordsPopup && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="v5-modal-backdrop fixed inset-0 z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
             <div
               className="absolute inset-0 bg-[var(--color-deep-navy)]/40 backdrop-blur-sm"
               onClick={() => setShowWeakPasswordsPopup(false)}
             />
-            <GlowCard className="weak-passwords-surface relative z-10 max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-red-500/20 p-6 shadow-xl custom-scrollbar">
+            <GlowCard className="weak-passwords-surface v5-modal-shell v5-modal-shell-danger relative z-10 max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-red-500/20 p-6 shadow-xl custom-scrollbar">
               <button
                 onClick={() => setShowWeakPasswordsPopup(false)}
                 className="absolute top-6 right-6 p-2 rounded-full hover:bg-black/5 text-gray-500 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-red-100/50 rounded-xl text-red-500">
+              <div className="v5-modal-header flex items-center gap-3 mb-6">
+                <div className="v5-modal-icon v5-modal-icon-danger p-3 bg-red-100/50 rounded-xl text-red-500">
                   <AlertTriangle className="w-6 h-6" />
                 </div>
                 <div>
@@ -4982,7 +4990,14 @@ export function SettingsDrawer({
                   ))}
                 {passwords.filter((p) => !p.pass || p.pass.length < 8 || (p.pwned_count || 0) > 0)
                   .length === 0 && (
-                  <SettingsEmptyState icon={ShieldCheck} title={t('noWeakPasswords')} />
+                  <SettingsEmptyState
+                    icon={ShieldCheck}
+                    title={t('noWeakPasswords')}
+                    description={t(
+                      'noWeakPasswordsDesc',
+                      'Vault records look healthy; no weak or breached password was detected.'
+                    )}
+                  />
                 )}
               </div>
             </GlowCard>

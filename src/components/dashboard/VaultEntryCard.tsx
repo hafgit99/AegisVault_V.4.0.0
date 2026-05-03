@@ -103,7 +103,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
 
   return (
     <article
-      className={`vault-entry-card grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] ${compact ? 'gap-3 p-4' : 'gap-4 p-5 md:p-6'} rounded-[1.25rem] transition-all relative group/item`}
+      className={`vault-entry-card v5-vault-entry-card grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] ${compact ? 'gap-3 p-4' : 'gap-4 p-5 md:p-6'} rounded-[1.25rem] transition-all relative group/item`}
     >
       <div className="flex items-start gap-4 md:gap-5 relative z-10 min-w-0">
         <div
@@ -120,20 +120,20 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             >
               {p.title}
             </h3>
-            <div className="vault-entry-badges flex min-w-0 flex-wrap items-center gap-1.5">
+            <div className="vault-entry-badges v5-entry-badge-row flex min-w-0 flex-wrap items-center gap-1.5">
               {sharedSpaceName && (
-                <span className="rounded-full bg-[var(--color-sage-green)]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-sage-green)]">
+                <span className="v5-entry-badge rounded-full bg-[var(--color-sage-green)]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-sage-green)]">
                   {sharedSpaceName}
                 </span>
               )}
               {isSitePasskeyRecord && (
-                <span className="rounded-full bg-sky-500/12 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-sky-700 dark:text-sky-300">
+                <span className="v5-entry-badge rounded-full bg-sky-500/12 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-sky-700 dark:text-sky-300">
                   {t('passkeys')}
                 </span>
               )}
               {(p.pwned_count || 0) > 0 && (
                 <span
-                  className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest font-black"
+                  className="v5-entry-badge bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest font-black"
                   title={t('pwnedWarning')}
                 >
                   {t('pwned')}
@@ -152,7 +152,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
           <div
             className={`flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mt-1 ${compact ? 'text-xs' : 'text-sm'}`}
           >
-            <p className="vault-entry-meta font-[var(--font-geist-mono)] tracking-tight truncate flex items-center gap-2">
+            <p className="vault-entry-meta v5-entry-identity-line font-[var(--font-geist-mono)] tracking-tight truncate flex items-center gap-2">
               {isSitePasskeyRecord ? p.passkeyMetadata?.rp_id || p.username : p.username}
               {p.tags && p.tags.length > 0 && (
                 <span className="hidden xl:flex items-center gap-1 opacity-70 border border-black/10 px-1.5 py-0.5 rounded text-[10px] ml-2">
@@ -164,16 +164,16 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             <span className="hidden md:block w-1.5 h-1.5 rounded-full entry-divider shrink-0" />
             {p.aliasDetails?.email ? (
               <>
-                <span className="rounded-full bg-sky-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-sky-700 dark:text-sky-300 flex items-center gap-1">
+                <span className="v5-entry-badge v5-entry-alias-badge rounded-full bg-sky-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-sky-700 dark:text-sky-300 flex items-center gap-1">
                   <AtSign className="w-3 h-3" />
                   {t('aliasBadge')}
                 </span>
                 <span className="hidden md:block w-1.5 h-1.5 rounded-full entry-divider shrink-0" />
               </>
             ) : null}
-            <div className="flex items-center gap-2">
+            <div className="v5-entry-secret-row flex items-center gap-2">
               <span
-                className={`pass-font ${compact ? 'text-xs' : 'text-sm'} rounded-md select-all transition-all duration-300 ${
+                className={`pass-font v5-entry-password-chip ${compact ? 'text-xs' : 'text-sm'} rounded-md select-all transition-all duration-300 ${
                   visiblePasswords.has(p.id)
                     ? 'password-reveal-chip backdrop-blur-[20px] px-2 py-1'
                     : 'tracking-[0.25em] opacity-40 select-none mt-1'
@@ -197,7 +197,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
 
           <div className="space-y-2">
             {isCardRecord && (
-              <div className="vault-entry-notes-box flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-lg">
+              <div className="vault-entry-notes-box v5-entry-detail-strip flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-lg">
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-sage-green)]">
                   {t('cards')}
                 </span>
@@ -220,7 +220,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             )}
 
             {isIdentityRecord && (
-              <div className="vault-entry-notes-box flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-lg">
+              <div className="vault-entry-notes-box v5-entry-detail-strip flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-lg">
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-sage-green)]">
                   {t('identities')}
                 </span>
@@ -241,7 +241,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             )}
 
             {p.aliasDetails?.email ? (
-              <div className="vault-entry-notes-box flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-lg">
+              <div className="vault-entry-notes-box v5-entry-detail-strip v5-entry-alias-strip flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-lg">
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-sky-700 dark:text-sky-300">
                   {t('aliasBadge')}
                 </span>
@@ -255,12 +255,12 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
 
             {/* Attachments */}
             {p.attachments && p.attachments.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="v5-entry-attachment-row flex flex-wrap gap-2">
                 {p.attachments.map((att) => (
                   <button
                     key={att.id}
                     onClick={() => handleDownloadAttachment(att.id, att.name)}
-                    className="group flex items-center gap-1.5 bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)] border border-[var(--color-sage-green)]/30 hover:bg-[var(--color-sage-green)]/20 px-2.5 py-1 rounded-md text-[11px] font-bold shadow-sm transition-all relative overflow-hidden"
+                    className="v5-entry-attachment-chip group flex items-center gap-1.5 bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)] border border-[var(--color-sage-green)]/30 hover:bg-[var(--color-sage-green)]/20 px-2.5 py-1 rounded-md text-[11px] font-bold shadow-sm transition-all relative overflow-hidden"
                     title={`Download ${att.name} (${(att.size / (1024 * 1024)).toFixed(2)}MB)`}
                   >
                     <Paperclip className="w-3 h-3 group-hover:scale-110 transition-transform" />
@@ -286,7 +286,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
 
             {/* Secure Notes Preview */}
             {p.notes && p.category !== 'Notes' && (
-              <div className="vault-entry-notes-box flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg">
+              <div className="vault-entry-notes-box v5-entry-detail-strip flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg">
                 <FileText className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
                 <p className="text-[11px] text-[var(--color-deep-navy)]/70 line-clamp-2 leading-relaxed">
                   {p.notes.length > 120 ? p.notes.slice(0, 120) + '...' : p.notes}
@@ -299,7 +299,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
 
       {/* Actions */}
       <div className="flex items-stretch xl:items-start justify-end relative z-10 shrink-0 xl:min-w-[238px]">
-        <div className="flex flex-col-reverse xl:flex-col justify-between gap-3 w-full xl:w-auto">
+        <div className="v5-entry-actions-rail flex flex-col-reverse xl:flex-col justify-between gap-3 w-full xl:w-auto">
           <div className="hidden lg:flex items-center justify-end gap-3 xl:min-h-7">
             <div className="w-24 h-2 entry-divider rounded-full overflow-hidden">
               <div
@@ -327,14 +327,14 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
           </div>
 
           <div className="flex items-center justify-end gap-2 xl:ml-4 flex-wrap">
-            <div className="relative flex items-center gap-2">
+            <div className="v5-entry-action-cluster relative flex items-center gap-2">
               {isVulnerable && canEdit && (
                 <button
                   onClick={() => {
                     onEdit({ ...p });
                     toast.info(t('updateNow'));
                   }}
-                  className="vault-update-btn px-3 py-1.5 rounded-lg bg-red-500/10 text-red-600 text-[10px] font-black uppercase tracking-tighter hover:bg-red-500 hover:text-white transition-all"
+                  className="vault-update-btn v5-entry-update-btn px-3 py-1.5 rounded-lg bg-red-500/10 text-red-600 text-[10px] font-black uppercase tracking-tighter hover:bg-red-500 hover:text-white transition-all"
                 >
                   {t('updateNow')}
                 </button>

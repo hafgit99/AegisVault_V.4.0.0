@@ -238,6 +238,53 @@ export class VaultEntryService {
       );
     }
 
+    // --- Professional Item Versioning & History ---
+    if (entry.id) {
+      let oldEntry: VaultEntry | null = null;
+      if (useSQLite && sqliteDb) {
+        oldEntry = sqliteDb.getPassword(entry.id) as VaultEntry;
+      } else if (opfsMockDb) {
+        oldEntry = await opfsMockDb.get('passwords', entry.id);
+      }
+
+      if (oldEntry) {
+        let historyList: VaultEntry[] = [];
+        if (oldEntry.encrypted_history && oldEntry.history_iv) {
+          try {
+            const historyIvArray = hexToBuffer(oldEntry.history_iv);
+            const historyCipherArray = hexToBuffer(oldEntry.encrypted_history);
+            const historyPlainBuffer = await window.crypto.subtle.decrypt(
+              { name: 'AES-GCM', iv: toBufferSource(historyIvArray) },
+              aesKey,
+              toBufferSource(historyCipherArray)
+            );
+            historyList = JSON.parse(new TextDecoder().decode(historyPlainBuffer));
+          } catch (e) {
+            console.warn('[VaultEntryService] History decryption failed:', e);
+          }
+        }
+
+        // Add previous state to history
+        const historyItem = { ...oldEntry };
+        delete historyItem.encrypted_history;
+        delete historyItem.history_iv;
+        delete historyItem.history;
+
+        historyList.unshift(historyItem);
+        if (historyList.length > 5) historyList = historyList.slice(0, 5); // Retention policy: 5 versions
+
+        // Re-encrypt history
+        const hIv = generateRandomBytes(12);
+        const hCipher = await window.crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv: toBufferSource(hIv) },
+          aesKey,
+          toBufferSource(new TextEncoder().encode(JSON.stringify(historyList)))
+        );
+        newEntry.encrypted_history = bufferToHex(hCipher);
+        newEntry.history_iv = bufferToHex(hIv);
+      }
+    }
+
     if (useSQLite && sqliteDb) {
       sqliteDb.putPassword(newEntry as unknown as Record<string, unknown>);
     }

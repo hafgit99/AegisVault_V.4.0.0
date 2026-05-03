@@ -30,6 +30,9 @@ const SpotlightWalkthrough = lazy(() =>
 const DonationModal = lazy(() =>
   import('./DonationModal').then((m) => ({ default: m.DonationModal }))
 );
+const QuickAliasModal = lazy(() =>
+  import('./dashboard/QuickAliasModal').then((m) => ({ default: m.QuickAliasModal }))
+);
 
 // ─────────────────────────────────────────────────────────────────
 // Dashboard İç Bileşeni (VaultContext tüketen)
@@ -56,6 +59,7 @@ function DashboardInner() {
   const [editEntry, setEditEntry] = useState<Partial<VaultEntry> | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showDonation, setShowDonation] = useState(false);
+  const [showQuickAlias, setShowQuickAlias] = useState(false);
   const [showEmergencyKit, setShowEmergencyKit] = useState(false);
   const [, setLogoClicks] = useState(0);
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => {
@@ -89,6 +93,7 @@ function DashboardInner() {
     onEscape: () => {
       setIsAdding(false);
       setShowSettings(false);
+      setShowQuickAlias(false);
     },
   });
 
@@ -249,7 +254,7 @@ function DashboardInner() {
   };
 
   return (
-    <div className="w-full min-h-screen overflow-visible bg-[var(--color-cloud-dancer)] text-[var(--color-deep-navy)] px-4 pb-4 pt-5 md:px-8 md:pb-8 md:pt-7 font-[var(--font-geist)] animate-in fade-in duration-700">
+    <div className="v5-dashboard-root w-full min-h-screen overflow-visible bg-[var(--color-cloud-dancer)] text-[var(--color-deep-navy)] px-4 pb-4 pt-5 md:px-8 md:pb-8 md:pt-7 font-[var(--font-geist)] animate-in fade-in duration-700">
       <Suspense fallback={null}>
         <SpotlightWalkthrough />
       </Suspense>
@@ -257,6 +262,7 @@ function DashboardInner() {
       <DashboardHeader
         onSettingsOpen={() => setShowSettings(true)}
         onDonationOpen={() => setShowDonation(true)}
+        onQuickAliasOpen={() => setShowQuickAlias(true)}
         onLogoClick={handleLogoClick}
         themeMode={themeMode}
         onThemeToggle={() => setThemeMode((prev) => (prev === 'light' ? 'dark' : 'light'))}
@@ -266,18 +272,19 @@ function DashboardInner() {
       <main
         role="main"
         aria-label="Vault entries"
-        className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 px-4 xl:px-8"
+        className="v5-dashboard-shell max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-6 px-4 xl:px-8"
       >
-        <GlowCard className="lg:col-span-8 xl:col-span-9 glass-card p-6 md:p-8 flex flex-col gap-6 relative">
-          <div className="flex items-end justify-between gap-4">
+        <GlowCard className="v5-vault-panel lg:col-span-8 xl:col-span-9 glass-card p-6 md:p-7 flex flex-col gap-6 relative">
+          <div className="v5-vault-panel-header flex items-end justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-semibold mb-1">
+              <span className="v5-section-kicker">{t('v5VaultWorkspace')}</span>
+              <h2 className="mt-2 text-2xl font-semibold mb-1">
                 {categoryFilter === 'Trash' ? t('trash') : t('yourVault')}
               </h2>
-              <p className="flex items-center gap-2 text-sm text-[var(--color-deep-navy)]/65 dark:text-white/70">
+              <p className="v5-vault-status-row flex items-center gap-2 text-sm text-[var(--color-deep-navy)]/65 dark:text-white/70">
                 {t('zeroKnowledge')}
                 {!isDecrypting && (
-                  <span className="rounded-full bg-black/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider dark:bg-white/10">
+                  <span className="v5-vault-count-chip rounded-full bg-black/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider dark:bg-white/10">
                     {passwords.length} {t('entries')}
                   </span>
                 )}
@@ -289,7 +296,7 @@ function DashboardInner() {
                   if (confirm(t('confirmEmptyTrash'))) handleEmptyTrash();
                 }}
                 disabled={passwords.length === 0}
-                className="flex items-center gap-2 bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 disabled:opacity-50"
+                className="v5-vault-danger-action flex items-center gap-2 bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 disabled:opacity-50"
               >
                 <Trash2 className="w-4 h-4" /> {t('emptyTrash')}
               </button>
@@ -297,7 +304,7 @@ function DashboardInner() {
               !isAdding && (
                 <button
                   onClick={startNewEntry}
-                  className="btn-ink flex items-center gap-2 bg-[var(--color-deep-navy)] text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md hover:bg-opacity-90 transition-all active:scale-95"
+                  className="btn-ink v5-vault-primary-action flex items-center gap-2 bg-[var(--color-deep-navy)] text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md hover:bg-opacity-90 transition-all active:scale-95"
                 >
                   <Plus className="w-4 h-4" /> {t('newEntry')}
                 </button>
@@ -311,7 +318,7 @@ function DashboardInner() {
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-between p-4 rounded-2xl bg-white/30 border border-white/20 relative overflow-hidden"
+                    className="v5-vault-skeleton flex items-center justify-between p-4 rounded-2xl bg-white/30 border border-white/20 relative overflow-hidden"
                   >
                     <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent" />
                     <div className="flex items-center gap-4">
@@ -326,7 +333,7 @@ function DashboardInner() {
                 ))}
               </div>
             ) : passwords.length === 0 ? (
-              <div className="dashboard-empty-state mt-4">
+              <div className="dashboard-empty-state v5-dashboard-empty-state mt-4">
                 <div className="dashboard-empty-icon">
                   {categoryFilter === 'Trash' ? (
                     <ArchiveX className="h-6 w-6" />
@@ -345,7 +352,7 @@ function DashboardInner() {
                 {categoryFilter !== 'Trash' && !isAdding && (
                   <button
                     onClick={startNewEntry}
-                    className="btn-ink flex items-center gap-2 rounded-xl bg-[var(--color-deep-navy)] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-opacity-90 active:scale-95"
+                    className="btn-ink v5-vault-primary-action flex items-center gap-2 rounded-xl bg-[var(--color-deep-navy)] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-opacity-90 active:scale-95"
                   >
                     <Plus className="h-4 w-4" /> {t('newEntry')}
                   </button>
@@ -362,7 +369,7 @@ function DashboardInner() {
             )}
 
             {isAdding && (
-              <div className="absolute inset-0 z-[60] bg-[var(--color-cloud-dancer)] p-6 md:p-8 animate-in slide-in-from-bottom-5 duration-300 rounded-[2.5rem]">
+              <div className="v5-entry-form-overlay custom-scrollbar absolute inset-0 z-[60] bg-[var(--color-cloud-dancer)] p-6 md:p-8 animate-in slide-in-from-bottom-5 duration-300 rounded-[2.5rem]">
                 <Suspense fallback={<div className="p-8 text-center opacity-50">Loading...</div>}>
                   <EntryForm initialEntry={editEntry || undefined} onClose={handleCloseForm} />
                 </Suspense>
@@ -373,7 +380,7 @@ function DashboardInner() {
 
         <nav
           aria-label="Categories and security"
-          className="lg:col-span-4 xl:col-span-3 flex flex-col gap-6 xl:gap-8"
+          className="v5-dashboard-rail lg:col-span-4 xl:col-span-3 flex flex-col gap-5 xl:gap-6"
         >
           <div className={totalSecurityIssues > 0 ? 'order-1' : 'order-2'}>
             <WatchtowerPanel />
@@ -398,6 +405,10 @@ function DashboardInner() {
 
       <Suspense fallback={null}>
         <DonationModal isOpen={showDonation} onClose={() => setShowDonation(false)} />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        {showQuickAlias && <QuickAliasModal onClose={() => setShowQuickAlias(false)} />}
       </Suspense>
     </div>
   );
