@@ -9,10 +9,11 @@
 ## 📋 TEST ÖZETI
 
 ### 1. ✅ BUILD TEST
+
 - **Status:** PASSED ✓
 - **Komut:** `npm run build`
 - **Sonuç:** TypeScript + Vite build başarıyla tamamlandı
-- **Çıktı:** 
+- **Çıktı:**
   - 2743 modül transform edildi
   - Ana bundle: 503.31 kB (gzip: 148.62 kB)
   - Tüm asset'ler oluşturuldu
@@ -21,8 +22,9 @@
 ---
 
 ### 2. ✅ UNIT TEST (Regression + Security)
+
 - **Status:** PASSED ✓
-- **Test Suites:** 
+- **Test Suites:**
   - Import/Export: 6/6 başarılı (17 test)
   - Security Regression: Geçti
   - TOTP, Vault, Encryption testleri: Geçti
@@ -34,6 +36,7 @@
   - **Branches:** 73.18% (3067/4191)
 
 #### Yüksek Coverage Modules:
+
 - `VaultManager.ts`: 100%
 - `VaultTrashService.ts`: 100%
 - `SearchService.ts`: 100%
@@ -47,6 +50,7 @@
 ---
 
 ### 3. ✅ SMOKE TEST (Release Artifacts)
+
 - **Status:** PASSED ✓
 - **Test:** `npm run release:smoke`
 - **Kontrol Edilen:**
@@ -61,6 +65,7 @@
 ---
 
 ### 4. ⚠️ E2E TESTS (Headed Mode - Visual Inspection)
+
 - **Status:** 97.4% PASSED (184/189 tests)
 - **Platform:** Chromium
 - **Modlar:** Headed (Visual Browser)
@@ -69,29 +74,31 @@
 - **Retries:** 1 (flaky tests için)
 
 #### Test Results Breakdown:
-| Kategori | Passed | Failed | Status |
-|----------|--------|--------|--------|
-| **TOTAL** | 184 | **5** | ⚠️ |
-| Vault Access | ✓ | - | PASS |
-| Entry CRUD | ✓ | - | PASS |
-| Keyboard Shortcuts | ✓ | - | PASS |
-| Security Features | ✓ | - | PASS |
-| Theme & i18n | ✓ | - | PASS |
-| Settings/Import-Export | ✓ | - | PASS |
-| Search & Filter | ✓ | - | PASS |
-| Watchtower | ✓ | - | PASS |
-| Dashboard UI | ✓ | - | PASS |
-| Onboarding | ✓ | - | PASS |
-| Accessibility | ✓ | - | PASS |
-| Crypto/Generator | ✓ | - | PASS |
-| Chaos Tests (Storage/Network) | ✓ | - | PASS |
-| **QR Sync** | - | **2 ✗** | FLAKY |
-| **Aurora Animation** | - | **1 ✗** | FLAKY |
-| **Logo Display** | - | **2 ✗** | RETRY NEEDED |
+
+| Kategori                      | Passed | Failed  | Status       |
+| ----------------------------- | ------ | ------- | ------------ |
+| **TOTAL**                     | 184    | **5**   | ⚠️           |
+| Vault Access                  | ✓      | -       | PASS         |
+| Entry CRUD                    | ✓      | -       | PASS         |
+| Keyboard Shortcuts            | ✓      | -       | PASS         |
+| Security Features             | ✓      | -       | PASS         |
+| Theme & i18n                  | ✓      | -       | PASS         |
+| Settings/Import-Export        | ✓      | -       | PASS         |
+| Search & Filter               | ✓      | -       | PASS         |
+| Watchtower                    | ✓      | -       | PASS         |
+| Dashboard UI                  | ✓      | -       | PASS         |
+| Onboarding                    | ✓      | -       | PASS         |
+| Accessibility                 | ✓      | -       | PASS         |
+| Crypto/Generator              | ✓      | -       | PASS         |
+| Chaos Tests (Storage/Network) | ✓      | -       | PASS         |
+| **QR Sync**                   | -      | **2 ✗** | FLAKY        |
+| **Aurora Animation**          | -      | **1 ✗** | FLAKY        |
+| **Logo Display**              | -      | **2 ✗** | RETRY NEEDED |
 
 #### Başarısız Test Details:
 
 ##### 1. QR Sync Regression Tests (2 failures)
+
 ```
 ❌ "renders encrypted QR export flow with transfer code controls" - 44.9s
    Error: Locator: getByText(/Cross-Device QR Sync|...) not found
@@ -102,28 +109,34 @@
    Error: Element not found during initialization
    Status: RETRY PASSED ✓ (retry #1: 22.4s)
 ```
+
 **Root Cause:** UI element loading timing issue (likely UI not fully hydrated)  
 **Resolution:** Retry mechanism activated - PASSED on retry ✓
 
 ##### 2. Aurora Background Animation (1 failure)
+
 ```
 ❌ "should render aurora background animation" - 22.9s
    Error: Animation element visibility timeout
    Status: RETRY PASSED ✓ (retry #1: 11.7s)
 ```
+
 **Root Cause:** Canvas animation rendering latency  
 **Resolution:** Retry mechanism activated - PASSED on retry ✓
 
 ##### 3. Aegis Logo Display (2 failures - retried)
+
 ```
 ❌ "should display Aegis logo on login page" - 3.2s
    Error: SVG/Image element not found in DOM
    Status: RETRY PASSED ✓ (retry #1: 2.0s)
 ```
+
 **Root Cause:** Asset loading timing during test initialization  
 **Resolution:** Retry mechanism activated - PASSED on retry ✓
 
 #### Test Statistics:
+
 - **Expected Tests:** 184
 - **Unexpected (Failed):** 5
 - **Flaky Tests:** 0 (all are transient failures handled by retry)
@@ -132,6 +145,7 @@
 - **Average Test Duration:** 3.06s
 
 #### Coverage:
+
 - ✓ 17 E2E test suites
 - ✓ ~60+ user workflows tested
 - ✓ Security context validation
@@ -147,6 +161,7 @@
 ## 🎯 RELEASE READINESS ASSESSMENT
 
 ### ✅ PASSED CRITERIA
+
 - [x] Build compilation successful
 - [x] Unit tests passing (78-89% coverage thresholds met)
 - [x] Smoke test artifacts verified
@@ -159,6 +174,7 @@
 - [x] Accessibility compliance verified
 
 ### ⚠️ MINOR NOTES
+
 - **5 transient E2E failures:** All resolved on retry (test harness working correctly)
   - Root causes: UI element timing (3), Animation rendering (2)
   - All critical paths verified in retry attempts
@@ -166,6 +182,7 @@
   - **No blockers for release**
 
 ### 🟡 RECOMMENDATIONS
+
 1. **Monitor QR Sync UI in production:** Check element loading performance
 2. **Aurora animation:** Verify on target hardware for animation smoothness
 3. **Run smoke test again 1 hour before release:** Final verification
@@ -173,6 +190,7 @@
 ---
 
 ## 📊 PERFORMANCE METRICS
+
 - **Build Size:** 503.31 kB main bundle (gzip: 148.62 kB)
 - **Page Load Time:** 691ms
 - **Test Suite Execution:** 9m 36s (2 workers)
@@ -182,6 +200,7 @@
 ---
 
 ## 🔐 SECURITY CHECKLIST
+
 - [x] Plaintext passwords not in localStorage
 - [x] XSS payloads sanitized
 - [x] Security context verified
@@ -199,6 +218,7 @@
 ### **🟢 RELEASE APPROVED - PROCEED TO DEPLOYMENT**
 
 **Quality Gate: PASSED**
+
 - Unit tests: ✓ Passing
 - E2E tests: ✓ 97.4% Pass Rate
 - Smoke test: ✓ All artifacts verified
@@ -210,4 +230,4 @@
 
 ---
 
-*Rapor otomatik olarak generate edilmiştir - Release Validation System*
+_Rapor otomatik olarak generate edilmiştir - Release Validation System_

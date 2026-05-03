@@ -35,9 +35,7 @@ export function WatchtowerPanel() {
     <GlowCard className="watchtower-surface v5-rail-card v5-watchtower-card rounded-xl p-5 relative">
       <div className="v5-rail-heading mb-4">
         <ShieldAlert className="w-4 h-4" />
-        <h3 className="text-sm font-semibold uppercase tracking-widest">
-          {t('watchtowerTitle')}
-        </h3>
+        <h3 className="text-sm font-semibold uppercase tracking-widest">{t('watchtowerTitle')}</h3>
       </div>
 
       <div className="flex flex-col gap-2.5">

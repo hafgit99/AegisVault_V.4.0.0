@@ -39,14 +39,14 @@ We are thrilled to announce **Aegis Vault 5.0** — the most significant release
 
 ## 📊 Quality Metrics
 
-| Metric            | Score              |
-| ----------------- | ------------------ |
-| Unit Tests        | 891+ (all passing) |
-| E2E Tests         | 189 (16 spec files)|
-| Statement Coverage| 87.36%             |
-| Line Coverage     | 89.43%             |
-| Mutation Score    | 76.0% (Stryker)    |
-| Lint Errors       | 0                  |
+| Metric             | Score               |
+| ------------------ | ------------------- |
+| Unit Tests         | 891+ (all passing)  |
+| E2E Tests          | 189 (16 spec files) |
+| Statement Coverage | 87.36%              |
+| Line Coverage      | 89.43%              |
+| Mutation Score     | 76.0% (Stryker)     |
+| Lint Errors        | 0                   |
 
 ---
 
@@ -91,11 +91,13 @@ npm run build:electron
 ### Release Trust Chain
 
 This release is signed with Ed25519 and includes:
+
 - **SBOM** — Software Bill of Materials
 - **Provenance** — Build provenance attestation
 - **Signed Manifest** — Ed25519 release manifest
 
 Verify the release:
+
 ```bash
 npm run release:verify
 ```

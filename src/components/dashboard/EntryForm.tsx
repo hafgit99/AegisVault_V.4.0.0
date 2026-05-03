@@ -988,71 +988,71 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                     <Paperclip className="w-3.5 h-3.5" /> {t('uploadAttachment')}
                   </label>
                 </div>
-              {newAttachments.length > 0 && (
-                <div className="flex flex-col gap-1.5 mt-2 p-2 entry-notes-box rounded-lg shadow-inner">
-                  <div className="text-[10px] uppercase font-bold text-yellow-600 tracking-wider flex items-center gap-1">
-                    <Lock className="w-3 h-3" /> {t('encryptedQueue')}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {newAttachments.map((file, i) => (
-                      <div
-                        key={i}
-                        className="text-xs flex items-center gap-2 entry-attachment-item px-2 py-1 rounded shadow-sm"
-                      >
-                        <FileUp className="w-3 h-3 text-blue-500" />
-                        <span className="font-medium text-gray-700 max-w-[120px] truncate">
-                          {file.name}
-                        </span>
-                        <span className="text-gray-400 text-[10px]">
-                          {(file.size / (1024 * 1024)).toFixed(1)}MB
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setNewAttachments((prev) => prev.filter((_, idx) => idx !== i))
-                          }
-                          className="hover:text-red-500 ml-1"
+                {newAttachments.length > 0 && (
+                  <div className="flex flex-col gap-1.5 mt-2 p-2 entry-notes-box rounded-lg shadow-inner">
+                    <div className="text-[10px] uppercase font-bold text-yellow-600 tracking-wider flex items-center gap-1">
+                      <Lock className="w-3 h-3" /> {t('encryptedQueue')}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {newAttachments.map((file, i) => (
+                        <div
+                          key={i}
+                          className="text-xs flex items-center gap-2 entry-attachment-item px-2 py-1 rounded shadow-sm"
                         >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                          <FileUp className="w-3 h-3 text-blue-500" />
+                          <span className="font-medium text-gray-700 max-w-[120px] truncate">
+                            {file.name}
+                          </span>
+                          <span className="text-gray-400 text-[10px]">
+                            {(file.size / (1024 * 1024)).toFixed(1)}MB
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setNewAttachments((prev) => prev.filter((_, idx) => idx !== i))
+                            }
+                            className="hover:text-red-500 ml-1"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {visibleExistingAttachments.length > 0 && (
-                <div className="flex flex-col gap-1.5 mt-2 p-2 entry-notes-box rounded-lg shadow-inner">
-                  <div className="text-[10px] uppercase font-bold text-[var(--color-sage-green)] tracking-wider flex items-center gap-1">
-                    <Paperclip className="w-3 h-3" />{' '}
-                    {t('existingAttachments', 'Existing Attachments')}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {visibleExistingAttachments.map((att) => (
-                      <div
-                        key={att.id}
-                        className="text-xs flex items-center gap-2 entry-attachment-item px-2 py-1 rounded shadow-sm"
-                      >
-                        <FileUp className="w-3 h-3 text-[var(--color-sage-green)]" />
-                        <span className="font-medium text-gray-700 max-w-[120px] truncate">
-                          {att.name}
-                        </span>
-                        <span className="text-gray-400 text-[10px]">
-                          {(att.size / (1024 * 1024)).toFixed(1)}MB
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setRemovedAttachmentIds((prev) => [...prev, att.id])}
-                          className="hover:text-red-500 ml-1"
-                          title={t('removeAttachment', 'Remove attachment')}
+                {visibleExistingAttachments.length > 0 && (
+                  <div className="flex flex-col gap-1.5 mt-2 p-2 entry-notes-box rounded-lg shadow-inner">
+                    <div className="text-[10px] uppercase font-bold text-[var(--color-sage-green)] tracking-wider flex items-center gap-1">
+                      <Paperclip className="w-3 h-3" />{' '}
+                      {t('existingAttachments', 'Existing Attachments')}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {visibleExistingAttachments.map((att) => (
+                        <div
+                          key={att.id}
+                          className="text-xs flex items-center gap-2 entry-attachment-item px-2 py-1 rounded shadow-sm"
                         >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                          <FileUp className="w-3 h-3 text-[var(--color-sage-green)]" />
+                          <span className="font-medium text-gray-700 max-w-[120px] truncate">
+                            {att.name}
+                          </span>
+                          <span className="text-gray-400 text-[10px]">
+                            {(att.size / (1024 * 1024)).toFixed(1)}MB
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setRemovedAttachmentIds((prev) => [...prev, att.id])}
+                            className="hover:text-red-500 ml-1"
+                            title={t('removeAttachment', 'Remove attachment')}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
               </div>
             </div>
           </div>

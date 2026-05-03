@@ -273,19 +273,17 @@ export class SecurityCenterService {
         messageKey: 'securityCenterIssuePasskeyReady',
         actionKey: 'securityCenterActionReviewPasskeys',
       });
-      credentialEntries
-        .filter(isPasskeyReady)
-        .forEach((entry) => {
-          triageItems.push({
-            issueType: 'passkey_ready',
-            itemId: entry.id,
-            title: entry.title || 'Untitled',
-            severity: 'medium',
-            actionKey: 'securityCenterActionReviewPasskeys',
-            detailKey: 'securityCenterTriagePasskeyReady',
-            reviewKey: `passkey_ready:${entry.id}`,
-          });
+      credentialEntries.filter(isPasskeyReady).forEach((entry) => {
+        triageItems.push({
+          issueType: 'passkey_ready',
+          itemId: entry.id,
+          title: entry.title || 'Untitled',
+          severity: 'medium',
+          actionKey: 'securityCenterActionReviewPasskeys',
+          detailKey: 'securityCenterTriagePasskeyReady',
+          reviewKey: `passkey_ready:${entry.id}`,
         });
+      });
     }
 
     if (agingCredentials > 0) {
@@ -296,19 +294,17 @@ export class SecurityCenterService {
         messageKey: 'securityCenterIssueAgingCredentials',
         actionKey: 'securityCenterActionReviewPasswords',
       });
-      credentialEntries
-        .filter(isAgingCredential)
-        .forEach((entry) => {
-          triageItems.push({
-            issueType: 'aging_credentials',
-            itemId: entry.id,
-            title: entry.title || 'Untitled',
-            severity: 'medium',
-            actionKey: 'securityCenterActionReviewPasswords',
-            detailKey: 'securityCenterTriageAgingCredential',
-            reviewKey: `aging_credentials:${entry.id}`,
-          });
+      credentialEntries.filter(isAgingCredential).forEach((entry) => {
+        triageItems.push({
+          issueType: 'aging_credentials',
+          itemId: entry.id,
+          title: entry.title || 'Untitled',
+          severity: 'medium',
+          actionKey: 'securityCenterActionReviewPasswords',
+          detailKey: 'securityCenterTriageAgingCredential',
+          reviewKey: `aging_credentials:${entry.id}`,
         });
+      });
     }
 
     if (sensitiveSharing > 0) {
@@ -319,19 +315,17 @@ export class SecurityCenterService {
         messageKey: 'securityCenterIssueSensitiveSharing',
         actionKey: 'securityCenterActionReviewSharing',
       });
-      activeEntries
-        .filter(hasSensitiveSharingGap)
-        .forEach((entry) => {
-          triageItems.push({
-            issueType: 'sensitive_sharing',
-            itemId: entry.id,
-            title: entry.title || 'Untitled',
-            severity: 'high',
-            actionKey: 'securityCenterActionReviewSharing',
-            detailKey: 'securityCenterTriageSensitiveSharing',
-            reviewKey: `sensitive_sharing:${entry.id}`,
-          });
+      activeEntries.filter(hasSensitiveSharingGap).forEach((entry) => {
+        triageItems.push({
+          issueType: 'sensitive_sharing',
+          itemId: entry.id,
+          title: entry.title || 'Untitled',
+          severity: 'high',
+          actionKey: 'securityCenterActionReviewSharing',
+          detailKey: 'securityCenterTriageSensitiveSharing',
+          reviewKey: `sensitive_sharing:${entry.id}`,
         });
+      });
     }
 
     if (aliasExposure > 0) {
@@ -342,19 +336,17 @@ export class SecurityCenterService {
         messageKey: 'securityCenterIssueAliasExposure',
         actionKey: 'securityCenterActionReviewAliases',
       });
-      activeEntries
-        .filter(hasAliasExposure)
-        .forEach((entry) => {
-          triageItems.push({
-            issueType: 'alias_exposure',
-            itemId: entry.id,
-            title: entry.title || 'Untitled',
-            severity: 'high',
-            actionKey: 'securityCenterActionReviewAliases',
-            detailKey: 'securityCenterTriageAliasExposure',
-            reviewKey: `alias_exposure:${entry.id}`,
-          });
+      activeEntries.filter(hasAliasExposure).forEach((entry) => {
+        triageItems.push({
+          issueType: 'alias_exposure',
+          itemId: entry.id,
+          title: entry.title || 'Untitled',
+          severity: 'high',
+          actionKey: 'securityCenterActionReviewAliases',
+          detailKey: 'securityCenterTriageAliasExposure',
+          reviewKey: `alias_exposure:${entry.id}`,
         });
+      });
     }
 
     if (aliasRotation > 0) {
@@ -365,19 +357,17 @@ export class SecurityCenterService {
         messageKey: 'securityCenterIssueAliasRotation',
         actionKey: 'securityCenterActionReviewAliases',
       });
-      activeEntries
-        .filter(needsAliasRotation)
-        .forEach((entry) => {
-          triageItems.push({
-            issueType: 'alias_rotation',
-            itemId: entry.id,
-            title: entry.title || 'Untitled',
-            severity: 'medium',
-            actionKey: 'securityCenterActionReviewAliases',
-            detailKey: 'securityCenterTriageAliasRotation',
-            reviewKey: `alias_rotation:${entry.id}`,
-          });
+      activeEntries.filter(needsAliasRotation).forEach((entry) => {
+        triageItems.push({
+          issueType: 'alias_rotation',
+          itemId: entry.id,
+          title: entry.title || 'Untitled',
+          severity: 'medium',
+          actionKey: 'securityCenterActionReviewAliases',
+          detailKey: 'securityCenterTriageAliasRotation',
+          reviewKey: `alias_rotation:${entry.id}`,
         });
+      });
     }
 
     if (riskyDesktopPairings.length > 0) {

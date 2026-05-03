@@ -165,7 +165,10 @@ export function AliasPrivacyPanel({ passwords, onEditEntry }: AliasPrivacyPanelP
             </div>
           ) : (
             aliasEntries.slice(0, 8).map(({ entry, alias, risk }) => (
-              <div key={entry.id} className="settings-subpanel v5-alias-entry-card rounded-2xl border p-4">
+              <div
+                key={entry.id}
+                className="settings-subpanel v5-alias-entry-card rounded-2xl border p-4"
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="font-semibold text-[var(--color-deep-navy)] dark:text-white">

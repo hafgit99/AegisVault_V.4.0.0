@@ -1,4 +1,18 @@
-import { AlertTriangle, CheckCircle2, ShieldCheck, Play, SkipForward, RotateCcw, History, Sparkles, Filter, ChevronRight, X, Eye, EyeOff } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ShieldCheck,
+  Play,
+  SkipForward,
+  RotateCcw,
+  History,
+  Sparkles,
+  Filter,
+  ChevronRight,
+  X,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import { SecurityScoreGauge } from '../ui/SecurityScoreGauge';
 import type {
   SecurityCenterSummary,
@@ -216,9 +230,7 @@ export function SecurityCenterPanel({
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
-            <span className="v5-section-kicker">
-              {t('securityCenterScore', 'Security score')}
-            </span>
+            <span className="v5-section-kicker">{t('securityCenterScore', 'Security score')}</span>
             <h3 className="mt-1 text-lg font-semibold tracking-tight text-[var(--color-deep-navy)]">
               {t('securityCenterTitle', 'Security Center 2.0')}
             </h3>
@@ -424,8 +436,15 @@ export function SecurityCenterPanel({
                 <Sparkles className="h-4 w-4 text-[var(--color-sage-green)]" />
                 <span className="text-xs font-medium text-[var(--color-deep-navy)]/80 dark:text-white/80">
                   {summary.metrics.aliasExposure > 0
-                    ? t('securityCenterAliasRec', 'You have {{count}} exposed aliases that should be rotated.', { count: summary.metrics.aliasExposure })
-                    : t('securityCenterGeneralRec', 'Review high-severity items first to quickly improve your security score.')}
+                    ? t(
+                        'securityCenterAliasRec',
+                        'You have {{count}} exposed aliases that should be rotated.',
+                        { count: summary.metrics.aliasExposure }
+                      )
+                    : t(
+                        'securityCenterGeneralRec',
+                        'Review high-severity items first to quickly improve your security score.'
+                      )}
                 </span>
               </div>
               {summary.metrics.aliasExposure > 0 && (
@@ -484,9 +503,13 @@ export function SecurityCenterPanel({
                   >
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                       <div className="flex items-start gap-3">
-                        <div className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${
-                          item.severity === 'high' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
-                        }`} />
+                        <div
+                          className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${
+                            item.severity === 'high'
+                              ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'
+                              : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
+                          }`}
+                        />
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-sm font-bold text-[var(--color-deep-navy)] dark:text-white">
@@ -514,16 +537,24 @@ export function SecurityCenterPanel({
                         <button
                           type="button"
                           onClick={() => {
-                            if (item.issueType === 'alias_exposure' || item.issueType === 'alias_rotation') {
+                            if (
+                              item.issueType === 'alias_exposure' ||
+                              item.issueType === 'alias_rotation'
+                            ) {
                               setIsFocusMode(true);
-                              setFocusIndex(filteredTriageItems.findIndex(i => i.itemId === item.itemId && i.issueType === item.issueType));
+                              setFocusIndex(
+                                filteredTriageItems.findIndex(
+                                  (i) => i.itemId === item.itemId && i.issueType === item.issueType
+                                )
+                              );
                             } else {
                               onOpenTriageItem(item);
                             }
                           }}
                           className="flex h-9 items-center gap-2 rounded-xl bg-[var(--color-sage-green)]/10 px-4 text-xs font-bold text-[var(--color-sage-green)] transition-all hover:bg-[var(--color-sage-green)]/15 active:scale-95 dark:bg-[var(--color-sage-green)]/20"
                         >
-                          {item.issueType === 'alias_exposure' || item.issueType === 'alias_rotation' ? (
+                          {item.issueType === 'alias_exposure' ||
+                          item.issueType === 'alias_rotation' ? (
                             <>
                               <RotateCcw className="h-4 w-4" />
                               {t('securityCenterAutoFix', 'Auto-Fix')}
@@ -574,12 +605,13 @@ export function SecurityCenterPanel({
                       {currentFocusItem.title}
                     </h2>
                     <div className="mb-6 rounded-full bg-black/5 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-black/50 dark:bg-white/10 dark:text-white/50">
-                      {issueTypeLabel(currentFocusItem.issueType)} • {currentFocusItem.severity.toUpperCase()}
+                      {issueTypeLabel(currentFocusItem.issueType)} •{' '}
+                      {currentFocusItem.severity.toUpperCase()}
                     </div>
                     <p className="mb-8 max-w-md text-sm leading-relaxed text-[var(--color-deep-navy)]/70 dark:text-white/70">
                       {t(currentFocusItem.detailKey)}
                     </p>
-                    
+
                     <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
                       <button
                         onClick={() => handleMarkReviewedInFocus(currentFocusItem)}
@@ -619,11 +651,13 @@ export function SecurityCenterPanel({
                 <div className="bg-black/[0.02] px-8 py-4 dark:bg-white/[0.02]">
                   <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-black/30 dark:text-white/30">
                     <span>{t('securityCenterQueueProgress', 'Progress')}</span>
-                    <span>{focusIndex + 1} / {filteredTriageItems.length}</span>
+                    <span>
+                      {focusIndex + 1} / {filteredTriageItems.length}
+                    </span>
                   </div>
                   <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-black/5 dark:bg-white/5">
-                    <div 
-                      className="h-full bg-[var(--color-sage-green)] transition-all duration-500" 
+                    <div
+                      className="h-full bg-[var(--color-sage-green)] transition-all duration-500"
                       style={{ width: `${((focusIndex + 1) / filteredTriageItems.length) * 100}%` }}
                     />
                   </div>

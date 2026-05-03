@@ -86,69 +86,69 @@ Aegis Vault 5.0
 
 ### Cryptographic Stack
 
-| Layer              | Implementation                              |
-| ------------------ | ------------------------------------------- |
-| Key Derivation     | Argon2id (Web Worker + WASM fallback)       |
-| Encryption         | AES-256-GCM with per-field IV management    |
-| Vault Storage      | SQLCipher (WASM) with OPFS / IDB fallback   |
-| Backup Integrity   | HMAC-SHA256 envelope verification           |
-| Sync Transport     | ECDH + AES-GCM end-to-end encryption       |
-| Sharing Transport  | ECDH receiver pairing + replay protection   |
-| Release Signing    | Ed25519 manifest + trust chain verification |
-| Biometric Unlock   | WebAuthn (device-bound credentials)         |
+| Layer             | Implementation                              |
+| ----------------- | ------------------------------------------- |
+| Key Derivation    | Argon2id (Web Worker + WASM fallback)       |
+| Encryption        | AES-256-GCM with per-field IV management    |
+| Vault Storage     | SQLCipher (WASM) with OPFS / IDB fallback   |
+| Backup Integrity  | HMAC-SHA256 envelope verification           |
+| Sync Transport    | ECDH + AES-GCM end-to-end encryption        |
+| Sharing Transport | ECDH receiver pairing + replay protection   |
+| Release Signing   | Ed25519 manifest + trust chain verification |
+| Biometric Unlock  | WebAuthn (device-bound credentials)         |
 
 ### Modular Vault Architecture
 
 The vault core is decomposed into **9 dedicated service modules** under `src/lib/vault/`:
 
-| Service                  | Responsibility                                          |
-| ------------------------ | ------------------------------------------------------- |
-| `VaultAuthService`       | Authentication, key derivation, legacy salt fallback    |
-| `VaultBootstrapService`  | Database initialization, IDB→SQLite migration           |
-| `VaultCryptoService`     | Field-level AES-256-GCM encryption/decryption           |
-| `VaultEntryService`      | CRUD operations for all vault entry types               |
-| `VaultPinService`        | PIN-based quick unlock with Argon2id verification       |
-| `VaultSearchIndexer`     | Encrypted search index build and lazy migration         |
-| `VaultStorageService`    | Low-level storage abstraction (SQLCipher/IDB)           |
-| `VaultTrashService`      | Soft-delete, restore, auto-cleanup (30-day policy)      |
-| `VaultAttachmentService` | File attachment encryption, storage, and retrieval      |
+| Service                  | Responsibility                                       |
+| ------------------------ | ---------------------------------------------------- |
+| `VaultAuthService`       | Authentication, key derivation, legacy salt fallback |
+| `VaultBootstrapService`  | Database initialization, IDB→SQLite migration        |
+| `VaultCryptoService`     | Field-level AES-256-GCM encryption/decryption        |
+| `VaultEntryService`      | CRUD operations for all vault entry types            |
+| `VaultPinService`        | PIN-based quick unlock with Argon2id verification    |
+| `VaultSearchIndexer`     | Encrypted search index build and lazy migration      |
+| `VaultStorageService`    | Low-level storage abstraction (SQLCipher/IDB)        |
+| `VaultTrashService`      | Soft-delete, restore, auto-cleanup (30-day policy)   |
+| `VaultAttachmentService` | File attachment encryption, storage, and retrieval   |
 
 ---
 
 ## 🔐 Key Features
 
-| Feature                         | Description                                                                     |
-| ------------------------------- | ------------------------------------------------------------------------------- |
-| **Zero-Knowledge Architecture** | All encryption/decryption happens client-side; no plaintext ever leaves device  |
-| **Offline-First Vault**         | Full functionality without network; encrypted local SQLite storage              |
-| **Security Center 2.0**         | Active triage engine with automated remediation and 8 security metrics          |
-| **Alias Privacy System**        | Masked email generation, provider API integration, watchtower risk scoring      |
-| **Sync Relay**                  | E2E encrypted cross-device sync with self-hosted relay option                   |
-| **Emergency Access**            | Trusted contacts, configurable wait windows, grant TTL, full audit trail        |
-| **Special Entry Types**         | Logins, credit cards, identity cards, passkeys, TOTP, secure notes              |
-| **QR Sync**                     | Encrypted credential transfer via QR codes with one-time-use enforcement        |
-| **Sharing Transport**           | E2E encrypted entry sharing with ECDH receiver pairing & replay protection      |
-| **Bilingual (TR/EN)**           | Complete Turkish/English support across UI, CLI, and documentation              |
-| **Argon2 Web Worker**           | Non-blocking key derivation with automatic WASM/main-thread fallback            |
-| **Release Trust Chain**         | SBOM generation, Ed25519 signing, provenance verification                       |
-| **Passkey Governance**          | Site inventory, WebAuthn binding, credential lifecycle management               |
-| **Watchtower**                  | Breach monitoring (HIBP), credential age alerts, security score gauge           |
-| **Dark Mode**                   | Full dark theme with high-contrast accessibility compliance                     |
+| Feature                         | Description                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------ |
+| **Zero-Knowledge Architecture** | All encryption/decryption happens client-side; no plaintext ever leaves device |
+| **Offline-First Vault**         | Full functionality without network; encrypted local SQLite storage             |
+| **Security Center 2.0**         | Active triage engine with automated remediation and 8 security metrics         |
+| **Alias Privacy System**        | Masked email generation, provider API integration, watchtower risk scoring     |
+| **Sync Relay**                  | E2E encrypted cross-device sync with self-hosted relay option                  |
+| **Emergency Access**            | Trusted contacts, configurable wait windows, grant TTL, full audit trail       |
+| **Special Entry Types**         | Logins, credit cards, identity cards, passkeys, TOTP, secure notes             |
+| **QR Sync**                     | Encrypted credential transfer via QR codes with one-time-use enforcement       |
+| **Sharing Transport**           | E2E encrypted entry sharing with ECDH receiver pairing & replay protection     |
+| **Bilingual (TR/EN)**           | Complete Turkish/English support across UI, CLI, and documentation             |
+| **Argon2 Web Worker**           | Non-blocking key derivation with automatic WASM/main-thread fallback           |
+| **Release Trust Chain**         | SBOM generation, Ed25519 signing, provenance verification                      |
+| **Passkey Governance**          | Site inventory, WebAuthn binding, credential lifecycle management              |
+| **Watchtower**                  | Breach monitoring (HIBP), credential age alerts, security score gauge          |
+| **Dark Mode**                   | Full dark theme with high-contrast accessibility compliance                    |
 
 ---
 
 ## 📊 Test Coverage
 
-| Metric                  | Score                |
-| ----------------------- | -------------------- |
-| **Test Files**          | 108+                 |
-| **Unit Tests**          | 891+ (all passing)   |
-| **E2E Tests**           | 189 (16 spec files)  |
-| **Statements**          | 87.36%               |
-| **Branches**            | 75.4%                |
-| **Functions**           | 90.6%                |
-| **Lines**               | 89.43%               |
-| **Mutation Resilience** | 76.0% (Stryker)      |
+| Metric                  | Score               |
+| ----------------------- | ------------------- |
+| **Test Files**          | 108+                |
+| **Unit Tests**          | 891+ (all passing)  |
+| **E2E Tests**           | 189 (16 spec files) |
+| **Statements**          | 87.36%              |
+| **Branches**            | 75.4%               |
+| **Functions**           | 90.6%               |
+| **Lines**               | 89.43%              |
+| **Mutation Resilience** | 76.0% (Stryker)     |
 
 ### Mutation Resilience (Security Services)
 
@@ -244,46 +244,46 @@ npm run cli -- list --limit 25
 npm run cli -- export --format json
 ```
 
-| Resource       | Link                                                                                                    |
-| -------------- | ------------------------------------------------------------------------------------------------------- |
-| Turkish Guide  | [CLI Kullanım Kılavuzu](docs/CLI/2026-04-01_AEGIS_CLI_KULLANIM_KILAVUZU_TR.md)                         |
-| English Guide  | [CLI Usage Guide](docs/CLI/2026-04-01_AEGIS_CLI_USAGE_GUIDE_EN.md)                                     |
-| CLI Index      | [docs/CLI/README.md](docs/CLI/README.md)                                                               |
+| Resource      | Link                                                                           |
+| ------------- | ------------------------------------------------------------------------------ |
+| Turkish Guide | [CLI Kullanım Kılavuzu](docs/CLI/2026-04-01_AEGIS_CLI_KULLANIM_KILAVUZU_TR.md) |
+| English Guide | [CLI Usage Guide](docs/CLI/2026-04-01_AEGIS_CLI_USAGE_GUIDE_EN.md)             |
+| CLI Index     | [docs/CLI/README.md](docs/CLI/README.md)                                       |
 
 ---
 
 ## 📜 Scripts Reference
 
-| Command                     | Description                                           |
-| --------------------------- | ----------------------------------------------------- |
-| `npm run dev`               | Start Vite dev server                                 |
-| `npm run build`             | TypeScript check + Vite production build              |
-| `npm run lint`              | ESLint (zero errors enforced)                         |
-| `npm run test`              | Run all unit tests                                    |
-| `npm run test:coverage`     | Tests with v8 coverage report                         |
-| `npm run test:e2e`          | Playwright end-to-end tests                           |
-| `npm run test:quality-gate` | Full CI quality gate (lint + unit + regression + e2e) |
-| `npm run test:mutate`       | Stryker mutation testing                              |
-| `npm run format`            | Prettier code formatting                              |
-| `npm run release:trust-chain` | SBOM + provenance + signing + verification          |
-| `npm run cli`               | Aegis CLI interface                                   |
+| Command                       | Description                                           |
+| ----------------------------- | ----------------------------------------------------- |
+| `npm run dev`                 | Start Vite dev server                                 |
+| `npm run build`               | TypeScript check + Vite production build              |
+| `npm run lint`                | ESLint (zero errors enforced)                         |
+| `npm run test`                | Run all unit tests                                    |
+| `npm run test:coverage`       | Tests with v8 coverage report                         |
+| `npm run test:e2e`            | Playwright end-to-end tests                           |
+| `npm run test:quality-gate`   | Full CI quality gate (lint + unit + regression + e2e) |
+| `npm run test:mutate`         | Stryker mutation testing                              |
+| `npm run format`              | Prettier code formatting                              |
+| `npm run release:trust-chain` | SBOM + provenance + signing + verification            |
+| `npm run cli`                 | Aegis CLI interface                                   |
 
 ---
 
 ## 🛡️ Security & Governance
 
-| Resource                                                                       | Language |
-| ------------------------------------------------------------------------------ | -------- |
-| [Security Policy](SECURITY.md)                                                 | EN       |
-| [Threat Model](guvenlik/belgeler/THREAT_MODEL_EN.md)                           | EN       |
-| [Security Whitepaper](guvenlik/belgeler/SECURITY_WHITEPAPER_EN.md)             | EN       |
-| [Audit Application Pack](guvenlik/belgeler/AUDIT_APPLICATION_PACK_EN.md)       | EN       |
-| [OSS-Fuzz Application Notes](guvenlik/belgeler/OSS_FUZZ_APPLICATION_EN.md)     | EN       |
-| [Incident Response](INCIDENT_RESPONSE.md)                                      | EN       |
-| [Hardening Plan](guvenlik/HARDENING_PLAN.md)                                   | TR       |
-| [Release Verification Guide](docs/VERIFY_RELEASE_TR.md)                        | TR       |
-| [Competitor Analysis](guvenlik/COMPETITOR_POSITIONING_ANALYSIS.md)             | EN       |
-| [Security Roadmap](guvenlik/SECURITY_ROADMAP.md)                               | TR       |
+| Resource                                                                   | Language |
+| -------------------------------------------------------------------------- | -------- |
+| [Security Policy](SECURITY.md)                                             | EN       |
+| [Threat Model](guvenlik/belgeler/THREAT_MODEL_EN.md)                       | EN       |
+| [Security Whitepaper](guvenlik/belgeler/SECURITY_WHITEPAPER_EN.md)         | EN       |
+| [Audit Application Pack](guvenlik/belgeler/AUDIT_APPLICATION_PACK_EN.md)   | EN       |
+| [OSS-Fuzz Application Notes](guvenlik/belgeler/OSS_FUZZ_APPLICATION_EN.md) | EN       |
+| [Incident Response](INCIDENT_RESPONSE.md)                                  | EN       |
+| [Hardening Plan](guvenlik/HARDENING_PLAN.md)                               | TR       |
+| [Release Verification Guide](docs/VERIFY_RELEASE_TR.md)                    | TR       |
+| [Competitor Analysis](guvenlik/COMPETITOR_POSITIONING_ANALYSIS.md)         | EN       |
+| [Security Roadmap](guvenlik/SECURITY_ROADMAP.md)                           | TR       |
 
 ---
 

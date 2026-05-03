@@ -6,17 +6,17 @@ Last updated: 2026-05-03
 
 Aegis Vault is designed as an **offline-first, zero-knowledge password manager** with end-to-end encrypted cross-device sync capabilities.
 
-| Layer                  | Implementation                                  |
-| ---------------------- | ----------------------------------------------- |
-| Key derivation         | `Argon2id` (Web Worker + WASM fallback)         |
-| Encryption             | `AES-256-GCM` with per-field IV management      |
-| Vault storage          | `SQLCipher` (WASM) with OPFS / IDB fallback     |
-| Backup integrity       | `HMAC-SHA256` envelope verification             |
-| Sync transport         | `ECDH + AES-GCM` end-to-end encryption         |
-| Sharing transport      | `ECDH` receiver pairing with replay protection  |
-| Extension bridge       | Challenge-response with integrity verification  |
-| Biometric unlock       | `WebAuthn` (device-bound credentials)           |
-| Release signing        | `Ed25519` manifest + trust chain verification   |
+| Layer             | Implementation                                 |
+| ----------------- | ---------------------------------------------- |
+| Key derivation    | `Argon2id` (Web Worker + WASM fallback)        |
+| Encryption        | `AES-256-GCM` with per-field IV management     |
+| Vault storage     | `SQLCipher` (WASM) with OPFS / IDB fallback    |
+| Backup integrity  | `HMAC-SHA256` envelope verification            |
+| Sync transport    | `ECDH + AES-GCM` end-to-end encryption         |
+| Sharing transport | `ECDH` receiver pairing with replay protection |
+| Extension bridge  | Challenge-response with integrity verification |
+| Biometric unlock  | `WebAuthn` (device-bound credentials)          |
+| Release signing   | `Ed25519` manifest + trust chain verification  |
 
 Master credentials and decrypted vault data **never leave the user's device as plaintext**, including during sync relay operations.
 
@@ -46,10 +46,10 @@ Primary contact:
 
 ### Target response times
 
-| Phase               | Target            |
-| ------------------- | ----------------- |
-| Acknowledgement     | Within 48 hours   |
-| Initial triage      | Within 5 business days |
+| Phase               | Target                         |
+| ------------------- | ------------------------------ |
+| Acknowledgement     | Within 48 hours                |
+| Initial triage      | Within 5 business days         |
 | Critical fix target | Within 10 days (when feasible) |
 
 ## Coordinated disclosure policy

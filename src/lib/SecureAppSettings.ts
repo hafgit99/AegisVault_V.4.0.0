@@ -1047,11 +1047,17 @@ const normalizeState = (value: unknown): SecureAppSettingsState => {
     emergencyAccessAudit,
     emergencyAccessPolicy,
     syncRelayEnabled: Boolean(candidate.syncRelayEnabled),
-    syncRelaySessionId: typeof candidate.syncRelaySessionId === 'string' ? candidate.syncRelaySessionId : null,
+    syncRelaySessionId:
+      typeof candidate.syncRelaySessionId === 'string' ? candidate.syncRelaySessionId : null,
     syncRelayUrl: typeof candidate.syncRelayUrl === 'string' ? candidate.syncRelayUrl : null,
-    syncRelayApiKey: typeof candidate.syncRelayApiKey === 'string' ? candidate.syncRelayApiKey : null,
-    syncRelayLastSequence: typeof candidate.syncRelayLastSequence === 'number' ? candidate.syncRelayLastSequence : 0,
-    syncRelayLastTimestamp: typeof candidate.syncRelayLastTimestamp === 'string' ? candidate.syncRelayLastTimestamp : null,
+    syncRelayApiKey:
+      typeof candidate.syncRelayApiKey === 'string' ? candidate.syncRelayApiKey : null,
+    syncRelayLastSequence:
+      typeof candidate.syncRelayLastSequence === 'number' ? candidate.syncRelayLastSequence : 0,
+    syncRelayLastTimestamp:
+      typeof candidate.syncRelayLastTimestamp === 'string'
+        ? candidate.syncRelayLastTimestamp
+        : null,
   };
 };
 

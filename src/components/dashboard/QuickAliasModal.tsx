@@ -35,7 +35,8 @@ export function QuickAliasModal({ onClose }: QuickAliasModalProps) {
   useEffect(() => {
     const list = AliasProviderService.listProviderProfiles();
     setProviders(list);
-    const def = list.find((p) => p.isDefault && p.enabled) || list.find((p) => p.enabled) || list[0];
+    const def =
+      list.find((p) => p.isDefault && p.enabled) || list.find((p) => p.enabled) || list[0];
     if (def) setSelectedProviderId(def.id);
   }, []);
 
@@ -178,7 +179,9 @@ export function QuickAliasModal({ onClose }: QuickAliasModalProps) {
                   <span className="text-[10px] font-medium opacity-50">
                     Domain: {activeProvider.defaultDomain}
                   </span>
-                  <span className={`h-1.5 w-1.5 rounded-full ${activeProvider.syncStatus === 'linked' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${activeProvider.syncStatus === 'linked' ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                  />
                   <span className="text-[10px] font-medium opacity-50 capitalize">
                     {activeProvider.syncStatus}
                   </span>
@@ -205,7 +208,10 @@ export function QuickAliasModal({ onClose }: QuickAliasModalProps) {
                       <Copy className="h-5 w-5" />
                     </button>
                   </div>
-                  <div className="absolute bottom-0 left-0 h-1 bg-[var(--color-sage-green)]/20 transition-all group-hover:w-full" style={{ width: '40%' }} />
+                  <div
+                    className="absolute bottom-0 left-0 h-1 bg-[var(--color-sage-green)]/20 transition-all group-hover:w-full"
+                    style={{ width: '40%' }}
+                  />
                 </div>
 
                 <div className="flex gap-3">

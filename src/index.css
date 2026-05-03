@@ -572,22 +572,14 @@
     margin-inline: -20px;
     margin-bottom: -20px;
     padding: 14px 20px 20px;
-    background: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.2),
-      rgba(255, 255, 255, 0.96) 38%
-    );
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.96) 38%);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
   }
 
   [data-theme='dark'] .v5-entry-actions {
     border-top-color: rgba(137, 168, 140, 0.18);
-    background: linear-gradient(
-      180deg,
-      rgba(17, 27, 42, 0.18),
-      rgba(17, 27, 42, 0.96) 38%
-    );
+    background: linear-gradient(180deg, rgba(17, 27, 42, 0.18), rgba(17, 27, 42, 0.96) 38%);
   }
 
   .v5-vault-entry-card {
@@ -714,9 +706,8 @@
   }
 
   [data-theme='dark'] .v5-security-center {
-    background: 
-      linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(10, 15, 28, 0.98)),
-      #0a0f1c !important;
+    background:
+      linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(10, 15, 28, 0.98)), #0a0f1c !important;
     border-color: rgba(137, 168, 140, 0.2) !important;
   }
 
@@ -1085,8 +1076,7 @@
   .v5-sync-conflict-modal {
     color: #eef4ff;
     background:
-      linear-gradient(135deg, rgba(31, 43, 62, 0.96), rgba(17, 27, 42, 0.98)),
-      #111827 !important;
+      linear-gradient(135deg, rgba(31, 43, 62, 0.96), rgba(17, 27, 42, 0.98)), #111827 !important;
     border-color: rgba(137, 168, 140, 0.2) !important;
   }
 
@@ -3216,7 +3206,7 @@
     color: #fffbeb !important; /* amber-50 */
     font-size: 12px !important;
     font-weight: 700 !important;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
 
   [data-theme='dark'] .peer:checked ~ .peer-checked\:bg-emerald-600 {
@@ -3232,7 +3222,6 @@
     border-color: rgba(137, 168, 140, 0.32);
     color: #eef4ff;
   }
-
 
   [data-theme='dark'] .settings-inline-action-btn:hover {
     background: rgba(48, 66, 94, 0.96);
@@ -4480,8 +4469,13 @@
 }
 
 @keyframes pulse-subtle {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 .animate-pulse-subtle {
