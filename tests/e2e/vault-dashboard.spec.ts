@@ -7,7 +7,11 @@ test.describe('Dashboard UI', () => {
   });
 
   test('should display dashboard header with Aegis Vault branding', async ({ page }) => {
-    const heading = page.locator('h1:has-text("Aegis Vault")').first();
+    // The h1 renders t('v5DashboardTitle') which is 'Command Center' (EN) or 'Kontrol Merkezi' (TR)
+    // The 'Aegis Vault 5.0' text is in a span eyebrow element
+    const heading = page
+      .locator('h1:has-text("Command Center"), h1:has-text("Kontrol Merkezi")')
+      .first();
     await expect(heading).toBeVisible({ timeout: 5000 });
   });
 

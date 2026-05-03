@@ -90,8 +90,9 @@ test.describe('Vault Entry Management (Login Page)', () => {
   // TEST 5: Aurora background animasyon başlıyor (CSS animation)
   // ─────────────────────────────────────────────────────────────────────────────
   test('should render aurora background animation', async ({ page }) => {
-    const aurora = page.locator('.animate-aurora');
-    await expect(aurora).toBeAttached();
+    // The login page uses v5-login-backdrop for the animated background
+    const backdrop = page.locator('.v5-login-backdrop');
+    await expect(backdrop).toBeAttached();
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -122,7 +123,8 @@ test.describe('Vault Entry Management (Login Page)', () => {
   // TEST 7: Logo/icon görünüyor
   // ─────────────────────────────────────────────────────────────────────────────
   test('should display Aegis logo on login page', async ({ page }) => {
-    const logo = page.locator('img[alt="Aegis Logo"]');
+    // Two logos exist (desktop intro panel + mobile login panel); use .first()
+    const logo = page.locator('img[alt="Aegis Logo"]').first();
     await expect(logo).toBeVisible({ timeout: 5000 });
   });
 

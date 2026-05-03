@@ -70,7 +70,7 @@ test.describe('QR Sync Regression', () => {
 
     // Verify the QR Sync section title is visible (EN or TR) using regex
     const qrTitle = page
-      .getByText(/Cross-Device QR Sync|Cihazlar Arası QR Senkronizasyonu/i)
+      .getByText(/Encrypted QR transfer|Şifreli QR transferi|Cross-Device QR Sync|Cihazlar Arası QR Senkronizasyonu/i)
       .first();
     await expect(qrTitle).toBeVisible({ timeout: 15000 });
 
@@ -97,7 +97,7 @@ test.describe('QR Sync Regression', () => {
 
     // Verify the QR Sync section title using regex
     const qrTitle = page
-      .getByText(/Cross-Device QR Sync|Cihazlar Arası QR Senkronizasyonu/i)
+      .getByText(/Encrypted QR transfer|Şifreli QR transferi|Cross-Device QR Sync|Cihazlar Arası QR Senkronizasyonu/i)
       .first();
     await expect(qrTitle).toBeVisible({ timeout: 15000 });
 
