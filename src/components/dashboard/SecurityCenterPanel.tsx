@@ -64,7 +64,6 @@ export function SecurityCenterPanel({
   const [isFixing, setIsFixing] = useState(false);
   const { passwords, loadPasswords } = useVault();
   const recentHistorySummary = useMemo(() => {
-    // eslint-disable-next-line react-hooks/purity
     const windowStart = Date.now() - 1000 * 60 * 60 * 24 * 7;
     const recent = historyItems.filter((event) => {
       const eventAt = new Date(event.at).getTime();
@@ -77,7 +76,6 @@ export function SecurityCenterPanel({
     };
   }, [historyItems]);
   const recentIssueTypeSummary = useMemo(() => {
-    // eslint-disable-next-line react-hooks/purity
     const windowStart = Date.now() - 1000 * 60 * 60 * 24 * 7;
     const counts = new Map<SecurityCenterIssueType, number>();
     historyItems.forEach((event) => {
