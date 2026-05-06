@@ -5,6 +5,7 @@ export type CanonicalCategory =
   | 'identity'
   | 'note'
   | 'wifi'
+  | 'crypto_wallet'
   | 'document'
   | 'other';
 
@@ -131,6 +132,7 @@ export const normalizeCanonicalCategory = (value?: string): CanonicalCategory =>
     normalized === 'identity' ||
     normalized === 'note' ||
     normalized === 'wifi' ||
+    normalized === 'crypto_wallet' ||
     normalized === 'document'
   ) {
     return normalized;

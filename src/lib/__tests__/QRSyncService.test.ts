@@ -2,6 +2,7 @@
 import { QRSyncService } from '../QRSyncService';
 import { SecureAppSettings } from '../SecureAppSettings';
 import { AEGIS_APP_VERSION, AEGIS_QR_SYNC_FORMAT } from '../../config/schema-registry';
+import { CryptoWalletVault } from '../wallet/CryptoWalletVault';
 
 describe('QRSyncService', () => {
   const entries = [
@@ -52,6 +53,44 @@ describe('QRSyncService', () => {
     expect(parsed[0].pass).toBe('Sup3rSecret!');
     expect(parsed[0].cardDetails?.card_number).toBe('4111111111111111');
     expect(parsed[0].identityDetails?.identity_number).toBe('12345678901');
+  });
+
+  it('preserves crypto wallet payload details during QR sync round trips', async () => {
+    const transferCode = 'ABCD-EFGH-IJKL-MNOP';
+    const cryptoEntry = {
+      title: 'ETH Watch',
+      username: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+      pass: CryptoWalletVault.watchOnlySentinel,
+      website: 'Ethereum / EVM',
+      category: CryptoWalletVault.category,
+      tags: ['crypto', 'wallet', 'ethereum', 'watch_only'],
+      notes: CryptoWalletVault.fromDraft({
+        name: 'ETH Watch',
+        chain: 'ethereum',
+        publicAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+        custodyMode: 'watch_only',
+        derivationPath: "m/44'/60'/0'/0/0",
+        lastKnownBalance: '1.25 ETH',
+        notes: 'Watch-only treasury address',
+      }).notes,
+    };
+
+    const result = await QRSyncService.createPackage([cryptoEntry], { transferCode });
+    const parsed = await QRSyncService.parsePackage(result.rawPackage, { transferCode });
+    const record = CryptoWalletVault.toRecord({
+      id: 88,
+      updated_at: '2026-05-06T00:00:00.000Z',
+      ...parsed[0],
+    } as never);
+
+    expect(record).toMatchObject({
+      name: 'ETH Watch',
+      chain: 'ethereum',
+      custodyMode: 'watch_only',
+      derivationPath: "m/44'/60'/0'/0/0",
+      lastKnownBalance: '1.25 ETH',
+      notes: 'Watch-only treasury address',
+    });
   });
 
   it('rejects incorrect transfer codes', async () => {

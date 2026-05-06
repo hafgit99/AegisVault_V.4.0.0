@@ -1,5 +1,6 @@
 import type { VaultCardDetails, VaultEntry, VaultIdentityDetails } from '../vaultService';
 import { toCanonicalVaultRecords } from './canonical-adapters';
+import { CRYPTO_WALLET_CATEGORY, CryptoWalletVault } from './wallet/CryptoWalletVault';
 
 export interface ExportableVaultEntry {
   title: string;
@@ -11,6 +12,14 @@ export interface ExportableVaultEntry {
   notes?: string;
   cardDetails?: VaultCardDetails | null;
   identityDetails?: VaultIdentityDetails | null;
+}
+
+export interface CryptoExportRiskSummary {
+  total: number;
+  watchOnly: number;
+  vaultSecret: number;
+  hasCrypto: boolean;
+  hasVaultSecrets: boolean;
 }
 
 // eslint-disable-next-line no-control-regex -- intentional: strip dangerous control chars from export data
@@ -62,6 +71,34 @@ const sanitizeIdentityDetails = (
 const escapeCsvField = (value: unknown): string => `"${String(value || '').replace(/"/g, '""')}"`;
 
 export class ExportService {
+  static getCryptoExportRiskSummary(
+    entries: Array<Pick<VaultEntry, 'category' | 'pass'>>
+  ): CryptoExportRiskSummary {
+    return entries.reduce<CryptoExportRiskSummary>(
+      (summary, entry) => {
+        if (entry.category !== CRYPTO_WALLET_CATEGORY) return summary;
+
+        const hasSecret =
+          Boolean(entry.pass) && entry.pass !== CryptoWalletVault.watchOnlySentinel;
+
+        return {
+          total: summary.total + 1,
+          watchOnly: summary.watchOnly + (hasSecret ? 0 : 1),
+          vaultSecret: summary.vaultSecret + (hasSecret ? 1 : 0),
+          hasCrypto: true,
+          hasVaultSecrets: summary.hasVaultSecrets || hasSecret,
+        };
+      },
+      {
+        total: 0,
+        watchOnly: 0,
+        vaultSecret: 0,
+        hasCrypto: false,
+        hasVaultSecrets: false,
+      }
+    );
+  }
+
   static buildCsv(entries: ExportableVaultEntry[]): string {
     const headers = [
       'Title',

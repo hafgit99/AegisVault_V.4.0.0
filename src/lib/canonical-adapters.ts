@@ -22,6 +22,7 @@ const toCanonicalCategory = (category?: string) => {
   if (normalized === 'notes') return 'note' as const;
   if (normalized === 'wifi') return 'wifi' as const;
   if (normalized === 'passkeys') return 'passkey' as const;
+  if (normalized === 'cryptowallet' || normalized === 'crypto wallet') return 'crypto_wallet' as const;
   return normalizeCanonicalCategory(category);
 };
 
@@ -39,6 +40,8 @@ const fromCanonicalCategory = (category?: CanonicalVaultRecord['category']): str
       return 'WiFi';
     case 'passkey':
       return 'Passkeys';
+    case 'crypto_wallet':
+      return 'CryptoWallet';
     default:
       return 'General';
   }

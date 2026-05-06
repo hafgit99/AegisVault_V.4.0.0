@@ -17,7 +17,7 @@ export function CategorySidebar({ onDownloadEmergencyKit, isGeneratingKit }: Cat
   const { t } = useTranslation();
   const { categoryFilter, setCategoryFilter, uniqueTags } = useVault();
 
-  const categories = ['General', 'Cards', 'Identities', 'Notes', 'WiFi'];
+  const categories = ['General', 'Cards', 'Identities', 'Notes', 'WiFi', 'CryptoWallet'];
 
   return (
     <>

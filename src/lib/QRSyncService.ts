@@ -62,6 +62,13 @@ export type QRSyncEntry = Pick<
   | 'website'
   | 'category'
   | 'tags'
+  | 'notes'
+  | 'totpSecret'
+  | 'totp_secret'
+  | 'totp_issuer'
+  | 'totp_algorithm'
+  | 'totp_digits'
+  | 'totp_period'
   | 'passkeyMetadata'
   | 'cardDetails'
   | 'identityDetails'
@@ -103,6 +110,13 @@ const isQRSyncEntry = (entry: unknown): entry is QRSyncEntry => {
     (candidate.website === undefined || typeof candidate.website === 'string') &&
     (candidate.category === undefined || typeof candidate.category === 'string') &&
     (candidate.tags === undefined || Array.isArray(candidate.tags)) &&
+    (candidate.notes === undefined || typeof candidate.notes === 'string') &&
+    (candidate.totpSecret === undefined || typeof candidate.totpSecret === 'string') &&
+    (candidate.totp_secret === undefined || typeof candidate.totp_secret === 'string') &&
+    (candidate.totp_issuer === undefined || typeof candidate.totp_issuer === 'string') &&
+    (candidate.totp_algorithm === undefined || typeof candidate.totp_algorithm === 'string') &&
+    (candidate.totp_digits === undefined || typeof candidate.totp_digits === 'number') &&
+    (candidate.totp_period === undefined || typeof candidate.totp_period === 'number') &&
     (candidate.passkeyMetadata === undefined || typeof candidate.passkeyMetadata === 'object') &&
     (candidate.cardDetails === undefined ||
       candidate.cardDetails === null ||

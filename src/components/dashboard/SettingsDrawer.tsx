@@ -1296,6 +1296,8 @@ export function SettingsDrawer({
   };
 
   const handleExport = async (format: 'vault' | 'csv' | 'json') => {
+    const cryptoRisk = ExportService.getCryptoExportRiskSummary(passwords);
+
     if (format !== 'vault') {
       if (
         !SecurityModePolicy.isPlaintextExportAllowed(securityModeProfile) ||
@@ -1306,13 +1308,34 @@ export function SettingsDrawer({
       }
       const confirmed = await requestSensitiveConfirm({
         title: t('plaintextExportConfirmTitle', 'Confirm plaintext export'),
-        description: t(
-          'plaintextExportConfirmDesc',
-          'CSV/JSON exports store vault data without encryption. Use this only for a short migration window and delete the file afterwards.'
-        ),
+        description: cryptoRisk.hasCrypto
+          ? t('cryptoPlaintextExportConfirmDesc', {
+              total: cryptoRisk.total,
+              secret: cryptoRisk.vaultSecret,
+              watchOnly: cryptoRisk.watchOnly,
+            })
+          : t(
+              'plaintextExportConfirmDesc',
+              'CSV/JSON exports store vault data without encryption. Use this only for a short migration window and delete the file afterwards.'
+            ),
         confirmLabel: t('plaintextExportConfirmCta', 'Export plaintext'),
         cancelLabel: t('cancel', 'Cancel'),
         danger: true,
+      });
+      if (!confirmed) {
+        return;
+      }
+    } else if (cryptoRisk.hasCrypto) {
+      const confirmed = await requestSensitiveConfirm({
+        title: t('cryptoBackupConfirmTitle'),
+        description: t('cryptoEncryptedBackupConfirmDesc', {
+          total: cryptoRisk.total,
+          secret: cryptoRisk.vaultSecret,
+          watchOnly: cryptoRisk.watchOnly,
+        }),
+        confirmLabel: t('cryptoBackupConfirmCta'),
+        cancelLabel: t('cancel', 'Cancel'),
+        danger: cryptoRisk.hasVaultSecrets,
       });
       if (!confirmed) {
         return;
@@ -1513,6 +1536,13 @@ export function SettingsDrawer({
           website: p.website,
           category: p.category,
           tags: p.tags,
+          notes: p.notes,
+          totpSecret: p.totpSecret,
+          totp_secret: p.totp_secret,
+          totp_issuer: p.totp_issuer,
+          totp_algorithm: p.totp_algorithm,
+          totp_digits: p.totp_digits,
+          totp_period: p.totp_period,
           cardDetails: p.cardDetails,
           identityDetails: p.identityDetails,
         })),

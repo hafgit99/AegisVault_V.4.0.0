@@ -26,6 +26,17 @@ _Offline-first, end-to-end encrypted credential management for Desktop, Browser 
 
 </div>
 
+### Crypto Vault + Watch-Only Custody
+
+Aegis Vault 5.0 now includes a dedicated **Crypto Vault** domain for offline-first crypto asset records:
+
+- **Watch-only by default** - Store public receive addresses without enabling live signing or transaction broadcast
+- **Encrypted secret custody** - Optionally store seed phrases or private keys inside the encrypted vault when explicitly selected
+- **Network-aware validation** - Bitcoin, Ethereum/EVM, Solana, Tron, Litecoin and custom address formats are checked before saving
+- **Risk-aware UX** - Seed/private key mode shows explicit recovery and backup warnings in both dark and light modes
+- **Backup-safe records** - Crypto wallet metadata, derivation path, manual balance, notes and secret material are preserved across encrypted backups, JSON import/export, QR sync and canonical migration
+- **Mutation quality gate** - Crypto wallet domain tests must stay above the 80% Stryker threshold
+
 ---
 
 ## ✨ What's New in 5.0
@@ -93,6 +104,7 @@ Aegis Vault 5.0
 | Vault Storage     | SQLCipher (WASM) with OPFS / IDB fallback   |
 | Backup Integrity  | HMAC-SHA256 envelope verification           |
 | Sync Transport    | ECDH + AES-GCM end-to-end encryption        |
+| Crypto Vault      | Watch-only records + encrypted seed/private key custody |
 | Sharing Transport | ECDH receiver pairing + replay protection   |
 | Release Signing   | Ed25519 manifest + trust chain verification |
 | Biometric Unlock  | WebAuthn (device-bound credentials)         |
@@ -123,6 +135,7 @@ The vault core is decomposed into **9 dedicated service modules** under `src/lib
 | **Offline-First Vault**         | Full functionality without network; encrypted local SQLite storage             |
 | **Security Center 2.0**         | Active triage engine with automated remediation and 8 security metrics         |
 | **Alias Privacy System**        | Masked email generation, provider API integration, watchtower risk scoring     |
+| **Crypto Vault + Watch-Only**   | Offline crypto asset records with watch-only default and encrypted secret mode |
 | **Sync Relay**                  | E2E encrypted cross-device sync with self-hosted relay option                  |
 | **Emergency Access**            | Trusted contacts, configurable wait windows, grant TTL, full audit trail       |
 | **Special Entry Types**         | Logins, credit cards, identity cards, passkeys, TOTP, secure notes             |
@@ -149,6 +162,7 @@ The vault core is decomposed into **9 dedicated service modules** under `src/lib
 | **Functions**           | 90.6%               |
 | **Lines**               | 89.43%              |
 | **Mutation Resilience** | 76.0% (Stryker)     |
+| **Crypto Vault Mutation Gate** | 97.16% (80% break threshold) |
 
 ### Mutation Resilience (Security Services)
 
@@ -158,6 +172,7 @@ The vault core is decomposed into **9 dedicated service modules** under `src/lib
 | Vault Logic / Crypto  | 80.3%          |
 | Extension Bridge      | 75.6%          |
 | Passkey Storage (IDB) | 72.7%          |
+| Crypto Vault Domain   | 97.16%         |
 
 ```bash
 # Run unit tests
@@ -172,6 +187,9 @@ npm run test:e2e
 # Run mutation tests
 npm run test:mutate
 
+# Run crypto vault mutation quality gate
+npm run test:mutate:crypto
+
 # Full CI quality gate (lint + unit + regression + e2e)
 npm run test:quality-gate
 ```
@@ -183,6 +201,7 @@ npm run test:quality-gate
 - **ESLint**: Zero errors, zero warnings across the entire codebase
 - **TypeScript Strict**: Full strict mode enabled (TS 5.9)
 - **Mutation Testing**: Stryker integration for test quality validation
+- **Crypto Vault Gate**: `npm run test:mutate:crypto` fails if crypto domain mutation score drops below 80%
 - **E2E Resilience**: Playwright-based suite with `toPass` assertions and async state sync
 - **CI Quality Gate**: `npm run test:quality-gate` enforces lint + unit + regression + e2e
 - **Static Analysis**: CodeQL and Semgrep in CI for automated vulnerability scanning
@@ -264,6 +283,7 @@ npm run cli -- export --format json
 | `npm run test:e2e`            | Playwright end-to-end tests                           |
 | `npm run test:quality-gate`   | Full CI quality gate (lint + unit + regression + e2e) |
 | `npm run test:mutate`         | Stryker mutation testing                              |
+| `npm run test:mutate:crypto`  | Crypto Vault mutation gate, break threshold 80%       |
 | `npm run format`              | Prettier code formatting                              |
 | `npm run release:trust-chain` | SBOM + provenance + signing + verification            |
 | `npm run cli`                 | Aegis CLI interface                                   |

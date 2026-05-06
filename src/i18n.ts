@@ -3288,6 +3288,121 @@ Object.assign(resources.en.translation as Record<string, unknown>, {
   qrScanHint: 'Keep the code inside the frame; scanning starts automatically.',
 });
 
+Object.assign(resources.en.translation as Record<string, unknown>, {
+  cryptowallet: 'Crypto Vault',
+  cryptoVaultKicker: 'Crypto custody',
+  cryptoVaultTitle: 'Crypto Vault + Watch-only',
+  cryptoVaultDesc:
+    'Store seed phrases or private keys as encrypted vault records, or track public addresses without enabling live signing.',
+  cryptoVaultMode: 'No live signing',
+  cryptoWalletAdd: 'Add wallet',
+  cryptoWalletName: 'Wallet name',
+  cryptoWalletNamePlaceholder: 'Cold ETH reserve',
+  cryptoWalletChain: 'Network',
+  cryptoWalletPublicAddress: 'Public address',
+  cryptoWalletAddressPlaceholder: 'Paste a public receive address',
+  cryptoWalletCustody: 'Custody mode',
+  cryptoWalletWatchOnly: 'Watch-only',
+  cryptoWalletVaultSecret: 'Vault secret',
+  cryptoWalletDerivation: 'Derivation path',
+  cryptoWalletSecretType: 'Secret type',
+  cryptoWalletSeedPhrase: 'Seed phrase',
+  cryptoWalletPrivateKey: 'Private key',
+  cryptoWalletSecretMaterial: 'Encrypted secret material',
+  cryptoWalletSecretPlaceholder: 'Paste seed phrase or private key. It is encrypted in the vault.',
+  cryptoWalletWatchOnlyDefaultHint:
+    'Watch-only is the default and recommended mode. It stores public address data only and cannot sign transactions.',
+  cryptoWalletSecretRiskNotice:
+    'Seed phrases and private keys are encrypted locally, but they are still high-risk recovery material. If the master password is lost, Aegis cannot recover them.',
+  cryptoWalletAddressValid: 'Address format matches the selected network.',
+  cryptoWalletAddressInvalidInline: 'Address format does not match the selected network.',
+  cryptoWalletBalance: 'Manual balance',
+  cryptoWalletBalanceUnknown: 'Not tracked',
+  cryptoWalletNotes: 'Risk note',
+  cryptoWalletNotesPlaceholder: 'Storage location, backup note, or chain-specific context',
+  cryptoWalletNoSigningNotice:
+    'This module is deliberately storage and watch-only first. It does not sign or broadcast transactions.',
+  cryptoWalletSave: 'Encrypt and save',
+  cryptoWalletEmptyTitle: 'No crypto vault record yet',
+  cryptoWalletEmptyDesc:
+    'Add a watch-only address or encrypted seed record to separate crypto custody from regular passwords.',
+  cryptoWalletNameRequired: 'Wallet name is required.',
+  cryptoWalletAddressInvalid: 'Public address does not match the selected network format.',
+  cryptoWalletSecretRequired: 'Seed phrase or private key is required for vault-secret mode.',
+  cryptoWalletCreated: 'Crypto vault record encrypted and saved.',
+  cryptoWalletCopyAddress: 'Copy address',
+  cryptoWalletCopySecret: 'Copy secret',
+  cryptoWalletWatchOnlySafe: 'Public data only',
+  cryptoWalletDeleteConfirm:
+    'Move this crypto vault record to trash? Encrypted secrets stay recoverable until trash is emptied.',
+  cryptoBackupConfirmTitle: 'Crypto vault records included',
+  cryptoEncryptedBackupConfirmDesc:
+    'This encrypted backup contains {{total}} crypto vault record(s): {{secret}} with encrypted secret material and {{watchOnly}} watch-only. Store the backup password separately; lost passwords cannot be recovered.',
+  cryptoBackupConfirmCta: 'Continue encrypted export',
+  cryptoPlaintextExportConfirmDesc:
+    'This plaintext export contains {{total}} crypto vault record(s), including {{secret}} record(s) with seed/private key material and {{watchOnly}} watch-only record(s). CSV/JSON files are not encrypted. Use only for migration and delete the file immediately after use.',
+  notConfigured: 'Not configured',
+  cancel: 'Cancel',
+});
+
+Object.assign(resources.tr.translation as Record<string, unknown>, {
+  cryptowallet: 'Kripto Kasa',
+  cryptoVaultKicker: 'Kripto saklama',
+  cryptoVaultTitle: 'Kripto Kasa + Watch-only',
+  cryptoVaultDesc:
+    'Seed phrase veya private key verilerini şifreli kasa kaydı olarak saklayın ya da public adresleri canlı imzalama açmadan takip edin.',
+  cryptoVaultMode: 'Canlı imzalama yok',
+  cryptoWalletAdd: 'Cüzdan ekle',
+  cryptoWalletName: 'Cüzdan adı',
+  cryptoWalletNamePlaceholder: 'Soğuk ETH rezervi',
+  cryptoWalletChain: 'Ağ',
+  cryptoWalletPublicAddress: 'Public adres',
+  cryptoWalletAddressPlaceholder: 'Public alım adresini yapıştırın',
+  cryptoWalletCustody: 'Saklama modu',
+  cryptoWalletWatchOnly: 'Watch-only',
+  cryptoWalletVaultSecret: 'Kasa sırrı',
+  cryptoWalletDerivation: 'Türetme yolu',
+  cryptoWalletSecretType: 'Sır tipi',
+  cryptoWalletSeedPhrase: 'Seed phrase',
+  cryptoWalletPrivateKey: 'Private key',
+  cryptoWalletSecretMaterial: 'Şifreli sır materyali',
+  cryptoWalletSecretPlaceholder:
+    'Seed phrase veya private key yapıştırın. Bu veri kasada şifrelenir.',
+  cryptoWalletWatchOnlyDefaultHint:
+    'Watch-only varsayılan ve önerilen moddur. Yalnızca public adres verisi saklar ve işlem imzalayamaz.',
+  cryptoWalletSecretRiskNotice:
+    'Seed phrase ve private key verileri yerelde şifrelenir; yine de yüksek riskli kurtarma materyalidir. Ana şifre kaybolursa Aegis bu verileri kurtaramaz.',
+  cryptoWalletAddressValid: 'Adres formatı seçilen ağ ile uyumlu.',
+  cryptoWalletAddressInvalidInline: 'Adres formatı seçilen ağ ile uyumlu değil.',
+  cryptoWalletBalance: 'Manuel bakiye',
+  cryptoWalletBalanceUnknown: 'Takip edilmiyor',
+  cryptoWalletNotes: 'Risk notu',
+  cryptoWalletNotesPlaceholder: 'Saklama yeri, yedek notu veya ağa özel bağlam',
+  cryptoWalletNoSigningNotice:
+    'Bu modül bilinçli olarak saklama ve watch-only önceliklidir. İşlem imzalamaz veya yayınlamaz.',
+  cryptoWalletSave: 'Şifrele ve kaydet',
+  cryptoWalletEmptyTitle: 'Henüz kripto kasa kaydı yok',
+  cryptoWalletEmptyDesc:
+    'Kripto saklamayı normal parolalardan ayırmak için watch-only adres veya şifreli seed kaydı ekleyin.',
+  cryptoWalletNameRequired: 'Cüzdan adı zorunlu.',
+  cryptoWalletAddressInvalid: 'Public adres seçilen ağ formatıyla eşleşmiyor.',
+  cryptoWalletSecretRequired: 'Kasa sırrı modunda seed phrase veya private key zorunlu.',
+  cryptoWalletCreated: 'Kripto kasa kaydı şifrelendi ve kaydedildi.',
+  cryptoWalletCopyAddress: 'Adresi kopyala',
+  cryptoWalletCopySecret: 'Sırrı kopyala',
+  cryptoWalletWatchOnlySafe: 'Yalnızca public veri',
+  cryptoWalletDeleteConfirm:
+    'Bu kripto kasa kaydı çöp kutusuna taşınsın mı? Şifreli sırlar çöp kutusu boşaltılana kadar geri alınabilir.',
+  cryptoBackupConfirmTitle: 'Kripto kasa kayıtları dahil',
+  cryptoEncryptedBackupConfirmDesc:
+    'Bu şifreli yedek {{total}} kripto kasa kaydı içeriyor: {{secret}} kayıt şifreli sır materyali, {{watchOnly}} kayıt watch-only. Yedek parolasını ayrı saklayın; kaybolursa kurtarılamaz.',
+  cryptoBackupConfirmCta: 'Şifreli dışa aktarıma devam et',
+  cryptoPlaintextExportConfirmDesc:
+    'Bu düz metin dışa aktarım {{total}} kripto kasa kaydı içeriyor; {{secret}} kayıtta seed/private key materyali, {{watchOnly}} kayıtta watch-only veri var. CSV/JSON dosyaları şifreli değildir. Yalnızca geçiş için kullanın ve dosyayı hemen silin.',
+  notConfigured: 'Yapılandırılmadı',
+  cancel: 'İptal',
+});
+
 resources.tr.translation = repairTranslationTree(resources.tr.translation);
 
 i18n

@@ -1,4 +1,5 @@
 import { ExportService } from '../ExportService';
+import { CRYPTO_WALLET_CATEGORY, CryptoWalletVault } from '../wallet/CryptoWalletVault';
 
 describe('ExportService regression tests', () => {
   it('escapes CSV fields with quotes, commas and newlines', () => {
@@ -109,5 +110,47 @@ describe('ExportService regression tests', () => {
     const parsed = JSON.parse(json);
     expect(parsed[0]?.cardDetails?.card_number).toBe('4111111111111111');
     expect(parsed[0]?.identityDetails?.identity_number).toBe('12345678901');
+  });
+
+  it('summarizes crypto export risk for watch-only and vault-secret records', () => {
+    const summary = ExportService.getCryptoExportRiskSummary([
+      {
+        category: CRYPTO_WALLET_CATEGORY,
+        pass: CryptoWalletVault.watchOnlySentinel,
+      },
+      {
+        category: CRYPTO_WALLET_CATEGORY,
+        pass: 'seed phrase material',
+      },
+      {
+        category: 'General',
+        pass: 'regular password',
+      },
+    ] as never);
+
+    expect(summary).toEqual({
+      total: 2,
+      watchOnly: 1,
+      vaultSecret: 1,
+      hasCrypto: true,
+      hasVaultSecrets: true,
+    });
+  });
+
+  it('returns an empty crypto export risk summary when export has no crypto records', () => {
+    expect(
+      ExportService.getCryptoExportRiskSummary([
+        {
+          category: 'General',
+          pass: 'regular password',
+        },
+      ] as never)
+    ).toEqual({
+      total: 0,
+      watchOnly: 0,
+      vaultSecret: 0,
+      hasCrypto: false,
+      hasVaultSecrets: false,
+    });
   });
 });

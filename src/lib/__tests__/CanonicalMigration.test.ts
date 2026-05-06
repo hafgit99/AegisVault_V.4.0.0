@@ -3,6 +3,7 @@ import type { VaultEntry } from '../../vaultService';
 import { BackupService } from '../BackupService';
 import { CanonicalMigrationService } from '../canonical-migration';
 import { fromCanonicalVaultRecord, toCanonicalVaultRecord } from '../canonical-adapters';
+import { CryptoWalletVault } from '../wallet/CryptoWalletVault';
 
 describe('CanonicalMigrationService', () => {
   const password = 'MigrationSecret!2026';
@@ -56,6 +57,41 @@ describe('CanonicalMigrationService', () => {
     expect(restored.cardDetails?.card_number).toBe('4111111111111111');
     expect(restored.identityDetails?.identity_number).toBe('12345678901');
     expect(restored.sharing?.[0]?.shared_by).toBe('owner@example.com');
+  });
+
+  it('preserves crypto wallet category and payload through canonical records', () => {
+    const cryptoEntry = {
+      id: 11,
+      updated_at: '2026-05-06T00:00:00.000Z',
+      ...CryptoWalletVault.fromDraft({
+        name: 'BTC Watch',
+        chain: 'bitcoin',
+        publicAddress: 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080',
+        custodyMode: 'watch_only',
+        derivationPath: "m/84'/0'/0'/0/0",
+        lastKnownBalance: '0.10 BTC',
+        notes: 'Public treasury address',
+      }),
+    } as VaultEntry;
+
+    const canonical = toCanonicalVaultRecord(cryptoEntry);
+    const restored = fromCanonicalVaultRecord(canonical);
+    const record = CryptoWalletVault.toRecord({
+      id: 11,
+      updated_at: '2026-05-06T00:00:00.000Z',
+      ...restored,
+    } as VaultEntry);
+
+    expect(canonical.category).toBe('crypto_wallet');
+    expect(restored.category).toBe('CryptoWallet');
+    expect(record).toMatchObject({
+      name: 'BTC Watch',
+      chain: 'bitcoin',
+      custodyMode: 'watch_only',
+      derivationPath: "m/84'/0'/0'/0/0",
+      lastKnownBalance: '0.10 BTC',
+      notes: 'Public treasury address',
+    });
   });
 
   it('migrates legacy encrypted backups into canonical encrypted backups', async () => {

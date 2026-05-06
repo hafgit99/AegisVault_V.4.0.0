@@ -6,6 +6,7 @@ import {
   AEGIS_CANONICAL_SCHEMA_VERSION,
 } from '../../config/schema-registry';
 import type { CanonicalVaultRecord } from '../canonical-schema';
+import { CryptoWalletVault } from '../wallet/CryptoWalletVault';
 
 // Polyfill window.crypto for Vitest Node environment
 type TestWindow = Window &
@@ -77,6 +78,43 @@ describe('BackupService (Security P1-1)', () => {
     expect(decryptedData).toBeInstanceOf(Array);
     expect(decryptedData[0].title).toBe('TestSite');
     expect(decryptedData[0].pass).toBe('secret_pass_123');
+  });
+
+  it('preserves crypto vault records in encrypted backup round trips', async () => {
+    const cryptoEntry = CryptoWalletVault.fromDraft({
+      name: 'ETH Treasury',
+      chain: 'ethereum',
+      publicAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+      custodyMode: 'vault_secret',
+      secretKind: 'seed_phrase',
+      secretMaterial: 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
+      derivationPath: "m/44'/60'/0'/0/0",
+      lastKnownBalance: '1.25 ETH',
+      notes: 'Hardware backup in safe',
+    });
+
+    const backupJson = await BackupService.encryptBackup([cryptoEntry], strongPassword);
+    const decryptedData = await BackupService.decryptBackup<typeof cryptoEntry>(
+      backupJson,
+      strongPassword
+    );
+    const record = CryptoWalletVault.toRecord({
+      id: 77,
+      updated_at: '2026-05-06T00:00:00.000Z',
+      ...decryptedData[0],
+    } as never);
+
+    expect(backupJson).not.toContain('abandon abandon');
+    expect(record).toMatchObject({
+      name: 'ETH Treasury',
+      chain: 'ethereum',
+      publicAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+      custodyMode: 'vault_secret',
+      secretKind: 'seed_phrase',
+      derivationPath: "m/44'/60'/0'/0/0",
+      lastKnownBalance: '1.25 ETH',
+      notes: 'Hardware backup in safe',
+    });
   });
 
   it('should throw DECRYPTION_FAILED when decrypting with the wrong password', async () => {

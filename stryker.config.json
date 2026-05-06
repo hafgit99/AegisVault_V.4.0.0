@@ -12,12 +12,13 @@
     "src/lib/webAuthn.ts",
     "src/lib/WebAuthnService.ts",
     "src/lib/SQLiteOPFS.ts",
-    "src/lib/PasskeyBindingService.ts"
+    "src/lib/PasskeyBindingService.ts",
+    "src/lib/wallet/CryptoWalletVault.ts"
   ],
   "coverageAnalysis": "perTest",
   "thresholds": {
-    "high": 80,
-    "low": 60,
-    "break": 50
+    "high": 90,
+    "low": 80,
+    "break": 80
   }
 }

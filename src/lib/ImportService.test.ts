@@ -1,4 +1,6 @@
 import { ImportService } from './ImportService';
+import { ExportService } from './ExportService';
+import { CryptoWalletVault } from './wallet/CryptoWalletVault';
 
 type ImportServiceWithTestAccess = typeof ImportService & {
   parseCsv: (text: string) => {
@@ -185,6 +187,44 @@ describe('ImportService regression tests', () => {
       secret: {
         password: 'secretPass123',
       },
+    });
+  });
+
+  it('imports plaintext JSON crypto wallet exports without losing crypto payload', () => {
+    const exported = ExportService.buildJson(
+      ExportService.fromVaultEntries([
+        {
+          id: 31,
+          updated_at: '2026-05-06T00:00:00.000Z',
+          ...CryptoWalletVault.fromDraft({
+            name: 'SOL Watch',
+            chain: 'solana',
+            publicAddress: '81H1rKZHjpSsnr6Epumw9XVTfqAnqSHcTKm7D3VsEd74',
+            custodyMode: 'watch_only',
+            derivationPath: "m/44'/501'/0'/0'",
+            lastKnownBalance: '20 SOL',
+            notes: 'Public validator wallet',
+          }),
+        },
+      ] as never)
+    );
+
+    const result = importServiceForTest.parseJson(exported);
+    const record = CryptoWalletVault.toRecord({
+      id: 31,
+      updated_at: '2026-05-06T00:00:00.000Z',
+      ...result.entries[0],
+    } as never);
+
+    expect(result.entries[0].category).toBe('CryptoWallet');
+    expect(record).toMatchObject({
+      name: 'SOL Watch',
+      chain: 'solana',
+      publicAddress: '81H1rKZHjpSsnr6Epumw9XVTfqAnqSHcTKm7D3VsEd74',
+      custodyMode: 'watch_only',
+      derivationPath: "m/44'/501'/0'/0'",
+      lastKnownBalance: '20 SOL',
+      notes: 'Public validator wallet',
     });
   });
 });

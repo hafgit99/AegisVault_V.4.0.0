@@ -14,6 +14,22 @@ Aegis Vault 5.0 is a major evolution — the Security Center transforms from pas
 
 ### Added
 
+- **Crypto Vault + Watch-Only Custody**:
+  - Dedicated `CryptoWallet` domain model for offline crypto asset records
+  - Watch-only mode remains the default and stores public address data only
+  - Optional encrypted seed phrase/private key custody with explicit user-facing risk warnings
+  - Network-aware address validation for Bitcoin, Ethereum/EVM, Solana, Tron, Litecoin and custom chains
+  - Dedicated Crypto Vault dashboard panel and New Entry form integration
+  - Turkish/English UI strings for all crypto vault workflows
+
+- **Crypto Backup and Migration Hardening**:
+  - Encrypted `.aes` backups now have explicit crypto-record round-trip coverage
+  - Plain JSON import/export preserves `CryptoWallet` category and wallet payload metadata
+  - QR sync now carries `notes`, TOTP metadata and crypto wallet payload fields to prevent data loss
+  - Canonical schema now maps `CryptoWallet` to `crypto_wallet` and restores it back to `CryptoWallet`
+  - Export confirmation warns when crypto records or encrypted seed/private key material are included
+  - Stryker quality gate added for crypto wallet domain with 80% break threshold and 97.16% current mutation score
+
 - **Security Center 2.0** — Complete redesign of the security dashboard with active remediation capabilities:
   - Focused Triage Mode for step-through issue resolution
   - Automated Alias Rotation via provider API integration

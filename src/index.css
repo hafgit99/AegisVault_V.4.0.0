@@ -4481,3 +4481,476 @@
 .animate-pulse-subtle {
   animation: pulse-subtle 2s infinite ease-in-out;
 }
+
+.crypto-vault-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 58vh;
+}
+
+.crypto-vault-hero,
+.crypto-vault-form,
+.crypto-vault-empty,
+.crypto-wallet-card {
+  border: 1px solid rgba(16, 24, 40, 0.12);
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 18px 45px rgba(16, 24, 40, 0.08);
+}
+
+[data-theme='dark'] .crypto-vault-hero,
+[data-theme='dark'] .crypto-vault-form,
+[data-theme='dark'] .crypto-vault-empty,
+[data-theme='dark'] .crypto-wallet-card {
+  border-color: rgba(148, 163, 184, 0.18);
+  background: rgba(20, 31, 47, 0.76);
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.24);
+}
+
+.crypto-vault-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-radius: 24px;
+  padding: 1.25rem;
+}
+
+.crypto-vault-hero-copy h2 {
+  margin-top: 0.35rem;
+  font-size: clamp(1.35rem, 2vw, 2rem);
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.crypto-vault-hero-copy p {
+  margin-top: 0.45rem;
+  max-width: 680px;
+  color: rgba(16, 24, 40, 0.68);
+  line-height: 1.65;
+}
+
+[data-theme='dark'] .crypto-vault-hero-copy p {
+  color: rgba(226, 232, 240, 0.72);
+}
+
+.crypto-vault-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.crypto-vault-score,
+.crypto-wallet-mode,
+.crypto-wallet-readonly {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.crypto-vault-score {
+  background: rgba(114, 136, 111, 0.14);
+  color: #4f6d50;
+}
+
+[data-theme='dark'] .crypto-vault-score {
+  background: rgba(145, 178, 145, 0.16);
+  color: #a8c8a7;
+}
+
+.crypto-vault-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 42px;
+  border-radius: 14px;
+  padding: 0.7rem 1rem;
+  background: var(--color-deep-navy);
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+[data-theme='dark'] .crypto-vault-primary {
+  background: rgba(145, 178, 145, 0.92);
+  color: #0f1825;
+}
+
+.crypto-vault-form {
+  border-radius: 24px;
+  padding: 1rem;
+}
+
+.crypto-vault-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.crypto-vault-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.crypto-vault-form label > span,
+.crypto-wallet-card-top span,
+.crypto-wallet-address span,
+.crypto-wallet-meta span {
+  color: rgba(16, 24, 40, 0.54);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+[data-theme='dark'] .crypto-vault-form label > span,
+[data-theme='dark'] .crypto-wallet-card-top span,
+[data-theme='dark'] .crypto-wallet-address span,
+[data-theme='dark'] .crypto-wallet-meta span {
+  color: rgba(226, 232, 240, 0.56);
+}
+
+.crypto-vault-form input,
+.crypto-vault-form select,
+.crypto-vault-form textarea {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1px solid rgba(16, 24, 40, 0.14);
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--color-deep-navy);
+  padding: 0.75rem 0.85rem;
+  outline: none;
+}
+
+.crypto-vault-form textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+[data-theme='dark'] .crypto-vault-form input,
+[data-theme='dark'] .crypto-vault-form select,
+[data-theme='dark'] .crypto-vault-form textarea {
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(15, 24, 37, 0.78);
+  color: #e8eef8;
+}
+
+.crypto-vault-form input:focus,
+.crypto-vault-form select:focus,
+.crypto-vault-form textarea:focus {
+  border-color: rgba(114, 136, 111, 0.72);
+  box-shadow: 0 0 0 3px rgba(114, 136, 111, 0.18);
+}
+
+.crypto-vault-wide {
+  grid-column: 1 / -1;
+}
+
+.crypto-wallet-inline-notice,
+.crypto-wallet-address-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  border-radius: 14px;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 680;
+  line-height: 1.45;
+}
+
+.crypto-wallet-inline-notice.watch {
+  border: 1px solid rgba(14, 165, 233, 0.22);
+  background: rgba(14, 165, 233, 0.1);
+  color: #075985;
+}
+
+.crypto-wallet-inline-notice.secret {
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.12);
+  color: #92400e;
+}
+
+.crypto-wallet-address-status.valid {
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  background: rgba(16, 185, 129, 0.1);
+  color: #047857;
+}
+
+.crypto-wallet-address-status.invalid {
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+}
+
+[data-theme='dark'] .crypto-wallet-inline-notice.watch {
+  border-color: rgba(56, 189, 248, 0.24);
+  background: rgba(56, 189, 248, 0.12);
+  color: #bae6fd;
+}
+
+[data-theme='dark'] .crypto-wallet-inline-notice.secret {
+  border-color: rgba(251, 191, 36, 0.24);
+  background: rgba(251, 191, 36, 0.12);
+  color: #fde68a;
+}
+
+[data-theme='dark'] .crypto-wallet-address-status.valid {
+  border-color: rgba(52, 211, 153, 0.24);
+  background: rgba(52, 211, 153, 0.12);
+  color: #a7f3d0;
+}
+
+[data-theme='dark'] .crypto-wallet-address-status.invalid {
+  border-color: rgba(248, 113, 113, 0.26);
+  background: rgba(248, 113, 113, 0.12);
+  color: #fecaca;
+}
+
+.crypto-vault-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(16, 24, 40, 0.1);
+}
+
+[data-theme='dark'] .crypto-vault-form-footer {
+  border-top-color: rgba(148, 163, 184, 0.16);
+}
+
+.crypto-vault-form-footer p {
+  max-width: 620px;
+  color: rgba(16, 24, 40, 0.62);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+[data-theme='dark'] .crypto-vault-form-footer p {
+  color: rgba(226, 232, 240, 0.66);
+}
+
+.crypto-vault-empty {
+  display: flex;
+  min-height: 280px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  border-radius: 24px;
+  padding: 2rem;
+  text-align: center;
+  color: rgba(16, 24, 40, 0.68);
+}
+
+[data-theme='dark'] .crypto-vault-empty {
+  color: rgba(226, 232, 240, 0.72);
+}
+
+.crypto-vault-empty h3,
+.crypto-wallet-card-top h3 {
+  color: var(--color-deep-navy);
+  font-weight: 820;
+}
+
+[data-theme='dark'] .crypto-vault-empty h3,
+[data-theme='dark'] .crypto-wallet-card-top h3 {
+  color: #eef4ff;
+}
+
+.crypto-wallet-card-top h3 {
+  margin-top: 0.25rem;
+  font-size: 1.05rem;
+}
+
+.crypto-vault-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.crypto-wallet-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.9rem;
+  border-radius: 22px;
+  padding: 1rem;
+}
+
+.crypto-wallet-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.crypto-wallet-mode.watch {
+  background: rgba(14, 165, 233, 0.12);
+  color: #0369a1;
+}
+
+.crypto-wallet-mode.secret {
+  background: rgba(114, 136, 111, 0.16);
+  color: #4f6d50;
+}
+
+[data-theme='dark'] .crypto-wallet-mode.watch {
+  background: rgba(56, 189, 248, 0.14);
+  color: #7dd3fc;
+}
+
+[data-theme='dark'] .crypto-wallet-mode.secret {
+  background: rgba(145, 178, 145, 0.16);
+  color: #a8c8a7;
+}
+
+.crypto-wallet-address {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.crypto-wallet-address code {
+  display: block;
+  overflow-wrap: anywhere;
+  border-radius: 14px;
+  background: rgba(16, 24, 40, 0.06);
+  color: rgba(16, 24, 40, 0.78);
+  padding: 0.75rem;
+  font-family: var(--font-geist-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+[data-theme='dark'] .crypto-wallet-address code {
+  background: rgba(15, 24, 37, 0.82);
+  color: rgba(226, 232, 240, 0.82);
+}
+
+.crypto-wallet-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.crypto-wallet-meta > div {
+  min-width: 0;
+  border-radius: 14px;
+  background: rgba(16, 24, 40, 0.045);
+  padding: 0.75rem;
+}
+
+[data-theme='dark'] .crypto-wallet-meta > div {
+  background: rgba(15, 24, 37, 0.58);
+}
+
+.crypto-wallet-meta strong {
+  display: block;
+  margin-top: 0.35rem;
+  overflow-wrap: anywhere;
+  color: var(--color-deep-navy);
+  font-size: 0.86rem;
+}
+
+[data-theme='dark'] .crypto-wallet-meta strong {
+  color: #eef4ff;
+}
+
+.crypto-wallet-note {
+  border-left: 3px solid rgba(114, 136, 111, 0.45);
+  color: rgba(16, 24, 40, 0.62);
+  padding-left: 0.75rem;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+[data-theme='dark'] .crypto-wallet-note {
+  color: rgba(226, 232, 240, 0.68);
+}
+
+.crypto-wallet-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+.crypto-wallet-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(16, 24, 40, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--color-deep-navy);
+  padding: 0.55rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+
+.crypto-wallet-actions button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(114, 136, 111, 0.42);
+}
+
+[data-theme='dark'] .crypto-wallet-actions button {
+  border-color: rgba(148, 163, 184, 0.2);
+  background: rgba(15, 24, 37, 0.72);
+  color: #e8eef8;
+}
+
+.crypto-wallet-readonly {
+  background: rgba(114, 136, 111, 0.12);
+  color: #557357;
+}
+
+[data-theme='dark'] .crypto-wallet-readonly {
+  background: rgba(145, 178, 145, 0.13);
+  color: #a8c8a7;
+}
+
+.crypto-wallet-actions .crypto-wallet-delete {
+  margin-left: auto;
+  color: #dc2626;
+}
+
+[data-theme='dark'] .crypto-wallet-actions .crypto-wallet-delete {
+  color: #fca5a5;
+}
+
+@media (max-width: 980px) {
+  .crypto-vault-hero,
+  .crypto-vault-form-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .crypto-vault-hero-actions {
+    justify-content: flex-start;
+  }
+
+  .crypto-vault-grid,
+  .crypto-vault-form-grid {
+    grid-template-columns: 1fr;
+  }
+}

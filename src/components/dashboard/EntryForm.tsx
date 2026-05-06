@@ -14,6 +14,8 @@ import {
   Camera,
   History,
   RotateCcw,
+  AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react';
 import { useVault } from '../../contexts/VaultContext';
 import {
@@ -27,6 +29,11 @@ import { VaultManager } from '../../lib/VaultManager';
 import { TotpVaultPolicy } from '../../lib/TotpVaultPolicy';
 import { SharedSpaceService } from '../../lib/SharedSpaceService';
 import { AliasIdentityPanel } from '../settings/AliasIdentityPanel';
+import {
+  CryptoWalletVault,
+  type CryptoWalletChain,
+  type CryptoWalletCustodyMode,
+} from '../../lib/wallet/CryptoWalletVault';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 
@@ -57,6 +64,14 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
     }
   );
   const [showPassword, setShowPassword] = useState(false);
+  const [cryptoWalletDraft, setCryptoWalletDraft] = useState({
+    chain: 'ethereum' as CryptoWalletChain,
+    custodyMode: 'watch_only' as CryptoWalletCustodyMode,
+    secretKind: 'seed_phrase' as 'seed_phrase' | 'private_key',
+    derivationPath: '',
+    lastKnownBalance: '',
+    notes: '',
+  });
   const [tagInput, setTagInput] = useState('');
   const [newAttachments, setNewAttachments] = useState<File[]>([]);
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([]);
@@ -153,6 +168,13 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
   const isPasskeyCategory = newEntry.category === 'Passkeys';
   const isCardCategory = newEntry.category === 'Cards';
   const isIdentityCategory = newEntry.category === 'Identities';
+  const isCryptoWalletCategory = newEntry.category === CryptoWalletVault.category;
+  const cryptoAddressValue = newEntry.username || '';
+  const hasCryptoAddressInput = cryptoAddressValue.trim().length > 0;
+  const isCryptoAddressValid =
+    isCryptoWalletCategory &&
+    hasCryptoAddressInput &&
+    CryptoWalletVault.validateAddress(cryptoWalletDraft.chain, cryptoAddressValue);
 
   const updatePasskeyMetadata = (updates: Record<string, string>) => {
     setNewEntry((prev) => ({
@@ -228,11 +250,43 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
       }
     }
 
+    const cryptoWalletPayload = isCryptoWalletCategory
+      ? CryptoWalletVault.fromDraft({
+          name: newEntry.title || '',
+          chain: cryptoWalletDraft.chain,
+          publicAddress: newEntry.username || '',
+          custodyMode: cryptoWalletDraft.custodyMode,
+          secretKind:
+            cryptoWalletDraft.custodyMode === 'watch_only' ? 'none' : cryptoWalletDraft.secretKind,
+          secretMaterial: newEntry.pass || '',
+          derivationPath: cryptoWalletDraft.derivationPath,
+          lastKnownBalance: cryptoWalletDraft.lastKnownBalance,
+          notes: cryptoWalletDraft.notes || newEntry.notes || '',
+        })
+      : null;
+
+    if (isCryptoWalletCategory) {
+      if (!newEntry.title?.trim()) {
+        toast.error(t('cryptoWalletNameRequired'));
+        return;
+      }
+
+      if (!CryptoWalletVault.validateAddress(cryptoWalletDraft.chain, newEntry.username || '')) {
+        toast.error(t('cryptoWalletAddressInvalid'));
+        return;
+      }
+
+      if (cryptoWalletDraft.custodyMode === 'vault_secret' && !newEntry.pass?.trim()) {
+        toast.error(t('cryptoWalletSecretRequired'));
+        return;
+      }
+    }
+
     const payload: Partial<VaultEntry> = {
-      ...newEntry,
+      ...(cryptoWalletPayload || newEntry),
       attachments: visibleExistingAttachments,
       sharing:
-        primarySharing && primarySharing.space_id
+        !isCryptoWalletCategory && primarySharing && primarySharing.space_id
           ? [
               {
                 ...primarySharing,
@@ -245,7 +299,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
           : undefined,
     };
 
-    if (isSeparateTotpMode && !isInTwoFactorVault) {
+    if (!isCryptoWalletCategory && isSeparateTotpMode && !isInTwoFactorVault) {
       payload.totpSecret = '';
       payload.totp_issuer = '';
       payload.totp_algorithm = undefined;
@@ -311,7 +365,9 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                       ? t('placeholderNoteTitle')
                       : newEntry.category === 'WiFi'
                         ? t('placeholderWifiTitle')
-                        : t('titlePlaceholder')
+                        : isCryptoWalletCategory
+                          ? t('cryptoWalletNamePlaceholder')
+                          : t('titlePlaceholder')
             }
             value={newEntry.title}
             onChange={(e) => setNewEntry({ ...newEntry, title: e.target.value })}
@@ -370,9 +426,142 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
             <option value="Passkeys">{t('passkeys')}</option>
             <option value="Notes">{t('notes')}</option>
             <option value="WiFi">{t('wifi')}</option>
+            <option value={CryptoWalletVault.category}>{t('cryptowallet')}</option>
           </select>
 
-          {!isNoteCategory && !isPasskeyCategory && (
+          {isCryptoWalletCategory && (
+            <div className="v5-entry-section col-span-2 rounded-xl border border-[var(--color-sage-green)]/20 bg-[var(--color-sage-green)]/5 p-4">
+              <div className="mb-3 text-[10px] uppercase font-bold tracking-widest text-[var(--color-sage-green)]">
+                {t('cryptoVaultKicker')}
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <select
+                  value={cryptoWalletDraft.chain}
+                  onChange={(e) =>
+                    setCryptoWalletDraft((prev) => ({
+                      ...prev,
+                      chain: e.target.value as CryptoWalletChain,
+                    }))
+                  }
+                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                >
+                  <option value="bitcoin">Bitcoin</option>
+                  <option value="ethereum">Ethereum / EVM</option>
+                  <option value="solana">Solana</option>
+                  <option value="tron">Tron</option>
+                  <option value="litecoin">Litecoin</option>
+                  <option value="other">Other</option>
+                </select>
+                <select
+                  value={cryptoWalletDraft.custodyMode}
+                  onChange={(e) =>
+                    setCryptoWalletDraft((prev) => ({
+                      ...prev,
+                      custodyMode: e.target.value as CryptoWalletCustodyMode,
+                    }))
+                  }
+                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                >
+                  <option value="watch_only">{t('cryptoWalletWatchOnly')}</option>
+                  <option value="vault_secret">{t('cryptoWalletVaultSecret')}</option>
+                </select>
+                <div className="md:col-span-2 rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs leading-5 text-[var(--color-deep-navy)]/70 dark:text-sky-100/80">
+                  {t('cryptoWalletWatchOnlyDefaultHint')}
+                </div>
+                <input
+                  required
+                  type="text"
+                  placeholder={t('cryptoWalletAddressPlaceholder')}
+                  value={newEntry.username || ''}
+                  onChange={(e) => setNewEntry({ ...newEntry, username: e.target.value })}
+                  className="entry-field md:col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                />
+                {hasCryptoAddressInput && (
+                  <div
+                    className={`md:col-span-2 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold ${
+                      isCryptoAddressValid
+                        ? 'border border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200'
+                        : 'border border-red-500/25 bg-red-500/10 text-red-700 dark:text-red-200'
+                    }`}
+                  >
+                    {isCryptoAddressValid ? (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    ) : (
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                    )}
+                    {isCryptoAddressValid
+                      ? t('cryptoWalletAddressValid')
+                      : t('cryptoWalletAddressInvalidInline')}
+                  </div>
+                )}
+                <input
+                  type="text"
+                  placeholder="m/44'/60'/0'/0/0"
+                  value={cryptoWalletDraft.derivationPath}
+                  onChange={(e) =>
+                    setCryptoWalletDraft((prev) => ({
+                      ...prev,
+                      derivationPath: e.target.value,
+                    }))
+                  }
+                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                />
+                <input
+                  type="text"
+                  placeholder="0.0000 ETH"
+                  value={cryptoWalletDraft.lastKnownBalance}
+                  onChange={(e) =>
+                    setCryptoWalletDraft((prev) => ({
+                      ...prev,
+                      lastKnownBalance: e.target.value,
+                    }))
+                  }
+                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                />
+                {cryptoWalletDraft.custodyMode === 'vault_secret' && (
+                  <>
+                    <div className="md:col-span-2 flex gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-800 dark:text-amber-100/85">
+                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <span>{t('cryptoWalletSecretRiskNotice')}</span>
+                    </div>
+                    <select
+                      value={cryptoWalletDraft.secretKind}
+                      onChange={(e) =>
+                        setCryptoWalletDraft((prev) => ({
+                          ...prev,
+                          secretKind: e.target.value as 'seed_phrase' | 'private_key',
+                        }))
+                      }
+                      className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                    >
+                      <option value="seed_phrase">{t('cryptoWalletSeedPhrase')}</option>
+                      <option value="private_key">{t('cryptoWalletPrivateKey')}</option>
+                    </select>
+                    <textarea
+                      required
+                      placeholder={t('cryptoWalletSecretPlaceholder')}
+                      value={newEntry.pass || ''}
+                      onChange={(e) => setNewEntry({ ...newEntry, pass: e.target.value })}
+                      className="entry-field md:col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none resize-none min-h-[92px]"
+                    />
+                  </>
+                )}
+                <textarea
+                  placeholder={t('cryptoWalletNotesPlaceholder')}
+                  value={cryptoWalletDraft.notes}
+                  onChange={(e) =>
+                    setCryptoWalletDraft((prev) => ({ ...prev, notes: e.target.value }))
+                  }
+                  className="entry-field md:col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none resize-none"
+                />
+              </div>
+              <p className="mt-3 text-xs leading-5 text-[var(--color-deep-navy)]/60 dark:text-white/60">
+                {t('cryptoWalletNoSigningNotice')}
+              </p>
+            </div>
+          )}
+
+          {!isNoteCategory && !isPasskeyCategory && !isCryptoWalletCategory && (
             <input
               type="text"
               placeholder={
@@ -390,7 +579,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
             />
           )}
 
-          {!isNoteCategory && !isPasskeyCategory && (
+          {!isNoteCategory && !isPasskeyCategory && !isCryptoWalletCategory && (
             <input
               type="text"
               placeholder={
@@ -408,6 +597,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
             />
           )}
 
+          {!isCryptoWalletCategory && (
           <div className="col-span-2 relative flex items-center">
             {isNoteCategory ? (
               <textarea
@@ -478,6 +668,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
               </div>
             )}
           </div>
+          )}
 
           {/* Tags Input */}
           <div className="col-span-2 flex flex-col gap-2">
@@ -652,7 +843,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
             )}
           </div>
 
-          {!isNoteCategory && !isPasskeyCategory ? (
+          {!isNoteCategory && !isPasskeyCategory && !isCryptoWalletCategory ? (
             <AliasIdentityPanel entry={newEntry} setEntry={setNewEntry} />
           ) : null}
 
@@ -842,7 +1033,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
           ) : null}
 
           {/* TOTP 2FA Section */}
-          {newEntry.category !== 'Notes' && (
+          {newEntry.category !== 'Notes' && !isCryptoWalletCategory && (
             <div className="col-span-2">
               {isSeparateTotpMode && !isInTwoFactorVault ? (
                 <div className="rounded-xl border border-amber-300/40 bg-amber-50/60 px-3 py-2 text-xs font-medium text-amber-700">
@@ -943,7 +1134,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
 
           {/* Secure Notes & Attachment Upload */}
           <div className="v5-secure-notes-block v5-notes-attachments-block col-span-2">
-            {newEntry.category !== 'Notes' && (
+            {newEntry.category !== 'Notes' && !isCryptoWalletCategory && (
               <div className="v5-notes-panel">
                 <div className="mb-2 flex items-center gap-1.5">
                   <FileText className="w-3 h-3 text-amber-500" />

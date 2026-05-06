@@ -33,6 +33,9 @@ const DonationModal = lazy(() =>
 const QuickAliasModal = lazy(() =>
   import('./dashboard/QuickAliasModal').then((m) => ({ default: m.QuickAliasModal }))
 );
+const CryptoVaultPanel = lazy(() =>
+  import('./dashboard/CryptoVaultPanel').then((m) => ({ default: m.CryptoVaultPanel }))
+);
 
 // ─────────────────────────────────────────────────────────────────
 // Dashboard İç Bileşeni (VaultContext tüketen)
@@ -313,7 +316,11 @@ function DashboardInner() {
           </div>
 
           <div className="flex-1 min-h-0">
-            {isDecrypting ? (
+            {categoryFilter === 'CryptoWallet' ? (
+              <Suspense fallback={<div className="p-8 text-center opacity-50">Loading...</div>}>
+                <CryptoVaultPanel />
+              </Suspense>
+            ) : isDecrypting ? (
               <div className="flex flex-col gap-4 mt-4">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div
