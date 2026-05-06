@@ -67,7 +67,8 @@ export class CryptoWalletVault {
         chain: 'other',
         networkLabel: entry.website || chainLabels.other,
         publicAddress: entry.username || '',
-        custodyMode: entry.pass && entry.pass !== WATCH_ONLY_SENTINEL ? 'vault_secret' : 'watch_only',
+        custodyMode:
+          entry.pass && entry.pass !== WATCH_ONLY_SENTINEL ? 'vault_secret' : 'watch_only',
         secretKind: entry.pass && entry.pass !== WATCH_ONLY_SENTINEL ? 'private_key' : 'none',
         createdAt: entry.updated_at,
         updatedAt: entry.updated_at,
@@ -82,7 +83,8 @@ export class CryptoWalletVault {
       publicAddress: payload.publicAddress,
       derivationPath: payload.derivationPath,
       custodyMode: payload.custodyMode,
-      secretKind: payload.secretKind || (payload.custodyMode === 'watch_only' ? 'none' : 'seed_phrase'),
+      secretKind:
+        payload.secretKind || (payload.custodyMode === 'watch_only' ? 'none' : 'seed_phrase'),
       lastKnownBalance: payload.lastKnownBalance,
       lastCheckedAt: payload.lastCheckedAt,
       notes: payload.notes,

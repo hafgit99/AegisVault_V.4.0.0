@@ -97,17 +97,17 @@ Aegis Vault 5.0
 
 ### Cryptographic Stack
 
-| Layer             | Implementation                              |
-| ----------------- | ------------------------------------------- |
-| Key Derivation    | Argon2id (Web Worker + WASM fallback)       |
-| Encryption        | AES-256-GCM with per-field IV management    |
-| Vault Storage     | SQLCipher (WASM) with OPFS / IDB fallback   |
-| Backup Integrity  | HMAC-SHA256 envelope verification           |
-| Sync Transport    | ECDH + AES-GCM end-to-end encryption        |
+| Layer             | Implementation                                          |
+| ----------------- | ------------------------------------------------------- |
+| Key Derivation    | Argon2id (Web Worker + WASM fallback)                   |
+| Encryption        | AES-256-GCM with per-field IV management                |
+| Vault Storage     | SQLCipher (WASM) with OPFS / IDB fallback               |
+| Backup Integrity  | HMAC-SHA256 envelope verification                       |
+| Sync Transport    | ECDH + AES-GCM end-to-end encryption                    |
 | Crypto Vault      | Watch-only records + encrypted seed/private key custody |
-| Sharing Transport | ECDH receiver pairing + replay protection   |
-| Release Signing   | Ed25519 manifest + trust chain verification |
-| Biometric Unlock  | WebAuthn (device-bound credentials)         |
+| Sharing Transport | ECDH receiver pairing + replay protection               |
+| Release Signing   | Ed25519 manifest + trust chain verification             |
+| Biometric Unlock  | WebAuthn (device-bound credentials)                     |
 
 ### Modular Vault Architecture
 
@@ -152,16 +152,16 @@ The vault core is decomposed into **9 dedicated service modules** under `src/lib
 
 ## 📊 Test Coverage
 
-| Metric                  | Score               |
-| ----------------------- | ------------------- |
-| **Test Files**          | 108+                |
-| **Unit Tests**          | 891+ (all passing)  |
-| **E2E Tests**           | 189 (16 spec files) |
-| **Statements**          | 87.36%              |
-| **Branches**            | 75.4%               |
-| **Functions**           | 90.6%               |
-| **Lines**               | 89.43%              |
-| **Mutation Resilience** | 76.0% (Stryker)     |
+| Metric                         | Score                        |
+| ------------------------------ | ---------------------------- |
+| **Test Files**                 | 108+                         |
+| **Unit Tests**                 | 891+ (all passing)           |
+| **E2E Tests**                  | 189 (16 spec files)          |
+| **Statements**                 | 87.36%                       |
+| **Branches**                   | 75.4%                        |
+| **Functions**                  | 90.6%                        |
+| **Lines**                      | 89.43%                       |
+| **Mutation Resilience**        | 76.0% (Stryker)              |
 | **Crypto Vault Mutation Gate** | 97.16% (80% break threshold) |
 
 ### Mutation Resilience (Security Services)

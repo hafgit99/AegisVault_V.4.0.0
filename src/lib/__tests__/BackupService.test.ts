@@ -87,7 +87,8 @@ describe('BackupService (Security P1-1)', () => {
       publicAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
       custodyMode: 'vault_secret',
       secretKind: 'seed_phrase',
-      secretMaterial: 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
+      secretMaterial:
+        'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
       derivationPath: "m/44'/60'/0'/0/0",
       lastKnownBalance: '1.25 ETH',
       notes: 'Hardware backup in safe',

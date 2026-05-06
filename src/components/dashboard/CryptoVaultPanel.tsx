@@ -313,12 +313,18 @@ export function CryptoVaultPanel() {
                 {record.notes && <p className="crypto-wallet-note">{record.notes}</p>}
 
                 <div className="crypto-wallet-actions">
-                  <button type="button" onClick={() => copyAddress(record.walletId, record.publicAddress)}>
+                  <button
+                    type="button"
+                    onClick={() => copyAddress(record.walletId, record.publicAddress)}
+                  >
                     <Copy className="h-4 w-4" />
                     {t('cryptoWalletCopyAddress')}
                   </button>
                   {canRevealSecret && sourceEntry ? (
-                    <button type="button" onClick={() => handleCopyItem(sourceEntry.id, sourceEntry.pass || '')}>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyItem(sourceEntry.id, sourceEntry.pass || '')}
+                    >
                       <KeyRound className="h-4 w-4" />
                       {t('cryptoWalletCopySecret')}
                     </button>

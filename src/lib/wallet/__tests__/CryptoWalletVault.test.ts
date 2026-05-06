@@ -57,7 +57,8 @@ describe('CryptoWalletVault', () => {
       publicAddress: ' bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080 ',
       custodyMode: 'vault_secret',
       secretKind: 'seed_phrase',
-      secretMaterial: ' abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about ',
+      secretMaterial:
+        ' abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about ',
       derivationPath: " m/84'/0'/0'/0/0 ",
       lastKnownBalance: '',
       notes: '',
@@ -181,10 +182,35 @@ describe('CryptoWalletVault', () => {
   });
 
   it.each([
-    ['wrong schema', { schema: 'aegis.crypto_wallet.v0', name: 'Bad', chain: 'ethereum', publicAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e' }],
-    ['missing name', { schema: 'aegis.crypto_wallet.v1', chain: 'ethereum', publicAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e' }],
-    ['missing chain', { schema: 'aegis.crypto_wallet.v1', name: 'Bad', publicAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e' }],
-    ['missing public address', { schema: 'aegis.crypto_wallet.v1', name: 'Bad', chain: 'ethereum' }],
+    [
+      'wrong schema',
+      {
+        schema: 'aegis.crypto_wallet.v0',
+        name: 'Bad',
+        chain: 'ethereum',
+        publicAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+      },
+    ],
+    [
+      'missing name',
+      {
+        schema: 'aegis.crypto_wallet.v1',
+        chain: 'ethereum',
+        publicAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+      },
+    ],
+    [
+      'missing chain',
+      {
+        schema: 'aegis.crypto_wallet.v1',
+        name: 'Bad',
+        publicAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+      },
+    ],
+    [
+      'missing public address',
+      { schema: 'aegis.crypto_wallet.v1', name: 'Bad', chain: 'ethereum' },
+    ],
   ])('rejects malformed wallet payloads and keeps legacy fallback for %s', (_caseName, notes) => {
     const record = CryptoWalletVault.toRecord({
       id: 4,

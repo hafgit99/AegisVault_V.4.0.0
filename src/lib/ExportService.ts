@@ -78,8 +78,7 @@ export class ExportService {
       (summary, entry) => {
         if (entry.category !== CRYPTO_WALLET_CATEGORY) return summary;
 
-        const hasSecret =
-          Boolean(entry.pass) && entry.pass !== CryptoWalletVault.watchOnlySentinel;
+        const hasSecret = Boolean(entry.pass) && entry.pass !== CryptoWalletVault.watchOnlySentinel;
 
         return {
           total: summary.total + 1,
