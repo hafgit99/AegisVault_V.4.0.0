@@ -12,6 +12,17 @@ type ContentI18n = {
   filledSuccess: string;
   authSuccess: string;
   errorTitle: string;
+  passkeyErrorNotAllowed: string;
+  passkeyErrorSecurity: string;
+  passkeyErrorNoCredential: string;
+  passkeyErrorTimeout: string;
+  passkeyErrorFallback: string;
+  insecureSiteTitle: string;
+  insecureSiteHint: string;
+  reviewSiteTitle: string;
+  reviewSiteHint: string;
+  insecureFill: string;
+  cancel: string;
   unlockedTitle: string;
   lockedTitle: string;
   generatePassword: string;
@@ -28,21 +39,53 @@ const normalizeUiLanguage = (value: unknown) =>
   typeof value === 'string' && value.toLowerCase().startsWith('tr') ? 'tr' : 'en';
 
 const buildContentI18n = (language: 'tr' | 'en'): ContentI18n => ({
-  noUsername: language === 'tr' ? 'Kullanıcı adı yok' : 'No username',
-  recordsLabel: language === 'tr' ? 'kayıt' : 'record(s)',
+  noUsername: language === 'tr' ? 'Kullanici adi yok' : 'No username',
+  recordsLabel: language === 'tr' ? 'kayit' : 'record(s)',
   noRecordForSite:
-    language === 'tr' ? 'Bu site için kayıt bulunamadı' : 'No records found for this site',
-  filledSuccess: language === 'tr' ? 'Başarıyla dolduruldu' : 'Filled successfully',
-  authSuccess: language === 'tr' ? 'Kimlik doğrulama başarılı' : 'Authentication successful',
-  errorTitle: language === 'tr' ? 'Bir hata oluştu' : 'An error occurred',
-  unlockedTitle: language === 'tr' ? 'Kasa Açık' : 'Vault Unlocked',
+    language === 'tr' ? 'Bu site icin kayit bulunamadi' : 'No records found for this site',
+  filledSuccess: language === 'tr' ? 'Basariyla dolduruldu' : 'Filled successfully',
+  authSuccess: language === 'tr' ? 'Kimlik dogrulama basarili' : 'Authentication successful',
+  errorTitle: language === 'tr' ? 'Bir hata olustu' : 'An error occurred',
+  passkeyErrorNotAllowed:
+    language === 'tr'
+      ? 'Passkey islemi iptal edildi veya cihaz tarafindan izin verilmedi.'
+      : 'Passkey was cancelled or not allowed by the device.',
+  passkeyErrorSecurity:
+    language === 'tr'
+      ? 'Passkey guvenlik kontrolu basarisiz oldu. Alan adi ve origin eslesmesini kontrol edin.'
+      : 'Passkey security check failed. Review the domain and origin match.',
+  passkeyErrorNoCredential:
+    language === 'tr'
+      ? 'Bu site icin uygun passkey bulunamadi veya credential eksik.'
+      : 'No matching passkey was found for this site, or the credential is incomplete.',
+  passkeyErrorTimeout:
+    language === 'tr'
+      ? 'Passkey istegi zaman asimina ugradi. Tekrar deneyin.'
+      : 'Passkey request timed out. Try again.',
+  passkeyErrorFallback:
+    language === 'tr'
+      ? 'Passkey dogrulamasi tamamlanamadi. Kayit envanterini ve RP ID bilgisini kontrol edin.'
+      : 'Passkey authentication could not be completed. Review inventory and RP ID details.',
+  insecureSiteTitle: language === 'tr' ? 'Guvenli olmayan baglanti' : 'Insecure connection',
+  insecureSiteHint:
+    language === 'tr'
+      ? 'Bu sayfa HTTPS kullanmiyor. Bilgileri doldurmadan once alan adini dikkatlice kontrol edin.'
+      : 'This page is not using HTTPS. Review the domain before filling sensitive fields.',
+  reviewSiteTitle: language === 'tr' ? 'Doldurma onayi' : 'Autofill approval',
+  reviewSiteHint:
+    language === 'tr'
+      ? 'Bu site icin her doldurma isleminde onay isteniyor. Alan adini kontrol edip devam edin.'
+      : 'This site requires approval before every fill. Review the domain before continuing.',
+  insecureFill: language === 'tr' ? 'Yine de doldur' : 'Fill anyway',
+  cancel: language === 'tr' ? 'Vazgec' : 'Cancel',
+  unlockedTitle: language === 'tr' ? 'Kasa Acik' : 'Vault Unlocked',
   lockedTitle: language === 'tr' ? 'Kasa Kilitli' : 'Vault Locked',
-  generatePassword: language === 'tr' ? 'Güvenli şifre oluştur' : 'Generate secure password',
-  passwordGenerated: language === 'tr' ? 'Güvenli şifre oluşturuldu' : 'Secure password generated',
+  generatePassword: language === 'tr' ? 'Guvenli sifre olustur' : 'Generate secure password',
+  passwordGenerated: language === 'tr' ? 'Guvenli sifre olusturuldu' : 'Secure password generated',
   passwordPreviewTitle: language === 'tr' ? 'Olusturulan sifre' : 'Generated password',
   passwordPreviewHint:
     language === 'tr'
-      ? 'Sifreyi inceleyip onayladiktan sonra forma doldurulur.'
+      ? 'Sifre, yalnizca inceleyip onayladiktan sonra forma doldurulur.'
       : 'The password is filled only after your approval.',
   passwordApply: language === 'tr' ? 'Onayla ve doldur' : 'Approve and fill',
   passwordRegenerate: language === 'tr' ? 'Yeniden olustur' : 'Regenerate',
@@ -92,6 +135,44 @@ type PasskeyMatch = {
     rp_id: string;
     mode: string;
   };
+};
+
+type AutofillSitePolicy = 'allow' | 'ask' | 'block';
+type PendingFillReview = {
+  entry: CredentialMatch;
+  reason: 'insecure' | 'policy';
+};
+
+const formatPasskeyAuthError = (error: unknown) => {
+  const code =
+    typeof error === 'string'
+      ? error
+      : error && typeof error === 'object' && 'message' in error
+        ? String((error as Error).message)
+        : '';
+  const normalized = code.toUpperCase();
+  if (normalized.includes('NOTALLOWED') || normalized.includes('CANCEL')) {
+    return EXT_I18N.passkeyErrorNotAllowed;
+  }
+  if (
+    normalized.includes('SECURITY') ||
+    normalized.includes('ORIGIN') ||
+    normalized.includes('RP_ID') ||
+    normalized.includes('DOMAIN')
+  ) {
+    return EXT_I18N.passkeyErrorSecurity;
+  }
+  if (
+    normalized.includes('NO_PASSKEY') ||
+    normalized.includes('NO_CREDENTIAL') ||
+    normalized.includes('CREDENTIAL')
+  ) {
+    return EXT_I18N.passkeyErrorNoCredential;
+  }
+  if (normalized.includes('TIMEOUT') || normalized.includes('ABORT')) {
+    return EXT_I18N.passkeyErrorTimeout;
+  }
+  return EXT_I18N.passkeyErrorFallback;
 };
 
 type AutosaveCredentialCandidate = {
@@ -487,6 +568,8 @@ const AegisOverlay = () => {
   const [matchingPasskeys, setMatchingPasskeys] = useState<PasskeyMatch[]>([]);
   const [showPasswordGenerator, setShowPasswordGenerator] = useState(false);
   const [generatedPasswordDraft, setGeneratedPasswordDraft] = useState('');
+  const [sitePolicy, setSitePolicy] = useState<AutofillSitePolicy>('allow');
+  const [pendingFillReview, setPendingFillReview] = useState<PendingFillReview | null>(null);
   const [pendingWebAuthnOptions, setPendingWebAuthnOptions] = useState<any | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -523,9 +606,17 @@ const AegisOverlay = () => {
     setMatchingPasskeys([]);
     setShowPasswordGenerator(false);
     setGeneratedPasswordDraft('');
+    setPendingFillReview(null);
+    setSitePolicy('allow');
     inputRef.current = null;
     setActiveRect(null);
   }, []);
+
+  const isInsecureAutofillContext = () => {
+    const host = window.location.hostname.toLowerCase();
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+    return window.location.protocol !== 'https:' && !isLocalHost;
+  };
 
   const isVisiblePasswordField = (field: HTMLInputElement | null) => {
     if (!field) return false;
@@ -588,6 +679,18 @@ const AegisOverlay = () => {
     }
   };
 
+  const fillSelectedEntry = (entry: CredentialMatch) => {
+    if (!inputRef.current) return;
+    if (isLikelyCardField(inputRef.current) && entry.cardDetails) {
+      fillCardInputs(inputRef.current, entry);
+    } else {
+      fillInputs(inputRef.current, entry);
+    }
+    setPendingFillReview(null);
+    setFilled(true);
+    setTimeout(() => hide(), 900);
+  };
+
   useEffect(() => {
     const handleFocus = async (e: FocusEvent) => {
       const target = e.target as HTMLInputElement;
@@ -601,6 +704,7 @@ const AegisOverlay = () => {
       if (!isWebAuthn && !isPasswordFocus && !isUsernameFocus && !isCardFocus) return;
 
       clearHideTimer();
+      setPendingFillReview(null);
 
       try {
         const status = await browser.runtime.sendMessage({ type: 'GET_VAULT_STATUS' });
@@ -619,6 +723,19 @@ const AegisOverlay = () => {
           typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
             ? crypto.randomUUID()
             : `${Date.now()}-${Math.random()}`;
+
+        const policyResponse = await browser.runtime
+          .sendMessage({ type: 'GET_SITE_AUTOFILL_POLICY', domain })
+          .catch(() => null);
+        const resolvedPolicy: AutofillSitePolicy =
+          policyResponse?.policy === 'ask' || policyResponse?.policy === 'block'
+            ? policyResponse.policy
+            : 'allow';
+        setSitePolicy(resolvedPolicy);
+        if (resolvedPolicy === 'block') {
+          hide();
+          return;
+        }
 
         // Fetch both credentials and passkeys in parallel
         const [credsResponse, passkeysResponse] = await Promise.all([
@@ -680,7 +797,7 @@ const AegisOverlay = () => {
     const handleInjectedMessage = (event: MessageEvent) => {
       if (event.source !== window) return;
       if (event.data?.type === 'AEGIS_WEBAUTHN_CONDITIONAL_PENDING') {
-        console.log('[Aegis Vault] 🛡️ Received conditional WebAuthn options:', event.data.options);
+        console.log('[Aegis Vault] Received conditional WebAuthn options:', event.data.options);
         setPendingWebAuthnOptions(event.data.options);
       }
     };
@@ -712,7 +829,83 @@ const AegisOverlay = () => {
 
         {/* Body */}
         <div style={STYLES.body}>
-          {!filled ? (
+          {pendingFillReview ? (
+            <div
+              style={{
+                border: isDarkMode
+                  ? '1px solid rgba(245,158,11,0.35)'
+                  : '1px solid rgba(217,119,6,0.28)',
+                borderRadius: 12,
+                background: isDarkMode ? 'rgba(120,53,15,0.28)' : 'rgba(255,247,237,0.95)',
+                padding: '10px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 800,
+                  color: isDarkMode ? '#fbbf24' : '#92400e',
+                }}
+              >
+                {pendingFillReview.reason === 'insecure'
+                  ? EXT_I18N.insecureSiteTitle
+                  : EXT_I18N.reviewSiteTitle}
+              </div>
+              <div
+                style={{
+                  fontSize: 10,
+                  lineHeight: 1.45,
+                  color: isDarkMode ? '#fde68a' : '#78350f',
+                }}
+              >
+                {pendingFillReview.reason === 'insecure'
+                  ? EXT_I18N.insecureSiteHint
+                  : EXT_I18N.reviewSiteHint}
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    border: 0,
+                    borderRadius: 8,
+                    padding: '7px 8px',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    background: isDarkMode ? '#fbbf24' : '#92400e',
+                    color: isDarkMode ? '#111827' : '#ffffff',
+                  }}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => fillSelectedEntry(pendingFillReview.entry)}
+                >
+                  {EXT_I18N.insecureFill}
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    border: isDarkMode
+                      ? '1px solid rgba(255,255,255,0.18)'
+                      : '1px solid rgba(146,64,14,0.24)',
+                    borderRadius: 8,
+                    padding: '7px 8px',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    background: 'transparent',
+                    color: isDarkMode ? '#fef3c7' : '#92400e',
+                  }}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => setPendingFillReview(null)}
+                >
+                  {EXT_I18N.cancel}
+                </button>
+              </div>
+            </div>
+          ) : !filled ? (
             matchingPasswords.length > 0 || matchingPasskeys.length > 0 || showPasswordGenerator ? (
               <>
                 {showPasswordGenerator ? (
@@ -892,10 +1085,11 @@ const AegisOverlay = () => {
                           setTimeout(() => hide(), 900);
                         } else {
                           console.error('[Aegis Vault] Passkey Auth Failed:', response?.error);
-                          toast?.error?.(response?.error || EXT_I18N.errorTitle);
+                          toast?.error?.(formatPasskeyAuthError(response?.error));
                         }
                       } catch (err) {
                         console.error('[Aegis Vault] Auth error:', err);
+                        toast?.error?.(formatPasskeyAuthError(err));
                       }
                     }}
                   />
@@ -907,15 +1101,16 @@ const AegisOverlay = () => {
                     isDark={isDarkMode}
                     onFill={() => {
                       clearHideTimer();
-                      if (inputRef.current) {
-                        if (isLikelyCardField(inputRef.current) && entry.cardDetails) {
-                          fillCardInputs(inputRef.current, entry);
-                        } else {
-                          fillInputs(inputRef.current, entry);
-                        }
+                      const reviewReason = isInsecureAutofillContext()
+                        ? 'insecure'
+                        : sitePolicy === 'ask'
+                          ? 'policy'
+                          : null;
+                      if (reviewReason) {
+                        setPendingFillReview({ entry, reason: reviewReason });
+                        return;
                       }
-                      setFilled(true);
-                      setTimeout(() => hide(), 900);
+                      fillSelectedEntry(entry);
                     }}
                   />
                 ))}

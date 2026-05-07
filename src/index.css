@@ -4489,6 +4489,317 @@
   min-height: 58vh;
 }
 
+/* ── Watch-Only Security Banner ── */
+.crypto-security-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  border-radius: 18px;
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  background:
+    linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(52, 211, 153, 0.04)),
+    rgba(255, 255, 255, 0.72);
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.5rem;
+  animation: crypto-banner-in 0.4s ease-out;
+}
+
+@keyframes crypto-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.crypto-security-banner-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+  flex-shrink: 0;
+}
+
+.crypto-security-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.crypto-security-banner-text strong {
+  font-size: 0.82rem;
+  font-weight: 820;
+  color: #065f46;
+  letter-spacing: 0.01em;
+}
+
+.crypto-security-banner-text span {
+  font-size: 0.74rem;
+  color: rgba(16, 24, 40, 0.62);
+  line-height: 1.5;
+}
+
+.crypto-security-banner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  background: rgba(16, 185, 129, 0.1);
+  color: #047857;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .crypto-security-banner {
+  border-color: rgba(52, 211, 153, 0.2);
+  background:
+    linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(52, 211, 153, 0.04)),
+    rgba(15, 24, 37, 0.82);
+}
+
+[data-theme='dark'] .crypto-security-banner-icon {
+  background: rgba(52, 211, 153, 0.14);
+  color: #6ee7b7;
+}
+
+[data-theme='dark'] .crypto-security-banner-text strong {
+  color: #a7f3d0;
+}
+
+[data-theme='dark'] .crypto-security-banner-text span {
+  color: rgba(226, 232, 240, 0.62);
+}
+
+[data-theme='dark'] .crypto-security-banner-badge {
+  border-color: rgba(52, 211, 153, 0.26);
+  background: rgba(52, 211, 153, 0.12);
+  color: #a7f3d0;
+}
+
+/* ── Phishing Warning ── */
+.crypto-phishing-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  border-radius: 16px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  background:
+    linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(251, 191, 36, 0.04)),
+    rgba(255, 255, 255, 0.78);
+  color: #92400e;
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 680;
+  line-height: 1.5;
+  animation: crypto-phishing-in 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes crypto-phishing-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.crypto-phishing-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+  cursor: pointer;
+  margin-left: auto;
+  flex-shrink: 0;
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease;
+}
+
+.crypto-phishing-close:hover {
+  background: rgba(245, 158, 11, 0.24);
+  transform: scale(1.08);
+}
+
+[data-theme='dark'] .crypto-phishing-warning {
+  border-color: rgba(251, 191, 36, 0.24);
+  background:
+    linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(251, 191, 36, 0.04)),
+    rgba(15, 24, 37, 0.82);
+  color: #fde68a;
+}
+
+[data-theme='dark'] .crypto-phishing-close {
+  background: rgba(251, 191, 36, 0.14);
+  color: #fde68a;
+}
+
+[data-theme='dark'] .crypto-phishing-close:hover {
+  background: rgba(251, 191, 36, 0.24);
+}
+
+/* ── Chain Mismatch Warning ── */
+.crypto-chain-mismatch-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  border-radius: 14px;
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  background:
+    linear-gradient(135deg, rgba(239, 68, 68, 0.07), rgba(248, 113, 113, 0.03)),
+    rgba(255, 255, 255, 0.72);
+  color: #b91c1c;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 680;
+  line-height: 1.45;
+  animation: crypto-mismatch-in 0.3s ease-out;
+}
+
+@keyframes crypto-mismatch-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+[data-theme='dark'] .crypto-chain-mismatch-warning {
+  border-color: rgba(248, 113, 113, 0.26);
+  background:
+    linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(248, 113, 113, 0.04)),
+    rgba(15, 24, 37, 0.82);
+  color: #fecaca;
+}
+
+/* ── xpub / zpub / ypub Detection Badge ── */
+.crypto-xpub-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  border-radius: 14px;
+  border: 1px solid rgba(99, 102, 241, 0.24);
+  background:
+    linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(129, 140, 248, 0.03)),
+    rgba(255, 255, 255, 0.72);
+  color: #4338ca;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.crypto-xpub-badge strong {
+  display: block;
+  font-weight: 820;
+  margin-bottom: 0.15rem;
+}
+
+.crypto-xpub-badge span {
+  font-weight: 500;
+  opacity: 0.82;
+}
+
+[data-theme='dark'] .crypto-xpub-badge {
+  border-color: rgba(129, 140, 248, 0.24);
+  background:
+    linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(129, 140, 248, 0.05)),
+    rgba(15, 24, 37, 0.82);
+  color: #c7d2fe;
+}
+
+/* ── Address Format Hint ── */
+.crypto-address-format-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+  color: rgba(16, 24, 40, 0.48) !important;
+  font-size: 0.68rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+}
+
+[data-theme='dark'] .crypto-address-format-hint {
+  color: rgba(226, 232, 240, 0.48) !important;
+}
+
+/* ── Watch-Only Strip on Cards ── */
+.crypto-watch-only-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 12px;
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(52, 211, 153, 0.03));
+  color: #059669;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 780;
+  letter-spacing: 0.04em;
+}
+
+[data-theme='dark'] .crypto-watch-only-strip {
+  border-color: rgba(52, 211, 153, 0.18);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(52, 211, 153, 0.04));
+  color: #a7f3d0;
+}
+
+/* ── Card Badges Row ── */
+.crypto-wallet-card-badges {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.crypto-wallet-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.crypto-wallet-mode.xpub {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
+}
+
+[data-theme='dark'] .crypto-wallet-mode.xpub {
+  background: rgba(129, 140, 248, 0.14);
+  color: #c7d2fe;
+}
+
 .crypto-vault-hero,
 .crypto-vault-form,
 .crypto-vault-empty,

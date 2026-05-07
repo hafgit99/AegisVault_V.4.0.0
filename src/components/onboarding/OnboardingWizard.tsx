@@ -1,278 +1,594 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ShieldCheck,
-  Lock,
-  Zap,
-  ChevronRight,
-  ChevronLeft,
-  Download,
-  Smartphone,
-  FileUp,
+  ArrowLeft,
+  ArrowRight,
   CheckCircle2,
-  Info,
+  Download,
+  EyeOff,
+  FileKey2,
+  Fingerprint,
+  KeyRound,
+  LockKeyhole,
+  ShieldCheck,
+  Vault,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/Button';
-import { GlowCard } from '../ui/GlowCard';
+
+type SecurityProfile = 'standard' | 'advanced' | 'paranoid';
+type RecoveryPlan = 'print' | 'encrypted-file' | 'offline-copy';
+type BackupTarget = 'local' | 'encrypted-usb' | 'qr-sync';
+type SecondFactorPlan = 'totp' | 'passkey' | 'both';
+type PrivacyMode = 'balanced' | 'privacy' | 'strict';
 
 interface OnboardingProps {
-  onComplete: (profile: 'standard' | 'advanced' | 'paranoid') => void;
+  onComplete: (profile: SecurityProfile) => void;
 }
+
+const STORAGE_KEY = 'aegis_onboarding_security_plan';
 
 export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
   const { t } = useTranslation();
   const [step, setStep] = useState(0);
-  const [profile, setProfile] = useState<'standard' | 'advanced' | 'paranoid'>('advanced');
+  const [profile, setProfile] = useState<SecurityProfile>('advanced');
+  const [recoveryPlan, setRecoveryPlan] = useState<RecoveryPlan>('encrypted-file');
+  const [backupTarget, setBackupTarget] = useState<BackupTarget>('encrypted-usb');
+  const [secondFactorPlan, setSecondFactorPlan] = useState<SecondFactorPlan>('both');
+  const [privacyMode, setPrivacyMode] = useState<PrivacyMode>('privacy');
+  const nextButtonRef = useRef<HTMLButtonElement>(null);
 
-  const steps = [
-    {
-      title: t('onboarding.welcome.title', "Aegis Vault'a Hoş Geldiniz"),
-      description: t(
-        'onboarding.welcome.desc',
-        'Sıfır-bilgi (Zero-Knowledge) mimarisi ile dijital varlıklarınızı en üst düzeyde koruyun.'
-      ),
-      icon: ShieldCheck,
-      color: 'text-blue-400',
-    },
-    {
-      title: t('onboarding.profile.title', 'Güvenlik Profilinizi Seçin'),
-      description: t(
-        'onboarding.profile.desc',
-        'İhtiyacınıza en uygun güvenlik ve kullanım dengesini belirleyin.'
-      ),
-      icon: Lock,
-      color: 'text-purple-400',
-    },
-    {
-      title: t('onboarding.extension.title', 'Tarayıcı Deneyimini Güçlendirin'),
-      description: t(
-        'onboarding.extension.desc',
-        'Aegis Extension ile şifrelerinizi formlara otomatik doldurun.'
-      ),
-      icon: Zap,
-      color: 'text-yellow-400',
-    },
-    {
-      title: t('onboarding.mobile.title', 'Her Yerde Güvenle Erişin'),
-      description: t(
-        'onboarding.mobile.desc',
-        'Mobil uygulamamızı yükleyin ve QR kod ile kasanızı eşleştirin.'
-      ),
-      icon: Smartphone,
-      color: 'text-green-400',
-    },
-    {
-      title: t('onboarding.finalize.title', 'Her Şey Hazır!'),
-      description: t(
-        'onboarding.finalize.desc',
-        'Kasanız güvenli bir şekilde oluşturuldu ve kullanıma hazır.'
-      ),
-      icon: CheckCircle2,
-      color: 'text-cyan-400',
-    },
-  ];
+  const steps = useMemo(
+    () => [
+      {
+        key: 'master',
+        title: t('onboarding.master.title', 'Master password readiness'),
+        desc: t(
+          'onboarding.master.desc',
+          'Start with a strong master password and a quiet recovery plan before adding records.'
+        ),
+        icon: LockKeyhole,
+      },
+      {
+        key: 'recovery',
+        title: t('onboarding.recovery.title', 'Recovery key custody'),
+        desc: t(
+          'onboarding.recovery.desc',
+          'Decide where the emergency recovery material lives before the vault becomes mission-critical.'
+        ),
+        icon: FileKey2,
+      },
+      {
+        key: 'backup',
+        title: t('onboarding.backup.title', 'Backup destination'),
+        desc: t(
+          'onboarding.backup.desc',
+          'Choose a backup target that stays encrypted, testable, and offline-friendly.'
+        ),
+        icon: Download,
+      },
+      {
+        key: 'secondFactor',
+        title: t('onboarding.secondFactor.title', '2FA and passkey setup'),
+        desc: t(
+          'onboarding.secondFactor.desc',
+          'Prepare a second factor path for high-value accounts and device unlock flows.'
+        ),
+        icon: Fingerprint,
+      },
+      {
+        key: 'privacy',
+        title: t('onboarding.privacy.title', 'Privacy mode'),
+        desc: t(
+          'onboarding.privacy.desc',
+          'Select how aggressively Aegis should reduce visible identity, alias, and autofill exposure.'
+        ),
+        icon: EyeOff,
+      },
+      {
+        key: 'finish',
+        title: t('onboarding.finalize.title', 'Secure setup plan ready'),
+        desc: t(
+          'onboarding.finalize.desc',
+          'Your first three minutes are mapped. Aegis will keep these choices as your local security baseline.'
+        ),
+        icon: ShieldCheck,
+      },
+    ],
+    [t]
+  );
+
+  const setupScore = useMemo(() => {
+    const profileScore = profile === 'paranoid' ? 24 : profile === 'advanced' ? 21 : 17;
+    const recoveryScore = recoveryPlan === 'offline-copy' ? 20 : 18;
+    const backupScore = backupTarget === 'encrypted-usb' ? 18 : 16;
+    const secondFactorScore = secondFactorPlan === 'both' ? 20 : 16;
+    const privacyScore = privacyMode === 'strict' ? 18 : privacyMode === 'privacy' ? 16 : 13;
+    return Math.min(
+      100,
+      profileScore + recoveryScore + backupScore + secondFactorScore + privacyScore
+    );
+  }, [backupTarget, privacyMode, profile, recoveryPlan, secondFactorPlan]);
+
+  const savePlan = () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        profile,
+        recoveryPlan,
+        backupTarget,
+        secondFactorPlan,
+        privacyMode,
+        setupScore,
+        completedAt: new Date().toISOString(),
+      })
+    );
+  };
 
   const nextStep = () => {
-    if (step < steps.length - 1) setStep(step + 1);
-    else onComplete(profile);
+    if (step < steps.length - 1) {
+      setStep((current) => current + 1);
+      return;
+    }
+    savePlan();
+    onComplete(profile);
   };
 
   const prevStep = () => {
-    if (step > 0) setStep(step - 1);
+    if (step > 0) setStep((current) => current - 1);
   };
 
-  const nextButtonRef = React.useRef<HTMLButtonElement>(null);
-
   useEffect(() => {
-    // Step değişiminde odağı ana butona al (Klavye navigasyonu için)
     nextButtonRef.current?.focus();
   }, [step]);
 
+  const renderChoice = <T extends string>({
+    value,
+    selected,
+    onSelect,
+    icon,
+    title,
+    desc,
+    badge,
+  }: {
+    value: T;
+    selected: T;
+    onSelect: (value: T) => void;
+    icon: React.ReactNode;
+    title: string;
+    desc: string;
+    badge?: string;
+  }) => (
+    <button
+      key={value}
+      type="button"
+      onClick={() => onSelect(value)}
+      className={`group flex min-h-[92px] w-full items-start gap-3 rounded-xl border p-4 text-left transition ${
+        selected === value
+          ? 'border-[var(--color-sage-green)] bg-[var(--color-sage-green)]/14 shadow-sm'
+          : 'border-white/10 bg-white/[0.04] hover:border-white/20 dark:border-white/10'
+      }`}
+    >
+      <span
+        className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+          selected === value
+            ? 'bg-[var(--color-sage-green)] text-white'
+            : 'bg-white/8 text-white/65'
+        }`}
+        aria-hidden="true"
+      >
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-2">
+          <span className="text-sm font-bold text-white">{title}</span>
+          {badge ? (
+            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white/65">
+              {badge}
+            </span>
+          ) : null}
+        </span>
+        <span className="mt-1 block text-xs leading-relaxed text-white/58">{desc}</span>
+      </span>
+      {selected === value ? (
+        <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-[var(--color-sage-green)]" />
+      ) : null}
+    </button>
+  );
+
   const renderStepContent = () => {
-    const currentIcon = steps[step].icon;
+    const CurrentIcon = steps[step].icon;
 
     return (
       <motion.div
         key={step}
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -20 }}
-        transition={{ duration: 0.3 }}
-        className="flex flex-col items-center text-center space-y-6 max-w-lg mx-auto"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.22 }}
+        className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px]"
         role="document"
       >
-        <div
-          className={`p-5 rounded-2xl bg-white/5 border border-white/10 ${steps[step].color}`}
-          aria-hidden="true"
-        >
-          {React.createElement(currentIcon, { size: 48 })}
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight text-white" id={`step-title-${step}`}>
-            {steps[step].title}
-          </h2>
-          <p className="text-white/60 text-lg leading-relaxed">{steps[step].description}</p>
-        </div>
-
-        {step === 1 && (
-          <div className="grid grid-cols-1 gap-4 w-full mt-8">
-            {(['standard', 'advanced', 'paranoid'] as const).map((p) => (
-              <button
-                key={p}
-                onClick={() => setProfile(p)}
-                className={`group relative flex items-start p-4 rounded-xl border transition-all duration-300 ${
-                  profile === p
-                    ? 'bg-blue-500/10 border-blue-500/50 ring-1 ring-blue-500/20'
-                    : 'bg-white/5 border-white/10 hover:border-white/20'
-                }`}
+        <section className="min-w-0">
+          <div className="mb-6 flex items-start gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-[var(--color-sage-green)]">
+              <CurrentIcon className="h-7 w-7" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-[var(--color-sage-green)]">
+                {t('onboarding.kicker', 'Secure setup')}
+              </p>
+              <h2
+                className="mt-2 text-2xl font-black tracking-tight text-white"
+                id={`step-title-${step}`}
               >
-                <div
-                  className={`mt-0.5 p-2 rounded-lg ${profile === p ? 'bg-blue-500 text-white' : 'bg-white/10 text-white/50'}`}
-                >
-                  {p === 'standard' && <ShieldCheck size={18} />}
-                  {p === 'advanced' && <Zap size={18} />}
-                  {p === 'paranoid' && <Lock size={18} />}
+                {steps[step].title}
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/62">
+                {steps[step].desc}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {step === 0 && (
+              <>
+                {renderChoice<SecurityProfile>({
+                  value: 'standard',
+                  selected: profile,
+                  onSelect: setProfile,
+                  icon: <ShieldCheck className="h-5 w-5" />,
+                  title: t('onboarding.profile.standard.name', 'Standard'),
+                  desc: t(
+                    'onboarding.profile.standard.desc',
+                    'Fast daily protection with practical timeouts and guided defaults.'
+                  ),
+                })}
+                {renderChoice<SecurityProfile>({
+                  value: 'advanced',
+                  selected: profile,
+                  onSelect: setProfile,
+                  icon: <Vault className="h-5 w-5" />,
+                  title: t('onboarding.profile.advanced.name', 'Advanced'),
+                  desc: t(
+                    'onboarding.profile.advanced.desc',
+                    'Recommended baseline with stronger key derivation, recovery prompts, and passkey readiness.'
+                  ),
+                  badge: t('onboarding.recommended', 'Recommended'),
+                })}
+                {renderChoice<SecurityProfile>({
+                  value: 'paranoid',
+                  selected: profile,
+                  onSelect: setProfile,
+                  icon: <LockKeyhole className="h-5 w-5" />,
+                  title: t('onboarding.profile.paranoid.name', 'Paranoid'),
+                  desc: t(
+                    'onboarding.profile.paranoid.desc',
+                    'Maximum local protection with stricter timeouts and reduced convenience.'
+                  ),
+                })}
+              </>
+            )}
+
+            {step === 1 && (
+              <>
+                {renderChoice<RecoveryPlan>({
+                  value: 'encrypted-file',
+                  selected: recoveryPlan,
+                  onSelect: setRecoveryPlan,
+                  icon: <FileKey2 className="h-5 w-5" />,
+                  title: t('onboarding.recovery.encryptedFile.title', 'Encrypted recovery file'),
+                  desc: t(
+                    'onboarding.recovery.encryptedFile.desc',
+                    'Store the recovery material as an encrypted file on offline media.'
+                  ),
+                  badge: t('onboarding.recommended', 'Recommended'),
+                })}
+                {renderChoice<RecoveryPlan>({
+                  value: 'print',
+                  selected: recoveryPlan,
+                  onSelect: setRecoveryPlan,
+                  icon: <KeyRound className="h-5 w-5" />,
+                  title: t('onboarding.recovery.print.title', 'Printed emergency sheet'),
+                  desc: t(
+                    'onboarding.recovery.print.desc',
+                    'Keep a sealed offline copy for break-glass recovery.'
+                  ),
+                })}
+                {renderChoice<RecoveryPlan>({
+                  value: 'offline-copy',
+                  selected: recoveryPlan,
+                  onSelect: setRecoveryPlan,
+                  icon: <ShieldCheck className="h-5 w-5" />,
+                  title: t('onboarding.recovery.offline.title', 'Dual offline custody'),
+                  desc: t(
+                    'onboarding.recovery.offline.desc',
+                    'Use two separate offline locations for higher continuity assurance.'
+                  ),
+                })}
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                {renderChoice<BackupTarget>({
+                  value: 'encrypted-usb',
+                  selected: backupTarget,
+                  onSelect: setBackupTarget,
+                  icon: <Download className="h-5 w-5" />,
+                  title: t('onboarding.backup.usb.title', 'Encrypted USB backup'),
+                  desc: t(
+                    'onboarding.backup.usb.desc',
+                    'Best balance for offline vault backups that can be tested and rotated.'
+                  ),
+                  badge: t('onboarding.recommended', 'Recommended'),
+                })}
+                {renderChoice<BackupTarget>({
+                  value: 'qr-sync',
+                  selected: backupTarget,
+                  onSelect: setBackupTarget,
+                  icon: <Fingerprint className="h-5 w-5" />,
+                  title: t('onboarding.backup.qr.title', 'QR sync handoff'),
+                  desc: t(
+                    'onboarding.backup.qr.desc',
+                    'Use QR/device pairing for an air-gapped transfer workflow.'
+                  ),
+                })}
+                {renderChoice<BackupTarget>({
+                  value: 'local',
+                  selected: backupTarget,
+                  onSelect: setBackupTarget,
+                  icon: <Vault className="h-5 w-5" />,
+                  title: t('onboarding.backup.local.title', 'Local OPFS only'),
+                  desc: t(
+                    'onboarding.backup.local.desc',
+                    'Keep data local first, then schedule a backup test before adding critical records.'
+                  ),
+                })}
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                {renderChoice<SecondFactorPlan>({
+                  value: 'both',
+                  selected: secondFactorPlan,
+                  onSelect: setSecondFactorPlan,
+                  icon: <Fingerprint className="h-5 w-5" />,
+                  title: t('onboarding.secondFactor.both.title', 'TOTP + passkey'),
+                  desc: t(
+                    'onboarding.secondFactor.both.desc',
+                    'Recommended for important accounts: store TOTP and prepare passkey inventory review.'
+                  ),
+                  badge: t('onboarding.recommended', 'Recommended'),
+                })}
+                {renderChoice<SecondFactorPlan>({
+                  value: 'totp',
+                  selected: secondFactorPlan,
+                  onSelect: setSecondFactorPlan,
+                  icon: <KeyRound className="h-5 w-5" />,
+                  title: t('onboarding.secondFactor.totp.title', 'TOTP first'),
+                  desc: t(
+                    'onboarding.secondFactor.totp.desc',
+                    'Start with authenticator codes and add passkeys after importing records.'
+                  ),
+                })}
+                {renderChoice<SecondFactorPlan>({
+                  value: 'passkey',
+                  selected: secondFactorPlan,
+                  onSelect: setSecondFactorPlan,
+                  icon: <LockKeyhole className="h-5 w-5" />,
+                  title: t('onboarding.secondFactor.passkey.title', 'Passkey first'),
+                  desc: t(
+                    'onboarding.secondFactor.passkey.desc',
+                    'Prioritize site passkeys, RP ID visibility, and device unlock readiness.'
+                  ),
+                })}
+              </>
+            )}
+
+            {step === 4 && (
+              <>
+                {renderChoice<PrivacyMode>({
+                  value: 'privacy',
+                  selected: privacyMode,
+                  onSelect: setPrivacyMode,
+                  icon: <EyeOff className="h-5 w-5" />,
+                  title: t('onboarding.privacy.privacy.title', 'Privacy enhanced'),
+                  desc: t(
+                    'onboarding.privacy.privacy.desc',
+                    'Use aliases, cautious autofill, and quieter identity exposure by default.'
+                  ),
+                  badge: t('onboarding.recommended', 'Recommended'),
+                })}
+                {renderChoice<PrivacyMode>({
+                  value: 'balanced',
+                  selected: privacyMode,
+                  onSelect: setPrivacyMode,
+                  icon: <ShieldCheck className="h-5 w-5" />,
+                  title: t('onboarding.privacy.balanced.title', 'Balanced'),
+                  desc: t(
+                    'onboarding.privacy.balanced.desc',
+                    'Keep the workflow fast while preserving baseline alias and Watchtower checks.'
+                  ),
+                })}
+                {renderChoice<PrivacyMode>({
+                  value: 'strict',
+                  selected: privacyMode,
+                  onSelect: setPrivacyMode,
+                  icon: <LockKeyhole className="h-5 w-5" />,
+                  title: t('onboarding.privacy.strict.title', 'Strict privacy'),
+                  desc: t(
+                    'onboarding.privacy.strict.desc',
+                    'Prefer manual approval, reduced reveal surfaces, and stricter sensitive actions.'
+                  ),
+                })}
+              </>
+            )}
+
+            {step === 5 && (
+              <div className="rounded-2xl border border-[var(--color-sage-green)]/30 bg-[var(--color-sage-green)]/10 p-5">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="h-7 w-7 text-[var(--color-sage-green)]" />
+                  <div>
+                    <h3 className="text-lg font-black text-white">
+                      {t('onboarding.finalize.planTitle', 'Baseline selected')}
+                    </h3>
+                    <p className="mt-1 text-sm text-white/62">
+                      {t(
+                        'onboarding.finalize.planDesc',
+                        'Aegis will store this onboarding plan locally and use it as your first security checklist.'
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <div className="ml-4 text-left">
-                  <h4 className="font-semibold text-white capitalize">
-                    {t(`onboarding.profile.${p}.name`, p)}
-                  </h4>
-                  <p className="text-sm text-white/40 mt-1">
-                    {t(`onboarding.profile.${p}.desc`, `Security level for ${p} use cases.`)}
-                  </p>
+                <div className="mt-5 grid gap-2 text-sm text-white/72 sm:grid-cols-2">
+                  <span>
+                    {t('onboarding.finalize.profile', 'Profile')}:{' '}
+                    {t(`onboarding.profile.${profile}.name`, profile)}
+                  </span>
+                  <span>
+                    {t('onboarding.finalize.recovery', 'Recovery')}:{' '}
+                    {t(
+                      `onboarding.recovery.${recoveryPlan === 'encrypted-file' ? 'encryptedFile' : recoveryPlan === 'offline-copy' ? 'offline' : 'print'}.title`,
+                      recoveryPlan
+                    )}
+                  </span>
+                  <span>
+                    {t('onboarding.finalize.backup', 'Backup')}:{' '}
+                    {t(
+                      `onboarding.backup.${backupTarget === 'encrypted-usb' ? 'usb' : backupTarget === 'qr-sync' ? 'qr' : 'local'}.title`,
+                      backupTarget
+                    )}
+                  </span>
+                  <span>
+                    {t('onboarding.finalize.privacy', 'Privacy')}:{' '}
+                    {t(`onboarding.privacy.${privacyMode}.title`, privacyMode)}
+                  </span>
                 </div>
-                {profile === p && (
-                  <motion.div layoutId="active-profile" className="absolute top-2 right-2">
-                    <CheckCircle2 size={16} className="text-blue-500" />
-                  </motion.div>
-                )}
-              </button>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <aside className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-white/45">
+            {t('onboarding.trustPanel.title', 'Setup trust')}
+          </p>
+          <div className="mt-4 flex items-end gap-2">
+            <span className="text-4xl font-black text-white">{setupScore}</span>
+            <span className="pb-1 text-xs font-bold uppercase tracking-widest text-[var(--color-sage-green)]">
+              {t('onboarding.trustPanel.score', 'score')}
+            </span>
+          </div>
+          <div className="mt-4 h-2 rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-[var(--color-sage-green)] transition-all"
+              style={{ width: `${setupScore}%` }}
+            />
+          </div>
+          <div className="mt-5 space-y-3 text-xs text-white/62">
+            {[
+              t('onboarding.trustPanel.master', 'Strong master password checkpoint'),
+              t('onboarding.trustPanel.recovery', 'Recovery custody selected'),
+              t('onboarding.trustPanel.backup', 'Encrypted backup target selected'),
+              t('onboarding.trustPanel.secondFactor', '2FA/passkey path selected'),
+              t('onboarding.trustPanel.privacy', 'Privacy mode selected'),
+            ].map((item) => (
+              <div key={item} className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-[var(--color-sage-green)]" />
+                <span>{item}</span>
+              </div>
             ))}
           </div>
-        )}
-
-        {step === 2 && (
-          <div className="flex flex-col items-center space-y-6 w-full mt-4">
-            <div className="p-8 bg-blue-500/5 border border-blue-500/20 rounded-2xl w-full flex flex-col items-center">
-              <Download size={40} className="text-blue-500 mb-4" />
-              <h3 className="text-xl font-medium text-white mb-2">
-                {t('onboarding.extension.browser', 'Chrome / Firefox / Edge')}
-              </h3>
-              <p className="text-white/40 text-sm mb-6">
-                {t(
-                  'onboarding.extension.install_desc',
-                  'Uzantıyı yükleyerek şifre dolumunu otomatiğe bağlayın.'
-                )}
-              </p>
-              <Button variant="secondary" className="w-full">
-                {t('onboarding.extension.button', 'Uzantıyı İndir')}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="flex flex-col items-center space-y-6 w-full mt-4">
-            <div className="p-8 bg-green-500/5 border border-green-500/20 rounded-2xl w-full flex flex-col items-center">
-              <div className="p-4 bg-white rounded-lg mb-4">
-                {/* Placeholder for QR code icon or actual QR if needed later */}
-                <Smartphone size={64} className="text-black" />
-              </div>
-              <h3 className="text-xl font-medium text-white mb-2">
-                {t('onboarding.mobile.sync', 'Mobil Senkronizasyon')}
-              </h3>
-              <p className="text-white/40 text-sm">
-                {t(
-                  'onboarding.mobile.app_desc',
-                  'iOS ve Android uygulamalarımızla verilerinizi her an yanınızda taşıyın.'
-                )}
-              </p>
-            </div>
-          </div>
-        )}
+        </aside>
       </motion.div>
     );
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-6 overflow-hidden">
-      {/* Background Ambient Glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[120px] animate-pulse" />
-
-      {/* Bottom Tip */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="absolute bottom-10 flex items-center text-white/30 text-sm pointer-events-none"
-      >
-        <Info size={14} className="mr-2" />
-        {t(
-          'onboarding.anytime',
-          'Bu ayarları dilediğiniz zaman Kasa Ayarları panelinden değiştirebilirsiniz.'
-        )}
-      </motion.div>
-
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-[#0f1724]/95 p-4 backdrop-blur-xl">
       <div
-        className="relative w-full max-w-2xl bg-white/[0.02] border border-white/10 rounded-[2.5rem] shadow-2xl p-8 md:p-12 overflow-hidden"
+        className="relative w-full max-w-5xl rounded-[24px] border border-white/10 bg-[#111c2b] p-5 shadow-2xl md:p-7"
         role="dialog"
         aria-modal="true"
         aria-labelledby={`step-title-${step}`}
       >
-        {/* Progress Indicators */}
-        <div className="flex justify-center space-x-2 mb-12">
-          {steps.map((_, i) => (
-            <div
-              key={i}
-              className={`h-1.5 rounded-full transition-all duration-500 ${
-                i === step
-                  ? 'w-8 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]'
-                  : i < step
-                    ? 'w-4 bg-blue-500/40'
-                    : 'w-4 bg-white/10'
-              }`}
-              aria-hidden="true"
-            />
-          ))}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-sage-green)] text-white">
+              <ShieldCheck className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-white/45">
+                {t('onboarding.headerEyebrow', 'Aegis Vault 5.0')}
+              </p>
+              <h1 className="text-xl font-black text-white">
+                {t('onboarding.headerTitle', 'Professional onboarding')}
+              </h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {steps.map((item, index) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setStep(index)}
+                className={`h-2.5 rounded-full transition-all ${
+                  index === step
+                    ? 'w-9 bg-[var(--color-sage-green)]'
+                    : index < step
+                      ? 'w-5 bg-[var(--color-sage-green)]/45'
+                      : 'w-5 bg-white/12'
+                }`}
+                aria-label={t('onboarding.goToStep', 'Go to setup step {{step}}', {
+                  step: index + 1,
+                })}
+              />
+            ))}
+          </div>
         </div>
 
         <AnimatePresence mode="wait">{renderStepContent()}</AnimatePresence>
 
-        {/* Footer Actions */}
-        <div className="mt-12 flex items-center justify-between">
+        <div className="mt-7 flex items-center justify-between border-t border-white/10 pt-5">
           <Button
             variant="ghost"
             onClick={prevStep}
             disabled={step === 0}
-            className={`transition-all duration-300 ${step === 0 ? 'opacity-0 scale-90' : 'opacity-100'}`}
-            aria-hidden={step === 0}
+            className={`text-white/70 hover:bg-white/8 hover:text-white ${
+              step === 0 ? 'pointer-events-none opacity-0' : ''
+            }`}
           >
-            <ChevronLeft size={20} className="mr-2" />
-            {t('onboarding.back', 'Geri')}
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            {t('onboarding.back', 'Back')}
           </Button>
+
+          <p className="hidden text-xs text-white/42 md:block">
+            {t(
+              'onboarding.anytime',
+              'You can change these settings anytime from the Vault Settings panel.'
+            )}
+          </p>
 
           <Button
             ref={nextButtonRef}
             onClick={nextStep}
             data-testid="onboarding-next"
-            className="min-w-[140px] h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-[0_4px_20px_rgba(59,130,246,0.3)]"
+            className="min-w-[160px] rounded-xl bg-[var(--color-sage-green)] text-white hover:bg-[var(--color-sage-green)]/90"
             aria-label={
               step === steps.length - 1
-                ? t('onboarding.finish', 'Başla')
-                : t('onboarding.next', 'Devam Et')
+                ? t('onboarding.finish', 'Start Using Vault')
+                : t('onboarding.next', 'Continue')
             }
           >
             {step === steps.length - 1
-              ? t('onboarding.finish', 'Başla')
-              : t('onboarding.next', 'Devam Et')}
-            <ChevronRight size={20} className="ml-2" />
+              ? t('onboarding.finish', 'Start Using Vault')
+              : t('onboarding.next', 'Continue')}
+            <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
       </div>
-
-      {/* Dialog content moved up */}
     </div>
   );
 };

@@ -80,6 +80,7 @@ type PendingAutosaveQueueItem = {
   credential: AutosaveCredentialPayload;
   createdAt: string;
 };
+type AutofillSitePolicy = 'allow' | 'ask' | 'block';
 type RuntimeMessageSenderWithOrigin = browser.Runtime.MessageSender & {
   origin?: string;
 };
@@ -92,15 +93,15 @@ export default defineBackground({
 
   main() {
     const env = import.meta.env as WxtEnvMap;
-    console.log('[Aegis Vault] Hybrid Background Yüklendi.');
+    console.log('[Aegis Vault] Hybrid background loaded.');
 
     browser.runtime.onInstalled.addListener(() => {
-      console.log('Aegis Vault WXT eklentisi başarıyla kuruldu ve başlatıldı.');
+      console.log('Aegis Vault WXT extension installed and started.');
     });
 
     browser.contextMenus.create({
       id: 'aegis-fill',
-      title: 'Aegis: Bu sayfayı analiz et ve doldur',
+      title: 'Aegis: Bu sayfayi analiz et ve doldur',
       contexts: ['page', 'editable'],
     });
     browser.contextMenus.create({
@@ -207,6 +208,8 @@ export default defineBackground({
     const DESKTOP_BRIDGE_PUBLIC_JWK_STORAGE_KEY = 'aegis_desktop_bridge_public_jwk';
     const DESKTOP_BRIDGE_KEY_ID_STORAGE_KEY = 'aegis_desktop_bridge_key_id';
     const AUTOSAVE_QUEUE_SESSION_KEY = 'aegis_pending_autosave_queue_v1';
+    const SITE_AUTOFILL_POLICY_STORAGE_KEY = 'aegis_site_autofill_policy_v1';
+    let runtimeSiteAutofillPolicies: Record<string, AutofillSitePolicy> = {};
 
     // MV3 Dayanıklılık: Kilit durumunu browser.storage.session ile kalıcı yap
     const persistVaultState = async (unlocked: boolean) => {
@@ -949,6 +952,58 @@ export default defineBackground({
         return trimmed.replace(/^www\./, '');
       }
     };
+
+    const normalizeAutofillSitePolicy = (value: unknown): AutofillSitePolicy =>
+      value === 'ask' || value === 'block' ? value : 'allow';
+
+    const isExtensionSurface = (senderInfo: RuntimeMessageSenderWithOrigin) =>
+      !senderInfo?.tab &&
+      ((typeof senderInfo?.url === 'string' &&
+        (senderInfo.url.startsWith('chrome-extension://') ||
+          senderInfo.url.startsWith('moz-extension://'))) ||
+        (typeof senderInfo?.origin === 'string' &&
+          (senderInfo.origin.startsWith('chrome-extension://') ||
+            senderInfo.origin.startsWith('moz-extension://'))));
+
+    const getSiteAutofillPolicies = async (): Promise<Record<string, AutofillSitePolicy>> => {
+      try {
+        const result = await browser.storage.local.get(SITE_AUTOFILL_POLICY_STORAGE_KEY);
+        const raw = result[SITE_AUTOFILL_POLICY_STORAGE_KEY];
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+        const policies = Object.fromEntries(
+          Object.entries(raw as Record<string, unknown>)
+            .map(([domain, policy]) => [
+              normalizeBridgeDomain(domain),
+              normalizeAutofillSitePolicy(policy),
+            ])
+            .filter(([domain]) => Boolean(domain))
+        );
+        runtimeSiteAutofillPolicies = policies;
+        return policies;
+      } catch {
+        runtimeSiteAutofillPolicies = {};
+        return {};
+      }
+    };
+
+    const getSiteAutofillPolicy = async (domain: string): Promise<AutofillSitePolicy> => {
+      const normalizedDomain = normalizeBridgeDomain(domain);
+      if (!normalizedDomain) return 'allow';
+      const policies = await getSiteAutofillPolicies();
+      return normalizeAutofillSitePolicy(policies[normalizedDomain]);
+    };
+
+    const setSiteAutofillPolicy = async (domain: string, policy: AutofillSitePolicy) => {
+      const normalizedDomain = normalizeBridgeDomain(domain);
+      if (!normalizedDomain) return false;
+      const policies = await getSiteAutofillPolicies();
+      policies[normalizedDomain] = normalizeAutofillSitePolicy(policy);
+      runtimeSiteAutofillPolicies = policies;
+      await browser.storage.local.set({ [SITE_AUTOFILL_POLICY_STORAGE_KEY]: policies });
+      return true;
+    };
+
+    void getSiteAutofillPolicies();
 
     const sendNativeHostMessage = async (
       message: Record<string, unknown>,
@@ -1978,7 +2033,44 @@ export default defineBackground({
       }
 
       // ── GET_DOMAIN_CREDS: Sadece aktif domain'e uygun kayıtları ver ──
-      else if (message.type === 'GET_DOMAIN_CREDS') {
+      else if (message.type === 'GET_SITE_AUTOFILL_POLICY') {
+        const requestedDomain = normalizeBridgeDomain(message.domain);
+        const senderUrl = runtimeSender?.tab?.url;
+        const senderDomain = senderUrl ? getDomain(senderUrl) : '';
+        const isFromPopup = isExtensionSurface(runtimeSender);
+
+        if (!requestedDomain) {
+          sendResponse({ success: false, policy: 'allow' });
+          return true;
+        }
+
+        if (!isFromPopup && (!senderDomain || requestedDomain !== senderDomain)) {
+          sendResponse({ success: false, policy: 'allow', error: 'DOMAIN_MISMATCH' });
+          return true;
+        }
+
+        getSiteAutofillPolicy(requestedDomain)
+          .then((policy) => sendResponse({ success: true, policy }))
+          .catch(() => sendResponse({ success: true, policy: 'allow' }));
+        return true;
+      } else if (message.type === 'SET_SITE_AUTOFILL_POLICY') {
+        if (!isExtensionSurface(runtimeSender)) {
+          sendResponse({ success: false, error: 'FORBIDDEN_SENDER' });
+          return true;
+        }
+
+        const requestedDomain = normalizeBridgeDomain(message.domain);
+        const policy = normalizeAutofillSitePolicy(message.policy);
+        if (!requestedDomain) {
+          sendResponse({ success: false, error: 'INVALID_DOMAIN' });
+          return true;
+        }
+
+        setSiteAutofillPolicy(requestedDomain, policy)
+          .then((success) => sendResponse({ success, policy }))
+          .catch(() => sendResponse({ success: false, error: 'STORAGE_FAILED' }));
+        return true;
+      } else if (message.type === 'GET_DOMAIN_CREDS') {
         const requestedDomain =
           typeof message.domain === 'string' ? message.domain.toLowerCase().trim() : '';
         const requestNonce =
@@ -2027,6 +2119,16 @@ export default defineBackground({
 
         requestNonceMap.set(requestNonce, now);
         recentDomainRequestMap.set(requestKey, now);
+
+        if (
+          !isFromPopup &&
+          normalizeAutofillSitePolicy(
+            runtimeSiteAutofillPolicies[normalizeBridgeDomain(requestedDomain)]
+          ) === 'block'
+        ) {
+          sendResponse({ success: true, data: [] });
+          return true;
+        }
 
         const cachedMatches = vaultCache
           .filter((p) => p.website && isDomainMatch(p.website, requestedDomain))
@@ -2117,6 +2219,16 @@ export default defineBackground({
         requestNonceMap.set(requestNonce, now);
 
         const resolveDesktopPasskeys = async () => {
+          if (
+            !isFromPopup &&
+            normalizeAutofillSitePolicy(
+              runtimeSiteAutofillPolicies[normalizeBridgeDomain(requestedDomain)]
+            ) === 'block'
+          ) {
+            sendResponse({ success: true, data: [] });
+            return;
+          }
+
           if (NATIVE_MESSAGING_ENABLED) {
             const nativeStatus = await getNativeVaultStatus();
             if (nativeStatus && !nativeStatus.isUnlocked) {

@@ -1,0 +1,6 @@
+.wxt
+dist
+node_modules
+Safari
+build_error.log
+build_output.txt

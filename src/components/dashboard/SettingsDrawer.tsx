@@ -311,7 +311,14 @@ export function SettingsDrawer({
     SecureAppSettings.getReleaseTrustHistory()
   );
   const [sitePasskeyFilter, setSitePasskeyFilter] = useState<
-    'all' | 'attention' | 'healthy' | 'future' | 'missing_rp_id' | 'missing_credential_id'
+    | 'all'
+    | 'attention'
+    | 'healthy'
+    | 'future'
+    | 'missing_rp_id'
+    | 'missing_credential_id'
+    | 'origin_mismatch'
+    | 'unverified'
   >('all');
   const [showPasskeySiteModal, setShowPasskeySiteModal] = useState(false);
   const [passkeyRemediationResult, setPasskeyRemediationResult] = useState<null | {
@@ -898,7 +905,12 @@ export function SettingsDrawer({
         (entry) => entry.mode === 'site_passkey_future_rp'
       );
     }
-    if (sitePasskeyFilter === 'missing_rp_id' || sitePasskeyFilter === 'missing_credential_id') {
+    if (
+      sitePasskeyFilter === 'missing_rp_id' ||
+      sitePasskeyFilter === 'missing_credential_id' ||
+      sitePasskeyFilter === 'origin_mismatch' ||
+      sitePasskeyFilter === 'unverified'
+    ) {
       return passkeyInventorySummary.siteEntries.filter((entry) =>
         entry.riskFlags.includes(sitePasskeyFilter)
       );
@@ -916,7 +928,12 @@ export function SettingsDrawer({
     if (sitePasskeyFilter === 'future') {
       return source.filter((entry) => entry.mode === 'site_passkey_future_rp');
     }
-    if (sitePasskeyFilter === 'missing_rp_id' || sitePasskeyFilter === 'missing_credential_id') {
+    if (
+      sitePasskeyFilter === 'missing_rp_id' ||
+      sitePasskeyFilter === 'missing_credential_id' ||
+      sitePasskeyFilter === 'origin_mismatch' ||
+      sitePasskeyFilter === 'unverified'
+    ) {
       return source.filter((entry) => entry.riskFlags.includes(sitePasskeyFilter));
     }
     return source;
@@ -3195,6 +3212,17 @@ export function SettingsDrawer({
                                             'Missing credential'
                                           ),
                                         },
+                                        {
+                                          key: 'origin_mismatch',
+                                          label: t(
+                                            'passkeyInventoryOriginMismatchShort',
+                                            'Origin mismatch'
+                                          ),
+                                        },
+                                        {
+                                          key: 'unverified',
+                                          label: t('passkeyInventoryUnverifiedShort', 'Unverified'),
+                                        },
                                       ].map((filter) => (
                                         <button
                                           key={filter.key}
@@ -3289,10 +3317,20 @@ export function SettingsDrawer({
                                                         'passkeyInventoryMissingCredentialShort',
                                                         'Missing credential'
                                                       )
-                                                    : t(
-                                                        'passkeyInventoryFutureModeShort',
-                                                        'Future mode'
-                                                      )}
+                                                    : flag === 'origin_mismatch'
+                                                      ? t(
+                                                          'passkeyInventoryOriginMismatchShort',
+                                                          'Origin mismatch'
+                                                        )
+                                                      : flag === 'unverified'
+                                                        ? t(
+                                                            'passkeyInventoryUnverifiedShort',
+                                                            'Unverified'
+                                                          )
+                                                        : t(
+                                                            'passkeyInventoryFutureModeShort',
+                                                            'Future mode'
+                                                          )}
                                               </span>
                                             ))
                                           )}

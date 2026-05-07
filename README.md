@@ -26,6 +26,19 @@ _Offline-first, end-to-end encrypted credential management for Desktop, Browser 
 
 </div>
 
+## Trust & Security Documentation
+
+Aegis Vault ships with a dedicated trust documentation set for security review, GitHub visitors, and release preparation:
+
+| Document                                             | Scope                                                                       |
+| ---------------------------------------------------- | --------------------------------------------------------------------------- |
+| [SECURITY.md](SECURITY.md)                           | Security policy, supported versions, reporting, and quality gates           |
+| [THREAT_MODEL.md](THREAT_MODEL.md)                   | Threat model, trust boundaries, attacker assumptions, and residual risks    |
+| [BACKUP_RECOVERY.md](BACKUP_RECOVERY.md)             | Encrypted backup, restore, QR sync, import/export, and recovery handling    |
+| [CRYPTO_VAULT_SECURITY.md](CRYPTO_VAULT_SECURITY.md) | Crypto Vault + watch-only custody model and non-signing guarantees          |
+| [PRIVACY_MODEL.md](PRIVACY_MODEL.md)                 | Local-first privacy, HIBP, aliases, extension privacy, and sync exposure    |
+| [docs/TRUST_CENTER.md](docs/TRUST_CENTER.md)         | Trust center index for release evidence, audit readiness, and protocol docs |
+
 ### Crypto Vault + Watch-Only Custody
 
 Aegis Vault 5.0 now includes a dedicated **Crypto Vault** domain for offline-first crypto asset records:

@@ -10,6 +10,9 @@ const chromiumDevKeyPath = path.resolve(__dirname, 'dev', 'chromium-extension-ke
 const chromiumDevKey = fs.existsSync(chromiumDevKeyPath)
   ? fs.readFileSync(chromiumDevKeyPath, 'utf8').trim()
   : '';
+const extensionPackageJson = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf8')
+) as { version: string };
 
 export default defineConfig({
   srcDir: 'src',
@@ -20,7 +23,7 @@ export default defineConfig({
     name: 'Aegis Vault',
     description:
       'Secure, zero-knowledge password manager and 2FA authenticator extension. Autofill passwords, sync securely across devices with end-to-end encryption in 2026.',
-    version: '4.0.11',
+    version: extensionPackageJson.version,
 
     icons: {
       '16': 'icon-16.png',

@@ -1,114 +1,127 @@
 # Aegis Vault Security Policy
 
-Last updated: 2026-05-03
+Last updated: 2026-05-07
 
-## Security model
+Aegis Vault is an offline-first, zero-knowledge password manager for local vault storage, browser autofill, passkeys, encrypted backup, optional E2E sync, sharing, alias privacy, and crypto vault custody records.
 
-Aegis Vault is designed as an **offline-first, zero-knowledge password manager** with end-to-end encrypted cross-device sync capabilities.
+This document explains the security support policy, reporting process, and current security posture. Architecture details are split into the dedicated documents linked below.
 
-| Layer             | Implementation                                 |
-| ----------------- | ---------------------------------------------- |
-| Key derivation    | `Argon2id` (Web Worker + WASM fallback)        |
-| Encryption        | `AES-256-GCM` with per-field IV management     |
-| Vault storage     | `SQLCipher` (WASM) with OPFS / IDB fallback    |
-| Backup integrity  | `HMAC-SHA256` envelope verification            |
-| Sync transport    | `ECDH + AES-GCM` end-to-end encryption         |
-| Sharing transport | `ECDH` receiver pairing with replay protection |
-| Extension bridge  | Challenge-response with integrity verification |
-| Biometric unlock  | `WebAuthn` (device-bound credentials)          |
-| Release signing   | `Ed25519` manifest + trust chain verification  |
+## Trust Documentation
 
-Master credentials and decrypted vault data **never leave the user's device as plaintext**, including during sync relay operations.
+| Document                                             | Purpose                                                             |
+| ---------------------------------------------------- | ------------------------------------------------------------------- |
+| [THREAT_MODEL.md](THREAT_MODEL.md)                   | Assets, trust boundaries, attacker model, and mitigations           |
+| [BACKUP_RECOVERY.md](BACKUP_RECOVERY.md)             | Backup, restore, import/export, QR sync, and recovery controls      |
+| [CRYPTO_VAULT_SECURITY.md](CRYPTO_VAULT_SECURITY.md) | Crypto Vault + watch-only custody model                             |
+| [PRIVACY_MODEL.md](PRIVACY_MODEL.md)                 | Local-first privacy, HIBP, aliases, autofill, and extension privacy |
+| [docs/TRUST_CENTER.md](docs/TRUST_CENTER.md)         | Trust center index for release, audit, sync, and evidence documents |
 
-## Supported versions
+## Supported Versions
 
-Security fixes are currently provided for:
+Security fixes are provided for:
 
-- `main` (development line)
-- Latest production tag (`v5.x`)
+- `main` development line
+- Latest production release line: `5.x`
+- Current browser extension release line under `aegis-wxt`
 
-Older tags (`v4.x` and below) are no longer receiving security patches.
+Older `4.x` application builds are not the primary security support target unless a release branch is explicitly announced.
 
-## Private vulnerability reporting
+## Security Architecture Summary
 
-**Do not open public issues for security vulnerabilities.**
+| Layer             | Current implementation                                                |
+| ----------------- | --------------------------------------------------------------------- |
+| Vault model       | Offline-first, local-first, zero-knowledge                            |
+| Key derivation    | Argon2id with Web Worker/WASM fallback where available                |
+| Field encryption  | AES-256-GCM with per-field IV handling                                |
+| Local storage     | SQLCipher/WASM with OPFS and IndexedDB fallback paths                 |
+| Backup integrity  | Encrypted backup envelope with HMAC verification                      |
+| Sync transport    | Optional E2E encrypted relay model; relay does not receive plaintext  |
+| QR/device pairing | Local pairing flows with replay/nonce protections                     |
+| Sharing transport | ECDH receiver pairing and replay-aware encrypted sharing              |
+| Browser extension | WXT extension for Chrome/Firefox with desktop bridge policy controls  |
+| Passkeys          | WebAuthn site passkey inventory, RP ID/origin visibility, risk badges |
+| Crypto vault      | Watch-only default; optional encrypted seed/private key records       |
+| Release trust     | SBOM/provenance/signing evidence tracked in release trust program     |
+
+Plaintext master credentials and decrypted vault entries are designed to remain on the user's device. Sync, export, sharing, and extension flows must preserve this boundary unless the user explicitly exports plaintext data.
+
+## Private Vulnerability Reporting
+
+Do not open public GitHub issues for security vulnerabilities.
 
 Primary contact:
 
 - Email: `admin@aegisvault.xyz`
 
-### Recommended report content
+Please include:
 
-1. Affected component and version/commit
-2. Reproduction steps with clear preconditions
-3. Impact and likely attack path
-4. Optional PoC and mitigations
+1. Affected component, version, commit, or extension build
+2. Reproduction steps and prerequisites
+3. Impact, expected attacker capability, and affected data class
+4. Proof-of-concept details if safe to share privately
+5. Suggested mitigation if known
 
-### Target response times
+## Response Targets
 
-| Phase               | Target                         |
-| ------------------- | ------------------------------ |
-| Acknowledgement     | Within 48 hours                |
-| Initial triage      | Within 5 business days         |
-| Critical fix target | Within 10 days (when feasible) |
+| Phase               | Target                                   |
+| ------------------- | ---------------------------------------- |
+| Acknowledgement     | Within 48 hours                          |
+| Initial triage      | Within 5 business days                   |
+| Critical fix target | Within 10 days when feasible             |
+| Public advisory     | After a patch or mitigation is available |
 
-## Coordinated disclosure policy
+## Coordinated Disclosure
 
-We follow coordinated disclosure:
+1. Report is received and acknowledged.
+2. Impact and affected versions are triaged.
+3. Patch, tests, and documentation updates are prepared.
+4. Release artifacts are built and verified.
+5. Public advisory is published after users have an upgrade path.
 
-1. Report received and acknowledged.
-2. Severity triage and fix plan.
-3. Patch development and validation.
-4. Public advisory after patch availability.
+## In Scope
 
-## Security audit policy
+- `src/lib/vault/*`, `src/vaultService.ts`, and vault storage/encryption paths
+- Import/export, backup, QR sync, restore, and canonical migration
+- Crypto Vault + watch-only wallet domain
+- Passkey/WebAuthn inventory, binding, and extension WebAuthn handling
+- Alias privacy, HIBP checks, Watchtower, and Security Center
+- `aegis-wxt/` browser extension and native messaging bridge
+- `relay/` optional sync relay
+- Release signing, SBOM, provenance, and build verification scripts
 
-The project is in active independent-audit preparation.
+## Out of Scope
 
-### Current policy
+- Fully compromised user device or operating system
+- Keyloggers, screen capture malware, clipboard malware outside Aegis control
+- Social engineering of the user outside the product UX
+- Third-party provider compromise unless Aegis mishandles provider data
+- Denial of service without security impact
 
-- Threat model and whitepaper are published in [`guvenlik/belgeler`](guvenlik/belgeler).
-- Static analysis runs in CI (`CodeQL`, `Semgrep`) for pull requests and pushes.
-- High-risk areas (crypto, vault storage, bridge auth, import/export, sync, alias provisioning) require explicit security review.
-- Security-impacting changes must include tests and updated documentation.
-- Release trust chain (SBOM + Ed25519 signing + provenance verification) is enforced for production builds.
+## Security Quality Gates
 
-### Planned external review channels
+Recommended local release checks:
 
-- OSTIF proposal submission
-- Mozilla MOSS submission
-- OpenSSF Security Review submission
-- OSS-Fuzz/ClusterFuzz assessment and submission package
+```bash
+npm run lint
+npm run test
+npm run test:security-regression
+npm run test:quality-gate
+npm run test:mutate:crypto
+npm run build
+```
 
-See:
+Extension checks:
 
-- [`guvenlik/belgeler/AUDIT_APPLICATION_PACK_EN.md`](guvenlik/belgeler/AUDIT_APPLICATION_PACK_EN.md)
+```bash
+cd aegis-wxt
+npm run compile
+npm run format:check
+npm run build
+npm run build:firefox
+```
 
-## In-scope components
+## Audit Status
 
-- `src/vaultService.ts` and `src/lib/vault/*` (modular vault services)
-- `src/lib/*` (crypto, import/export, sync, bridge, emergency access, alias provisioning, sharing transport)
-- `electron-main.cjs` and native host scripts
-- `aegis-wxt/` browser extension runtime
-- `relay/` sync relay server
-- `scripts/` release signing and trust chain tooling
+Aegis maintains audit-ready documentation and release evidence, but this repository should not be interpreted as having completed an independent third-party security audit unless a signed external audit report is linked from the release notes.
 
-## Out-of-scope examples
-
-- Device-level malware or keyloggers
-- Full OS/kernel compromise
-- Social engineering attacks
-- Third-party vulnerabilities that must be fixed upstream
-
-## Best-practice reminders
-
-- Never commit secrets, signing keys, private certificates, or `.env` credentials.
-- Keep dependency updates and lockfiles reviewed.
-- Run local checks before release candidates:
-  ```bash
-  npm run lint
-  npm run test
-  npm run test:security-regression
-  npm run test:quality-gate
-  npm run release:trust-chain
-  ```
+Current audit preparation materials are indexed in [docs/TRUST_CENTER.md](docs/TRUST_CENTER.md).

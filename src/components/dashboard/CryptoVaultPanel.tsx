@@ -1,12 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
   Copy,
+  Eye,
+  Info,
   KeyRound,
+  Link2Off,
   Plus,
   Radar,
+  Shield,
+  ShieldAlert,
   ShieldCheck,
+  ShieldOff,
   Trash2,
   WalletCards,
   X,
@@ -27,6 +33,7 @@ export function CryptoVaultPanel() {
   const { t } = useTranslation();
   const { passwords, loadPasswords, handleDeleteEntry, handleCopyItem } = useVault();
   const [isCreating, setIsCreating] = useState(false);
+  const [phishingWarning, setPhishingWarning] = useState<string | null>(null);
   const [draft, setDraft] = useState({
     name: '',
     chain: 'ethereum' as CryptoWalletChain,
@@ -43,9 +50,26 @@ export function CryptoVaultPanel() {
     () => passwords.map((entry) => CryptoWalletVault.toRecord(entry)).filter(Boolean),
     [passwords]
   );
+  const hasSecretRecords = records.some((record) => record?.custodyMode === 'vault_secret');
   const hasAddressInput = draft.publicAddress.trim().length > 0;
   const isAddressValid =
     hasAddressInput && CryptoWalletVault.validateAddress(draft.chain, draft.publicAddress);
+
+  // Extended public key detection
+  const extendedKeyType = hasAddressInput
+    ? CryptoWalletVault.getExtendedKeyType(draft.publicAddress)
+    : null;
+  const isExtendedKey = hasAddressInput
+    ? CryptoWalletVault.isExtendedPublicKey(draft.publicAddress)
+    : false;
+
+  // Chain mismatch detection
+  const chainMismatch = hasAddressInput
+    ? CryptoWalletVault.getChainMismatchInfo(draft.chain, draft.publicAddress)
+    : { mismatch: false, detectedChain: null };
+
+  // Address format hint
+  const formatHint = CryptoWalletVault.getAddressFormatHint(draft.chain);
 
   const resetDraft = () => {
     setDraft({
@@ -72,6 +96,18 @@ export function CryptoVaultPanel() {
       return;
     }
 
+    if (chainMismatch.mismatch) {
+      toast.error(
+        t('cryptoChainMismatchWarning', {
+          selected: CryptoWalletVault.getChainLabel(draft.chain),
+          detected: chainMismatch.detectedChain
+            ? CryptoWalletVault.getChainLabel(chainMismatch.detectedChain)
+            : 'Unknown',
+        })
+      );
+      return;
+    }
+
     if (draft.custodyMode === 'vault_secret' && !draft.secretMaterial.trim()) {
       toast.error(t('cryptoWalletSecretRequired'));
       return;
@@ -84,12 +120,59 @@ export function CryptoVaultPanel() {
     loadPasswords();
   };
 
+  const showPhishingWarning = useCallback(() => {
+    setPhishingWarning(t('cryptoPhishingWarning'));
+    const timer = setTimeout(() => setPhishingWarning(null), 8000);
+    return () => clearTimeout(timer);
+  }, [t]);
+
   const copyAddress = (id: number, address: string) => {
     handleCopyItem(id, address);
+    showPhishingWarning();
   };
 
   return (
     <div className="crypto-vault-panel">
+      {/* ── Top security banner: no private key storage ── */}
+      <div className="crypto-security-banner" role="status">
+        <div className="crypto-security-banner-icon">
+          <ShieldCheck className="h-4 w-4" />
+        </div>
+        <div className="crypto-security-banner-text">
+          <strong>{t('cryptoSecurityBannerTitle')}</strong>
+          <span>
+            {hasSecretRecords ? t('cryptoSecurityBannerSecretDesc') : t('cryptoSecurityBannerDesc')}
+          </span>
+        </div>
+        <div className="crypto-security-banner-badge">
+          {hasSecretRecords ? (
+            <KeyRound className="h-3.5 w-3.5" />
+          ) : (
+            <ShieldOff className="h-3.5 w-3.5" />
+          )}
+          <span>
+            {hasSecretRecords ? t('cryptoEncryptedSecretLabel') : t('cryptoNoPrivateKeyLabel')}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Phishing warning toast (after copy) ── */}
+      {phishingWarning && (
+        <div className="crypto-phishing-warning" role="alert">
+          <ShieldAlert className="h-4 w-4 shrink-0" />
+          <span>{phishingWarning}</span>
+          <button
+            type="button"
+            className="crypto-phishing-close"
+            onClick={() => setPhishingWarning(null)}
+            aria-label="dismiss"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* ── Hero ── */}
       <section className="crypto-vault-hero">
         <div className="crypto-vault-hero-copy">
           <span className="v5-section-kicker">{t('cryptoVaultKicker')}</span>
@@ -112,6 +195,7 @@ export function CryptoVaultPanel() {
         </div>
       </section>
 
+      {/* ── Create form ── */}
       {isCreating && (
         <section className="crypto-vault-form">
           <div className="crypto-vault-form-grid">
@@ -150,7 +234,38 @@ export function CryptoVaultPanel() {
                 }
                 placeholder={t('cryptoWalletAddressPlaceholder')}
               />
+              <span className="crypto-address-format-hint">
+                <Info className="h-3 w-3" />
+                {t('cryptoAddressFormatHint')}: {formatHint}
+              </span>
             </label>
+
+            {/* ── Chain mismatch warning ── */}
+            {hasAddressInput && chainMismatch.mismatch && chainMismatch.detectedChain && (
+              <div className="crypto-vault-wide crypto-chain-mismatch-warning">
+                <Link2Off className="h-4 w-4 shrink-0" />
+                <span>
+                  {t('cryptoChainMismatchWarning', {
+                    selected: CryptoWalletVault.getChainLabel(draft.chain),
+                    detected: CryptoWalletVault.getChainLabel(chainMismatch.detectedChain),
+                  })}
+                </span>
+              </div>
+            )}
+
+            {/* ── Extended public key badge (xpub/ypub/zpub) ── */}
+            {isExtendedKey && extendedKeyType && (
+              <div className="crypto-vault-wide crypto-xpub-badge">
+                <Eye className="h-4 w-4 shrink-0" />
+                <div>
+                  <strong>
+                    {t('cryptoXpubDetected', { type: extendedKeyType.toUpperCase() })}
+                  </strong>
+                  <span>{t('cryptoXpubDesc')}</span>
+                </div>
+              </div>
+            )}
+
             <label>
               <span>{t('cryptoWalletCustody')}</span>
               <select
@@ -231,6 +346,8 @@ export function CryptoVaultPanel() {
                 placeholder={t('cryptoWalletNotesPlaceholder')}
               />
             </label>
+
+            {/* ── Address validation status ── */}
             {hasAddressInput && (
               <div
                 className={`crypto-vault-wide crypto-wallet-address-status ${
@@ -260,6 +377,7 @@ export function CryptoVaultPanel() {
         </section>
       )}
 
+      {/* ── Wallet cards ── */}
       {records.length === 0 ? (
         <section className="crypto-vault-empty">
           <WalletCards className="h-8 w-8" />
@@ -274,6 +392,8 @@ export function CryptoVaultPanel() {
             const canRevealSecret =
               sourceEntry?.pass && sourceEntry.pass !== CryptoWalletVault.watchOnlySentinel;
 
+            const recordExtKey = CryptoWalletVault.getExtendedKeyType(record.publicAddress);
+
             return (
               <article key={record.walletId} className="crypto-wallet-card">
                 <div className="crypto-wallet-card-top">
@@ -281,16 +401,32 @@ export function CryptoVaultPanel() {
                     <span>{record.networkLabel}</span>
                     <h3>{record.name}</h3>
                   </div>
-                  <div
-                    className={
-                      record.custodyMode === 'watch_only'
-                        ? 'crypto-wallet-mode watch'
-                        : 'crypto-wallet-mode secret'
-                    }
-                  >
-                    {record.custodyMode === 'watch_only'
-                      ? t('cryptoWalletWatchOnly')
-                      : t('cryptoWalletVaultSecret')}
+                  <div className="crypto-wallet-card-badges">
+                    {/* Watch-only mode badge */}
+                    <div
+                      className={
+                        record.custodyMode === 'watch_only'
+                          ? 'crypto-wallet-mode watch'
+                          : 'crypto-wallet-mode secret'
+                      }
+                    >
+                      {record.custodyMode === 'watch_only' ? (
+                        <Eye className="h-3 w-3" />
+                      ) : (
+                        <KeyRound className="h-3 w-3" />
+                      )}
+                      {record.custodyMode === 'watch_only'
+                        ? t('cryptoWalletWatchOnly')
+                        : t('cryptoWalletVaultSecret')}
+                    </div>
+
+                    {/* Extended key type badge */}
+                    {recordExtKey && (
+                      <div className="crypto-wallet-mode xpub">
+                        <Shield className="h-3 w-3" />
+                        {recordExtKey.toUpperCase()}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -311,6 +447,14 @@ export function CryptoVaultPanel() {
                 </div>
 
                 {record.notes && <p className="crypto-wallet-note">{record.notes}</p>}
+
+                {/* ── Watch-only safety strip ── */}
+                {record.custodyMode === 'watch_only' && (
+                  <div className="crypto-watch-only-strip">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    <span>{t('cryptoWatchOnlyStripLabel')}</span>
+                  </div>
+                )}
 
                 <div className="crypto-wallet-actions">
                   <button

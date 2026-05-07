@@ -13,6 +13,10 @@ interface BreachDatabase {
   lastUpdated: number;
 }
 
+const HIBP_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const HIBP_CACHE_LIMIT = 5000;
+const HIBP_RANGE_CONCURRENCY = 4;
+
 export class OfflineBreachChecker {
   private db: BreachDatabase;
   private rangeCache: Map<string, Map<string, number>>;
@@ -31,9 +35,14 @@ export class OfflineBreachChecker {
     try {
       await SecureAppSettings.initialize();
       const cached = SecureAppSettings.getHibpCache();
-      if (cached?.hashes) {
+      const cacheAge = cached?.lastUpdated
+        ? Date.now() - cached.lastUpdated
+        : Number.POSITIVE_INFINITY;
+      if (cached?.hashes && cacheAge <= HIBP_CACHE_TTL_MS) {
         this.db.hashes = new Map(Object.entries(cached.hashes));
         this.db.lastUpdated = cached.lastUpdated || Date.now();
+      } else if (cached) {
+        this.clearCache();
       }
     } catch {
       console.warn('[HIBP] Failed to load local cache');
@@ -42,15 +51,28 @@ export class OfflineBreachChecker {
 
   private saveLocalCache() {
     try {
-      if (this.db.hashes.size > 5000) {
+      if (this.db.hashes.size > HIBP_CACHE_LIMIT) {
         this.db.hashes.clear();
       }
+      this.db.lastUpdated = Date.now();
       SecureAppSettings.setHibpCache({
         hashes: Object.fromEntries(this.db.hashes),
         lastUpdated: this.db.lastUpdated,
       });
     } catch {
       // ignore quota limitations
+    }
+  }
+
+  clearCache(): void {
+    this.db.hashes.clear();
+    this.rangeCache.clear();
+    this.inFlightRanges.clear();
+    this.db.lastUpdated = Date.now();
+    try {
+      SecureAppSettings.setHibpCache(null);
+    } catch {
+      // settings storage may not be initialized in isolated tests
     }
   }
 
@@ -74,7 +96,11 @@ export class OfflineBreachChecker {
     }
 
     const request = (async () => {
-      const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+      const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+        headers: {
+          'Add-Padding': 'true',
+        },
+      });
       if (!response.ok) {
         throw new Error(`HIBP API returned ${response.status}`);
       }
@@ -128,10 +154,9 @@ export class OfflineBreachChecker {
     );
 
     const prefixes = Array.from(missingByPrefix.keys());
-    const CONCURRENCY = 4;
 
-    for (let i = 0; i < prefixes.length; i += CONCURRENCY) {
-      const slice = prefixes.slice(i, i + CONCURRENCY);
+    for (let i = 0; i < prefixes.length; i += HIBP_RANGE_CONCURRENCY) {
+      const slice = prefixes.slice(i, i + HIBP_RANGE_CONCURRENCY);
       const rangeResponses = await Promise.all(
         slice.map(async (prefix) => ({ prefix, range: await this.fetchRange(prefix) }))
       );

@@ -35,9 +35,11 @@ describe('PasskeyInventoryService', () => {
           pass: 'cred-gh',
           passkeyMetadata: {
             rp_id: 'github.com',
+            origin: 'https://github.com',
             credential_id: 'cred-gh',
             display_name: 'GitHub Main',
             mode: 'site_passkey_mvp',
+            server_verified: true,
           },
         } as never,
       ],
@@ -50,8 +52,17 @@ describe('PasskeyInventoryService', () => {
     expect(summary.modeCounts.vault_unlock).toBe(1);
     expect(summary.modeCounts.site_passkey_mvp).toBe(1);
     expect(summary.riskCounts.missing_rp_id).toBe(0);
+    expect(summary.riskCounts.origin_mismatch).toBe(0);
+    expect(summary.riskCounts.unverified).toBe(0);
     expect(summary.sitePasskeyCount).toBe(1);
     expect(summary.sitePasskeyAttentionCount).toBe(0);
+    expect(summary.siteEntries[0]).toMatchObject({
+      rpId: 'github.com',
+      origin: 'https://github.com',
+      credentialId: 'cred-gh',
+      riskLevel: 'low',
+      exportReady: true,
+    });
   });
 
   it('surfaces rotation and recovery actions when bindings need attention', () => {
@@ -105,7 +116,49 @@ describe('PasskeyInventoryService', () => {
     expect(summary.riskCounts.missing_rp_id).toBe(1);
     expect(summary.riskCounts.missing_credential_id).toBe(1);
     expect(summary.riskCounts.future_mode).toBe(1);
+    expect(summary.riskCounts.origin_mismatch).toBe(0);
     expect(summary.sitePasskeyAttentionCount).toBe(1);
+  });
+
+  it('surfaces RP/origin mismatch and unverified credentials as product risks', () => {
+    const summary = PasskeyInventoryService.buildSummary({
+      bindings: [],
+      policy: {
+        maxBindingAgeDays: 90,
+        requireRecoveryExportBeforeRotation: false,
+        blockRevokedCredentials: true,
+      },
+      revocations: [],
+      eventLog: [],
+      vaultEntries: [
+        {
+          id: 12,
+          title: 'Mismatched Passkey',
+          username: 'user',
+          website: 'https://login.example.com',
+          category: 'Passkeys',
+          updated_at: new Date().toISOString(),
+          pass: 'cred-12',
+          passkeyMetadata: {
+            rp_id: 'evil.example.com',
+            credential_id: 'cred-12',
+            display_name: 'Risky',
+            mode: 'site_passkey_active',
+            server_verified: false,
+          },
+        } as never,
+      ],
+    });
+
+    expect(summary.status).toBe('attention');
+    expect(summary.riskCounts.origin_mismatch).toBe(1);
+    expect(summary.riskCounts.unverified).toBe(1);
+    expect(summary.siteEntries[0]).toMatchObject({
+      origin: 'https://login.example.com',
+      riskFlags: ['origin_mismatch', 'unverified'],
+      riskLevel: 'high',
+      exportReady: true,
+    });
   });
 
   it('keeps the full site passkey inventory while limiting preview entries', () => {

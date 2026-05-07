@@ -5,6 +5,13 @@ type PopupI18n = {
   languageLabel: string;
   languageTurkish: string;
   languageEnglish: string;
+  sitePolicyTitle: string;
+  sitePolicyHint: string;
+  sitePolicyAllow: string;
+  sitePolicyAsk: string;
+  sitePolicyBlock: string;
+  sitePolicySaved: string;
+  sitePolicyUnavailable: string;
   connecting: string;
   waiting: string;
   loading: string;
@@ -71,6 +78,15 @@ const buildPopupI18n = (language: 'tr' | 'en'): PopupI18n => {
     languageLabel: isTurkishLocale ? 'Dil' : 'Language',
     languageTurkish: isTurkishLocale ? 'Turkce' : 'Turkish',
     languageEnglish: isTurkishLocale ? 'Ingilizce' : 'English',
+    sitePolicyTitle: isTurkishLocale ? 'Site Izni' : 'Site Permission',
+    sitePolicyHint: isTurkishLocale
+      ? 'Bu alan adinda autofill davranisini belirleyin.'
+      : 'Control autofill behavior for this domain.',
+    sitePolicyAllow: isTurkishLocale ? 'Izin ver' : 'Allow',
+    sitePolicyAsk: isTurkishLocale ? 'Her seferinde sor' : 'Ask every time',
+    sitePolicyBlock: isTurkishLocale ? 'Engelle' : 'Block',
+    sitePolicySaved: isTurkishLocale ? 'Kaydedildi' : 'Saved',
+    sitePolicyUnavailable: isTurkishLocale ? 'Site izni kullanilamaz' : 'Site policy unavailable',
     connecting: isTurkishLocale ? 'Baglaniyor...' : 'Connecting...',
     waiting: isTurkishLocale ? 'Bekleniyor' : 'Waiting',
     loading: isTurkishLocale ? 'Yukleniyor...' : 'Loading...',
@@ -205,6 +221,8 @@ type PopupAutosaveItem = {
   website?: string;
   createdAt?: string;
 };
+
+type AutofillSitePolicy = 'allow' | 'ask' | 'block';
 
 const formatBridgeError = (code: string) => {
   const normalized = (code || '').trim();
@@ -403,6 +421,18 @@ const bootPopup = async () => {
                     <option value="en" ${popupLanguage === 'en' ? 'selected' : ''}>${POPUP_I18N.languageEnglish}</option>
                 </select>
             </section>
+            <section id="site-policy-panel" style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;background:${t.panelBg};border:1px solid ${t.border};">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                    <strong style="font-size:12px;color:${t.text};">${POPUP_I18N.sitePolicyTitle}</strong>
+                    <span id="site-policy-status" style="font-size:10px;font-weight:700;color:${t.accent};background:${t.chipBg};padding:3px 8px;border-radius:999px;">${POPUP_I18N.waiting}</span>
+                </div>
+                <div id="site-policy-meta" style="font-size:11px;color:${t.textMuted};line-height:1.4;">${POPUP_I18N.sitePolicyHint}</div>
+                <select id="site-policy-select" style="width:100%;border:1px solid ${t.border};background:${t.inputBg};color:${t.text};border-radius:10px;padding:9px 10px;font-size:11px;font-weight:700;">
+                    <option value="allow">${POPUP_I18N.sitePolicyAllow}</option>
+                    <option value="ask">${POPUP_I18N.sitePolicyAsk}</option>
+                    <option value="block">${POPUP_I18N.sitePolicyBlock}</option>
+                </select>
+            </section>
             <section id="bridge-panel" style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;background:${t.panelBg};border:1px solid ${t.border};">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
                     <strong style="font-size:12px;color:${t.text};">${POPUP_I18N.bridgeTitle}</strong>
@@ -469,6 +499,74 @@ const bootPopup = async () => {
       } catch {
         languageSelect.disabled = false;
         languageSelect.value = popupLanguage;
+      }
+    });
+  };
+
+  const wireSitePolicy = async (currentDomain: string) => {
+    const select = document.getElementById('site-policy-select') as HTMLSelectElement | null;
+    const statusEl = document.getElementById('site-policy-status');
+    const metaEl = document.getElementById('site-policy-meta');
+    if (!select || !statusEl || !metaEl) return;
+
+    const setUnavailable = () => {
+      select.disabled = true;
+      select.style.opacity = '0.55';
+      statusEl.textContent = '!';
+      statusEl.style.color = '#f59e0b';
+      metaEl.textContent = POPUP_I18N.sitePolicyUnavailable;
+    };
+
+    if (!currentDomain) {
+      setUnavailable();
+      return;
+    }
+
+    try {
+      const response = await browser.runtime.sendMessage({
+        type: 'GET_SITE_AUTOFILL_POLICY',
+        domain: currentDomain,
+      });
+      const policy: AutofillSitePolicy =
+        response?.policy === 'ask' || response?.policy === 'block' ? response.policy : 'allow';
+      select.value = policy;
+      statusEl.textContent =
+        policy === 'block'
+          ? POPUP_I18N.sitePolicyBlock
+          : policy === 'ask'
+            ? POPUP_I18N.sitePolicyAsk
+            : POPUP_I18N.sitePolicyAllow;
+      metaEl.textContent = `${currentDomain} - ${POPUP_I18N.sitePolicyHint}`;
+    } catch {
+      setUnavailable();
+      return;
+    }
+
+    select.addEventListener('change', async () => {
+      const policy = select.value as AutofillSitePolicy;
+      select.disabled = true;
+      statusEl.textContent = POPUP_I18N.waiting;
+      try {
+        const response = await browser.runtime.sendMessage({
+          type: 'SET_SITE_AUTOFILL_POLICY',
+          domain: currentDomain,
+          policy,
+        });
+        if (!response?.success) throw new Error('SAVE_FAILED');
+        statusEl.textContent = POPUP_I18N.sitePolicySaved;
+        statusEl.style.color = getT().accent;
+        setTimeout(() => {
+          statusEl.textContent =
+            policy === 'block'
+              ? POPUP_I18N.sitePolicyBlock
+              : policy === 'ask'
+                ? POPUP_I18N.sitePolicyAsk
+                : POPUP_I18N.sitePolicyAllow;
+        }, 900);
+      } catch {
+        setUnavailable();
+      } finally {
+        select.disabled = false;
       }
     });
   };
@@ -772,6 +870,7 @@ const bootPopup = async () => {
       const tabTitle = tab?.title || currentDomain || '';
 
       if (domainEl) domainEl.innerText = currentDomain || POPUP_I18N.unknownSite;
+      await wireSitePolicy(currentDomain);
       wireAliasGenerator(tabId, currentUrl, tabTitle, currentDomain);
 
       // Kasa durumu

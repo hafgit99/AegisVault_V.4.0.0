@@ -134,24 +134,97 @@ export const resources = {
       passkeyInventorySiteEntriesHealthy: 'Site passkey entries look healthy.',
       passkeyInventoryFilterAll: 'All',
       onboarding: {
+        headerEyebrow: 'Aegis Vault 5.0',
+        headerTitle: 'Professional onboarding',
+        kicker: 'Secure setup',
+        recommended: 'Recommended',
+        goToStep: 'Go to setup step {{step}}',
         welcome: {
           title: 'Welcome to Aegis Vault',
           desc: 'Protect your digital assets with the highest level of Zero-Knowledge security architecture.',
+        },
+        master: {
+          title: 'Master password readiness',
+          desc: 'Start with a strong master password and a quiet recovery plan before adding records.',
         },
         profile: {
           title: 'Select Your Security Profile',
           desc: 'Define the balance of security and convenience that best fits your needs.',
           standard: {
             name: 'Standard',
-            desc: 'Fast and convenient. Recommended for personal daily use. (PBKDF2, Standard timeouts)',
+            desc: 'Fast daily protection with practical timeouts and guided defaults.',
           },
           advanced: {
             name: 'Advanced',
-            desc: 'Balanced protection. High-entropy key derivation and biometric PRF support. (Argon2id)',
+            desc: 'Recommended baseline with stronger key derivation, recovery prompts, and passkey readiness.',
           },
           paranoid: {
             name: 'Paranoid',
-            desc: 'Maximum security. Aggressive timeouts, memory-hard encryption, and background lock.',
+            desc: 'Maximum local protection with stricter timeouts and reduced convenience.',
+          },
+        },
+        recovery: {
+          title: 'Recovery key custody',
+          desc: 'Decide where the emergency recovery material lives before the vault becomes mission-critical.',
+          encryptedFile: {
+            title: 'Encrypted recovery file',
+            desc: 'Store the recovery material as an encrypted file on offline media.',
+          },
+          print: {
+            title: 'Printed emergency sheet',
+            desc: 'Keep a sealed offline copy for break-glass recovery.',
+          },
+          offline: {
+            title: 'Dual offline custody',
+            desc: 'Use two separate offline locations for higher continuity assurance.',
+          },
+        },
+        backup: {
+          title: 'Backup destination',
+          desc: 'Choose a backup target that stays encrypted, testable, and offline-friendly.',
+          usb: {
+            title: 'Encrypted USB backup',
+            desc: 'Best balance for offline vault backups that can be tested and rotated.',
+          },
+          qr: {
+            title: 'QR sync handoff',
+            desc: 'Use QR/device pairing for an air-gapped transfer workflow.',
+          },
+          local: {
+            title: 'Local OPFS only',
+            desc: 'Keep data local first, then schedule a backup test before adding critical records.',
+          },
+        },
+        secondFactor: {
+          title: '2FA and passkey setup',
+          desc: 'Prepare a second factor path for high-value accounts and device unlock flows.',
+          both: {
+            title: 'TOTP + passkey',
+            desc: 'Recommended for important accounts: store TOTP and prepare passkey inventory review.',
+          },
+          totp: {
+            title: 'TOTP first',
+            desc: 'Start with authenticator codes and add passkeys after importing records.',
+          },
+          passkey: {
+            title: 'Passkey first',
+            desc: 'Prioritize site passkeys, RP ID visibility, and device unlock readiness.',
+          },
+        },
+        privacy: {
+          title: 'Privacy mode',
+          desc: 'Select how aggressively Aegis should reduce visible identity, alias, and autofill exposure.',
+          privacy: {
+            title: 'Privacy enhanced',
+            desc: 'Use aliases, cautious autofill, and quieter identity exposure by default.',
+          },
+          balanced: {
+            title: 'Balanced',
+            desc: 'Keep the workflow fast while preserving baseline alias and Watchtower checks.',
+          },
+          strict: {
+            title: 'Strict privacy',
+            desc: 'Prefer manual approval, reduced reveal surfaces, and stricter sensitive actions.',
           },
         },
         extension: {
@@ -168,8 +241,24 @@ export const resources = {
           app_desc: 'Carry your data with you on iOS and Android with end-to-end encryption.',
         },
         finalize: {
-          title: 'All Set!',
-          desc: 'Your vault is securely initialized and ready to protect your digital life.',
+          title: 'Secure setup plan ready',
+          desc: 'Your first three minutes are mapped. Aegis will keep these choices as your local security baseline.',
+          planTitle: 'Baseline selected',
+          planDesc:
+            'Aegis will store this onboarding plan locally and use it as your first security checklist.',
+          profile: 'Profile',
+          recovery: 'Recovery',
+          backup: 'Backup',
+          privacy: 'Privacy',
+        },
+        trustPanel: {
+          title: 'Setup trust',
+          score: 'score',
+          master: 'Strong master password checkpoint',
+          recovery: 'Recovery custody selected',
+          backup: 'Encrypted backup target selected',
+          secondFactor: '2FA/passkey path selected',
+          privacy: 'Privacy mode selected',
         },
         back: 'Back',
         next: 'Continue',
@@ -189,6 +278,20 @@ export const resources = {
       passkeyInventoryRiskMissingRp: 'Missing RP ID',
       passkeyInventoryRiskMissingCredential: 'Missing credential ID',
       passkeyInventoryRiskFutureMode: 'Future mode records',
+      passkeyInventoryOriginMismatchShort: 'Origin mismatch',
+      passkeyInventoryUnverifiedShort: 'Unverified',
+      passkeyInventoryRpIdLabel: 'RP ID',
+      passkeyInventoryOriginLabel: 'Origin',
+      passkeyInventoryCredentialIdLabel: 'Credential ID',
+      passkeyInventoryRiskHigh: 'High risk',
+      passkeyInventoryRiskMedium: 'Medium risk',
+      passkeyInventoryRiskLow: 'Low risk',
+      passkeyInventoryExportReady: 'Export ready',
+      passkeyInventoryExportNeedsReview: 'Export review',
+      passkeyInventoryEntryHintOriginMismatch:
+        'The saved RP ID does not match the visible site origin. Review before using this passkey.',
+      passkeyInventoryEntryHintUnverified:
+        'This credential is recorded but has not completed a successful WebAuthn authentication yet.',
       passkeyInventoryBulkFixRp: 'Auto-fill RP ID',
       passkeyInventoryBulkFixCredential: 'Auto-fill credential ID',
       passkeyInventoryBulkFixRpDone: '{{count}} RP ID field updated.',
@@ -1436,6 +1539,20 @@ export const resources = {
       passkeyInventoryRiskMissingRp: 'RP ID eksik kayitlar',
       passkeyInventoryRiskMissingCredential: 'Credential ID eksik kayitlar',
       passkeyInventoryRiskFutureMode: 'Gelecek mod kayitlari',
+      passkeyInventoryOriginMismatchShort: 'Origin uyusmaz',
+      passkeyInventoryUnverifiedShort: 'Dogrulanmamis',
+      passkeyInventoryRpIdLabel: 'RP ID',
+      passkeyInventoryOriginLabel: 'Origin',
+      passkeyInventoryCredentialIdLabel: 'Credential ID',
+      passkeyInventoryRiskHigh: 'Yuksek risk',
+      passkeyInventoryRiskMedium: 'Orta risk',
+      passkeyInventoryRiskLow: 'Dusuk risk',
+      passkeyInventoryExportReady: 'Export hazir',
+      passkeyInventoryExportNeedsReview: 'Export kontrolu',
+      passkeyInventoryEntryHintOriginMismatch:
+        'Kayitli RP ID gorunen site origin bilgisiyle eslesmiyor. Bu passkey kullanilmadan once kaydi inceleyin.',
+      passkeyInventoryEntryHintUnverified:
+        'Bu credential kayitli ancak henuz basarili bir WebAuthn dogrulamasi tamamlamadi.',
       passkeyInventoryBulkFixRp: 'RP ID otomatik doldur',
       passkeyInventoryBulkFixCredential: 'Credential ID otomatik doldur',
       passkeyInventoryBulkFixRpDone: '{{count}} RP ID alani guncellendi.',
@@ -3343,9 +3460,103 @@ Object.assign(resources.en.translation as Record<string, unknown>, {
     'This plaintext export contains {{total}} crypto vault record(s), including {{secret}} record(s) with seed/private key material and {{watchOnly}} watch-only record(s). CSV/JSON files are not encrypted. Use only for migration and delete the file immediately after use.',
   notConfigured: 'Not configured',
   cancel: 'Cancel',
+  // Watch-only security layer
+  cryptoSecurityBannerTitle: 'Watch-Only Security Mode',
+  cryptoSecurityBannerDesc:
+    'This module operates in read-only custody mode. No private keys, seed phrases, or signing capabilities are exposed to the runtime environment.',
+  cryptoSecurityBannerSecretDesc:
+    'Encrypted recovery material exists in this vault. Aegis still does not sign or broadcast transactions; reveal secrets only when absolutely necessary.',
+  cryptoNoPrivateKeyLabel: 'No private key stored',
+  cryptoEncryptedSecretLabel: 'Encrypted secret records present',
+  cryptoPhishingWarning:
+    'Security reminder: Always verify the destination address before sending funds from an external wallet. Clipboard contents can be manipulated by malware.',
+  cryptoChainMismatchWarning:
+    'Network mismatch detected — you selected {{selected}}, but the address appears to belong to {{detected}}. Please verify before saving.',
+  cryptoXpubDetected: '{{type}} Extended Public Key detected',
+  cryptoXpubDesc:
+    'Extended public keys (BIP-32/49/84) allow address derivation for watch-only tracking without exposing private material.',
+  cryptoAddressFormatHint: 'Expected format',
+  cryptoWatchOnlyStripLabel: 'View-only mode — no signing capability',
 });
 
 Object.assign(resources.tr.translation as Record<string, unknown>, {
+  'onboarding.headerEyebrow': 'Aegis Vault 5.0',
+  'onboarding.headerTitle': 'Profesyonel onboarding',
+  'onboarding.kicker': 'Guvenli kurulum',
+  'onboarding.recommended': 'Onerilen',
+  'onboarding.goToStep': 'Kurulum adimi {{step}}',
+  'onboarding.master.title': 'Ana sifre hazirligi',
+  'onboarding.master.desc':
+    'Kayit eklemeden once guclu ana sifre ve sakin bir kurtarma planiyla baslayin.',
+  'onboarding.profile.standard.desc':
+    'Pratik zaman asimlari ve yonlendirilmis varsayilanlarla hizli gunluk koruma.',
+  'onboarding.profile.advanced.desc':
+    'Daha guclu anahtar turetimi, kurtarma hatirlatmalari ve passkey hazirligi ile onerilen temel seviye.',
+  'onboarding.profile.paranoid.desc':
+    'Daha kati zaman asimlari ve daha az kolaylikla maksimum yerel koruma.',
+  'onboarding.recovery.title': 'Kurtarma anahtari saklama',
+  'onboarding.recovery.desc':
+    'Kasa kritik hale gelmeden once acil kurtarma materyalinin nerede duracagini belirleyin.',
+  'onboarding.recovery.encryptedFile.title': 'Sifreli kurtarma dosyasi',
+  'onboarding.recovery.encryptedFile.desc':
+    'Kurtarma materyalini offline medyada sifreli dosya olarak saklayin.',
+  'onboarding.recovery.print.title': 'Basili acil durum sayfasi',
+  'onboarding.recovery.print.desc': 'Acil kurtarma icin muhurlu ve offline bir kopya tutun.',
+  'onboarding.recovery.offline.title': 'Cift offline saklama',
+  'onboarding.recovery.offline.desc':
+    'Daha yuksek sureklilik icin iki ayri offline konum kullanin.',
+  'onboarding.backup.title': 'Yedekleme hedefi',
+  'onboarding.backup.desc':
+    'Sifreli, test edilebilir ve offline calismaya uygun bir yedekleme hedefi secin.',
+  'onboarding.backup.usb.title': 'Sifreli USB yedegi',
+  'onboarding.backup.usb.desc':
+    'Test edilebilen ve rotasyon yapilabilen offline kasa yedekleri icin en dengeli secenek.',
+  'onboarding.backup.qr.title': 'QR sync aktarimi',
+  'onboarding.backup.qr.desc': 'Hava bosluklu aktarim akisi icin QR/cihaz eslestirme kullanin.',
+  'onboarding.backup.local.title': 'Sadece yerel OPFS',
+  'onboarding.backup.local.desc':
+    'Veriyi once yerelde tutun, kritik kayitlardan once yedek testini planlayin.',
+  'onboarding.secondFactor.title': '2FA ve passkey kurulumu',
+  'onboarding.secondFactor.desc':
+    'Yuksek degerli hesaplar ve cihaz kilit acma akislari icin ikinci faktor yolunu hazirlayin.',
+  'onboarding.secondFactor.both.title': 'TOTP + passkey',
+  'onboarding.secondFactor.both.desc':
+    'Onemli hesaplar icin onerilir: TOTP saklayin ve passkey envanter kontrolunu hazirlayin.',
+  'onboarding.secondFactor.totp.title': 'Once TOTP',
+  'onboarding.secondFactor.totp.desc':
+    'Kimlik dogrulama kodlariyla baslayin, kayitlari ice aktardiktan sonra passkey ekleyin.',
+  'onboarding.secondFactor.passkey.title': 'Once passkey',
+  'onboarding.secondFactor.passkey.desc':
+    'Site passkeyleri, RP ID gorunurlugu ve cihaz kilit acma hazirligini onceliklendirin.',
+  'onboarding.privacy.title': 'Gizlilik modu',
+  'onboarding.privacy.desc':
+    'Aegis kimlik, alias ve autofill maruziyetini ne kadar agresif azaltacak secin.',
+  'onboarding.privacy.privacy.title': 'Gizlilik artirilmis',
+  'onboarding.privacy.privacy.desc':
+    'Varsayilan olarak alias, temkinli autofill ve daha sessiz kimlik gorunurlugu kullanin.',
+  'onboarding.privacy.balanced.title': 'Dengeli',
+  'onboarding.privacy.balanced.desc':
+    'Temel alias ve Watchtower kontrollerini korurken akisi hizli tutun.',
+  'onboarding.privacy.strict.title': 'Kati gizlilik',
+  'onboarding.privacy.strict.desc':
+    'Manuel onay, azaltilmis gorunurluk ve daha kati hassas aksiyonlar tercih edilir.',
+  'onboarding.finalize.title': 'Guvenli kurulum plani hazir',
+  'onboarding.finalize.desc':
+    'Ilk uc dakikaniz planlandi. Aegis bu secimleri yerel guvenlik temeliniz olarak saklayacak.',
+  'onboarding.finalize.planTitle': 'Temel seviye secildi',
+  'onboarding.finalize.planDesc':
+    'Aegis bu onboarding planini yerelde saklayacak ve ilk guvenlik checklistiniz olarak kullanacak.',
+  'onboarding.finalize.profile': 'Profil',
+  'onboarding.finalize.recovery': 'Kurtarma',
+  'onboarding.finalize.backup': 'Yedek',
+  'onboarding.finalize.privacy': 'Gizlilik',
+  'onboarding.trustPanel.title': 'Kurulum guveni',
+  'onboarding.trustPanel.score': 'skor',
+  'onboarding.trustPanel.master': 'Guclu ana sifre kontrolu',
+  'onboarding.trustPanel.recovery': 'Kurtarma saklama secildi',
+  'onboarding.trustPanel.backup': 'Sifreli yedek hedefi secildi',
+  'onboarding.trustPanel.secondFactor': '2FA/passkey yolu secildi',
+  'onboarding.trustPanel.privacy': 'Gizlilik modu secildi',
   cryptowallet: 'Kripto Kasa',
   cryptoVaultKicker: 'Kripto saklama',
   cryptoVaultTitle: 'Kripto Kasa + Watch-only',
@@ -3401,6 +3612,23 @@ Object.assign(resources.tr.translation as Record<string, unknown>, {
     'Bu düz metin dışa aktarım {{total}} kripto kasa kaydı içeriyor; {{secret}} kayıtta seed/private key materyali, {{watchOnly}} kayıtta watch-only veri var. CSV/JSON dosyaları şifreli değildir. Yalnızca geçiş için kullanın ve dosyayı hemen silin.',
   notConfigured: 'Yapılandırılmadı',
   cancel: 'İptal',
+  // Watch-only güvenlik katmanı
+  cryptoSecurityBannerTitle: 'Watch-Only Güvenlik Modu',
+  cryptoSecurityBannerDesc:
+    'Bu modül salt okunur saklama modunda çalışır. Çalışma zamanına hiçbir private key, seed phrase veya imzalama yeteneği açılmaz.',
+  cryptoSecurityBannerSecretDesc:
+    'Bu kasada şifreli kurtarma materyali var. Aegis yine de işlem imzalamaz veya yayınlamaz; sırları yalnızca zorunlu olduğunda açığa çıkarın.',
+  cryptoNoPrivateKeyLabel: 'Private key saklanmıyor',
+  cryptoEncryptedSecretLabel: 'Şifreli sır kaydı var',
+  cryptoPhishingWarning:
+    'Güvenlik hatırlatması: Harici bir cüzdandan fon göndermeden önce hedef adresi mutlaka doğrulayın. Pano içeriği zararlı yazılımlar tarafından değiştirilebilir.',
+  cryptoChainMismatchWarning:
+    'Ağ uyuşmazlığı tespit edildi — {{selected}} seçtiniz, ancak adres {{detected}} ağına ait görünüyor. Lütfen kaydetmeden önce doğrulayın.',
+  cryptoXpubDetected: '{{type}} Genişletilmiş Public Key tespit edildi',
+  cryptoXpubDesc:
+    'Genişletilmiş public key’ler (BIP-32/49/84), özel materyal açığa çıkarmadan watch-only takip için adres türetmeye olanak tanır.',
+  cryptoAddressFormatHint: 'Beklenen format',
+  cryptoWatchOnlyStripLabel: 'Yalnızca görüntüleme modu — imzalama yeteneği yok',
 });
 
 resources.tr.translation = repairTranslationTree(resources.tr.translation);

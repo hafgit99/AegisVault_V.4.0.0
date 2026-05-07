@@ -334,4 +334,40 @@ describe('CryptoWalletVault', () => {
   ])('validates %s address "%s" as %s', (chain, address, expected) => {
     expect(CryptoWalletVault.validateAddress(chain, address)).toBe(expected);
   });
+
+  it('treats extended public keys as Bitcoin-family watch-only material', () => {
+    const xpub = `xpub${'A'.repeat(100)}`;
+    const ypub = `ypub${'B'.repeat(100)}`;
+    const zpub = `zpub${'C'.repeat(100)}`;
+
+    expect(CryptoWalletVault.isExtendedPublicKey(xpub)).toBe(true);
+    expect(CryptoWalletVault.getExtendedKeyType(xpub)).toBe('xpub');
+    expect(CryptoWalletVault.getExtendedKeyType(ypub)).toBe('ypub');
+    expect(CryptoWalletVault.getExtendedKeyType(zpub)).toBe('zpub');
+    expect(CryptoWalletVault.validateAddress('bitcoin', xpub)).toBe(true);
+    expect(CryptoWalletVault.validateAddress('other', xpub)).toBe(true);
+    expect(CryptoWalletVault.validateAddress('ethereum', xpub)).toBe(false);
+    expect(CryptoWalletVault.validateAddress('solana', ypub)).toBe(false);
+    expect(CryptoWalletVault.validateAddress('tron', zpub)).toBe(false);
+  });
+
+  it('reports chain mismatches for extended public keys and incompatible public addresses', () => {
+    const xpub = `xpub${'A'.repeat(100)}`;
+
+    expect(CryptoWalletVault.detectChainFromAddress(xpub)).toBe('bitcoin');
+    expect(CryptoWalletVault.getChainMismatchInfo('ethereum', xpub)).toEqual({
+      mismatch: true,
+      detectedChain: 'bitcoin',
+    });
+    expect(
+      CryptoWalletVault.getChainMismatchInfo(
+        'bitcoin',
+        '0x742d35Cc6634C0532925a3b844Bc454e4438f44e'
+      )
+    ).toEqual({ mismatch: true, detectedChain: 'ethereum' });
+    expect(CryptoWalletVault.getChainMismatchInfo('other', xpub)).toEqual({
+      mismatch: false,
+      detectedChain: 'bitcoin',
+    });
+  });
 });

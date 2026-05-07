@@ -9,6 +9,7 @@ global.fetch = vi.fn();
 describe('HIBP BreachChecker (K-Anonymity)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    breachChecker.clearCache();
   });
 
   it('1. checkPassword: detects breached password', async () => {
@@ -23,7 +24,9 @@ describe('HIBP BreachChecker (K-Anonymity)', () => {
 
     const count = await breachChecker.checkPassword('password');
     expect(count).toBe(99999);
-    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('5BAA6'));
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('5BAA6'), {
+      headers: { 'Add-Padding': 'true' },
+    });
   });
 
   it('2. checkPassword: returns 0 for clean password', async () => {

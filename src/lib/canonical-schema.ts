@@ -32,6 +32,7 @@ export interface CanonicalAttachment {
 
 export interface CanonicalPasskeyFields {
   rp_id?: string;
+  origin?: string;
   credential_id?: string;
   user_handle?: string;
   display_name?: string;

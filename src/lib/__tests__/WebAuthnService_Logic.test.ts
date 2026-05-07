@@ -5,6 +5,7 @@ import {
   isWebAuthnSupported,
   isConditionalMediationSupported,
   extractRpIdFromUrl,
+  getCurrentWebAuthnOrigin,
 } from '../WebAuthnService';
 
 describe('WebAuthnService: Site Passkey Registration & Auth', () => {
@@ -50,6 +51,7 @@ describe('WebAuthnService: Site Passkey Registration & Auth', () => {
     });
 
     expect(result?.credentialId).toBe('cid-123');
+    expect(result?.origin).toBe(window.location.origin);
     expect(navigator.credentials.create).toHaveBeenCalled();
   });
 
@@ -74,6 +76,7 @@ describe('WebAuthnService: Site Passkey Registration & Auth', () => {
     });
 
     expect(result?.credentialId).toBe('cid-123');
+    expect(result?.origin).toBe(window.location.origin);
     expect(navigator.credentials.get).toHaveBeenCalled();
   });
 
@@ -82,6 +85,7 @@ describe('WebAuthnService: Site Passkey Registration & Auth', () => {
       credentialId: 'c1',
       publicKeyBase64: 'p1',
       rpId: 'test.com',
+      origin: 'https://test.com',
       userHandle: 'u1',
       displayName: 'User',
       transport: ['usb', 'nfc'],
@@ -91,6 +95,7 @@ describe('WebAuthnService: Site Passkey Registration & Auth', () => {
     } as any;
     const meta = WebAuthnService.registrationToPasskeyMetadata(regResult);
     expect(meta.rp_id).toBe('test.com');
+    expect(meta.origin).toBe('https://test.com');
     expect(meta.transport).toBe('usb,nfc');
     expect(meta.algorithm).toBe('-7');
   });
@@ -106,6 +111,7 @@ describe('WebAuthnService: Site Passkey Registration & Auth', () => {
   it('5. Yardımcılar: isWebAuthnSupported, extractRpIdFromUrl', async () => {
     expect(isWebAuthnSupported()).toBe(true);
     expect(await isConditionalMediationSupported()).toBe(true);
+    expect(getCurrentWebAuthnOrigin()).toBe(window.location.origin);
     expect(extractRpIdFromUrl('https://my.vault.com/login')).toBe('my.vault.com');
     expect(extractRpIdFromUrl('invalid-url')).toBe('invalid-url');
   });

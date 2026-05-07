@@ -26,7 +26,9 @@ type SitePasskeyFilter =
   | 'healthy'
   | 'future'
   | 'missing_rp_id'
-  | 'missing_credential_id';
+  | 'missing_credential_id'
+  | 'origin_mismatch'
+  | 'unverified';
 
 type SitePasskeySort = 'risk_first' | 'title' | 'healthy_first';
 
@@ -76,7 +78,10 @@ export function PasskeySiteInventoryModal({
           ? entries.filter((entry) => entry.riskFlags.length === 0)
           : filter === 'future'
             ? entries.filter((entry) => entry.mode === 'site_passkey_future_rp')
-            : filter === 'missing_rp_id' || filter === 'missing_credential_id'
+            : filter === 'missing_rp_id' ||
+                filter === 'missing_credential_id' ||
+                filter === 'origin_mismatch' ||
+                filter === 'unverified'
               ? entries.filter((entry) => entry.riskFlags.includes(filter))
               : entries;
 
@@ -139,6 +144,16 @@ export function PasskeySiteInventoryModal({
   };
 
   const getEntryRecommendation = (entry: PasskeyInventorySiteEntry) => {
+    if (entry.riskFlags.includes('origin_mismatch')) {
+      return {
+        summary: t(
+          'passkeyInventoryEntryHintOriginMismatch',
+          'The saved RP ID does not match the visible site origin. Review before using this passkey.'
+        ),
+        primaryLabel: t('passkeyInventoryOpenRecord', 'Open record'),
+        primaryAction: () => onOpenEntry(entry),
+      };
+    }
     if (entry.riskFlags.includes('missing_rp_id')) {
       return {
         summary: t(
@@ -167,6 +182,16 @@ export function PasskeySiteInventoryModal({
         ),
         primaryLabel: t('passkeyInventoryBulkConvertFuture', 'Convert future mode'),
         primaryAction: () => onBulkConvertFuture([entry.id]),
+      };
+    }
+    if (entry.riskFlags.includes('unverified')) {
+      return {
+        summary: t(
+          'passkeyInventoryEntryHintUnverified',
+          'This credential is recorded but has not completed a successful WebAuthn authentication yet.'
+        ),
+        primaryLabel: t('passkeyInventoryOpenRecord', 'Open record'),
+        primaryAction: () => onOpenEntry(entry),
       };
     }
     return {
@@ -224,6 +249,14 @@ export function PasskeySiteInventoryModal({
               {
                 key: 'missing_credential_id',
                 label: t('passkeyInventoryMissingCredentialShort', 'Missing credential'),
+              },
+              {
+                key: 'origin_mismatch',
+                label: t('passkeyInventoryOriginMismatchShort', 'Origin mismatch'),
+              },
+              {
+                key: 'unverified',
+                label: t('passkeyInventoryUnverifiedShort', 'Unverified'),
               },
             ].map((item) => (
               <button
@@ -488,18 +521,51 @@ export function PasskeySiteInventoryModal({
                       {entry.title}
                     </button>
                     <div className="mt-1 text-xs text-[var(--color-deep-navy)]/65 dark:text-white/65">
+                      {t('passkeyInventoryRpIdLabel', 'RP ID')}:&nbsp;
                       {entry.rpId || t('passkeyInventoryMissingRpId', 'Missing RP ID')}
+                    </div>
+                    <div className="mt-1 text-[11px] text-[var(--color-deep-navy)]/55 dark:text-white/55">
+                      {t('passkeyInventoryOriginLabel', 'Origin')}:&nbsp;
+                      {entry.origin || t('notConfigured', 'Not configured')}
                     </div>
                     {entry.displayName ? (
                       <div className="mt-1 text-[11px] text-[var(--color-deep-navy)]/55 dark:text-white/55">
                         {entry.displayName}
                       </div>
                     ) : null}
+                    <div className="mt-1 text-[11px] text-[var(--color-deep-navy)]/55 dark:text-white/55">
+                      {t('passkeyInventoryCredentialIdLabel', 'Credential ID')}:&nbsp;
+                      <span className="font-mono">
+                        {entry.credentialId
+                          ? `${entry.credentialId.slice(0, 10)}...${entry.credentialId.slice(-6)}`
+                          : t('passkeyInventoryMissingCredentialShort', 'Missing credential')}
+                      </span>
+                    </div>
                     <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--color-deep-navy)]/50 dark:text-white/50">
+                      <span
+                        className={`rounded-full px-2 py-1 ${
+                          entry.riskLevel === 'high'
+                            ? 'bg-red-500/12 text-red-700 dark:text-red-300'
+                            : entry.riskLevel === 'medium'
+                              ? 'bg-amber-500/12 text-amber-700 dark:text-amber-300'
+                              : 'bg-[var(--color-sage-green)]/12 text-[var(--color-sage-green)]'
+                        }`}
+                      >
+                        {entry.riskLevel === 'high'
+                          ? t('passkeyInventoryRiskHigh', 'High risk')
+                          : entry.riskLevel === 'medium'
+                            ? t('passkeyInventoryRiskMedium', 'Medium risk')
+                            : t('passkeyInventoryRiskLow', 'Low risk')}
+                      </span>
                       <span className="settings-badge-muted rounded-full px-2 py-1">
                         {entry.mode === 'site_passkey_future_rp'
                           ? t('passkeyInventoryModeFutureRp', 'Future RP')
                           : t('passkeyInventoryModeSiteMvp', 'Site passkey MVP')}
+                      </span>
+                      <span className="settings-badge-muted rounded-full px-2 py-1">
+                        {entry.exportReady
+                          ? t('passkeyInventoryExportReady', 'Export ready')
+                          : t('passkeyInventoryExportNeedsReview', 'Export review')}
                       </span>
                       <span className="settings-badge-muted rounded-full px-2 py-1 font-mono">
                         {entry.id}
@@ -521,7 +587,11 @@ export function PasskeySiteInventoryModal({
                             ? t('passkeyInventoryMissingRpIdShort', 'Missing RP')
                             : flag === 'missing_credential_id'
                               ? t('passkeyInventoryMissingCredentialShort', 'Missing credential')
-                              : t('passkeyInventoryFutureModeShort', 'Future mode')}
+                              : flag === 'origin_mismatch'
+                                ? t('passkeyInventoryOriginMismatchShort', 'Origin mismatch')
+                                : flag === 'unverified'
+                                  ? t('passkeyInventoryUnverifiedShort', 'Unverified')
+                                  : t('passkeyInventoryFutureModeShort', 'Future mode')}
                         </span>
                       ))
                     )}

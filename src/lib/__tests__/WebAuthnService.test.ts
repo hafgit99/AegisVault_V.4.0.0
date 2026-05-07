@@ -4,6 +4,7 @@ import {
   isWebAuthnSupported,
   extractRpIdFromUrl,
   isConditionalMediationSupported,
+  getCurrentWebAuthnOrigin,
 } from '../WebAuthnService';
 
 describe('WebAuthnService', () => {
@@ -65,6 +66,10 @@ describe('WebAuthnService', () => {
     expect(extractRpIdFromUrl('invalid-url::::')).toBe('invalid-url::::');
   });
 
+  it('reads the current WebAuthn origin for audit metadata', () => {
+    expect(getCurrentWebAuthnOrigin()).toBe(window.location.origin);
+  });
+
   describe('registerSitePasskey', () => {
     it('calls navigator.credentials.create with correct options including PRF and timeouts', async () => {
       (navigator.credentials as any).create.mockResolvedValue({
@@ -95,6 +100,7 @@ describe('WebAuthnService', () => {
 
       expect(result).not.toBeNull();
       expect(result?.credentialId).toBe('mock-cred-id');
+      expect(result?.origin).toBe(window.location.origin);
       expect(result?.transport).toContain('hybrid');
       expect(result?.publicKeyBase64).toBeDefined();
     });
@@ -251,6 +257,7 @@ describe('WebAuthnService', () => {
         'nfc',
       ]);
       expect(result?.credentialId).toBe('auth-cred-id');
+      expect(result?.origin).toBe(window.location.origin);
       expect(result?.userHandleBase64).toBeDefined();
       expect(result?.authenticatorDataBase64).toBeDefined();
     });
@@ -311,6 +318,7 @@ describe('WebAuthnService', () => {
         credentialId: 'cid123',
         publicKeyBase64: 'pkb64',
         rpId: 'test.com',
+        origin: 'https://test.com',
         userHandle: 'uh123',
         displayName: 'User Name',
         transport: ['internal', 'hybrid'],
@@ -321,6 +329,7 @@ describe('WebAuthnService', () => {
 
       const metadata = WebAuthnService.registrationToPasskeyMetadata(regResult);
       expect(metadata.rp_id).toBe('test.com');
+      expect(metadata.origin).toBe('https://test.com');
       expect(metadata.transport).toBe('internal,hybrid');
       expect(metadata.mode).toBe('site_passkey_active');
     });
@@ -350,6 +359,7 @@ describe('WebAuthnService', () => {
     it('updates metadata after successful authentication', () => {
       const existing = {
         rp_id: 'test.com',
+        origin: 'https://test.com',
         credential_id: 'old-id',
         user_handle: 'uh123',
         display_name: 'User',
@@ -373,6 +383,7 @@ describe('WebAuthnService', () => {
 
       const updated = WebAuthnService.updateMetadataAfterAuth(existing, authResult);
       expect(updated.server_verified).toBe(true);
+      expect(updated.origin).toBe('https://test.com');
       expect(updated.last_auth_at).toBe('2026-03-25T13:00:00Z');
       expect(updated.credential_id).toBe('old-id'); // should keep existing if present
     });

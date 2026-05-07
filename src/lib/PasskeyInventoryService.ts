@@ -11,9 +11,15 @@ export interface PasskeyInventorySiteEntry {
   id: number;
   title: string;
   rpId: string;
+  origin: string;
   displayName: string;
+  credentialId: string;
   mode: PasskeyProgramMode;
-  riskFlags: Array<'missing_rp_id' | 'missing_credential_id' | 'future_mode'>;
+  riskFlags: Array<
+    'missing_rp_id' | 'missing_credential_id' | 'future_mode' | 'origin_mismatch' | 'unverified'
+  >;
+  riskLevel: 'low' | 'medium' | 'high';
+  exportReady: boolean;
 }
 
 export interface PasskeyInventorySummary {
@@ -30,6 +36,8 @@ export interface PasskeyInventorySummary {
     missing_rp_id: number;
     missing_credential_id: number;
     future_mode: number;
+    origin_mismatch: number;
+    unverified: number;
   };
   sitePasskeyCount: number;
   sitePasskeyAttentionCount: number;
@@ -38,6 +46,39 @@ export interface PasskeyInventorySummary {
 }
 
 const DAY_MS = 1000 * 60 * 60 * 24;
+
+const deriveOriginFromWebsite = (website?: string): string => {
+  if (!website) return '';
+  try {
+    const parsed = website.includes('://') ? new URL(website) : new URL(`https://${website}`);
+    return parsed.origin;
+  } catch {
+    return '';
+  }
+};
+
+const deriveRpIdFromWebsite = (website?: string): string => {
+  if (!website) return '';
+  try {
+    const parsed = website.includes('://') ? new URL(website) : new URL(`https://${website}`);
+    return parsed.hostname.replace(/^www\./, '').toLowerCase();
+  } catch {
+    return '';
+  }
+};
+
+const getRiskLevel = (riskFlags: PasskeyInventorySiteEntry['riskFlags']) => {
+  if (
+    riskFlags.includes('missing_rp_id') ||
+    riskFlags.includes('missing_credential_id') ||
+    riskFlags.includes('origin_mismatch')
+  ) {
+    return 'high' as const;
+  }
+  if (riskFlags.includes('future_mode') || riskFlags.includes('unverified'))
+    return 'medium' as const;
+  return 'low' as const;
+};
 
 export class PasskeyInventoryService {
   static buildSummary(input: {
@@ -57,17 +98,30 @@ export class PasskeyInventoryService {
       .filter((entry) => entry.category === 'Passkeys' || entry.passkeyMetadata)
       .map((entry) => {
         const mode = entry.passkeyMetadata?.mode || 'site_passkey_mvp';
+        const rpId = entry.passkeyMetadata?.rp_id || '';
+        const origin = entry.passkeyMetadata?.origin || deriveOriginFromWebsite(entry.website);
+        const inferredRpId = deriveRpIdFromWebsite(entry.website);
+        const credentialId = entry.passkeyMetadata?.credential_id || '';
         const riskFlags: PasskeyInventorySiteEntry['riskFlags'] = [];
-        if (!entry.passkeyMetadata?.rp_id) riskFlags.push('missing_rp_id');
-        if (!entry.passkeyMetadata?.credential_id) riskFlags.push('missing_credential_id');
+        if (!rpId) riskFlags.push('missing_rp_id');
+        if (!credentialId) riskFlags.push('missing_credential_id');
         if (mode === 'site_passkey_future_rp') riskFlags.push('future_mode');
+        if (rpId && inferredRpId && rpId !== inferredRpId) riskFlags.push('origin_mismatch');
+        if (credentialId && entry.passkeyMetadata?.server_verified !== true) {
+          riskFlags.push('unverified');
+        }
+        const riskLevel = getRiskLevel(riskFlags);
         return {
           id: entry.id,
           title: entry.title || 'Untitled',
-          rpId: entry.passkeyMetadata?.rp_id || '',
+          rpId,
+          origin,
           displayName: entry.passkeyMetadata?.display_name || '',
+          credentialId,
           mode,
           riskFlags,
+          riskLevel,
+          exportReady: Boolean(rpId && credentialId && origin),
         };
       })
       .sort((left, right) => {
@@ -112,6 +166,9 @@ export class PasskeyInventoryService {
         entry.riskFlags.includes('missing_credential_id')
       ).length,
       future_mode: siteEntries.filter((entry) => entry.riskFlags.includes('future_mode')).length,
+      origin_mismatch: siteEntries.filter((entry) => entry.riskFlags.includes('origin_mismatch'))
+        .length,
+      unverified: siteEntries.filter((entry) => entry.riskFlags.includes('unverified')).length,
     };
     const sitePasskeyAttentionCount = siteEntries.filter(
       (entry) => entry.riskFlags.length > 0
@@ -148,6 +205,7 @@ export class PasskeyInventoryService {
       ...entry,
       passkeyMetadata: {
         ...entry.passkeyMetadata,
+        origin: entry.passkeyMetadata.origin || deriveOriginFromWebsite(entry.website),
         last_auth_at: authenticatedAt,
         server_verified: true,
       },

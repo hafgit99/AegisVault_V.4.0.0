@@ -21,6 +21,7 @@ export interface SitePasskeyRegistrationResult {
   credentialId: string;
   publicKeyBase64: string;
   rpId: string;
+  origin?: string;
   userHandle: string;
   displayName: string;
   transport: string[];
@@ -33,6 +34,7 @@ export interface SitePasskeyRegistrationResult {
 export interface SitePasskeyAuthResult {
   credentialId: string;
   rpId: string;
+  origin?: string;
   authenticatorDataBase64: string;
   clientDataJSONBase64: string;
   signatureBase64: string;
@@ -106,6 +108,12 @@ export function extractRpIdFromUrl(url: string): string {
   } catch {
     return url;
   }
+}
+
+/** Mevcut tarayici origin bilgisini guvenli bicimde okur */
+export function getCurrentWebAuthnOrigin(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return window.location?.origin;
 }
 
 /* ------------------------------------------------------------------ */
@@ -200,6 +208,7 @@ export class WebAuthnService {
         credentialId: credential.id,
         publicKeyBase64: publicKeyBytes ? bufferToBase64url(publicKeyBytes) : '',
         rpId: options.rpId,
+        origin: getCurrentWebAuthnOrigin(),
         userHandle: bufferToBase64url(
           userId instanceof Uint8Array
             ? userId.buffer.slice(userId.byteOffset, userId.byteOffset + userId.byteLength)
@@ -262,6 +271,7 @@ export class WebAuthnService {
       return {
         credentialId: assertion.id,
         rpId: options.rpId,
+        origin: getCurrentWebAuthnOrigin(),
         authenticatorDataBase64: bufferToBase64url(response.authenticatorData),
         clientDataJSONBase64: bufferToBase64url(response.clientDataJSON),
         signatureBase64: bufferToBase64url(response.signature),
@@ -283,6 +293,7 @@ export class WebAuthnService {
   ): CanonicalPasskeyFields {
     return {
       rp_id: result.rpId,
+      origin: result.origin || getCurrentWebAuthnOrigin(),
       credential_id: result.credentialId,
       user_handle: result.userHandle,
       display_name: result.displayName,
@@ -307,6 +318,7 @@ export class WebAuthnService {
     return {
       ...existing,
       credential_id: existing.credential_id || authResult.credentialId,
+      origin: existing.origin || authResult.origin || getCurrentWebAuthnOrigin(),
       server_verified: true,
       last_auth_at: authResult.authenticatedAt,
     };

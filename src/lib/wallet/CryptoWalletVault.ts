@@ -141,6 +141,11 @@ export class CryptoWalletVault {
     const value = address.trim();
     if (!value) return false;
 
+    // Extended public keys are Bitcoin-family watch-only material.
+    if (CryptoWalletVault.isExtendedPublicKey(value)) {
+      return chain === 'bitcoin' || chain === 'other';
+    }
+
     switch (chain) {
       case 'bitcoin':
         return /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,90}$/.test(value);
@@ -154,6 +159,78 @@ export class CryptoWalletVault {
         return /^(ltc1|[LM3])[a-zA-HJ-NP-Z0-9]{25,90}$/.test(value);
       default:
         return value.length >= 12 && value.length <= 140;
+    }
+  }
+
+  /** Detect xpub / ypub / zpub extended public key formats (BIP-32/49/84). */
+  static isExtendedPublicKey(address: string): boolean {
+    const v = address.trim();
+    return /^(xpub|ypub|zpub|tpub|upub|vpub)[1-9A-HJ-NP-Za-km-z]{79,120}$/.test(v);
+  }
+
+  /** Return the extended key type label if applicable. */
+  static getExtendedKeyType(address: string): 'xpub' | 'ypub' | 'zpub' | null {
+    const v = address.trim().toLowerCase();
+    if (v.startsWith('xpub')) return 'xpub';
+    if (v.startsWith('ypub')) return 'ypub';
+    if (v.startsWith('zpub')) return 'zpub';
+    return null;
+  }
+
+  /** Auto-detect the most likely chain from an address or extended key. */
+  static detectChainFromAddress(address: string): CryptoWalletChain | null {
+    const v = address.trim();
+    if (!v) return null;
+
+    // Extended public keys → Bitcoin family
+    if (/^(xpub|ypub|zpub|tpub|upub|vpub)/i.test(v)) return 'bitcoin';
+
+    // Bitcoin native segwit / legacy
+    if (/^(bc1)[a-zA-HJ-NP-Z0-9]{25,90}$/.test(v)) return 'bitcoin';
+    if (/^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(v)) return 'bitcoin';
+
+    // Ethereum / EVM
+    if (/^0x[a-fA-F0-9]{40}$/.test(v)) return 'ethereum';
+
+    // Tron
+    if (/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(v)) return 'tron';
+
+    // Litecoin
+    if (/^(ltc1|[LM3])[a-zA-HJ-NP-Z0-9]{25,90}$/.test(v)) return 'litecoin';
+
+    // Solana (base58, 32-44 chars, no 0/O/I/l)
+    if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(v)) return 'solana';
+
+    return null;
+  }
+
+  /** Check if the entered address likely belongs to a different chain than selected. */
+  static getChainMismatchInfo(
+    selectedChain: CryptoWalletChain,
+    address: string
+  ): { mismatch: boolean; detectedChain: CryptoWalletChain | null } {
+    const detected = CryptoWalletVault.detectChainFromAddress(address);
+    if (!detected || selectedChain === detected)
+      return { mismatch: false, detectedChain: detected };
+    if (selectedChain === 'other') return { mismatch: false, detectedChain: detected };
+    return { mismatch: true, detectedChain: detected };
+  }
+
+  /** Return a human-readable address format hint per chain. */
+  static getAddressFormatHint(chain: CryptoWalletChain): string {
+    switch (chain) {
+      case 'bitcoin':
+        return 'bc1... / 1... / 3... / xpub... / ypub... / zpub...';
+      case 'ethereum':
+        return '0x... (40 hex)';
+      case 'solana':
+        return 'Base58 (32–44 chars)';
+      case 'tron':
+        return 'T... (34 chars)';
+      case 'litecoin':
+        return 'ltc1... / L... / M... / 3...';
+      default:
+        return '12–140 chars';
     }
   }
 }

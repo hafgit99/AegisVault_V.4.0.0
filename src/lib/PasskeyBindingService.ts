@@ -746,12 +746,23 @@ export class PasskeyBindingService {
     rpId: string
   ): VaultEntry {
     const now = new Date().toISOString();
+    const origin = (() => {
+      try {
+        const parsed = entry.website?.includes('://')
+          ? new URL(entry.website)
+          : new URL(`https://${entry.website || rpId}`);
+        return parsed.origin;
+      } catch {
+        return rpId ? `https://${rpId}` : undefined;
+      }
+    })();
     return {
       ...entry,
       passkeyMetadata: {
         ...(entry.passkeyMetadata || {}),
         credential_id: credentialId,
         rp_id: rpId,
+        origin,
         mode: 'site_passkey_active',
         created_at: entry.passkeyMetadata?.created_at || now,
         last_registration_at: now,
