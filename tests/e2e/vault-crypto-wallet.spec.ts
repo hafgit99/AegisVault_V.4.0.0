@@ -23,10 +23,10 @@ test.describe('Crypto Vault + Watch-only', () => {
     await form.locator('select').first().selectOption('CryptoWallet');
     await page.waitForTimeout(300);
 
-    // Verify crypto section kicker is visible
-    await expect(form.locator('text=/Crypto custody|Kripto saklama|crypto/i')).toBeVisible({
-      timeout: 5000,
-    });
+    // Verify crypto section kicker is visible (use .first() to avoid strict-mode on option+div)
+    await expect(
+      form.locator('div:has-text("Crypto custody"), div:has-text("Kripto saklama")').first()
+    ).toBeVisible({ timeout: 5000 });
 
     // Fill the wallet name (title) — first input in the form
     const titleInput = form.locator('input[type="text"]').first();
