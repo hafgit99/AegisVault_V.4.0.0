@@ -13,16 +13,16 @@
 
 ## 📊 Platform Karşılaştırması: Aynı Zemin
 
-| Özellik | Exodus | Aegis Vault |
-|---|---|---|
-| **Platform** | Electron (Desktop) | ✅ **Electron (Desktop)** — Aynı |
-| **Ana Süreç** | `main.js` (kapalı kaynak) | `electron-main.cjs` (açık kaynak, 2994 satır) |
-| **Preload Güvenliği** | Bilinmiyor (kapalı kaynak) | ✅ `contextIsolation: true` + `nodeIntegration: false` |
-| **OS İzolasyonu** | ✅ Ayrı process | ✅ **Ayrı process** — Aynı |
-| **Native Bellek Kontrolü** | ✅ Node.js `crypto` | ✅ **Node.js `crypto`** — Aynı |
-| **Dosya Sistemi Erişimi** | ✅ Doğrudan | ✅ **Doğrudan** (OPFS + SQLite + `fs`) |
-| **Otomatik Güncelleme** | ✅ Auto-update (risk) | ❌ Manuel kontrol (daha güvenli) |
-| **Dağıtım Formatı** | .exe / .dmg | ✅ NSIS (.exe) / DMG / AppImage — Aynı |
+| Özellik                    | Exodus                     | Aegis Vault                                            |
+| -------------------------- | -------------------------- | ------------------------------------------------------ |
+| **Platform**               | Electron (Desktop)         | ✅ **Electron (Desktop)** — Aynı                       |
+| **Ana Süreç**              | `main.js` (kapalı kaynak)  | `electron-main.cjs` (açık kaynak, 2994 satır)          |
+| **Preload Güvenliği**      | Bilinmiyor (kapalı kaynak) | ✅ `contextIsolation: true` + `nodeIntegration: false` |
+| **OS İzolasyonu**          | ✅ Ayrı process            | ✅ **Ayrı process** — Aynı                             |
+| **Native Bellek Kontrolü** | ✅ Node.js `crypto`        | ✅ **Node.js `crypto`** — Aynı                         |
+| **Dosya Sistemi Erişimi**  | ✅ Doğrudan                | ✅ **Doğrudan** (OPFS + SQLite + `fs`)                 |
+| **Otomatik Güncelleme**    | ✅ Auto-update (risk)      | ❌ Manuel kontrol (daha güvenli)                       |
+| **Dağıtım Formatı**        | .exe / .dmg                | ✅ NSIS (.exe) / DMG / AppImage — Aynı                 |
 
 **Sonuç: Platform düzeyinde Aegis = Exodus.** Hatta Aegis'in Electron güvenlik yapılandırması (contextIsolation, nodeIntegration:false) doğrulanabilir çünkü açık kaynak.
 
@@ -46,23 +46,23 @@ Aegis:
 
 ### Detaylı Güvenlik Tablosu
 
-| Güvenlik Özelliği | Exodus | Aegis Vault | Kazanan |
-|---|---|---|---|
-| **KDF Algoritması** | PBKDF2-SHA256 | **Argon2id** (memory-hard) | ✅ **Aegis** |
-| **Auth Faktör Sayısı** | Tek (sadece parola) | **Çift** (parola + secret key) | ✅ **Aegis** |
-| **Şifreleme** | AES-256-GCM | AES-256-GCM | 🟰 Eşit |
-| **Fiziksel Baskı Koruması** | ❌ Yok | ✅ **Duress PIN + Kill PIN** | ✅ **Aegis** |
-| **Brute-Force Koruması** | Basit parola | **Exponential backoff + Rate limit** | ✅ **Aegis** |
-| **Kaynak Kod** | ❌ Kapalı kaynak | ✅ **%100 Açık kaynak** | ✅ **Aegis** |
-| **Bağımsız Audit** | ❌ Yok | ✅ Kod denetlenebilir | ✅ **Aegis** |
-| **Electron Güvenliği** | Bilinmiyor | ✅ `contextIsolation: true` | ✅ **Aegis** |
-| **IPC Sanitization** | Bilinmiyor | ✅ Tüm IPC input'ları sanitize | ✅ **Aegis** |
-| **Native Bridge** | Yok | ✅ Token + challenge-response auth | ✅ **Aegis** |
-| **Supply Chain** | ⚠️ Auto-update mekanizması | ✅ Manuel kontrol | ✅ **Aegis** |
-| **HD Wallet (BIP-32/44)** | ✅ Mevcut | ❌ Henüz yok | ✅ Exodus |
-| **Multi-Chain Destek** | ✅ 300+ coin | ❌ Henüz yok | ✅ Exodus |
-| **Hardware Wallet** | ✅ Trezor + Ledger | ❌ Henüz yok | ✅ Exodus |
-| **DEX/Swap** | ✅ Dahili exchange | ❌ Yok | ✅ Exodus |
+| Güvenlik Özelliği           | Exodus                     | Aegis Vault                          | Kazanan      |
+| --------------------------- | -------------------------- | ------------------------------------ | ------------ |
+| **KDF Algoritması**         | PBKDF2-SHA256              | **Argon2id** (memory-hard)           | ✅ **Aegis** |
+| **Auth Faktör Sayısı**      | Tek (sadece parola)        | **Çift** (parola + secret key)       | ✅ **Aegis** |
+| **Şifreleme**               | AES-256-GCM                | AES-256-GCM                          | 🟰 Eşit      |
+| **Fiziksel Baskı Koruması** | ❌ Yok                     | ✅ **Duress PIN + Kill PIN**         | ✅ **Aegis** |
+| **Brute-Force Koruması**    | Basit parola               | **Exponential backoff + Rate limit** | ✅ **Aegis** |
+| **Kaynak Kod**              | ❌ Kapalı kaynak           | ✅ **%100 Açık kaynak**              | ✅ **Aegis** |
+| **Bağımsız Audit**          | ❌ Yok                     | ✅ Kod denetlenebilir                | ✅ **Aegis** |
+| **Electron Güvenliği**      | Bilinmiyor                 | ✅ `contextIsolation: true`          | ✅ **Aegis** |
+| **IPC Sanitization**        | Bilinmiyor                 | ✅ Tüm IPC input'ları sanitize       | ✅ **Aegis** |
+| **Native Bridge**           | Yok                        | ✅ Token + challenge-response auth   | ✅ **Aegis** |
+| **Supply Chain**            | ⚠️ Auto-update mekanizması | ✅ Manuel kontrol                    | ✅ **Aegis** |
+| **HD Wallet (BIP-32/44)**   | ✅ Mevcut                  | ❌ Henüz yok                         | ✅ Exodus    |
+| **Multi-Chain Destek**      | ✅ 300+ coin               | ❌ Henüz yok                         | ✅ Exodus    |
+| **Hardware Wallet**         | ✅ Trezor + Ledger         | ❌ Henüz yok                         | ✅ Exodus    |
+| **DEX/Swap**                | ✅ Dahili exchange         | ❌ Yok                               | ✅ Exodus    |
 
 ### Skor: **8-4 Aegis lehine** (güvenlik odaklı), **4-8 Exodus lehine** (özellik odaklı)
 
@@ -72,36 +72,36 @@ Aegis:
 
 ### Ortak Riskler (Her İkisinde de Var — Aynı Platform)
 
-| Risk | Açıklama | Seviye |
-|---|---|---|
-| **Malware/Keylogger** | OS düzeyinde zararlı yazılım şifreyi yakalayabilir | 🔴 Yüksek |
-| **Clipboard Hijacking** | Kopyalanan adresi değiştiren malware | 🔴 Yüksek |
-| **Phishing** | Sahte güncelleme/arayüz ile parola çalma | 🟡 Orta |
-| **Fiziksel Erişim** | Kilitsiz cihaza doğrudan erişim | 🟡 Orta |
-| **Parola/Seed Kaybı** | Kurtarma imkansız (her ikisinde de) | 🔴 Yüksek |
-| **Electron Zeroday** | Chromium/V8 güvenlik açığı | 🟡 Orta |
+| Risk                    | Açıklama                                           | Seviye    |
+| ----------------------- | -------------------------------------------------- | --------- |
+| **Malware/Keylogger**   | OS düzeyinde zararlı yazılım şifreyi yakalayabilir | 🔴 Yüksek |
+| **Clipboard Hijacking** | Kopyalanan adresi değiştiren malware               | 🔴 Yüksek |
+| **Phishing**            | Sahte güncelleme/arayüz ile parola çalma           | 🟡 Orta   |
+| **Fiziksel Erişim**     | Kilitsiz cihaza doğrudan erişim                    | 🟡 Orta   |
+| **Parola/Seed Kaybı**   | Kurtarma imkansız (her ikisinde de)                | 🔴 Yüksek |
+| **Electron Zeroday**    | Chromium/V8 güvenlik açığı                         | 🟡 Orta   |
 
 > [!NOTE]
 > **Her iki uygulama da aynı Electron platformunda çalıştığı için platform kaynaklı riskler birebir aynıdır.** Fark, Aegis'in bu riskleri Argon2id, çift faktör ve Duress/Kill PIN ile katmanlı olarak azaltmasıdır.
 
 ### Exodus'a Özgü Riskler (Aegis'te Olmayan)
 
-| Risk | Açıklama |
-|---|---|
-| **Kapalı Kaynak** | Kod denetlenemez, arka kapı riski teorik olarak var |
-| **Zayıf KDF** | PBKDF2, GPU saldırılarına Argon2id kadar dirençli değil |
+| Risk                  | Açıklama                                                 |
+| --------------------- | -------------------------------------------------------- |
+| **Kapalı Kaynak**     | Kod denetlenemez, arka kapı riski teorik olarak var      |
+| **Zayıf KDF**         | PBKDF2, GPU saldırılarına Argon2id kadar dirençli değil  |
 | **Tek Faktörlü Auth** | Sadece parola ile korunur — parola çalınırsa cüzdan açık |
-| **Fiziksel Baskı** | Duress/Kill PIN yok — zorla açtırılabilir |
-| **Auto-Update Riski** | Supply chain attack vektörü |
-| **IPC Güvenliği** | Bilinmiyor (kapalı kaynak olduğu için doğrulanamaz) |
+| **Fiziksel Baskı**    | Duress/Kill PIN yok — zorla açtırılabilir                |
+| **Auto-Update Riski** | Supply chain attack vektörü                              |
+| **IPC Güvenliği**     | Bilinmiyor (kapalı kaynak olduğu için doğrulanamaz)      |
 
 ### Aegis'e Özgü Riskler (Exodus'ta Olmayan)
 
-| Risk | Açıklama |
-|---|---|
-| **Yeni Cüzdan Kodu** | BIP-39/32 modülleri yeni yazılacak — henüz battle-tested değil |
-| **Sınırlı Ekosistem** | Başlangıçta az sayıda coin desteği |
-| **Topluluk Boyutu** | Daha küçük kullanıcı tabanı = daha az hata raporu |
+| Risk                  | Açıklama                                                       |
+| --------------------- | -------------------------------------------------------------- |
+| **Yeni Cüzdan Kodu**  | BIP-39/32 modülleri yeni yazılacak — henüz battle-tested değil |
+| **Sınırlı Ekosistem** | Başlangıçta az sayıda coin desteği                             |
+| **Topluluk Boyutu**   | Daha küçük kullanıcı tabanı = daha az hata raporu              |
 
 ---
 
@@ -171,8 +171,7 @@ export class WalletCryptoEngine {
 
   // Ethereum adres türetme
   static publicKeyToEthAddress(pubKey: Uint8Array): string {
-    const uncompressed = secp256k1.ProjectivePoint
-      .fromHex(pubKey).toRawBytes(false).slice(1);
+    const uncompressed = secp256k1.ProjectivePoint.fromHex(pubKey).toRawBytes(false).slice(1);
     const hash = keccak_256(uncompressed);
     return '0x' + Buffer.from(hash.slice(-20)).toString('hex');
   }
@@ -204,8 +203,8 @@ export class WalletVaultBridge {
     return vaultService.addPassword({
       title: walletName,
       category: 'crypto_wallet',
-      notes: seedPhrase,          // → encrypted_notes (AES-256-GCM)
-      username: derivedAddress,    // → encrypted_username
+      notes: seedPhrase, // → encrypted_notes (AES-256-GCM)
+      username: derivedAddress, // → encrypted_username
       website: network,
       tags: ['crypto', 'wallet', network],
     });
@@ -219,17 +218,17 @@ export class WalletVaultBridge {
   ): Promise<Uint8Array> {
     // 1. Seed phrase'i Aegis'in mevcut decrypt mekanizmasıyla aç
     const entries = await vaultService.getPasswords();
-    const wallet = entries.find(e => e.id === entryId);
+    const wallet = entries.find((e) => e.id === entryId);
     const seed = await mnemonicToSeed(wallet!.notes!);
-    
+
     // 2. Key türet ve imzala
     const { privateKey } = WalletCryptoEngine.deriveEthKey(seed);
     const signature = WalletCryptoEngine.signTransaction(txHash, privateKey);
-    
+
     // 3. Hassas veriyi bellekten sil (Node.js native kontrol)
     overwriteBuffer(privateKey);
     overwriteBuffer(new Uint8Array(seed));
-    
+
     return signature;
   }
 }
@@ -242,7 +241,7 @@ export class WalletVaultBridge {
 ipcMain.handle('wallet:sign-transaction', async (event, payload) => {
   // Sadece ana pencereden gelen istekleri kabul et
   if (event.sender !== mainWindow?.webContents) return { ok: false };
-  
+
   // İmzalama işlemi main process'te yapılır (renderer'dan izole)
   const { txHash, walletId } = payload;
   // ... sign logic
@@ -266,22 +265,22 @@ src/components/wallet/
 
 ## 📋 Düzeltilmiş Nihai Risk Tablosu
 
-| Risk Kategorisi | Exodus | Aegis Wallet | Kazanan |
-|---|---|---|---|
-| **Platform İzolasyonu** | ✅ Electron | ✅ Electron | 🟰 **Eşit** |
-| **Bellek Güvenliği** | ✅ Node.js native | ✅ Node.js native | 🟰 **Eşit** |
-| **Veri Kalıcılığı** | ✅ Dosya sistemi | ✅ Dosya sistemi | 🟰 **Eşit** |
-| **Brute-Force Direnci** | 🟡 PBKDF2 | 🟢 **Argon2id** | ✅ **Aegis** |
-| **Auth Faktör** | 🟡 Tek faktör | 🟢 **Çift faktör** | ✅ **Aegis** |
-| **Fiziksel Baskı** | 🔴 Koruma yok | 🟢 **Duress + Kill PIN** | ✅ **Aegis** |
-| **Kaynak Kod Şeffaflığı** | 🔴 Kapalı | 🟢 **Açık kaynak** | ✅ **Aegis** |
-| **IPC Güvenliği** | 🟡 Bilinmiyor | 🟢 **Doğrulanabilir** | ✅ **Aegis** |
-| **Supply Chain** | 🟡 Auto-update | 🟢 **Manuel kontrol** | ✅ **Aegis** |
-| **Malware/Keylogger** | 🟡 Orta | 🟡 Orta | 🟰 **Eşit** |
-| **Multi-Chain Destek** | 🟢 300+ coin | 🔴 Henüz yok | ✅ **Exodus** |
-| **Hardware Wallet** | 🟢 Trezor/Ledger | 🔴 Henüz yok | ✅ **Exodus** |
-| **DEX/Swap** | 🟢 Dahili | 🔴 Yok | ✅ **Exodus** |
-| **Battle-Tested Cüzdan** | 🟢 Yılların deneyimi | 🟡 Yeni modül | ✅ **Exodus** |
+| Risk Kategorisi           | Exodus               | Aegis Wallet             | Kazanan       |
+| ------------------------- | -------------------- | ------------------------ | ------------- |
+| **Platform İzolasyonu**   | ✅ Electron          | ✅ Electron              | 🟰 **Eşit**   |
+| **Bellek Güvenliği**      | ✅ Node.js native    | ✅ Node.js native        | 🟰 **Eşit**   |
+| **Veri Kalıcılığı**       | ✅ Dosya sistemi     | ✅ Dosya sistemi         | 🟰 **Eşit**   |
+| **Brute-Force Direnci**   | 🟡 PBKDF2            | 🟢 **Argon2id**          | ✅ **Aegis**  |
+| **Auth Faktör**           | 🟡 Tek faktör        | 🟢 **Çift faktör**       | ✅ **Aegis**  |
+| **Fiziksel Baskı**        | 🔴 Koruma yok        | 🟢 **Duress + Kill PIN** | ✅ **Aegis**  |
+| **Kaynak Kod Şeffaflığı** | 🔴 Kapalı            | 🟢 **Açık kaynak**       | ✅ **Aegis**  |
+| **IPC Güvenliği**         | 🟡 Bilinmiyor        | 🟢 **Doğrulanabilir**    | ✅ **Aegis**  |
+| **Supply Chain**          | 🟡 Auto-update       | 🟢 **Manuel kontrol**    | ✅ **Aegis**  |
+| **Malware/Keylogger**     | 🟡 Orta              | 🟡 Orta                  | 🟰 **Eşit**   |
+| **Multi-Chain Destek**    | 🟢 300+ coin         | 🔴 Henüz yok             | ✅ **Exodus** |
+| **Hardware Wallet**       | 🟢 Trezor/Ledger     | 🔴 Henüz yok             | ✅ **Exodus** |
+| **DEX/Swap**              | 🟢 Dahili            | 🔴 Yok                   | ✅ **Exodus** |
+| **Battle-Tested Cüzdan**  | 🟢 Yılların deneyimi | 🟡 Yeni modül            | ✅ **Exodus** |
 
 ### Sonuç: Güvenlik **9-0 Aegis** (eşitler hariç) | Özellik **4-0 Exodus**
 
