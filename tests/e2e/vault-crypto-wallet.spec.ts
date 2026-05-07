@@ -19,19 +19,39 @@ test.describe('Crypto Vault + Watch-only', () => {
     const form = page.locator('.entry-form-surface');
     await expect(form).toBeVisible({ timeout: 5000 });
 
+    // Select CryptoWallet category from the <select>
     await form.locator('select').first().selectOption('CryptoWallet');
-    await expect(form.locator('text=/Crypto custody|Kripto saklama/i')).toBeVisible();
+    await page.waitForTimeout(300);
 
-    await form.locator('input').first().fill('E2E ETH Watch');
-    await form
+    // Verify crypto section kicker is visible
+    await expect(form.locator('text=/Crypto custody|Kripto saklama|crypto/i')).toBeVisible({
+      timeout: 5000,
+    });
+
+    // Fill the wallet name (title) — first input in the form
+    const titleInput = form.locator('input[type="text"]').first();
+    await titleInput.fill('E2E ETH Watch');
+
+    // Fill the public address — the input with the address placeholder
+    const addressInput = form
       .locator(
-        'input[placeholder*="public"], input[placeholder*="Public"], input[placeholder*="alım"]'
+        'input[placeholder*="public"], input[placeholder*="Public"], input[placeholder*="alım"], input[placeholder*="Paste"]'
       )
-      .first()
-      .fill('0x742d35Cc6634C0532925a3b844Bc454e4438f44e');
-    await form.locator('input[placeholder*="m/44"]').first().fill("m/44'/60'/0'/0/0");
-    await form.locator('input[placeholder="0.0000 ETH"]').fill('0.50 ETH');
+      .first();
+    await expect(addressInput).toBeVisible({ timeout: 5000 });
+    await addressInput.fill('0x742d35Cc6634C0532925a3b844Bc454e4438f44e');
 
+    // Fill derivation path
+    const derivationInput = form.locator('input[placeholder*="m/44"]').first();
+    await expect(derivationInput).toBeVisible({ timeout: 3000 });
+    await derivationInput.fill("m/44'/60'/0'/0/0");
+
+    // Fill balance
+    const balanceInput = form.locator('input[placeholder="0.0000 ETH"]');
+    await expect(balanceInput).toBeVisible({ timeout: 3000 });
+    await balanceInput.fill('0.50 ETH');
+
+    // Submit the form
     await form.locator('button[type="submit"]').click({ force: true });
     await expect(form).toBeHidden({ timeout: 15000 });
 

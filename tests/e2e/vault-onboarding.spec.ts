@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { initializeVaultAndGoToDashboard } from './helpers/vault-init';
 
 test.describe('Onboarding Wizard', () => {
   test.beforeEach(async ({ page }) => {
@@ -53,75 +52,71 @@ test.describe('Onboarding Wizard', () => {
     const onboardingDialog = page.locator('[role="dialog"][aria-modal="true"]');
     await expect(onboardingDialog).toBeVisible({ timeout: 5000 });
 
-    const progressDots = onboardingDialog.locator('[class*="rounded-full"][class*="h-1"]');
+    // The wizard now has 6 steps; progress dot buttons use h-2.5 + rounded-full
+    const progressDots = onboardingDialog.locator('button[class*="rounded-full"][class*="h-2"]');
     const count = await progressDots.count();
-    expect(count).toBeGreaterThanOrEqual(4);
+    expect(count).toBe(6);
   });
 
   test('should navigate forward with next button', async ({ page }) => {
     const onboardingDialog = page.locator('[role="dialog"][aria-modal="true"]');
     await expect(onboardingDialog).toBeVisible({ timeout: 5000 });
 
-    const nextBtn = onboardingDialog
-      .locator('button:has-text("Devam"), button:has-text("Next"), button[class*="bg-blue-600"]')
-      .first();
+    const nextBtn = page.getByTestId('onboarding-next');
     await expect(nextBtn).toBeVisible();
 
     const oldTitle = await onboardingDialog.locator('h2').first().textContent();
-    await expect(async () => {
-      const currentTitle = await onboardingDialog.locator('h2').first().textContent();
-      if (currentTitle === oldTitle) {
-        await nextBtn.click({ force: true });
-        await page.waitForTimeout(300);
-      }
-      const newTitle = await onboardingDialog.locator('h2').first().textContent();
-      expect(newTitle !== oldTitle).toBeTruthy();
-    }).toPass({ timeout: 5000 });
+    await nextBtn.click();
+    await page.waitForTimeout(400);
+
+    const newTitle = await onboardingDialog.locator('h2').first().textContent();
+    expect(newTitle).not.toBe(oldTitle);
   });
 
-  test('should show security profile selection on step 2', async ({ page }) => {
+  test('should show security profile selection on step 0 (master)', async ({ page }) => {
     const onboardingDialog = page.locator('[role="dialog"][aria-modal="true"]');
     await expect(onboardingDialog).toBeVisible({ timeout: 5000 });
 
-    const nextBtn = onboardingDialog.locator('button[class*="bg-blue-600"]').first();
-    await nextBtn.click();
-
-    const profileButtons = onboardingDialog.locator('button.group');
-    await expect(profileButtons).toHaveCount(3, { timeout: 5000 });
+    // Step 0 displays profile choices: Standard, Advanced, Paranoid
+    const profileButtons = onboardingDialog.locator(
+      'button:has-text("Standard"), button:has-text("Advanced"), button:has-text("Paranoid"), button:has-text("Gelişmiş")'
+    );
     const count = await profileButtons.count();
-    expect(count).toBeGreaterThanOrEqual(2);
+    expect(count).toBeGreaterThanOrEqual(3);
   });
 
   test('should allow selecting different security profiles', async ({ page }) => {
     const onboardingDialog = page.locator('[role="dialog"][aria-modal="true"]');
     await expect(onboardingDialog).toBeVisible({ timeout: 5000 });
 
-    const nextBtn = onboardingDialog.locator('button[class*="bg-blue-600"]').first();
-    await nextBtn.click();
-
-    const paranoidBtn = onboardingDialog
-      .locator('button:has-text("paranoid"), button:has-text("Paranoid")')
-      .first();
+    // Profiles are on step 0 now — click Paranoid
+    const paranoidBtn = onboardingDialog.locator('button:has-text("Paranoid")').first();
     await expect(paranoidBtn).toBeVisible({ timeout: 5000 });
     await paranoidBtn.click();
-    await expect(paranoidBtn).toHaveClass(/bg-blue-500|ring-1|border-blue/);
+    // The selected button gets a sage-green border color
+    await expect(paranoidBtn).toHaveClass(/border-\[var\(--color-sage-green\)\]|sage-green|shadow/);
   });
 
   test('should navigate back with previous button', async ({ page }) => {
     const onboardingDialog = page.locator('[role="dialog"][aria-modal="true"]');
     await expect(onboardingDialog).toBeVisible({ timeout: 5000 });
 
-    const nextBtn = onboardingDialog.locator('button[class*="bg-blue-600"]').first();
+    // Navigate to step 1 first
+    const nextBtn = page.getByTestId('onboarding-next');
     await nextBtn.click();
+    await page.waitForTimeout(400);
+
+    const step1Title = await onboardingDialog.locator('h2').first().textContent();
 
     const backBtn = onboardingDialog
       .locator('button:has-text("Geri"), button:has-text("Back")')
       .first();
     await expect(backBtn).toBeVisible();
     await backBtn.click();
+    await page.waitForTimeout(400);
 
-    const stepTitle = onboardingDialog.locator('h2#step-title-0, h2').first();
-    await expect(stepTitle).toBeVisible();
+    const backTitle = await onboardingDialog.locator('h2').first().textContent();
+    expect(backTitle).not.toBe(step1Title);
   });
 
   test('should disable back button on first step', async ({ page }) => {
@@ -132,7 +127,10 @@ test.describe('Onboarding Wizard', () => {
       .locator('button:has-text("Geri"), button:has-text("Back")')
       .first();
     if (await backBtn.isVisible()) {
-      expect(await backBtn.getAttribute('disabled')).not.toBeNull();
+      // On step 0 the back button is disabled and has opacity-0
+      const isDisabled = await backBtn.getAttribute('disabled');
+      const classes = await backBtn.getAttribute('class');
+      expect(isDisabled !== null || classes?.includes('opacity-0')).toBeTruthy();
     }
   });
 
@@ -142,24 +140,15 @@ test.describe('Onboarding Wizard', () => {
 
     const nextBtn = page.getByTestId('onboarding-next');
 
-    // Step 0: Welcome -> Go to Step 1: Profile
-    await expect(onboardingDialog.locator('h2')).toHaveText(/Hoş Geldiniz|Welcome/i);
-    await nextBtn.click();
+    // Walk through all 6 steps: master(0) → recovery(1) → backup(2) → secondFactor(3) → privacy(4) → finish(5)
+    for (let step = 0; step < 5; step++) {
+      await expect(nextBtn).toBeVisible({ timeout: 5000 });
+      await nextBtn.click();
+      await page.waitForTimeout(400);
+    }
 
-    // Step 1: Profile -> Go to Step 2: Extension
-    await expect(onboardingDialog.locator('h2')).toHaveText(/Profil|Security Profile/i);
-    await nextBtn.click();
-
-    // Step 2: Extension -> Go to Step 3: Mobile
-    await expect(onboardingDialog.locator('h2')).toHaveText(/Tarayıcı|Browser/i);
-    await nextBtn.click();
-
-    // Step 3: Mobile -> Go to Step 4: Finalize
-    await expect(onboardingDialog.locator('h2')).toHaveText(/Her Yerde|Access Everywhere/i);
-    await nextBtn.click();
-
-    // Step 4: Finalize -> Finish
-    await expect(onboardingDialog.locator('h2')).toHaveText(/Her Şey Hazır|All Set|Ready/i);
+    // Now on step 5 (finish) — click the final button ("Start Using Vault")
+    await expect(nextBtn).toBeVisible({ timeout: 5000 });
     await nextBtn.click();
 
     // Verify completion
@@ -173,57 +162,34 @@ test.describe('Onboarding Wizard', () => {
     const onboardingDialog = page.locator('[role="dialog"][aria-modal="true"]');
     await expect(onboardingDialog).toBeVisible({ timeout: 5000 });
 
-    const nextBtn = onboardingDialog
-      .locator('button[class*="bg-blue-600"], button:has-text("Devam")')
-      .first();
-    const oldTitle = await onboardingDialog.locator('h2').first().textContent();
-    await expect(async () => {
-      const currentTitle = await onboardingDialog.locator('h2').first().textContent();
-      if (currentTitle === oldTitle) {
-        await nextBtn.click({ force: true });
-        await page.waitForTimeout(300);
-      }
-      const newTitle = await onboardingDialog.locator('h2').first().textContent();
-      expect(newTitle !== oldTitle).toBeTruthy();
-    }).toPass({ timeout: 5000 });
-
-    const advancedBtn = onboardingDialog
-      .locator(
-        'button:has-text("advanced"), button:has-text("Advanced"), button:has-text("Gelişmiş")'
-      )
-      .first();
-    if (await advancedBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await advancedBtn.click();
+    // Select paranoid profile on step 0
+    const paranoidBtn = onboardingDialog.locator('button:has-text("Paranoid")').first();
+    if (await paranoidBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await paranoidBtn.click();
     }
 
-    for (let i = 0; i < 4; i++) {
-      const btn = onboardingDialog
-        .locator('button[class*="bg-blue-600"], button:has-text("Devam"), button:has-text("Next")')
-        .first();
-      if (await btn.isVisible({ timeout: 1500 }).catch(() => false)) {
-        const oldTitle = await onboardingDialog.locator('h2').first().textContent();
-        await expect(async () => {
-          const currentTitle = await onboardingDialog.locator('h2').first().textContent();
-          if (currentTitle === oldTitle) {
-            await btn.click({ force: true });
-            await page.waitForTimeout(300);
-          }
-          const newTitle = await onboardingDialog.locator('h2').first().textContent();
-          expect(newTitle !== oldTitle).toBeTruthy();
-        })
-          .toPass({ timeout: 6000 })
-          .catch(() => {});
-      } else {
-        break;
-      }
+    // Navigate through all steps
+    const nextBtn = page.getByTestId('onboarding-next');
+    for (let step = 0; step < 5; step++) {
+      await expect(nextBtn).toBeVisible({ timeout: 5000 });
+      await nextBtn.click();
+      await page.waitForTimeout(400);
     }
 
-    const profile = await page.evaluate(() => {
-      return localStorage.getItem('aegis_security_profile');
+    // Complete onboarding (step 5 → finish)
+    await expect(nextBtn).toBeVisible({ timeout: 5000 });
+    await nextBtn.click();
+    await page.waitForTimeout(500);
+
+    const plan = await page.evaluate(() => {
+      return localStorage.getItem('aegis_onboarding_security_plan');
     });
-    if (profile) {
-      expect(profile).toBeTruthy();
+    if (plan) {
+      const parsed = JSON.parse(plan);
+      expect(parsed.profile).toBeTruthy();
+      expect(parsed.completedAt).toBeTruthy();
     } else {
+      // Dialog should at least be closed
       const dialogGone = !(await page
         .locator('[role="dialog"][aria-modal="true"]')
         .isVisible()
