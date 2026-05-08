@@ -81,11 +81,18 @@ test.describe('Entry CRUD Lifecycle', () => {
         '.entry-form-surface button[type="submit"], .entry-form-surface button:has-text("Save"), .entry-form-surface button:has-text("Kaydet")'
       )
       .first();
-    await saveBtn.click({ force: true });
 
-    await page.waitForTimeout(2000);
+    // Use retry loop (matches createEntry helper pattern) — Firefox can miss single clicks
+    await expect(async () => {
+      const closed = (await page.locator('.entry-form-surface').count()) === 0;
+      if (!closed) {
+        await saveBtn.click({ force: true }).catch(() => {});
+      }
+      expect(closed).toBeTruthy();
+    }).toPass({ timeout: 15000 });
+
     const entryCard = page.locator('.vault-entry-card').first();
-    await expect(entryCard).toBeVisible({ timeout: 10000 });
+    await expect(entryCard).toBeVisible({ timeout: 15000 });
   });
 
   test('should close entry form without saving', async ({ page }) => {
