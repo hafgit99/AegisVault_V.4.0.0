@@ -84,9 +84,7 @@ export function SensitiveActionModal({
             type="submit"
             disabled={dialog.kind !== 'confirm' && value.trim().length === 0}
             className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
-              dialog.danger
-                ? 'bg-red-600 hover:bg-red-700'
-                : 'bg-[var(--color-sage-green)] hover:brightness-110'
+              dialog.danger ? 'bg-red-600 hover:bg-red-700' : 'sensitive-action-confirm-btn'
             }`}
           >
             {dialog.confirmLabel}

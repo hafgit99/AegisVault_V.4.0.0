@@ -3828,13 +3828,41 @@
     color: rgba(238, 244, 255, 0.78);
   }
 
+  .v5-login-brand-eyebrow {
+    letter-spacing: 0.18em;
+    color: rgba(238, 244, 255, 0.82) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.34);
+  }
+
+  .v5-login-title {
+    max-width: 560px;
+    line-height: 1.08;
+    letter-spacing: 0;
+    color: #ffffff !important;
+    text-wrap: balance;
+    text-shadow: 0 2px 16px rgba(0, 0, 0, 0.34);
+  }
+
+  .v5-login-desc {
+    color: rgba(248, 252, 255, 0.86) !important;
+    font-weight: 650;
+    line-height: 1.8;
+    letter-spacing: 0;
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.28);
+  }
+
   .v5-login-proof-card {
     display: flex;
     align-items: flex-start;
     gap: 12px;
     border-radius: 14px;
     padding: 14px;
-    color: rgba(238, 244, 255, 0.86);
+    color: rgba(248, 252, 255, 0.92);
+    background: rgba(255, 255, 255, 0.11);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 14px 32px rgba(2, 8, 23, 0.12);
   }
 
   .v5-login-proof-card svg {
@@ -3848,13 +3876,61 @@
     font-weight: 800;
     line-height: 1.35;
     color: #ffffff;
+    letter-spacing: 0;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.2);
   }
 
   .v5-login-proof-card p {
     margin-top: 3px;
     font-size: 12px;
-    line-height: 1.55;
-    color: rgba(238, 244, 255, 0.62);
+    font-weight: 650;
+    line-height: 1.6;
+    letter-spacing: 0;
+    color: rgba(248, 252, 255, 0.76);
+  }
+
+  .recovery-drill-run-btn {
+    background: #25425e;
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #f8fbff;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
+  }
+
+  .recovery-drill-run-btn:hover {
+    background: #2e5174;
+  }
+
+  [data-theme='dark'] .recovery-drill-run-btn {
+    background: linear-gradient(180deg, #34475c, #29394d);
+    border-color: rgba(255, 255, 255, 0.16);
+    color: #f8fbff;
+    box-shadow: 0 16px 34px rgba(2, 6, 23, 0.32);
+  }
+
+  [data-theme='dark'] .recovery-drill-run-btn:hover {
+    background: linear-gradient(180deg, #3d536b, #30435a);
+  }
+
+  .sensitive-action-confirm-btn {
+    background: #25425e;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    color: #ffffff;
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.14);
+  }
+
+  .sensitive-action-confirm-btn:hover {
+    background: #2e5174;
+  }
+
+  [data-theme='dark'] .sensitive-action-confirm-btn {
+    background: linear-gradient(180deg, #34475c, #29394d);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #f8fbff;
+    box-shadow: 0 14px 28px rgba(2, 6, 23, 0.3);
+  }
+
+  [data-theme='dark'] .sensitive-action-confirm-btn:hover {
+    background: linear-gradient(180deg, #3d536b, #30435a);
   }
 
   .v5-login-panel {

@@ -500,16 +500,16 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
                 />
               </div>
               <div>
-                <p className="text-sm font-extrabold uppercase tracking-[0.22em] text-white/64">
+                <p className="v5-login-brand-eyebrow text-sm font-extrabold uppercase text-white/64">
                   Aegis Vault
                 </p>
-                <h1 className="mt-1 text-4xl font-bold tracking-tight text-white">
+                <h1 className="v5-login-title mt-1 text-4xl font-bold text-white">
                   {t('v5LoginTitle')}
                 </h1>
               </div>
             </div>
 
-            <p className="max-w-xl text-base leading-8 text-white/72">{t('v5LoginDesc')}</p>
+            <p className="v5-login-desc max-w-xl text-base">{t('v5LoginDesc')}</p>
           </div>
 
           <div className="grid gap-3">

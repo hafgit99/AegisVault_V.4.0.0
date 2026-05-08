@@ -4058,7 +4058,7 @@ export function SettingsDrawer({
                                 </div>
                               </div>
                               <label
-                                className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[var(--color-sage-green)]/30 bg-[var(--color-sage-green)] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--color-sage-green)]/90 active:scale-95 ${
+                                className={`recovery-drill-run-btn inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-bold shadow-sm transition active:scale-95 ${
                                   isRecoveryDrillRunning ? 'pointer-events-none opacity-60' : ''
                                 }`}
                               >
