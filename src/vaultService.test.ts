@@ -861,7 +861,7 @@ describe('VaultService Security & Cryptography', () => {
     (vaultService as any).opfsMockDb = mockDb;
     const cred = await (vaultService as any).getAuthCredential();
     expect(cred?.verificationHash).toBe('hash123');
-    expect(mockDb.get).toHaveBeenCalledWith('meta', 'auth');
+    expect(mockDb.get).toHaveBeenCalledWith('vault_metadata', 'auth_credential');
   });
 
   it('25. buildSearchIndex: Tokenları gerçekten hashlemeli (undefined dönmemeli)', async () => {
