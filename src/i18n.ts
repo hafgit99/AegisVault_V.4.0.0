@@ -3477,6 +3477,32 @@ Object.assign(resources.en.translation as Record<string, unknown>, {
     'Extended public keys (BIP-32/49/84) allow address derivation for watch-only tracking without exposing private material.',
   cryptoAddressFormatHint: 'Expected format',
   cryptoWatchOnlyStripLabel: 'View-only mode — no signing capability',
+  recoveryDrillUnsupportedFile: 'Select an encrypted Aegis backup (.aes).',
+  recoveryDrillPasswordModalTitle: 'Run recovery drill',
+  recoveryDrillPasswordModalDesc:
+    'Enter the backup password. Aegis will decrypt and verify the file without importing anything into this vault.',
+  recoveryDrillPasswordModalConfirm: 'Test backup only',
+  recoveryDrillPassedToast: 'Recovery drill passed. {{count}} record(s) can be decrypted.',
+  recoveryDrillFailedToast: 'Recovery drill failed: {{error}}',
+  recoveryDrillTitle: 'Recovery Drill',
+  recoveryDrillDesc:
+    'Verify an encrypted backup before you rely on it. The drill decrypts, validates, and summarizes the file without changing the current vault.',
+  recoveryDrillSafetyNote: 'Non-destructive: no records are imported, overwritten, or deleted.',
+  recoveryDrillRunning: 'Testing...',
+  recoveryDrillRunBtn: 'Run drill',
+  recoveryDrillRecords: 'Records',
+  recoveryDrillCryptoRecords: 'Crypto',
+  recoveryDrillPasskeyRecords: 'Passkeys',
+  recoveryDrillTotpRecords: 'TOTP',
+  recoveryDrillPassed: 'Passed',
+  recoveryDrillPayloadKind: 'Payload',
+  recoveryDrillBackupVersion: 'Backup version',
+  'recoveryDrillWarning.RECOVERY_DRILL_EMPTY_BACKUP':
+    'The backup is readable but contains no records.',
+  'recoveryDrillWarning.RECOVERY_DRILL_CRYPTO_REVIEW_REQUIRED':
+    'Crypto Vault records were found. Verify chain and address metadata after a real restore.',
+  'recoveryDrillWarning.RECOVERY_DRILL_PASSKEY_REENROLLMENT_REVIEW':
+    'Passkey metadata was found. Device-bound authenticators may still require service-side re-enrollment.',
 });
 
 Object.assign(resources.tr.translation as Record<string, unknown>, {
@@ -3629,6 +3655,32 @@ Object.assign(resources.tr.translation as Record<string, unknown>, {
     'Genişletilmiş public key’ler (BIP-32/49/84), özel materyal açığa çıkarmadan watch-only takip için adres türetmeye olanak tanır.',
   cryptoAddressFormatHint: 'Beklenen format',
   cryptoWatchOnlyStripLabel: 'Yalnızca görüntüleme modu — imzalama yeteneği yok',
+  recoveryDrillUnsupportedFile: 'Sifreli bir Aegis yedegi (.aes) secin.',
+  recoveryDrillPasswordModalTitle: 'Kurtarma provasi calistir',
+  recoveryDrillPasswordModalDesc:
+    'Yedek parolasini girin. Aegis bu dosyayi mevcut kasaya hicbir sey aktarmadan cozer, dogrular ve ozetler.',
+  recoveryDrillPasswordModalConfirm: 'Sadece yedegi test et',
+  recoveryDrillPassedToast: 'Kurtarma provasi basarili. {{count}} kayit cozulebiliyor.',
+  recoveryDrillFailedToast: 'Kurtarma provasi basarisiz: {{error}}',
+  recoveryDrillTitle: 'Kurtarma Provasi',
+  recoveryDrillDesc:
+    'Bir yedege guvenmeden once acilip acilamadigini test edin. Prova dosyayi cozer, dogrular ve mevcut kasayi degistirmeden ozetler.',
+  recoveryDrillSafetyNote:
+    'Zarar vermeyen test: kayit ice aktarilmaz, uzerine yazilmaz veya silinmez.',
+  recoveryDrillRunning: 'Test ediliyor...',
+  recoveryDrillRunBtn: 'Provayi calistir',
+  recoveryDrillRecords: 'Kayit',
+  recoveryDrillCryptoRecords: 'Kripto',
+  recoveryDrillPasskeyRecords: 'Passkey',
+  recoveryDrillTotpRecords: 'TOTP',
+  recoveryDrillPassed: 'Basarili',
+  recoveryDrillPayloadKind: 'Yedek tipi',
+  recoveryDrillBackupVersion: 'Yedek surumu',
+  'recoveryDrillWarning.RECOVERY_DRILL_EMPTY_BACKUP': 'Yedek okunabiliyor ancak kayit icermiyor.',
+  'recoveryDrillWarning.RECOVERY_DRILL_CRYPTO_REVIEW_REQUIRED':
+    'Kripto Kasa kayitlari bulundu. Gercek geri yukleme sonrasi ag ve adres bilgisini dogrulayin.',
+  'recoveryDrillWarning.RECOVERY_DRILL_PASSKEY_REENROLLMENT_REVIEW':
+    'Passkey metadatasi bulundu. Cihaza bagli authenticator kayitlari servis tarafinda yeniden kayit gerektirebilir.',
 });
 
 resources.tr.translation = repairTranslationTree(resources.tr.translation);

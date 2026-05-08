@@ -89,6 +89,23 @@ Restore should fail closed when:
 - Passkey metadata cannot be parsed safely.
 - A destructive import would overwrite data without explicit user confirmation.
 
+## Recovery Drill
+
+Aegis includes a non-destructive recovery drill for encrypted `.aes` backups. The
+drill asks for the backup password, decrypts the selected file, validates the
+backup envelope, counts restored domains, and then stops without importing,
+overwriting, or deleting any record in the active vault.
+
+The recovery drill is intended for:
+
+- Verifying that a backup password still works.
+- Confirming that the backup can be decrypted before relying on it.
+- Checking whether Crypto Vault, passkey, TOTP, and secret records are present.
+- Practicing recovery without touching production vault data.
+
+The drill does not replace a full restore rehearsal on a separate test vault, but
+it provides a fast safety check before releases, migrations, and backup rotation.
+
 ## Crypto Vault Backup Rules
 
 Crypto Vault is intentionally sensitive:

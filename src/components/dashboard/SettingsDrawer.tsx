@@ -32,6 +32,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { BackupService } from '../../lib/BackupService';
+import { RecoveryDrillService, type RecoveryDrillReport } from '../../lib/RecoveryDrillService';
 import { CanonicalMigrationService } from '../../lib/canonical-migration';
 import { ReAuthModal } from '../ReAuthModal';
 import { WipeConfirmationModal } from '../WipeConfirmationModal';
@@ -261,6 +262,8 @@ export function SettingsDrawer({
   const [syncAuditFilter, setSyncAuditFilter] = useState<
     'all' | 'imports' | 'restore_migration' | 'qr'
   >('all');
+  const [isRecoveryDrillRunning, setIsRecoveryDrillRunning] = useState(false);
+  const [recoveryDrillReport, setRecoveryDrillReport] = useState<RecoveryDrillReport | null>(null);
 
   // UI State
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
@@ -1522,6 +1525,47 @@ export function SettingsDrawer({
       toast.error(t('importFailed', { error: message }));
     } finally {
       setIsImporting(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRecoveryDrill = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsRecoveryDrillRunning(true);
+    setRecoveryDrillReport(null);
+
+    try {
+      if (!file.name.endsWith('.aes')) {
+        toast.error(t('recoveryDrillUnsupportedFile', 'Select an encrypted Aegis backup (.aes).'));
+        return;
+      }
+      const backupPass = await requestSensitiveInput({
+        title: t('recoveryDrillPasswordModalTitle', 'Run recovery drill'),
+        description: t(
+          'recoveryDrillPasswordModalDesc',
+          'Enter the backup password. Aegis will decrypt and verify the file without importing anything into this vault.'
+        ),
+        inputLabel: t('backupImportPasswordModalLabel', 'Backup password'),
+        confirmLabel: t('recoveryDrillPasswordModalConfirm', 'Test backup only'),
+        cancelLabel: t('cancel', 'Cancel'),
+      });
+      if (!backupPass) return;
+
+      const text = await file.text();
+      const report = await RecoveryDrillService.runEncryptedBackupDrill(text, backupPass);
+      setRecoveryDrillReport(report);
+      toast.success(
+        t('recoveryDrillPassedToast', {
+          count: report.recordCount,
+          defaultValue: 'Recovery drill passed. {{count}} record(s) can be decrypted.',
+        })
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'RECOVERY_DRILL_FAILED';
+      toast.error(t('recoveryDrillFailedToast', { error: message }));
+    } finally {
+      setIsRecoveryDrillRunning(false);
       e.target.value = '';
     }
   };
@@ -3986,6 +4030,116 @@ export function SettingsDrawer({
                                 />
                               </label>
                             </div>
+                          </div>
+
+                          <div
+                            data-testid="recovery-drill-panel"
+                            className="mt-4 rounded-2xl border border-[var(--color-sage-green)]/25 bg-[var(--color-sage-green)]/8 p-5 shadow-inner dark:border-[var(--color-sage-green)]/25 dark:bg-[var(--color-sage-green)]/10"
+                          >
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                              <div className="max-w-2xl">
+                                <div className="flex items-center gap-2">
+                                  <ShieldCheck className="h-5 w-5 text-[var(--color-sage-green)]" />
+                                  <h4 className="text-sm font-bold text-[var(--color-deep-navy)] dark:text-white">
+                                    {t('recoveryDrillTitle', 'Recovery Drill')}
+                                  </h4>
+                                </div>
+                                <p className="mt-2 text-xs leading-relaxed text-[var(--color-deep-navy)]/70 dark:text-white/68">
+                                  {t(
+                                    'recoveryDrillDesc',
+                                    'Test whether an encrypted backup can be opened without importing it or touching the active vault.'
+                                  )}
+                                </p>
+                                <div className="mt-3 rounded-xl border border-dashed border-[var(--color-sage-green)]/35 bg-white/45 px-3 py-2 text-[11px] font-medium text-[var(--color-deep-navy)]/70 dark:bg-white/5 dark:text-white/68">
+                                  {t(
+                                    'recoveryDrillSafetyNote',
+                                    'Safe rehearsal: password, integrity, schema and record coverage are verified in memory only.'
+                                  )}
+                                </div>
+                              </div>
+                              <label
+                                className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[var(--color-sage-green)]/30 bg-[var(--color-sage-green)] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--color-sage-green)]/90 active:scale-95 ${
+                                  isRecoveryDrillRunning ? 'pointer-events-none opacity-60' : ''
+                                }`}
+                              >
+                                <ShieldCheck className="h-4 w-4" />
+                                {isRecoveryDrillRunning
+                                  ? t('recoveryDrillRunning', 'Testing...')
+                                  : t('recoveryDrillRunBtn', 'Run drill')}
+                                <input
+                                  data-testid="recovery-drill-file-input"
+                                  type="file"
+                                  accept=".aes"
+                                  className="hidden"
+                                  onChange={handleRecoveryDrill}
+                                />
+                              </label>
+                            </div>
+
+                            {recoveryDrillReport ? (
+                              <div
+                                data-testid="recovery-drill-report"
+                                className="mt-4 grid gap-3 md:grid-cols-4"
+                              >
+                                {[
+                                  {
+                                    label: t('recoveryDrillRecords', 'Records'),
+                                    value: recoveryDrillReport.recordCount,
+                                  },
+                                  {
+                                    label: t('recoveryDrillCryptoRecords', 'Crypto'),
+                                    value: recoveryDrillReport.cryptoRecordCount,
+                                  },
+                                  {
+                                    label: t('recoveryDrillPasskeyRecords', 'Passkeys'),
+                                    value: recoveryDrillReport.passkeyRecordCount,
+                                  },
+                                  {
+                                    label: t('recoveryDrillTotpRecords', 'TOTP'),
+                                    value: recoveryDrillReport.totpRecordCount,
+                                  },
+                                ].map((metric) => (
+                                  <div
+                                    key={metric.label}
+                                    className="rounded-xl border border-black/5 bg-white/60 px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/5"
+                                  >
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-[var(--color-deep-navy)]/50 dark:text-white/45">
+                                      {metric.label}
+                                    </div>
+                                    <div className="mt-1 text-xl font-black text-[var(--color-deep-navy)] dark:text-white">
+                                      {metric.value}
+                                    </div>
+                                  </div>
+                                ))}
+                                <div className="md:col-span-4 rounded-xl border border-[var(--color-sage-green)]/25 bg-white/55 px-4 py-3 text-xs text-[var(--color-deep-navy)]/75 dark:bg-white/5 dark:text-white/70">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="rounded-full bg-[var(--color-sage-green)]/12 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-sage-green)]">
+                                      {t('recoveryDrillPassed', 'Passed')}
+                                    </span>
+                                    <span>
+                                      {t('recoveryDrillPayloadKind', 'Payload')}:{' '}
+                                      {recoveryDrillReport.payloadKind}
+                                    </span>
+                                    <span>
+                                      {t('recoveryDrillBackupVersion', 'Backup version')}:{' '}
+                                      {recoveryDrillReport.backupVersion}
+                                    </span>
+                                  </div>
+                                  {recoveryDrillReport.warnings.length > 0 ? (
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                      {recoveryDrillReport.warnings.map((warning) => (
+                                        <span
+                                          key={warning}
+                                          className="rounded-full bg-amber-500/12 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300"
+                                        >
+                                          {t(`recoveryDrillWarning.${warning}`, warning)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+                            ) : null}
                           </div>
 
                           <div className="v5-sync-strategy-panel mt-4 settings-subpanel p-5 rounded-2xl border shadow-inner">

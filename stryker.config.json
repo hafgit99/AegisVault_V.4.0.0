@@ -13,6 +13,7 @@
     "src/lib/WebAuthnService.ts",
     "src/lib/SQLiteOPFS.ts",
     "src/lib/PasskeyBindingService.ts",
+    "src/lib/RecoveryDrillService.ts",
     "src/lib/wallet/CryptoWalletVault.ts"
   ],
   "coverageAnalysis": "perTest",

@@ -1,5 +1,46 @@
 import { test, expect } from '@playwright/test';
+import { writeFile } from 'node:fs/promises';
 import { initializeVaultAndGoToDashboard } from './helpers/vault-init';
+import { BackupService } from '../../src/lib/BackupService';
+import { CryptoWalletVault } from '../../src/lib/wallet/CryptoWalletVault';
+
+function ensureNodeBackupCrypto() {
+  const root = globalThis as any;
+  root.window = root.window ?? {};
+  if (!root.window.crypto) {
+    Object.defineProperty(root.window, 'crypto', {
+      value: root.crypto,
+      configurable: true,
+    });
+  }
+  root.window.btoa =
+    root.window.btoa ?? ((input: string) => Buffer.from(input, 'binary').toString('base64'));
+  root.window.atob =
+    root.window.atob ?? ((input: string) => Buffer.from(input, 'base64').toString('binary'));
+}
+
+async function createRecoveryDrillFixture(filePath: string) {
+  ensureNodeBackupCrypto();
+  const backupJson = await BackupService.encryptBackup(
+    [
+      {
+        title: 'Recovery Drill Login',
+        username: 'user@example.com',
+        pass: 'E2eSecret123!',
+        category: 'General',
+        totpSecret: 'JBSWY3DPEHPK3PXP',
+      },
+      CryptoWalletVault.fromDraft({
+        name: 'E2E Watch Wallet',
+        chain: 'ethereum',
+        publicAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+        custodyMode: 'watch_only',
+      }),
+    ],
+    'RecoveryDrillE2E123!'
+  );
+  await writeFile(filePath, backupJson, 'utf8');
+}
 
 test.describe('Import & Export Workflows', () => {
   test.beforeEach(async ({ page }) => {
@@ -100,5 +141,33 @@ test.describe('Import & Export Workflows', () => {
     if (await restoreSection.isVisible({ timeout: 3000 }).catch(() => false)) {
       await expect(restoreSection).toBeVisible();
     }
+  });
+  test('should run recovery drill without importing backup data', async ({ page }, testInfo) => {
+    await openImportExportTab(page);
+
+    const drillPanel = page.getByTestId('recovery-drill-panel');
+    await expect(drillPanel).toBeVisible({ timeout: 10000 });
+
+    const backupPath = testInfo.outputPath('recovery-drill-valid.aes');
+    await createRecoveryDrillFixture(backupPath);
+    await page.getByTestId('recovery-drill-file-input').setInputFiles(backupPath);
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible({ timeout: 10000 });
+    await dialog.locator('input[type="password"]').fill('RecoveryDrillE2E123!');
+    await dialog
+      .getByRole('button', {
+        name: /Test backup only|Sadece yedegi test et|Sadece yedeği test et/i,
+      })
+      .click();
+
+    const report = page.getByTestId('recovery-drill-report');
+    await expect(report).toBeVisible({ timeout: 30000 });
+    await expect(report).toContainText(/2|Kayit|Records/i);
+    await expect(report).toContainText(/Crypto|Kripto/i);
+
+    await expect(
+      page.locator('.vault-entry-card').filter({ hasText: 'Recovery Drill Login' })
+    ).toHaveCount(0);
   });
 });

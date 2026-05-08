@@ -47,6 +47,7 @@
     "ci:enforce:release": "node scripts/enforce-ci-quality.cjs release",
     "test:mutate": "stryker run",
     "test:mutate:crypto": "stryker run --mutate src/lib/wallet/CryptoWalletVault.ts",
+    "test:mutate:recovery-drill": "stryker run --mutate src/lib/RecoveryDrillService.ts",
     "bench:search-index": "vitest run benchmarks/searchIndex.benchmark.test.ts",
     "start:electron": "electron .",
     "lint": "eslint .",

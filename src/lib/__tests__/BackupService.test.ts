@@ -1,4 +1,5 @@
 import { BackupService } from '../BackupService';
+import { RecoveryDrillService } from '../RecoveryDrillService';
 import {
   AEGIS_APP_VERSION,
   AEGIS_BACKUP_FORMAT,
@@ -193,5 +194,75 @@ describe('BackupService (Security P1-1)', () => {
     await expect(
       BackupService.decryptCanonicalBackup(JSON.stringify(backup), strongPassword)
     ).rejects.toThrow('UNSUPPORTED_CANONICAL_SCHEMA_VERSION');
+  });
+
+  it('runs a non-destructive recovery drill for encrypted legacy backups', async () => {
+    const backupJson = await BackupService.encryptBackup(
+      [
+        {
+          ...dummyData[0],
+          category: 'Passkeys',
+          passkeyMetadata: {
+            rp_id: 'example.com',
+            credential_id: 'cred-1',
+          },
+        },
+        CryptoWalletVault.fromDraft({
+          name: 'BTC Watch',
+          chain: 'bitcoin',
+          publicAddress: 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080',
+          custodyMode: 'watch_only',
+        }),
+      ],
+      strongPassword
+    );
+
+    const report = await RecoveryDrillService.runEncryptedBackupDrill(backupJson, strongPassword);
+
+    expect(report).toMatchObject({
+      status: 'passed',
+      payloadKind: 'legacy-array',
+      recordCount: 2,
+      cryptoRecordCount: 1,
+      passkeyRecordCount: 1,
+    });
+    expect(report.warnings).toContain('RECOVERY_DRILL_CRYPTO_REVIEW_REQUIRED');
+    expect(report.warnings).toContain('RECOVERY_DRILL_PASSKEY_REENROLLMENT_REVIEW');
+  });
+
+  it('runs a non-destructive recovery drill for canonical backups', async () => {
+    const backupJson = await BackupService.encryptCanonicalBackup(
+      [
+        ...canonicalData,
+        {
+          id: 2,
+          title: 'Canonical Passkey',
+          username: 'user2',
+          url: 'https://example.com',
+          category: 'passkey',
+          favorite: false,
+          tags: [],
+          deleted_at: null,
+          secret: {},
+          attachments: [],
+          passkey: {
+            rp_id: 'example.com',
+            origin: 'https://example.com',
+            credential_id: 'cred-2',
+          },
+        },
+      ],
+      strongPassword
+    );
+
+    const report = await RecoveryDrillService.runEncryptedBackupDrill(backupJson, strongPassword);
+
+    expect(report).toMatchObject({
+      status: 'passed',
+      payloadKind: AEGIS_CANONICAL_EXPORT_KIND,
+      recordCount: 2,
+      passkeyRecordCount: 1,
+      secretRecordCount: 1,
+    });
   });
 });
