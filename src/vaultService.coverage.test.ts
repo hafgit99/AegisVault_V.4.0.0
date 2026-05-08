@@ -281,12 +281,30 @@ describe('VaultService coverage helpers', () => {
 
     const verifySpy = vi.spyOn(VaultAuthService, 'verifyPassword').mockResolvedValue(true);
     await expect(service.verifyCurrentPassword('pw')).resolves.toBe(true);
+    expect(mockSqlite.getMetadata).toHaveBeenCalledWith('auth_credential');
 
     mockSqlite.getMetadata.mockReturnValueOnce(null);
-    mockDb.get = vi.fn(async () => null);
-    await expect(service.verifyCurrentPassword('pw')).resolves.toBe(false);
+    mockDb.get = vi.fn(async () => ({ credential }));
+    await expect(service.verifyCurrentPassword('pw')).resolves.toBe(true);
+    expect(mockDb.get).toHaveBeenCalledWith('vault_metadata', 'auth_credential');
 
     expect(verifySpy).toHaveBeenCalled();
+  });
+
+  it('returns false for re-auth when auth credential is missing from both sqlite and IDB', async () => {
+    const mockSqlite = {
+      getMetadata: vi.fn(() => null),
+    };
+    const mockDb = {
+      get: vi.fn(async () => null),
+    };
+    (service as unknown as { useSQLite: boolean }).useSQLite = true;
+    (service as unknown as { sqliteDb: unknown }).sqliteDb = mockSqlite as unknown;
+    (service as unknown as { opfsMockDb: unknown }).opfsMockDb = mockDb as unknown;
+
+    await expect(service.verifyCurrentPassword('pw')).resolves.toBe(false);
+    expect(mockSqlite.getMetadata).toHaveBeenCalledWith('auth_credential');
+    expect(mockDb.get).toHaveBeenCalledWith('vault_metadata', 'auth_credential');
   });
 
   it('rate limits repeated re-auth failures', async () => {

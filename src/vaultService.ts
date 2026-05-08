@@ -100,16 +100,20 @@ export class VaultService {
   private async getAuthCredential(): Promise<StoredCredential | null> {
     if (this.useSQLite && this.sqliteDb) {
       const meta = (
-        this.sqliteDb as unknown as { getMetadata: () => Record<string, unknown> | null }
-      ).getMetadata?.();
-      return (meta?.credential as StoredCredential) ?? null;
+        this.sqliteDb as unknown as {
+          getMetadata: (id: string) => Record<string, unknown> | null;
+        }
+      ).getMetadata?.('auth_credential');
+      if (meta?.credential) {
+        return meta.credential as StoredCredential;
+      }
     }
     if (this.opfsMockDb) {
       const meta = await (
         this.opfsMockDb as unknown as {
           get: (store: string, key: string) => Promise<Record<string, unknown> | undefined>;
         }
-      ).get('meta', 'auth');
+      ).get('vault_metadata', 'auth_credential');
       return (meta?.credential as StoredCredential) ?? null;
     }
     return null;
