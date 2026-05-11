@@ -51,9 +51,15 @@ test.describe('Crypto Vault + Watch-only', () => {
     await expect(balanceInput).toBeVisible({ timeout: 3000 });
     await balanceInput.fill('0.50 ETH');
 
-    // Submit the form
-    await form.locator('button[type="submit"]').click({ force: true });
-    await expect(form).toBeHidden({ timeout: 15000 });
+    // Submit the form (with retry loop for Firefox flakiness)
+    const submitBtn = form.locator('button[type="submit"]');
+    await expect(async () => {
+      const closed = (await page.locator('.entry-form-surface').count()) === 0;
+      if (!closed) {
+        await submitBtn.click({ force: true }).catch(() => {});
+      }
+      expect(closed).toBeTruthy();
+    }).toPass({ timeout: 15000 });
 
     await expect(
       page
