@@ -24,7 +24,8 @@ export class VaultBootstrapService {
     deriveMasterKey: (
       password: string,
       secretKey: string,
-      saltB64?: string
+      saltB64?: string,
+      version?: number
     ) => Promise<{ saltB64: string; aesKey: CryptoKey; sensitiveMaterial: Uint8Array }>;
     verifyPassword: (password: string, stored: StoredCredential) => Promise<boolean>;
     migrateAuthCredentialToArgon2: (
@@ -116,7 +117,8 @@ export class VaultBootstrapService {
       }
     }
 
-    const deriveResult = await deriveMasterKey(password, secretKey, currentSaltB64);
+    const vaultVersion = metadata?.version || 2;
+    const deriveResult = await deriveMasterKey(password, secretKey, currentSaltB64, vaultVersion);
     const newSaltB64 = deriveResult.saltB64;
     const activeKey = deriveResult.aesKey;
 
@@ -169,9 +171,46 @@ export class VaultBootstrapService {
       }
 
       if (deviceMetadata?.deviceSecretHash) {
-        const currentHash = await VaultAuthService.sha256Hex(secretKey);
-        if (currentHash !== deviceMetadata.deviceSecretHash) {
+        let currentHash: string;
+        if (deviceMetadata.isArgon2) {
+          const deviceSalt = Uint8Array.from(atob(deviceMetadata.salt), (c) => c.charCodeAt(0));
+          currentHash = await VaultAuthService.hashPasswordArgon2(secretKey, deviceSalt, {
+            iterations: 2,
+            memorySize: 32768,
+            parallelism: 1,
+            hashLength: 32,
+          });
+        } else {
+          currentHash = await VaultAuthService.sha256Hex(secretKey);
+        }
+
+        if (!VaultAuthService.timingSafeEqual(currentHash, deviceMetadata.deviceSecretHash)) {
           throw new Error('Invalid device secret key');
+        }
+
+        if (!deviceMetadata.isArgon2) {
+          const deviceSalt = window.crypto.getRandomValues(new Uint8Array(16));
+          const newHash = await VaultAuthService.hashPasswordArgon2(secretKey, deviceSalt, {
+            iterations: 2,
+            memorySize: 32768,
+            parallelism: 1,
+            hashLength: 32,
+          });
+          const txWrite = opfsMockDb.transaction('vault_metadata', 'readwrite');
+          await txWrite.objectStore('vault_metadata').put({
+            id: 'device_config',
+            deviceSecretHash: newHash,
+            salt: btoa(String.fromCharCode(...deviceSalt)),
+            isArgon2: true,
+          });
+          await txWrite.done;
+          if (useSQLite && sqliteDb) {
+            sqliteDb.putMetadata('device_config', {
+              deviceSecretHash: newHash,
+              salt: btoa(String.fromCharCode(...deviceSalt)),
+              isArgon2: true,
+            });
+          }
         }
       } else if (passwordsCount > 0) {
         const allEntries = await opfsMockDb.getAll('passwords');
@@ -217,13 +256,28 @@ export class VaultBootstrapService {
           throw new Error('Invalid device secret key for this vault');
         }
 
-        const deviceSecretHash = await VaultAuthService.sha256Hex(secretKey);
+        const deviceSalt = window.crypto.getRandomValues(new Uint8Array(16));
+        const deviceSecretHash = await VaultAuthService.hashPasswordArgon2(secretKey, deviceSalt, {
+          iterations: 2,
+          memorySize: 32768,
+          parallelism: 1,
+          hashLength: 32,
+        });
         const txWrite = opfsMockDb.transaction('vault_metadata', 'readwrite');
-        await txWrite.objectStore('vault_metadata').put({ id: 'device_config', deviceSecretHash });
+        await txWrite.objectStore('vault_metadata').put({
+          id: 'device_config',
+          deviceSecretHash,
+          salt: btoa(String.fromCharCode(...deviceSalt)),
+          isArgon2: true,
+        });
         await txWrite.done;
 
         if (useSQLite && sqliteDb) {
-          sqliteDb.putMetadata('device_config', { deviceSecretHash });
+          sqliteDb.putMetadata('device_config', {
+            deviceSecretHash,
+            salt: btoa(String.fromCharCode(...deviceSalt)),
+            isArgon2: true,
+          });
         }
       }
 
@@ -233,7 +287,7 @@ export class VaultBootstrapService {
           id: 'main_salt',
           salt: newSaltB64,
           createdAt: new Date().toISOString(),
-          version: 2,
+          version: 3,
         });
         await txWrite.done;
       }
@@ -243,7 +297,13 @@ export class VaultBootstrapService {
       }
 
       const newCredential = await createAuthCredential(password);
-      const deviceSecretHash = await VaultAuthService.sha256Hex(secretKey);
+      const deviceSalt = window.crypto.getRandomValues(new Uint8Array(16));
+      const deviceSecretHash = await VaultAuthService.hashPasswordArgon2(secretKey, deviceSalt, {
+        iterations: 2,
+        memorySize: 32768,
+        parallelism: 1,
+        hashLength: 32,
+      });
 
       const txWrite = opfsMockDb.transaction('vault_metadata', 'readwrite');
       const mStore = txWrite.objectStore('vault_metadata');
@@ -253,22 +313,31 @@ export class VaultBootstrapService {
           id: 'main_salt',
           salt: newSaltB64,
           createdAt: new Date().toISOString(),
-          version: 2,
+          version: 3,
         });
       }
 
       await mStore.put({ id: 'auth_credential', credential: newCredential });
-      await mStore.put({ id: 'device_config', deviceSecretHash });
+      await mStore.put({
+        id: 'device_config',
+        deviceSecretHash,
+        salt: btoa(String.fromCharCode(...deviceSalt)),
+        isArgon2: true,
+      });
       await txWrite.done;
 
       if (useSQLite && sqliteDb) {
         sqliteDb.putMetadata('auth_credential', { credential: newCredential });
-        sqliteDb.putMetadata('device_config', { deviceSecretHash });
+        sqliteDb.putMetadata('device_config', {
+          deviceSecretHash,
+          salt: btoa(String.fromCharCode(...deviceSalt)),
+          isArgon2: true,
+        });
         if (!metadata) {
           sqliteDb.putMetadata('main_salt', {
             salt: newSaltB64,
             createdAt: new Date().toISOString(),
-            version: 2,
+            version: 3,
           });
         }
       }

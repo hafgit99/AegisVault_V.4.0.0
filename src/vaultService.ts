@@ -278,7 +278,7 @@ export class VaultService {
       secretKey,
       dbName,
       isSetupAction,
-      deriveMasterKey: (pw, sk, salt) => this.deriveMasterKey(pw, sk, salt),
+      deriveMasterKey: (pw, sk, salt, version) => this.deriveMasterKey(pw, sk, salt, version),
       verifyPassword: (pw, stored) =>
         VaultAuthService.verifyPassword(pw, stored, VaultAuthService.calibrateArgon2Params()),
       migrateAuthCredentialToArgon2: (pw, old) =>
@@ -318,13 +318,15 @@ export class VaultService {
   async deriveMasterKey(
     password: string,
     secretKey: string,
-    saltB64?: string
+    saltB64?: string,
+    version?: number
   ): Promise<{ saltB64: string; aesKey: CryptoKey; sensitiveMaterial: Uint8Array }> {
     const result = await VaultAuthService.deriveMasterKey({
       password,
       secretKey,
       saltB64,
       params: VaultAuthService.calibrateArgon2Params(),
+      version,
     });
     this.aesKey = result.aesKey;
     this.sensitiveMaterial = result.sensitiveMaterial;
@@ -461,8 +463,8 @@ export class VaultService {
             VaultAuthService.calibrateArgon2Params()
           ),
         getPasswords: () => this.getPasswords(),
-        deriveMasterKey: async (password, key, salt) =>
-          (await this.deriveMasterKey(password, key, salt)).saltB64,
+        deriveMasterKey: async (password, key, salt, version) =>
+          (await this.deriveMasterKey(password, key, salt, version)).saltB64,
         createAuthCredential: (password) =>
           VaultAuthService.createAuthCredential(password, VaultAuthService.calibrateArgon2Params()),
         buildMetadataAtRest: (t, u, w, c, tg) => this.buildMetadataAtRest(t, u, w, c, tg),

@@ -51,6 +51,18 @@ export class VaultAuthService {
     }
   }
 
+  static timingSafeEqual(a: string, b: string): boolean {
+    if (a.length !== b.length) return false;
+    const encoder = new TextEncoder();
+    const bufA = encoder.encode(a);
+    const bufB = encoder.encode(b);
+    let result = 0;
+    for (let i = 0; i < bufA.length; i++) {
+      result |= bufA[i] ^ bufB[i];
+    }
+    return result === 0;
+  }
+
   static async hashPasswordPBKDF2(
     password: string,
     salt: Uint8Array,
@@ -117,11 +129,11 @@ export class VaultAuthService {
         salt,
         stored.argon2 || fallbackParams
       );
-      return computedHash === stored.verificationHash;
+      return this.timingSafeEqual(computedHash, stored.verificationHash);
     }
 
     const computedHash = await this.hashPasswordPBKDF2(password, salt, stored.iterations || 100000);
-    return computedHash === stored.verificationHash;
+    return this.timingSafeEqual(computedHash, stored.verificationHash);
   }
 
   static async migrateCredentialToArgon2(
@@ -138,8 +150,9 @@ export class VaultAuthService {
     secretKey: string;
     saltB64?: string;
     params: NonNullable<StoredCredential['argon2']>;
+    version?: number;
   }): Promise<{ saltB64: string; aesKey: CryptoKey; sensitiveMaterial: Uint8Array }> {
-    const { password, secretKey, saltB64, params } = args;
+    const { password, secretKey, saltB64, params, version = 3 } = args;
     let salt: Uint8Array;
 
     if (saltB64) {
@@ -148,17 +161,41 @@ export class VaultAuthService {
       salt = window.crypto.getRandomValues(new Uint8Array(16));
     }
 
-    const combinedMaterial = `${password}:${secretKey}`;
-    const derivedBits = await Argon2WorkerService.deriveBinary({
-      password: combinedMaterial,
-      salt,
-      parallelism: params.parallelism,
-      iterations: params.iterations,
-      memorySize: params.memorySize,
-      hashLength: params.hashLength,
-    });
+    let sensitiveMaterial: Uint8Array;
 
-    const sensitiveMaterial = derivedBits;
+    if (version >= 3) {
+      const ikm = await Argon2WorkerService.deriveBinary({
+        password,
+        salt,
+        parallelism: params.parallelism,
+        iterations: params.iterations,
+        memorySize: params.memorySize,
+        hashLength: params.hashLength,
+      });
+
+      const keyMaterial = await window.crypto.subtle.importKey('raw', ikm, 'HKDF', false, [
+        'deriveBits',
+      ]);
+
+      const info = new TextEncoder().encode(`aegis-vault-v5:${secretKey}`);
+      const derivedBits = await window.crypto.subtle.deriveBits(
+        { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info },
+        keyMaterial,
+        256
+      );
+      sensitiveMaterial = new Uint8Array(derivedBits);
+    } else {
+      const combinedMaterial = `${password}:${secretKey}`;
+      sensitiveMaterial = await Argon2WorkerService.deriveBinary({
+        password: combinedMaterial,
+        salt,
+        parallelism: params.parallelism,
+        iterations: params.iterations,
+        memorySize: params.memorySize,
+        hashLength: params.hashLength,
+      });
+    }
+
     const keyBuf = new ArrayBuffer(sensitiveMaterial.byteLength);
     new Uint8Array(keyBuf).set(sensitiveMaterial);
 

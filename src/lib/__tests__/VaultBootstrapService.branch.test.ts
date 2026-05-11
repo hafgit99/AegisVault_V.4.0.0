@@ -42,6 +42,8 @@ vi.mock('../crypto-types', () => ({
 vi.mock('../vault/VaultAuthService', () => ({
   VaultAuthService: {
     sha256Hex: vi.fn().mockResolvedValue('fake-hash'),
+    timingSafeEqual: vi.fn().mockImplementation((a, b) => a === b),
+    hashPasswordArgon2: vi.fn().mockResolvedValue('fake-argon2-hash'),
   },
 }));
 

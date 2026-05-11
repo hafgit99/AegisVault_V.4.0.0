@@ -128,7 +128,7 @@ describe('VaultService Security & Cryptography', () => {
     expect(mainSaltData.salt).toBeTypeOf('string');
     // Base64 regex check for 16-byte random values (~22-24 chars base64)
     expect(mainSaltData.salt.length).toBeGreaterThan(10);
-    expect(mainSaltData.version).toBe(2);
+    expect(mainSaltData.version).toBe(3);
 
     expect(authCredData).toBeDefined();
     expect(authCredData.credential.verificationHash).toBeDefined();

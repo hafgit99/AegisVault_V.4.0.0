@@ -12,7 +12,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { VaultService } from '../../vaultService';
 
 vi.mock('idb', () => ({ openDB: vi.fn() }));
-vi.mock('hash-wasm', () => ({ argon2id: vi.fn() }));
+vi.mock('hash-wasm', () => ({ argon2id: vi.fn().mockResolvedValue('fake-argon2-hash') }));
 vi.mock('../../lib/SQLiteOPFS', () => ({
   SQLiteOPFS: vi.fn(),
   isOPFSAvailable: vi.fn().mockReturnValue(true),
