@@ -173,9 +173,13 @@ export class VaultAuthService {
         hashLength: params.hashLength,
       });
 
-      const keyMaterial = await window.crypto.subtle.importKey('raw', ikm, 'HKDF', false, [
-        'deriveBits',
-      ]);
+      const keyMaterial = await window.crypto.subtle.importKey(
+        'raw',
+        toBufferSource(ikm),
+        'HKDF',
+        false,
+        ['deriveBits']
+      );
 
       const info = new TextEncoder().encode(`aegis-vault-v5:${secretKey}`);
       const derivedBits = await window.crypto.subtle.deriveBits(

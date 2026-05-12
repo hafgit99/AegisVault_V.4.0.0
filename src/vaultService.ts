@@ -463,8 +463,8 @@ export class VaultService {
             VaultAuthService.calibrateArgon2Params()
           ),
         getPasswords: () => this.getPasswords(),
-        deriveMasterKey: async (password, key, salt, version) =>
-          (await this.deriveMasterKey(password, key, salt, version)).saltB64,
+        deriveMasterKey: async (password: string, key: string, salt?: string) =>
+          (await this.deriveMasterKey(password, key, salt)).saltB64,
         createAuthCredential: (password) =>
           VaultAuthService.createAuthCredential(password, VaultAuthService.calibrateArgon2Params()),
         buildMetadataAtRest: (t, u, w, c, tg) => this.buildMetadataAtRest(t, u, w, c, tg),
