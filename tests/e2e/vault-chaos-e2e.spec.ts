@@ -225,7 +225,9 @@ test.describe('Chaos: Rapid UI Interactions', () => {
     await initializeVaultAndGoToDashboard(page);
 
     for (let i = 0; i < 3; i++) {
-      const settingsBtn = page.locator('button[aria-label="Settings"]').first();
+      const settingsBtn = page
+        .locator('button[aria-label="Open settings"], button[aria-label="Settings"]')
+        .first();
       await settingsBtn.click({ force: true });
       await page.waitForTimeout(1000);
 

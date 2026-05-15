@@ -56,7 +56,9 @@ test.describe('QR Sync Regression', () => {
 
   test('renders encrypted QR export flow with transfer code controls', async ({ page }) => {
     // Open Settings drawer
-    const settingsBtn = page.locator('button[aria-label="Settings"]').first();
+    const settingsBtn = page
+      .locator('button[aria-label="Open settings"], button[aria-label="Settings"]')
+      .first();
     await expect(settingsBtn).toBeVisible({ timeout: 10000 });
     await settingsBtn.click();
 
@@ -85,7 +87,9 @@ test.describe('QR Sync Regression', () => {
 
   test('renders receiver pairing controls for QR import flow', async ({ page }) => {
     // Open Settings drawer
-    const settingsBtn = page.locator('button[aria-label="Settings"]').first();
+    const settingsBtn = page
+      .locator('button[aria-label="Open settings"], button[aria-label="Settings"]')
+      .first();
     await expect(settingsBtn).toBeVisible({ timeout: 10000 });
     await settingsBtn.click();
 

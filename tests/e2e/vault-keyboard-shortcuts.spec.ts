@@ -58,7 +58,9 @@ test.describe('Keyboard Shortcuts', () => {
   });
 
   test('should close settings drawer with Escape', async ({ page }) => {
-    const settingsBtn = page.locator('button[aria-label="Settings"]').first();
+    const settingsBtn = page
+      .locator('button[aria-label="Open settings"], button[aria-label="Settings"]')
+      .first();
     await settingsBtn.click();
     await page.waitForTimeout(1000);
 

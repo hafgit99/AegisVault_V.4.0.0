@@ -42,7 +42,9 @@ test.describe('Dashboard UI', () => {
   });
 
   test('should display settings button in header', async ({ page }) => {
-    const settingsBtn = page.locator('button[aria-label="Settings"]').first();
+    const settingsBtn = page
+      .locator('button[aria-label="Open settings"], button[aria-label="Settings"]')
+      .first();
     await expect(settingsBtn).toBeVisible({ timeout: 5000 });
   });
 
@@ -54,7 +56,9 @@ test.describe('Dashboard UI', () => {
   });
 
   test('should display language toggle button', async ({ page }) => {
-    const langBtn = page.locator('button[aria-label="Change language"]').first();
+    const langBtn = page
+      .locator('button[aria-label="Change language"], button[aria-label="Dili değiştir"]')
+      .first();
     await expect(langBtn).toBeVisible({ timeout: 5000 });
   });
 
@@ -66,7 +70,9 @@ test.describe('Dashboard UI', () => {
   });
 
   test('should display donate button', async ({ page }) => {
-    const donateBtn = page.locator('button[aria-label="Donate"]').first();
+    const donateBtn = page
+      .locator('button[aria-label="Open donation dialog"], button[aria-label="Donate"]')
+      .first();
     await expect(donateBtn).toBeVisible({ timeout: 5000 });
   });
 

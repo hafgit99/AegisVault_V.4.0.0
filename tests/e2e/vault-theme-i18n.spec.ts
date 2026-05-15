@@ -47,7 +47,9 @@ test.describe('Theme & Internationalization', () => {
   });
 
   test('should toggle language from EN to TR', async ({ page }) => {
-    const langBtn = page.locator('button[aria-label="Change language"]').first();
+    const langBtn = page
+      .locator('button[aria-label="Change language"], button[aria-label="Dili değiştir"]')
+      .first();
     await expect(langBtn).toBeVisible({ timeout: 5000 });
 
     const initialLang = await langBtn.textContent();
@@ -59,7 +61,9 @@ test.describe('Theme & Internationalization', () => {
   });
 
   test('should reflect language change in UI labels', async ({ page }) => {
-    const langBtn = page.locator('button[aria-label="Change language"]').first();
+    const langBtn = page
+      .locator('button[aria-label="Change language"], button[aria-label="Dili değiştir"]')
+      .first();
     const initialLang = await langBtn.textContent();
 
     await langBtn.click();
