@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { VaultLogin } from './components/VaultLogin';
 import './i18n';
+import { useTranslation } from 'react-i18next';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { extensionBridge } from './lib/ExtensionBridge';
@@ -28,6 +29,7 @@ function AppLoadingFallback() {
 }
 
 function App() {
+  const { t } = useTranslation();
   const [isUnlocked, setIsUnlocked] = useState(false);
 
   // Lock when user is idle.
@@ -62,14 +64,14 @@ function App() {
         {showOnboarding && <OnboardingWizard onComplete={handleOnboardingComplete} />}
       </Suspense>
       <a href="#main-content" className="skip_to_content">
-        Skip to main content
+        {t('skipToMainContent', 'Skip to main content')}
       </a>
       <div
         className="min-h-screen relative bg-[var(--color-cloud-dancer)] text-[var(--color-deep-navy)] flex flex-col items-center w-full"
         role="application"
-        aria-label="Aegis Vault Password Manager"
+        aria-label={t('appAriaLabel', 'Aegis Vault Password Manager')}
       >
-        <div id="main-content" className="w-full flex flex-col items-center flex-1">
+        <div id="main-content" tabIndex={-1} className="w-full flex flex-col items-center flex-1">
           <Suspense fallback={<AppLoadingFallback />}>
             {isUnlocked ? (
               <Dashboard onLock={() => setIsUnlocked(false)} />

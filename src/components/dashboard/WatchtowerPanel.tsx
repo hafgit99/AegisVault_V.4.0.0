@@ -30,12 +30,32 @@ export function WatchtowerPanel() {
     securityModeProfile,
   } = useVault();
   const hibpPolicyLocked = securityModeProfile === 'maximum';
+  const totalFindings =
+    watchtower.weak +
+    watchtower.reused +
+    watchtower.old +
+    watchtower.pwned +
+    watchtower.aliasAtRisk +
+    watchtower.aliasNeedsRotation;
 
   return (
     <GlowCard className="watchtower-surface v5-rail-card v5-watchtower-card rounded-xl p-5 relative">
-      <div className="v5-rail-heading mb-4">
-        <ShieldAlert className="w-4 h-4" />
-        <h3 className="text-sm font-semibold uppercase tracking-widest">{t('watchtowerTitle')}</h3>
+      <div className="v5-rail-heading mb-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <ShieldAlert className="w-4 h-4" />
+          <h3 className="truncate text-sm font-semibold uppercase tracking-widest">
+            {t('watchtowerTitle')}
+          </h3>
+        </div>
+        <span
+          className={`v5-rail-status-chip ${
+            totalFindings > 0 ? 'v5-rail-status-chip-warning' : 'v5-rail-status-chip-safe'
+          }`}
+        >
+          {totalFindings > 0
+            ? t('watchtowerSummaryIssues', { count: totalFindings })
+            : t('watchtowerSummaryClean')}
+        </span>
       </div>
 
       <div className="flex flex-col gap-2.5">

@@ -61,7 +61,6 @@ export function QuickAliasModal({ onClose }: QuickAliasModalProps) {
         title: site,
       });
 
-      // Update details with provisioned data
       details.email = result.email;
       details.providerAliasId = result.providerAliasId;
       details.providerSyncStatus = result.providerSyncStatus;
@@ -72,7 +71,7 @@ export function QuickAliasModal({ onClose }: QuickAliasModalProps) {
       toast.success(t('quickAliasSuccess'));
     } catch (error) {
       console.error('Failed to generate alias:', error);
-      toast.error('Failed to generate masked email.');
+      toast.error(t('quickAliasGenerateError'));
     } finally {
       setIsGenerating(false);
     }
@@ -103,68 +102,86 @@ export function QuickAliasModal({ onClose }: QuickAliasModalProps) {
       toast.success(t('aliasGeneratedLinkedToast'));
     } catch (error) {
       console.error('Save to vault failed:', error);
-      toast.error('Failed to save entry to vault.');
+      toast.error(t('quickAliasSaveError'));
     }
   };
 
   const activeProvider = providers.find((p) => p.id === selectedProviderId);
+  const providerStatus = activeProvider?.syncStatus || 'manual';
+  const providerStatusLabel = t(`aliasProviderStatus_${providerStatus}`, providerStatus);
+  const providerCapabilities = [
+    activeProvider?.capabilities?.canProvision ? t('quickAliasCapabilityProvision') : null,
+    activeProvider?.capabilities?.canRotate ? t('quickAliasCapabilityRotate') : null,
+    activeProvider?.capabilities?.canManageOnline ? t('quickAliasCapabilityConsole') : null,
+  ].filter(Boolean);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="v5-modal-surface w-full max-w-lg overflow-hidden rounded-3xl shadow-2xl animate-in zoom-in-95 duration-300">
-        <div className="v5-modal-header flex items-center justify-between border-b border-black/5 bg-gradient-to-r from-[var(--color-sage-green)]/5 to-[var(--color-deep-navy)]/5 px-6 py-4 dark:border-white/5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)]">
-              <ShieldCheck className="h-5 w-5" />
+    <div className="v5-quick-alias-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md animate-in fade-in duration-300">
+      <div
+        className="v5-quick-alias-surface v5-modal-surface w-full max-w-3xl overflow-hidden rounded-3xl shadow-2xl animate-in zoom-in-95 duration-300"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="quick-alias-title"
+      >
+        <div className="v5-quick-alias-header">
+          <div className="v5-quick-alias-title-row">
+            <div className="v5-quick-alias-icon">
+              <AtSign className="h-5 w-5" />
             </div>
-            <div>
-              <h2 className="text-lg font-bold tracking-tight text-[var(--color-deep-navy)] dark:text-white">
-                {t('quickAliasTitle')}
-              </h2>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-deep-navy)]/60 dark:text-white/60">
-                Privacy Shield Generation
-              </p>
+            <div className="min-w-0">
+              <span className="v5-section-kicker">{t('quickAliasKicker')}</span>
+              <h2 id="quick-alias-title">{t('quickAliasTitle')}</h2>
+              <p>{t('quickAliasDesc')}</p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-full p-2 text-[var(--color-deep-navy)]/40 transition hover:bg-black/5 hover:text-[var(--color-deep-navy)] dark:text-white/40 dark:hover:bg-white/5 dark:hover:text-white"
+            className="v5-quick-alias-close"
+            aria-label={t('close', 'Close')}
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="p-6">
-          <p className="mb-6 text-xs leading-relaxed text-[var(--color-deep-navy)]/70 dark:text-white/70">
-            {t('quickAliasDesc')}
-          </p>
+        <div className="v5-quick-alias-body">
+          <div className="v5-quick-alias-form-panel">
+            <div className="v5-quick-alias-trust-strip">
+              <span>
+                <ShieldCheck className="h-3.5 w-3.5" />
+                {t('quickAliasTrustPrivate')}
+              </span>
+              <span>
+                <Wand2 className="h-3.5 w-3.5" />
+                {t('quickAliasTrustDisposable')}
+              </span>
+              <span>
+                <Copy className="h-3.5 w-3.5" />
+                {t('quickAliasTrustVaultReady')}
+              </span>
+            </div>
 
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-deep-navy)]/60 dark:text-white/60">
-                {t('quickAliasSiteLabel')}
-              </label>
-              <div className="relative">
-                <Wand2 className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-sage-green)] opacity-50" />
+            <div className="v5-quick-alias-field">
+              <label htmlFor="quick-alias-site">{t('quickAliasSiteLabel')}</label>
+              <div className="v5-quick-alias-control">
+                <Wand2 className="h-4 w-4" />
                 <input
+                  id="quick-alias-site"
                   type="text"
                   placeholder={t('quickAliasSitePlaceholder')}
                   value={site}
                   onChange={(e) => setSite(e.target.value)}
-                  className="v5-input-field w-full rounded-2xl border border-black/5 bg-black/[0.02] py-3 pl-10 pr-4 text-sm outline-none transition-all focus:border-[var(--color-sage-green)]/40 focus:bg-white dark:border-white/10 dark:bg-white/[0.03] dark:focus:bg-[#1a253a]"
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-deep-navy)]/60 dark:text-white/60">
-                {t('quickAliasProviderLabel')}
-              </label>
-              <div className="relative">
+            <div className="v5-quick-alias-field">
+              <label htmlFor="quick-alias-provider">{t('quickAliasProviderLabel')}</label>
+              <div className="v5-quick-alias-control v5-quick-alias-select">
                 <select
+                  id="quick-alias-provider"
                   value={selectedProviderId || ''}
                   onChange={(e) => setSelectedProviderId(e.target.value)}
-                  className="v5-input-field w-full appearance-none rounded-2xl border border-black/5 bg-black/[0.02] py-3 pl-4 pr-10 text-sm outline-none transition-all focus:border-[var(--color-sage-green)]/40 focus:bg-white dark:border-white/10 dark:bg-white/[0.03] dark:focus:bg-[#1a253a]"
                 >
                   {providers.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -172,76 +189,59 @@ export function QuickAliasModal({ onClose }: QuickAliasModalProps) {
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 opacity-40" />
+                <ChevronDown className="pointer-events-none h-4 w-4 opacity-45" />
               </div>
-              {activeProvider && (
-                <div className="flex items-center gap-2 px-1 pt-1">
-                  <span className="text-[10px] font-medium opacity-50">
-                    Domain: {activeProvider.defaultDomain}
-                  </span>
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${activeProvider.syncStatus === 'linked' ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                  />
-                  <span className="text-[10px] font-medium opacity-50 capitalize">
-                    {activeProvider.syncStatus}
-                  </span>
-                </div>
-              )}
             </div>
 
             {generatedAlias ? (
-              <div className="mt-6 space-y-4 animate-in slide-in-from-top-4 duration-500">
-                <div className="group relative overflow-hidden rounded-2xl border border-[var(--color-sage-green)]/30 bg-[var(--color-sage-green)]/[0.03] p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-sage-green)]">
-                        {t('quickAliasSuccess')}
-                      </div>
-                      <div className="mt-1 font-mono text-base font-semibold tracking-tight text-[var(--color-deep-navy)] dark:text-white">
-                        {generatedAlias}
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleCopy}
-                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)] transition-all hover:bg-[var(--color-sage-green)] hover:text-white active:scale-95"
-                    >
-                      <Copy className="h-5 w-5" />
-                    </button>
+              <div className="v5-quick-alias-result animate-in slide-in-from-top-4 duration-500">
+                <div className="v5-quick-alias-result-main">
+                  <div>
+                    <span>{t('quickAliasResultLabel')}</span>
+                    <code>{generatedAlias}</code>
                   </div>
-                  <div
-                    className="absolute bottom-0 left-0 h-1 bg-[var(--color-sage-green)]/20 transition-all group-hover:w-full"
-                    style={{ width: '40%' }}
-                  />
-                </div>
-
-                <div className="flex gap-3">
                   <button
+                    type="button"
+                    onClick={handleCopy}
+                    className="v5-quick-alias-icon-action"
+                    aria-label={t('quickAliasCopyBtn')}
+                  >
+                    <Copy className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="v5-quick-alias-actions">
+                  <button
+                    type="button"
                     onClick={handleSaveToVault}
                     disabled={isSaved}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[var(--color-deep-navy)] dark:bg-white/10 px-4 py-3.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-[var(--color-deep-navy)]/90 dark:hover:bg-white/20 active:scale-[0.98] disabled:opacity-50"
+                    className="v5-quick-alias-primary"
                   >
                     {isSaved ? (
                       <ShieldCheck className="h-4 w-4" />
                     ) : (
                       <PlusCircle className="h-4 w-4" />
                     )}
-                    {isSaved ? 'Saved to Vault' : t('quickAliasSaveVaultBtn')}
+                    {isSaved ? t('quickAliasSavedToVault') : t('quickAliasSaveVaultBtn')}
                   </button>
                   <button
+                    type="button"
                     onClick={handleGenerate}
                     disabled={isGenerating}
-                    className="flex items-center justify-center rounded-2xl border border-black/5 bg-black/[0.03] px-4 py-3.5 transition-all hover:bg-black/5 active:scale-[0.98] dark:border-white/10 dark:bg-white/[0.05] dark:hover:bg-white/10"
-                    title="Regenerate"
+                    className="v5-quick-alias-secondary"
+                    title={t('quickAliasRegenerate')}
+                    aria-label={t('quickAliasRegenerate')}
                   >
                     <RefreshCw className={`h-4 w-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                    <span>{t('quickAliasRegenerate')}</span>
                   </button>
                 </div>
               </div>
             ) : (
               <button
+                type="button"
                 onClick={handleGenerate}
                 disabled={isGenerating || !selectedProviderId}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-[var(--color-sage-green)] to-[var(--color-deep-navy)] dark:from-[var(--color-sage-green)]/40 dark:to-emerald-900/40 dark:border dark:border-[var(--color-sage-green)]/20 py-4 text-sm font-bold text-white shadow-lg shadow-emerald-500/10 transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+                className="v5-quick-alias-primary v5-quick-alias-generate"
               >
                 {isGenerating ? (
                   <RefreshCw className="h-4 w-4 animate-spin" />
@@ -252,26 +252,48 @@ export function QuickAliasModal({ onClose }: QuickAliasModalProps) {
               </button>
             )}
           </div>
-        </div>
 
-        <div className="bg-black/[0.02] px-6 py-4 dark:bg-white/[0.02]">
-          <div className="flex items-center justify-between text-[11px] font-medium opacity-40">
-            <div className="flex items-center gap-1.5">
-              <ShieldCheck className="h-3 w-3" />
-              <span>Zero-knowledge masking</span>
+          <aside className="v5-quick-alias-provider-card">
+            <span className="v5-section-kicker">{t('quickAliasProviderStatus')}</span>
+            <div className="v5-quick-alias-provider-title">
+              <strong>{activeProvider?.name || t('notConfigured')}</strong>
+              <span className={`v5-quick-alias-status v5-quick-alias-status-${providerStatus}`}>
+                {providerStatusLabel}
+              </span>
+            </div>
+            <dl>
+              <div>
+                <dt>{t('quickAliasDomain')}</dt>
+                <dd>{activeProvider?.defaultDomain || '-'}</dd>
+              </div>
+              <div>
+                <dt>{t('quickAliasForwarding')}</dt>
+                <dd>{activeProvider?.forwardTo || t('notConfigured')}</dd>
+              </div>
+              <div>
+                <dt>{t('quickAliasStrategy')}</dt>
+                <dd>{activeProvider?.generationStrategy || '-'}</dd>
+              </div>
+            </dl>
+            <div className="v5-quick-alias-capabilities">
+              {providerCapabilities.length > 0 ? (
+                providerCapabilities.map((capability) => <span key={capability}>{capability}</span>)
+              ) : (
+                <span>{t('quickAliasCapabilityManual')}</span>
+              )}
             </div>
             {activeProvider?.managementUrl && (
               <a
                 href={activeProvider.managementUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 transition-opacity hover:opacity-100"
+                className="v5-quick-alias-console"
               >
-                Provider Console
-                <ExternalLink className="h-2.5 w-2.5" />
+                {t('quickAliasProviderConsole')}
+                <ExternalLink className="h-3.5 w-3.5" />
               </a>
             )}
-          </div>
+          </aside>
         </div>
       </div>
     </div>

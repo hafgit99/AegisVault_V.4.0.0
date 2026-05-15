@@ -24,10 +24,15 @@ export function CategorySidebar({ onDownloadEmergencyKit, isGeneratingKit }: Cat
       {/* Categories */}
       <GlowCard className="category-surface v5-rail-card v5-category-card rounded-xl p-5 flex-1 flex flex-col">
         <div className="v5-rail-heading mb-4">
-          <Hash className="h-4 w-4" />
-          <h3 className="text-sm font-semibold uppercase tracking-widest">
-            {t('categoriesTitle')}
-          </h3>
+          <div className="flex min-w-0 items-center gap-2">
+            <Hash className="h-4 w-4" />
+            <h3 className="truncate text-sm font-semibold uppercase tracking-widest">
+              {t('categoriesTitle')}
+            </h3>
+          </div>
+          <span className="v5-rail-status-chip">
+            {categories.length + 1} {t('categoryScopeCount')}
+          </span>
         </div>
         <div className="flex flex-col gap-2.5">
           <button
@@ -105,6 +110,10 @@ export function CategorySidebar({ onDownloadEmergencyKit, isGeneratingKit }: Cat
           <div>
             <h4 className="font-semibold text-sm">{t('offlinePwaActive')}</h4>
             <p className="text-xs opacity-60 mt-1">{t('airgappedSync')}</p>
+          </div>
+          <div className="v5-offline-trust-row">
+            <span>{t('offlineTrustLocal')}</span>
+            <span>{t('offlineTrustRecovery')}</span>
           </div>
 
           <button

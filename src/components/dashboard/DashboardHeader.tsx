@@ -145,7 +145,7 @@ export function DashboardHeader({
               type="button"
               onClick={handleLanguageToggle}
               className="toolbar-control flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm transition-all"
-              aria-label="Change language"
+              aria-label={t('changeLanguageAria', 'Change language')}
             >
               <Globe className="w-3.5 h-3.5" />
               {i18n.language.startsWith('en') ? 'EN' : 'TR'}
@@ -154,7 +154,7 @@ export function DashboardHeader({
               onClick={onDonationOpen}
               className="toolbar-control group relative shrink-0 rounded-full p-2.5 shadow-sm transition-all"
               title={t('donateBtn')}
-              aria-label="Donate"
+              aria-label={t('donateAria', 'Open donation dialog')}
             >
               <Heart className="w-5 h-5 fill-current opacity-80 group-hover:opacity-100" />
               <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-400 shadow-[0_0_0_3px_rgba(251,113,133,0.14)]" />
@@ -162,7 +162,7 @@ export function DashboardHeader({
             <button
               onClick={onSettingsOpen}
               className="toolbar-control shrink-0 rounded-full p-2.5 shadow-sm transition-all"
-              aria-label="Settings"
+              aria-label={t('settingsAria', 'Open settings')}
             >
               <Settings className="w-5 h-5" />
             </button>
@@ -196,6 +196,7 @@ export function DashboardHeader({
               }
               className="toolbar-control flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold shadow-sm outline-none transition-all md:text-sm"
               title={t('viewDensityToggle', 'Toggle card density')}
+              aria-label={t('viewDensityToggleAria', 'Toggle card density')}
             >
               {viewDensity === 'comfortable' ? (
                 <Rows3 className="w-4 h-4" />
@@ -208,8 +209,8 @@ export function DashboardHeader({
             </button>
             <button
               onClick={handleLock}
-              className="flex shrink-0 items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-600 shadow-sm transition-all hover:bg-red-500 hover:text-white active:scale-95"
-              aria-label="Lock vault"
+              className="v5-lock-vault-btn flex shrink-0 items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-600 shadow-sm transition-all hover:bg-red-500 hover:text-white active:scale-95"
+              aria-label={t('lockVaultAria', 'Lock vault')}
             >
               <LogOut className="w-4 h-4" />
               <span className="hidden md:inline">{t('lockVault')}</span>
@@ -227,12 +228,15 @@ export function DashboardHeader({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="toolbar-control w-full rounded-full py-2 pl-10 pr-4 text-sm font-medium shadow-sm outline-none transition-all"
+              aria-label={t('searchVaultAria', 'Search vault records')}
             />
           </div>
           <div className="toolbar-chip-group v5-search-scope-group flex shrink-0 items-center gap-1 rounded-full px-1.5 py-1">
             <button
               type="button"
               onClick={() => setSearchScope('all')}
+              aria-pressed={searchScope === 'all'}
+              aria-label={t('searchScopeAria', { scope: t('searchScopeAll', 'All') })}
               className={`v5-search-scope-btn rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
                 searchScope === 'all'
                   ? 'bg-[var(--color-sage-green)] text-white'
@@ -244,6 +248,8 @@ export function DashboardHeader({
             <button
               type="button"
               onClick={() => setSearchScope('title')}
+              aria-pressed={searchScope === 'title'}
+              aria-label={t('searchScopeAria', { scope: t('searchScopeTitle', 'Title') })}
               className={`v5-search-scope-btn rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
                 searchScope === 'title'
                   ? 'bg-[var(--color-sage-green)] text-white'
@@ -255,6 +261,8 @@ export function DashboardHeader({
             <button
               type="button"
               onClick={() => setSearchScope('username')}
+              aria-pressed={searchScope === 'username'}
+              aria-label={t('searchScopeAria', { scope: t('searchScopeUsername', 'User') })}
               className={`v5-search-scope-btn rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
                 searchScope === 'username'
                   ? 'bg-[var(--color-sage-green)] text-white'
@@ -266,6 +274,8 @@ export function DashboardHeader({
             <button
               type="button"
               onClick={() => setSearchScope('tags')}
+              aria-pressed={searchScope === 'tags'}
+              aria-label={t('searchScopeAria', { scope: t('searchScopeTags', 'Tags') })}
               className={`v5-search-scope-btn rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
                 searchScope === 'tags'
                   ? 'bg-[var(--color-sage-green)] text-white'

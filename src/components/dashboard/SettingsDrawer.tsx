@@ -137,15 +137,19 @@ function SettingsEmptyState({
   title: string;
   description?: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <div className="settings-empty-state">
       <div className="settings-empty-state-icon">
         <Icon className="h-5 w-5" />
       </div>
-      <div>
+      <div className="min-w-0">
+        <div className="settings-empty-state-kicker">{t('emptyStateKicker')}</div>
         <div className="settings-empty-state-title">{title}</div>
         {description && <div className="settings-empty-state-copy">{description}</div>}
       </div>
+      <span className="settings-empty-state-badge">{t('emptyStateReady')}</span>
     </div>
   );
 }
@@ -2471,9 +2475,9 @@ export function SettingsDrawer({
                           type="button"
                           onClick={() => setActiveTab(section.id)}
                           aria-current={activeTab === section.id ? 'page' : undefined}
-                          className={`group flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left outline-none transition-all ${
+                          className={`v5-settings-nav-item group flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left outline-none transition-all ${
                             activeTab === section.id
-                              ? 'bg-[#0a1128] text-white shadow-sm ring-1 ring-black/10 dark:bg-[#111827] dark:text-white dark:ring-[var(--color-sage-green)]/35'
+                              ? 'v5-settings-nav-item-active bg-[#0a1128] text-white shadow-sm ring-1 ring-black/10 dark:bg-[#111827] dark:text-white dark:ring-[var(--color-sage-green)]/35'
                               : 'text-[var(--color-deep-navy)]/75 hover:bg-black/5 hover:text-[var(--color-deep-navy)] dark:text-white/78 dark:hover:bg-white/10'
                           }`}
                         >
@@ -2483,7 +2487,7 @@ export function SettingsDrawer({
                               <span className="truncate text-sm font-bold">{section.label}</span>
                               {section.badge && (
                                 <span
-                                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                  className={`v5-settings-nav-badge rounded-full px-2 py-0.5 text-[10px] font-bold ${
                                     activeTab === section.id
                                       ? 'bg-white/15 text-white'
                                       : 'bg-black/5 text-[var(--color-deep-navy)]/55 dark:bg-white/10 dark:text-white/55'
@@ -2532,6 +2536,26 @@ export function SettingsDrawer({
                               <span className="severity-chip-value">{metric.value}</span>
                             </span>
                           ))}
+                        </div>
+                        <div className="v5-settings-page-status mt-4">
+                          <div className="min-w-0">
+                            <span className="v5-settings-page-status-kicker">
+                              {t('settingsPageStatusKicker')}
+                            </span>
+                            <strong>
+                              {activeSettingsSection.badge
+                                ? t('settingsPageStatusTracked')
+                                : t('settingsPageStatusReady')}
+                            </strong>
+                          </div>
+                          <div className="v5-settings-page-status-chips">
+                            <span>
+                              {activeSettingsSection.badge || t('settingsPageStatusStandard')}
+                            </span>
+                            <span>
+                              {settingsPageMetrics.length} {t('settingsPageStatusSignals')}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -3936,9 +3960,24 @@ export function SettingsDrawer({
                             <div className="v5-sync-section-icon">
                               <Database className="h-5 w-5" />
                             </div>
-                            <h3 className="text-lg font-semibold tracking-tight">
-                              {t('dataManagementTitle')}
-                            </h3>
+                            <div className="min-w-0">
+                              <h3 className="text-lg font-semibold tracking-tight">
+                                {t('dataManagementTitle')}
+                              </h3>
+                              <p className="mt-1 text-xs leading-relaxed opacity-65">
+                                {t(
+                                  'dataManagementTrustLine',
+                                  'Encrypted backups, imports and recovery drills are handled as separate, auditable flows.'
+                                )}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="v5-sync-flow-strip mb-5">
+                            <span>{t('syncFlowExport', 'Export')}</span>
+                            <span>{t('syncFlowValidate', 'Validate')}</span>
+                            <span>{t('syncFlowDrill', 'Drill')}</span>
+                            <span>{t('syncFlowAudit', 'Audit')}</span>
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3951,6 +3990,10 @@ export function SettingsDrawer({
                                 <p className="text-xs opacity-70 leading-relaxed mb-4">
                                   {t('exportDesc')}
                                 </p>
+                                <div className="v5-sync-card-trust-row mb-4">
+                                  <span>{t('syncTrustEncrypted', 'Encrypted first')}</span>
+                                  <span>{t('syncTrustPlaintextGuarded', 'Plaintext guarded')}</span>
+                                </div>
                               </div>
                               <div className="flex flex-col gap-2">
                                 <button
@@ -3987,6 +4030,10 @@ export function SettingsDrawer({
                                 <p className="text-xs opacity-70 leading-relaxed mb-4">
                                   {t('importWizardDesc')}
                                 </p>
+                                <div className="v5-sync-card-trust-row mb-4">
+                                  <span>{t('syncTrustFormatCheck', 'Format check')}</span>
+                                  <span>{t('syncTrustConflictAware', 'Conflict aware')}</span>
+                                </div>
                               </div>
                               {importProgress && (
                                 <div className="mb-4 space-y-2 animate-in fade-in slide-in-from-top-1">
@@ -4034,7 +4081,7 @@ export function SettingsDrawer({
 
                           <div
                             data-testid="recovery-drill-panel"
-                            className="mt-4 rounded-2xl border border-[var(--color-sage-green)]/25 bg-[var(--color-sage-green)]/8 p-5 shadow-inner dark:border-[var(--color-sage-green)]/25 dark:bg-[var(--color-sage-green)]/10"
+                            className="v5-recovery-drill-panel mt-4 rounded-2xl border p-5 shadow-inner"
                           >
                             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                               <div className="max-w-2xl">
@@ -4050,7 +4097,7 @@ export function SettingsDrawer({
                                     'Test whether an encrypted backup can be opened without importing it or touching the active vault.'
                                   )}
                                 </p>
-                                <div className="mt-3 rounded-xl border border-dashed border-[var(--color-sage-green)]/35 bg-white/45 px-3 py-2 text-[11px] font-medium text-[var(--color-deep-navy)]/70 dark:bg-white/5 dark:text-white/68">
+                                <div className="v5-recovery-drill-note mt-3 rounded-xl border border-dashed px-3 py-2 text-[11px] font-medium">
                                   {t(
                                     'recoveryDrillSafetyNote',
                                     'Safe rehearsal: password, integrity, schema and record coverage are verified in memory only.'
@@ -4101,7 +4148,7 @@ export function SettingsDrawer({
                                 ].map((metric) => (
                                   <div
                                     key={metric.label}
-                                    className="rounded-xl border border-black/5 bg-white/60 px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/5"
+                                    className="v5-recovery-drill-metric rounded-xl border px-4 py-3 shadow-sm"
                                   >
                                     <div className="text-[10px] font-black uppercase tracking-widest text-[var(--color-deep-navy)]/50 dark:text-white/45">
                                       {metric.label}
@@ -4111,7 +4158,7 @@ export function SettingsDrawer({
                                     </div>
                                   </div>
                                 ))}
-                                <div className="md:col-span-4 rounded-xl border border-[var(--color-sage-green)]/25 bg-white/55 px-4 py-3 text-xs text-[var(--color-deep-navy)]/75 dark:bg-white/5 dark:text-white/70">
+                                <div className="v5-recovery-drill-result md:col-span-4 rounded-xl border px-4 py-3 text-xs">
                                   <div className="flex flex-wrap items-center gap-2">
                                     <span className="rounded-full bg-[var(--color-sage-green)]/12 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-sage-green)]">
                                       {t('recoveryDrillPassed', 'Passed')}

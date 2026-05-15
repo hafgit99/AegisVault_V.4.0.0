@@ -175,6 +175,30 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
     isCryptoWalletCategory &&
     hasCryptoAddressInput &&
     CryptoWalletVault.validateAddress(cryptoWalletDraft.chain, cryptoAddressValue);
+  const hasTitle = Boolean(newEntry.title?.trim());
+  const hasIdentity = Boolean((newEntry.username || '').trim() || isNoteCategory);
+  const hasSecretMaterial = Boolean(
+    isCryptoWalletCategory ? hasCryptoAddressInput : (newEntry.pass || '').trim() || isNoteCategory
+  );
+  const hasPrivacyLayer = Boolean(primarySharing?.space_id || newEntry.aliasDetails?.email);
+  const hasTotpLayer = Boolean(newEntry.totpSecret || showTotpSection);
+  const hasNotesOrAttachments = Boolean(
+    (newEntry.notes || cryptoWalletDraft.notes || '').trim() ||
+    newAttachments.length > 0 ||
+    visibleExistingAttachments.length > 0
+  );
+  const formSignals = [
+    { label: t('entrySignalBasics', 'Temel'), done: hasTitle && hasIdentity },
+    {
+      label: isCryptoWalletCategory
+        ? t('entrySignalAddress', 'Adres')
+        : t('entrySignalSecret', 'Sır'),
+      done: hasSecretMaterial,
+    },
+    { label: t('entrySignalPrivacy', 'Gizlilik'), done: hasPrivacyLayer },
+    { label: t('entrySignal2fa', '2FA'), done: hasTotpLayer },
+    { label: t('entrySignalNotes', 'Not/Ek'), done: hasNotesOrAttachments },
+  ];
 
   const updatePasskeyMetadata = (updates: Record<string, string>) => {
     setNewEntry((prev) => ({
@@ -330,7 +354,12 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
               {t('v5EntryRecordDesc')}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="p-1 rounded-md entry-action-btn-muted">
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 rounded-md entry-action-btn-muted"
+            aria-label={t('close', 'Close')}
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -349,6 +378,24 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
             </div>
           </div>
         ) : null}
+
+        <div className="v5-entry-progress-strip">
+          <div>
+            <span className="v5-entry-progress-kicker">{t('entryFormProgressKicker')}</span>
+            <strong>{t('entryFormProgressTitle')}</strong>
+          </div>
+          <div className="v5-entry-progress-chips">
+            {formSignals.map((signal) => (
+              <span
+                key={signal.label}
+                className={`v5-entry-progress-chip ${signal.done ? 'v5-entry-progress-chip-done' : ''}`}
+              >
+                {signal.done ? <CheckCircle2 className="h-3 w-3" /> : null}
+                {signal.label}
+              </span>
+            ))}
+          </div>
+        </div>
 
         <div className="v5-entry-grid grid grid-cols-2 gap-4">
           <input
@@ -654,6 +701,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                     onClick={generateSecurePassword}
                     className="p-1.5 rounded-md entry-action-btn-muted transition-colors"
                     title={t('generateSecurePasswordBtn')}
+                    aria-label={t('generateSecurePasswordBtn')}
                   >
                     <Wand2 className="w-4 h-4" />
                   </button>
@@ -662,6 +710,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                     onClick={() => setShowPassword(!showPassword)}
                     className="p-1.5 rounded-md entry-action-btn-muted transition-colors"
                     title={showPassword ? t('hidePassword') : t('showPassword')}
+                    aria-label={showPassword ? t('hidePassword') : t('showPassword')}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -1068,6 +1117,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                         }));
                       }}
                       className="p-1 rounded-md entry-action-btn-muted"
+                      aria-label={t('closeTotpSetupAria', 'Close TOTP setup')}
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1114,6 +1164,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                       onClick={() => setShowQRScanner(true)}
                       className="px-3 py-2 rounded-lg totp-btn-secondary transition-all border border-[var(--color-sage-green)]/20 flex items-center gap-1.5 text-xs font-bold"
                       title={t('scanQR', 'Scan QR Code')}
+                      aria-label={t('scanQR', 'Scan QR Code')}
                     >
                       <Camera className="w-3.5 h-3.5" />
                       QR
@@ -1203,6 +1254,10 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                               setNewAttachments((prev) => prev.filter((_, idx) => idx !== i))
                             }
                             className="hover:text-red-500 ml-1"
+                            aria-label={t('removeAttachmentNamedAria', {
+                              name: file.name,
+                              defaultValue: 'Remove {{name}}',
+                            })}
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -1236,6 +1291,10 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                             onClick={() => setRemovedAttachmentIds((prev) => [...prev, att.id])}
                             className="hover:text-red-500 ml-1"
                             title={t('removeAttachment', 'Remove attachment')}
+                            aria-label={t('removeAttachmentNamedAria', {
+                              name: att.name,
+                              defaultValue: 'Remove {{name}}',
+                            })}
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -1287,6 +1346,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                         onClick={() => handleRestore(version)}
                         className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)] hover:bg-[var(--color-sage-green)]/20 text-[10px] font-bold transition-all"
                         title={t('restoreVersion')}
+                        aria-label={t('restoreVersion')}
                       >
                         <RotateCcw className="w-3 h-3" />
                         {t('restoreVersion')}
@@ -1302,7 +1362,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
         <div className="v5-entry-actions flex justify-end mt-2">
           <button
             type="submit"
-            className="flex items-center gap-2 bg-[var(--color-sage-green)] hover:brightness-90 text-[var(--color-deep-navy)] px-5 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all active:scale-95"
+            className="v5-entry-save-btn flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all active:scale-95"
           >
             <ShieldCheck className="w-4 h-4" /> {t('encryptSave')}
           </button>

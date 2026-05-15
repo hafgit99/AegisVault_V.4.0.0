@@ -51,6 +51,8 @@ export function CryptoVaultPanel() {
     [passwords]
   );
   const hasSecretRecords = records.some((record) => record?.custodyMode === 'vault_secret');
+  const watchOnlyCount = records.filter((record) => record?.custodyMode === 'watch_only').length;
+  const secretCount = records.filter((record) => record?.custodyMode === 'vault_secret').length;
   const hasAddressInput = draft.publicAddress.trim().length > 0;
   const isAddressValid =
     hasAddressInput && CryptoWalletVault.validateAddress(draft.chain, draft.publicAddress);
@@ -165,7 +167,7 @@ export function CryptoVaultPanel() {
             type="button"
             className="crypto-phishing-close"
             onClick={() => setPhishingWarning(null)}
-            aria-label="dismiss"
+            aria-label={t('dismissAria', 'Dismiss message')}
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -178,11 +180,31 @@ export function CryptoVaultPanel() {
           <span className="v5-section-kicker">{t('cryptoVaultKicker')}</span>
           <h2>{t('cryptoVaultTitle')}</h2>
           <p>{t('cryptoVaultDesc')}</p>
+          <div className="crypto-vault-trust-strip">
+            <span>
+              <Eye className="h-3.5 w-3.5" />
+              {t('cryptoTrustWatchOnlyFirst')}
+            </span>
+            <span>
+              <ShieldOff className="h-3.5 w-3.5" />
+              {t('cryptoTrustNoSigning')}
+            </span>
+            <span>
+              <Radar className="h-3.5 w-3.5" />
+              {t('cryptoTrustAddressVerification')}
+            </span>
+          </div>
         </div>
         <div className="crypto-vault-hero-actions">
-          <div className="crypto-vault-score">
-            <ShieldCheck className="h-5 w-5" />
-            <span>{t('cryptoVaultMode')}</span>
+          <div className="crypto-vault-custody-summary" aria-label={t('cryptoCustodySummary')}>
+            <div>
+              <span>{t('cryptoWalletWatchOnly')}</span>
+              <strong>{watchOnlyCount}</strong>
+            </div>
+            <div>
+              <span>{t('cryptoWalletVaultSecret')}</span>
+              <strong>{secretCount}</strong>
+            </div>
           </div>
           <button
             type="button"
@@ -430,6 +452,15 @@ export function CryptoVaultPanel() {
                   </div>
                 </div>
 
+                <div className="crypto-wallet-security-line">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  <span>
+                    {record.custodyMode === 'watch_only'
+                      ? t('cryptoWalletReadOnlyAssurance')
+                      : t('cryptoWalletSecretAssurance')}
+                  </span>
+                </div>
+
                 <div className="crypto-wallet-address">
                   <span>{t('cryptoWalletPublicAddress')}</span>
                   <code>{record.publicAddress}</code>
@@ -481,6 +512,10 @@ export function CryptoVaultPanel() {
                   <button
                     type="button"
                     className="crypto-wallet-delete"
+                    aria-label={t('cryptoWalletDeleteAria', {
+                      name: record.name,
+                      defaultValue: 'Delete {{name}} crypto vault record',
+                    })}
                     onClick={() => {
                       if (confirm(t('cryptoWalletDeleteConfirm'))) {
                         void handleDeleteEntry(record.walletId);

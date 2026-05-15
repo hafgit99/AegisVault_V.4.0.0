@@ -483,7 +483,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
 
       <div className="v5-login-backdrop absolute inset-0 z-0" aria-hidden="true" />
 
-      <main className="v5-login-shell relative z-10 grid w-full max-w-6xl grid-cols-1 overflow-hidden rounded-2xl border shadow-2xl lg:grid-cols-[minmax(0,1fr)_440px]">
+      <main className="v5-login-shell relative z-10 grid w-full max-w-6xl grid-cols-1 overflow-hidden rounded-2xl border shadow-2xl lg:grid-cols-[minmax(0,1fr)_448px]">
         <section className="v5-login-intro hidden min-h-[640px] flex-col justify-between p-10 lg:flex xl:p-12">
           <div>
             <div className="v5-login-kicker mb-8 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-extrabold uppercase">
@@ -491,7 +491,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
               {t('v5LoginEyebrow')}
             </div>
 
-            <div className="mb-10 flex items-center gap-4">
+            <div className="v5-login-brand-lockup mb-10 flex items-center gap-4">
               <div className="v5-login-brand-icon flex h-16 w-16 items-center justify-center rounded-2xl p-1 shadow-inner">
                 <img
                   src="./icon.png"
@@ -540,7 +540,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
         <section
           className={`vault-login-surface v5-login-panel relative w-full p-6 transition-all duration-300 sm:p-8 ${isError ? 'animate-shake border-red-500/40 shadow-[0_0_40px_rgba(239,68,68,0.15)] bg-red-50/20' : ''}`}
         >
-          <div className="flex flex-col items-center text-center">
+          <div className="v5-login-form-header flex flex-col items-center text-center">
             <div className="vault-login-logo-container mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-inner p-1 lg:hidden">
               <img
                 src="./icon.png"
@@ -548,10 +548,12 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
                 className="w-full h-full object-contain drop-shadow-md"
               />
             </div>
-            <h1 className="mb-2 text-3xl font-semibold tracking-tight text-[var(--color-deep-navy)]">
+            <h1 className="v5-login-form-title mb-2 text-3xl font-semibold tracking-tight text-[var(--color-deep-navy)]">
               {isSetupMode ? t('setupVault') : t('premiumVault')}
             </h1>
-            <p className="mb-6 text-sm text-[var(--color-deep-navy)]/70">{t('subtitle')}</p>
+            <p className="v5-login-form-subtitle mb-6 text-sm text-[var(--color-deep-navy)]/70">
+              {t('subtitle')}
+            </p>
 
             {/* ─── Multi-Vault Selector ─── */}
             {vaultProfiles.length > 0 && activeProfile && (
@@ -677,6 +679,17 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
               >
                 {t('initialize')}
               </button>
+            </div>
+
+            <div className="v5-login-trust-row mb-4 grid w-full grid-cols-2 gap-2">
+              <div className="v5-login-trust-chip">
+                <Lock className="h-3.5 w-3.5" />
+                <span>{t('localVaultTrust', 'Local vault')}</span>
+              </div>
+              <div className="v5-login-trust-chip">
+                <Shield className="h-3.5 w-3.5" />
+                <span>{t('encryptedVaultTrust', 'SQLCipher protected')}</span>
+              </div>
             </div>
           </div>
 

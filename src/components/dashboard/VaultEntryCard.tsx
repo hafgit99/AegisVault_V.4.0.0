@@ -86,6 +86,23 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
   const strengthTone = strength > 80 ? 'strong' : strength > 40 ? 'average' : 'weak';
   const strengthLabel =
     strengthTone === 'strong' ? t('strong') : strengthTone === 'average' ? t('average') : t('weak');
+  const hasTotp = Boolean(p.totpSecret);
+  const attachmentCount = p.attachments?.length || 0;
+  const websiteHost = (() => {
+    const value = String(p.website || '').trim();
+    if (!value) return '';
+    try {
+      return new URL(value.startsWith('http') ? value : `https://${value}`).hostname.replace(
+        /^www\./,
+        ''
+      );
+    } catch {
+      return value
+        .replace(/^https?:\/\//, '')
+        .replace(/^www\./, '')
+        .split('/')[0];
+    }
+  })();
 
   const maskCardNumber = (value: string) => {
     const digits = String(value || '').replace(/\D/g, '');
@@ -114,7 +131,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
           </div>
         </div>
         <div className="flex-1 min-w-0 flex flex-col gap-3">
-          <div className="min-h-7 flex flex-wrap items-center gap-2">
+          <div className="v5-entry-title-row min-h-7 flex flex-wrap items-center gap-2">
             <h3
               className={`${compact ? 'text-base' : 'text-lg'} font-bold text-[var(--color-deep-navy)] truncate min-w-0`}
             >
@@ -149,6 +166,26 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
               </span>
             </div>
           </div>
+
+          <div className="v5-entry-context-row flex min-w-0 flex-wrap items-center gap-2">
+            <span className="v5-entry-context-chip">
+              <Tag className="h-3 w-3" />
+              {p.category}
+            </span>
+            {websiteHost ? <span className="v5-entry-website-chip">{websiteHost}</span> : null}
+            {hasTotp ? <span className="v5-entry-status-chip">{t('totp', '2FA')}</span> : null}
+            {p.aliasDetails?.email ? (
+              <span className="v5-entry-status-chip v5-entry-status-chip-info">
+                {t('aliasBadge')}
+              </span>
+            ) : null}
+            {attachmentCount > 0 ? (
+              <span className="v5-entry-status-chip">
+                {t('attachments', 'Ekler')} {attachmentCount}
+              </span>
+            ) : null}
+          </div>
+
           <div
             className={`flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mt-1 ${compact ? 'text-xs' : 'text-sm'}`}
           >
@@ -183,8 +220,9 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
               </span>
               <button
                 onClick={() => toggleVisibility(p.id)}
-                className="p-1.5 rounded-md entry-action-btn-muted transition-all"
+                className="v5-entry-inline-icon p-1.5 rounded-md entry-action-btn-muted transition-all"
                 title={visiblePasswords.has(p.id) ? 'Hide Password' : 'Show liquid password'}
+                aria-label={visiblePasswords.has(p.id) ? 'Hide Password' : 'Show password'}
               >
                 {visiblePasswords.has(p.id) ? (
                   <EyeOff className="w-4 h-4" />

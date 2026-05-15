@@ -257,7 +257,10 @@ function DashboardInner() {
   };
 
   return (
-    <div className="v5-dashboard-root w-full min-h-screen overflow-visible bg-[var(--color-cloud-dancer)] text-[var(--color-deep-navy)] px-4 pb-4 pt-5 md:px-8 md:pb-8 md:pt-7 font-[var(--font-geist)] animate-in fade-in duration-700">
+    <div
+      className="v5-dashboard-root w-full min-h-screen overflow-visible bg-[var(--color-cloud-dancer)] text-[var(--color-deep-navy)] px-4 pb-4 pt-5 md:px-8 md:pb-8 md:pt-7 font-[var(--font-geist)] animate-in fade-in duration-700"
+      data-density={viewDensity}
+    >
       <Suspense fallback={null}>
         <SpotlightWalkthrough />
       </Suspense>
@@ -274,7 +277,7 @@ function DashboardInner() {
 
       <main
         role="main"
-        aria-label="Vault entries"
+        aria-label={t('vaultEntriesAria', 'Vault entries')}
         className="v5-dashboard-shell max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-6 px-4 xl:px-8"
       >
         <GlowCard className="v5-vault-panel lg:col-span-8 xl:col-span-9 glass-card p-6 md:p-7 flex flex-col gap-6 relative">
@@ -349,12 +352,20 @@ function DashboardInner() {
                   )}
                 </div>
                 <div className="max-w-md text-center">
+                  <div className="dashboard-empty-kicker">
+                    {categoryFilter === 'Trash' ? t('emptyStateArchive') : t('emptyStateLocal')}
+                  </div>
                   <h3 className="dashboard-empty-title">
                     {categoryFilter === 'Trash' ? t('trashEmptyTitle') : t('vaultEmptyTitle')}
                   </h3>
                   <p className="dashboard-empty-copy">
                     {categoryFilter === 'Trash' ? t('trashEmptyDesc') : t('vaultEmptyDesc')}
                   </p>
+                </div>
+                <div className="dashboard-empty-trust-row">
+                  <span>{t('emptyStateEncrypted')}</span>
+                  <span>{t('emptyStateOffline')}</span>
+                  <span>{t('emptyStateRecoverable')}</span>
                 </div>
                 {categoryFilter !== 'Trash' && !isAdding && (
                   <button
@@ -386,7 +397,7 @@ function DashboardInner() {
         </GlowCard>
 
         <nav
-          aria-label="Categories and security"
+          aria-label={t('dashboardCategoriesSecurityAria', 'Categories and security')}
           className="v5-dashboard-rail lg:col-span-4 xl:col-span-3 flex flex-col gap-5 xl:gap-6"
         >
           <div className={totalSecurityIssues > 0 ? 'order-1' : 'order-2'}>
