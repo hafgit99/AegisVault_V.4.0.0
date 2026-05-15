@@ -71,6 +71,11 @@ describe('SearchService', () => {
     });
     it('finds by username', () =>
       expect(SearchService.searchDecrypted(entries, 'github').length).toBeGreaterThanOrEqual(1));
+    it('does not match fuzzy tokens across unrelated fields', () => {
+      const r = SearchService.searchDecrypted(entries, 'gmail');
+      expect(r).toHaveLength(1);
+      expect(r[0].title).toBe('Google');
+    });
     it('returns empty for no match', () =>
       expect(SearchService.searchDecrypted(entries, 'zzzzz')).toHaveLength(0));
     it('scopes to title', () =>

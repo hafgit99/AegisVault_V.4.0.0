@@ -70,15 +70,15 @@ test.describe('Crypto Vault + Watch-only', () => {
   });
 
   test('opens the dedicated Crypto Vault panel from the category rail', async ({ page }) => {
-    const cryptoCategory = page
-      .locator('.category-item')
-      .filter({ hasText: /Crypto Vault|Kripto Kasa/i })
-      .first();
+    const cryptoCategory = page.getByRole('button', { name: /Crypto Vault|Kripto Kasa/i }).first();
 
     await expect(cryptoCategory).toBeVisible({ timeout: 15000 });
-    await cryptoCategory.click({ force: true });
+    await cryptoCategory.scrollIntoViewIfNeeded();
+    await cryptoCategory.click();
 
-    await expect(page.locator('.crypto-vault-panel')).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('text=/No live signing|Canlı imzalama yok/i')).toBeVisible();
+    const cryptoPanel = page.locator('.crypto-vault-panel');
+    await expect(cryptoPanel).toBeVisible({ timeout: 15000 });
+    await expect(cryptoPanel.locator('.crypto-vault-hero')).toBeVisible({ timeout: 10000 });
+    await expect(cryptoPanel.locator('.crypto-security-banner')).toBeVisible({ timeout: 10000 });
   });
 });

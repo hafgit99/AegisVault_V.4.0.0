@@ -97,8 +97,6 @@ export class SearchService {
                 ? tags
                 : [title, username, website, category, ...tags];
 
-        const fullByScope = scopedFields.join(' ');
-
         let score = 0;
         let matchedAllTokens = true;
         let prefixMatchedAllTokens = true;
@@ -150,7 +148,11 @@ export class SearchService {
           }
 
           // Subsequence (Minimum 3 karakter)
-          if (!tokenMatched && token.length >= 3 && this.isSubsequence(token, fullByScope)) {
+          if (
+            !tokenMatched &&
+            token.length >= 3 &&
+            scopedFields.some((field) => this.isSubsequence(token, field))
+          ) {
             score += 20;
             tokenMatched = true;
           }

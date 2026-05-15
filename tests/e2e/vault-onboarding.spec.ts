@@ -100,23 +100,31 @@ test.describe('Onboarding Wizard', () => {
   test('should navigate back with previous button', async ({ page }) => {
     const onboardingDialog = page.locator('[role="dialog"][aria-modal="true"]');
     await expect(onboardingDialog).toBeVisible({ timeout: 5000 });
+    const title = onboardingDialog.locator('h2').first();
+    const initialTitle = await title.textContent();
 
     // Navigate to step 1 first
     const nextBtn = page.getByTestId('onboarding-next');
     await nextBtn.click();
-    await page.waitForTimeout(400);
 
-    const step1Title = await onboardingDialog.locator('h2').first().textContent();
+    await expect(async () => {
+      expect(await title.textContent()).not.toBe(initialTitle);
+    }).toPass({ timeout: 5000, intervals: [200, 500, 1000] });
+
+    const step1Title = await title.textContent();
 
     const backBtn = onboardingDialog
       .locator('button:has-text("Geri"), button:has-text("Back")')
       .first();
     await expect(backBtn).toBeVisible();
-    await backBtn.click();
-    await page.waitForTimeout(400);
+    await expect(backBtn).toBeEnabled();
+    await backBtn.click({ force: true });
 
-    const backTitle = await onboardingDialog.locator('h2').first().textContent();
-    expect(backTitle).not.toBe(step1Title);
+    await expect(async () => {
+      const backTitle = await title.textContent();
+      expect(backTitle).not.toBe(step1Title);
+      expect(backTitle).toBe(initialTitle);
+    }).toPass({ timeout: 5000, intervals: [200, 500, 1000] });
   });
 
   test('should disable back button on first step', async ({ page }) => {

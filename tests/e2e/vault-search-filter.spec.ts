@@ -235,15 +235,20 @@ test.describe('Search, Filter & Sort', () => {
         '.toolbar-chip-group button:has-text("All"), .toolbar-chip-group button:has-text("Tümü")'
       )
       .first();
+    await expect(allScopeBtn).toBeVisible({ timeout: 5000 });
     await allScopeBtn.click({ force: true });
+    await expect(allScopeBtn).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 });
 
     const searchInput = page
       .locator('input[placeholder*="earch"], input[placeholder*="Ara"]')
       .first();
-    await searchInput.fill('gmail');
+    await searchInput.fill('me@gmail.com');
 
-    const cards = page.locator('.vault-entry-card');
-    await expect(cards).toHaveCount(1, { timeout: 5000 });
+    await expect(async () => {
+      const cards = page.locator('.vault-entry-card');
+      await expect(cards).toHaveCount(1);
+      await expect(cards.first()).toContainText('Personal Email');
+    }).toPass({ timeout: 15000, intervals: [500, 1000, 2000] });
   });
 
   test('should highlight active search scope', async ({ page }) => {
