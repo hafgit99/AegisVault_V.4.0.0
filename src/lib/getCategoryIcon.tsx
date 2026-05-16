@@ -1,4 +1,4 @@
-import { CreditCard, Globe, Hash, User, FileText, WalletCards, Wifi } from 'lucide-react';
+import { CreditCard, Globe, KeyRound, User, FileText, WalletCards, Wifi } from 'lucide-react';
 
 /**
  * getCategoryIcon — Kasa kategorilerine göre ikon döndüren yardımcı fonksiyon.
@@ -21,6 +21,6 @@ export function getCategoryIcon(cat: string) {
     case 'CryptoWallet':
       return <WalletCards className="w-5 h-5 text-emerald-500" />;
     default:
-      return <Hash className="w-5 h-5 text-purple-500" />;
+      return <KeyRound className="w-5 h-5 text-purple-500" />;
   }
 }

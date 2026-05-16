@@ -51,9 +51,18 @@ interface EntryFormProps {
 export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
   const { t } = useTranslation();
   const { handleCreateEntry } = useVault();
+  const initialPasswordDecryptFailed =
+    typeof initialEntry?.pass === 'string' &&
+    initialEntry.pass.toUpperCase().includes('DECRYPT_ERROR');
+  const sanitizedInitialEntry = initialEntry
+    ? {
+        ...initialEntry,
+        pass: initialPasswordDecryptFailed ? '' : initialEntry.pass,
+      }
+    : null;
 
   const [newEntry, setNewEntry] = useState<Partial<VaultEntry>>(
-    initialEntry || {
+    sanitizedInitialEntry || {
       title: '',
       username: '',
       pass: '',
@@ -175,6 +184,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
     isCryptoWalletCategory &&
     hasCryptoAddressInput &&
     CryptoWalletVault.validateAddress(cryptoWalletDraft.chain, cryptoAddressValue);
+  const requiresPasswordRepair = Boolean(initialEntry?.id && initialPasswordDecryptFailed);
   const hasTitle = Boolean(newEntry.title?.trim());
   const hasIdentity = Boolean((newEntry.username || '').trim() || isNoteCategory);
   const hasSecretMaterial = Boolean(
@@ -304,6 +314,11 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
         toast.error(t('cryptoWalletSecretRequired'));
         return;
       }
+    }
+
+    if (requiresPasswordRepair && !newEntry.pass?.trim()) {
+      toast.error(t('passwordRepairRequired'));
+      return;
     }
 
     const payload: Partial<VaultEntry> = {
@@ -645,77 +660,88 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
           )}
 
           {!isCryptoWalletCategory && (
-            <div className="col-span-2 relative flex items-center">
-              {isNoteCategory ? (
-                <textarea
-                  required
-                  placeholder={t('placeholderNotePass')}
-                  value={newEntry.pass}
-                  onChange={(e) => setNewEntry({ ...newEntry, pass: e.target.value })}
-                  className="entry-field w-full rounded-lg py-2.5 px-3 h-32 text-sm font-medium outline-none resize-none overflow-y-auto"
-                />
-              ) : (
-                <input
-                  required
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder={
-                    newEntry.category === 'Cards'
-                      ? t('placeholderCardPass')
-                      : newEntry.category === 'Identities'
-                        ? t('placeholderIdentityPass')
-                        : isWifiCategory
-                          ? t('placeholderWifiPass')
-                          : isPasskeyCategory
-                            ? t('placeholderPasskeyCredentialId')
-                            : t('securePassword')
-                  }
-                  value={newEntry.pass}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setNewEntry((prev) => ({
-                      ...prev,
-                      pass: value,
-                      cardDetails: isCardCategory
-                        ? {
-                            ...(prev.cardDetails || {}),
-                            card_number: prev.cardDetails?.card_number || value,
-                          }
-                        : prev.cardDetails,
-                      passkeyMetadata: isPasskeyCategory
-                        ? {
-                            mode: prev.passkeyMetadata?.mode || 'site_passkey_mvp',
-                            ...prev.passkeyMetadata,
-                            credential_id: value,
-                          }
-                        : prev.passkeyMetadata,
-                    }));
-                  }}
-                  className="entry-field w-full rounded-lg py-2.5 pl-3 pr-20 text-sm font-medium outline-none pass-font"
-                />
-              )}
+            <div className="col-span-2 flex flex-col gap-2">
+              <div className="relative flex items-center">
+                {isNoteCategory ? (
+                  <textarea
+                    required
+                    placeholder={t('placeholderNotePass')}
+                    value={newEntry.pass || ''}
+                    onChange={(e) => setNewEntry({ ...newEntry, pass: e.target.value })}
+                    className="entry-field w-full rounded-lg py-2.5 px-3 h-32 text-sm font-medium outline-none resize-none overflow-y-auto"
+                  />
+                ) : (
+                  <input
+                    required
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder={
+                      requiresPasswordRepair
+                        ? t('passwordRepairPlaceholder')
+                        : newEntry.category === 'Cards'
+                          ? t('placeholderCardPass')
+                          : newEntry.category === 'Identities'
+                            ? t('placeholderIdentityPass')
+                            : isWifiCategory
+                              ? t('placeholderWifiPass')
+                              : isPasskeyCategory
+                                ? t('placeholderPasskeyCredentialId')
+                                : t('securePassword')
+                    }
+                    value={newEntry.pass || ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setNewEntry((prev) => ({
+                        ...prev,
+                        pass: value,
+                        cardDetails: isCardCategory
+                          ? {
+                              ...(prev.cardDetails || {}),
+                              card_number: prev.cardDetails?.card_number || value,
+                            }
+                          : prev.cardDetails,
+                        passkeyMetadata: isPasskeyCategory
+                          ? {
+                              mode: prev.passkeyMetadata?.mode || 'site_passkey_mvp',
+                              ...prev.passkeyMetadata,
+                              credential_id: value,
+                            }
+                          : prev.passkeyMetadata,
+                      }));
+                    }}
+                    className="entry-field w-full rounded-lg py-2.5 pl-3 pr-20 text-sm font-medium outline-none pass-font"
+                  />
+                )}
 
-              {!isNoteCategory && !isPasskeyCategory && (
-                <div className="absolute right-2 flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={generateSecurePassword}
-                    className="p-1.5 rounded-md entry-action-btn-muted transition-colors"
-                    title={t('generateSecurePasswordBtn')}
-                    aria-label={t('generateSecurePasswordBtn')}
-                  >
-                    <Wand2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="p-1.5 rounded-md entry-action-btn-muted transition-colors"
-                    title={showPassword ? t('hidePassword') : t('showPassword')}
-                    aria-label={showPassword ? t('hidePassword') : t('showPassword')}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+                {!isNoteCategory && !isPasskeyCategory && (
+                  <div className="absolute right-2 flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={generateSecurePassword}
+                      className="p-1.5 rounded-md entry-action-btn-muted transition-colors"
+                      title={t('generateSecurePasswordBtn')}
+                      aria-label={t('generateSecurePasswordBtn')}
+                    >
+                      <Wand2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="p-1.5 rounded-md entry-action-btn-muted transition-colors"
+                      title={showPassword ? t('hidePassword') : t('showPassword')}
+                      aria-label={showPassword ? t('hidePassword') : t('showPassword')}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {requiresPasswordRepair ? (
+                <div className="flex gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-800 dark:text-amber-100/85">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>{t('passwordRepairNotice')}</span>
                 </div>
-              )}
+              ) : null}
             </div>
           )}
 

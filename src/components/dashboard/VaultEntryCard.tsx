@@ -67,7 +67,11 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
     }
   };
 
-  const isVulnerable = !p.pass || p.pass.length < 8 || (p.pwned_count || 0) > 0;
+  const passwordDecryptFailed =
+    typeof p.pass === 'string' && p.pass.toUpperCase().includes('DECRYPT_ERROR');
+  const safePassword = passwordDecryptFailed ? '' : p.pass || '';
+  const isVulnerable =
+    passwordDecryptFailed || !safePassword || safePassword.length < 8 || (p.pwned_count || 0) > 0;
   const sharingSpace = p.sharing?.[0]?.space_id
     ? SharedSpaceService.listSpaces().find((space) => space.id === p.sharing?.[0]?.space_id)
     : null;
@@ -216,13 +220,29 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                     : 'tracking-[0.25em] opacity-40 select-none mt-1'
                 }`}
               >
-                {visiblePasswords.has(p.id) ? p.pass : '••••••••'}
+                {visiblePasswords.has(p.id)
+                  ? passwordDecryptFailed
+                    ? t('passwordDecryptUnavailable', 'Password unavailable')
+                    : safePassword
+                  : '••••••••'}
               </span>
               <button
                 onClick={() => toggleVisibility(p.id)}
                 className="v5-entry-inline-icon p-1.5 rounded-md entry-action-btn-muted transition-all"
-                title={visiblePasswords.has(p.id) ? 'Hide Password' : 'Show liquid password'}
-                aria-label={visiblePasswords.has(p.id) ? 'Hide Password' : 'Show password'}
+                title={
+                  passwordDecryptFailed
+                    ? t('passwordDecryptUnavailable', 'Password unavailable')
+                    : visiblePasswords.has(p.id)
+                      ? t('hidePassword', 'Hide Password')
+                      : t('showPassword', 'Show password')
+                }
+                aria-label={
+                  passwordDecryptFailed
+                    ? t('passwordDecryptUnavailable', 'Password unavailable')
+                    : visiblePasswords.has(p.id)
+                      ? t('hidePassword', 'Hide Password')
+                      : t('showPassword', 'Show password')
+                }
               >
                 {visiblePasswords.has(p.id) ? (
                   <EyeOff className="w-4 h-4" />
@@ -402,10 +422,19 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                       );
                       return;
                     }
-                    handleCopyItem(p.id, p.pass || '');
+                    if (passwordDecryptFailed) {
+                      toast.error(
+                        t(
+                          'passwordDecryptUnavailableDesc',
+                          'Password could not be decrypted in this session.'
+                        )
+                      );
+                      return;
+                    }
+                    handleCopyItem(p.id, safePassword);
                   }}
                   className={`relative z-10 p-3 rounded-xl transition-all flex items-center justify-center ${
-                    !isExportAllowed
+                    !isExportAllowed || passwordDecryptFailed
                       ? 'opacity-30 cursor-not-allowed vault-action-btn'
                       : isCopied
                         ? 'bg-[var(--color-sage-green)] text-[var(--color-deep-navy)] shadow-[0_0_15px_rgba(135,159,132,0.4)] scale-110'
@@ -414,7 +443,9 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                   title={
                     !isExportAllowed
                       ? t('sharingExportBlocked', 'Export is disabled for this shared space')
-                      : t('copyPassword', 'Copy password')
+                      : passwordDecryptFailed
+                        ? t('passwordDecryptUnavailable', 'Password unavailable')
+                        : t('copyPassword', 'Copy password')
                   }
                 >
                   {isCopied ? (

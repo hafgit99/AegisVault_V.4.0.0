@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { VaultEntry } from '../../vaultService';
 import { VaultEntryCard } from './VaultEntryCard';
 
@@ -7,6 +7,24 @@ interface VirtualizedVaultListProps {
   onEdit: (entry: VaultEntry) => void;
   viewDensity: 'comfortable' | 'compact';
 }
+
+const getEntryHeight = (entry: VaultEntry, density: 'comfortable' | 'compact') => {
+  const compact = density === 'compact';
+  let height = compact ? 166 : 204;
+
+  const hasDetailStrip =
+    Boolean(entry.aliasDetails?.email) ||
+    Boolean(entry.cardDetails) ||
+    Boolean(entry.identityDetails) ||
+    Boolean(entry.passkeyMetadata);
+
+  if (hasDetailStrip) height += compact ? 34 : 42;
+  if (entry.attachments?.length) height += compact ? 34 : 42;
+  if (entry.totpSecret) height += compact ? 58 : 68;
+  if (entry.notes && entry.category !== 'Notes') height += compact ? 40 : 48;
+
+  return Math.min(height, compact ? 320 : 380);
+};
 
 /**
  * VirtualizedVaultList — Aegis Vault Devasa Kasa Optimizasyonu (Adım 5.3)
@@ -21,8 +39,24 @@ export function VirtualizedVaultList({ entries, onEdit, viewDensity }: Virtualiz
   const [containerHeight, setContainerHeight] = useState(600); // Varsayılan height
 
   // Dinamik yükseklik hesaplama (Theme bazlı)
-  const ITEM_HEIGHT = viewDensity === 'compact' ? 116 : 160;
   const GAP = viewDensity === 'compact' ? 12 : 16;
+  const itemHeights = useMemo(
+    () => entries.map((entry) => getEntryHeight(entry, viewDensity)),
+    [entries, viewDensity]
+  );
+  const layout = useMemo(() => {
+    let offset = 0;
+    const offsets = itemHeights.map((height) => {
+      const current = offset;
+      offset += height + GAP;
+      return current;
+    });
+
+    return {
+      offsets,
+      totalHeight: Math.max(0, offset - GAP),
+    };
+  }, [GAP, itemHeights]);
 
   useEffect(() => {
     const updateHeight = () => {
@@ -35,15 +69,22 @@ export function VirtualizedVaultList({ entries, onEdit, viewDensity }: Virtualiz
     return () => window.removeEventListener('resize', updateHeight);
   }, []);
 
-  const totalHeight = entries.length * (ITEM_HEIGHT + GAP);
+  const totalHeight = layout.totalHeight;
 
   // Buffer: Ekranda olmayan ama scroll'da takılma olmaması için önceden yüklenen miktar
   const OVER_SCAN = 5;
-  const startIndex = Math.max(0, Math.floor(scrollTop / (ITEM_HEIGHT + GAP)) - OVER_SCAN);
-  const endIndex = Math.min(
-    entries.length,
-    Math.ceil((scrollTop + containerHeight) / (ITEM_HEIGHT + GAP)) + OVER_SCAN
+  const firstVisibleMatch = layout.offsets.findIndex(
+    (top, index) => top + (itemHeights[index] || 0) + GAP >= scrollTop
   );
+  const firstVisibleIndex =
+    firstVisibleMatch === -1 ? Math.max(0, entries.length - 1) : firstVisibleMatch;
+  const startIndex = Math.max(0, firstVisibleIndex - OVER_SCAN);
+  let endIndex = startIndex;
+  const viewportBottom = scrollTop + containerHeight;
+  while (endIndex < entries.length && layout.offsets[endIndex] <= viewportBottom) {
+    endIndex += 1;
+  }
+  endIndex = Math.min(entries.length, endIndex + OVER_SCAN);
 
   const visibleEntries = entries.slice(startIndex, endIndex);
 
@@ -63,8 +104,8 @@ export function VirtualizedVaultList({ entries, onEdit, viewDensity }: Virtualiz
               key={entry.id}
               className="absolute left-0 w-full"
               style={{
-                top: absoluteIndex * (ITEM_HEIGHT + GAP),
-                height: ITEM_HEIGHT,
+                top: layout.offsets[absoluteIndex],
+                minHeight: itemHeights[absoluteIndex],
               }}
             >
               <VaultEntryCard entry={entry} onEdit={onEdit} />

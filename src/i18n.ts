@@ -635,6 +635,13 @@ export const resources = {
       uploadingAttachments: 'Uploading attachments securely...',
       decryptingAttachment: 'Decrypting {{name}}...',
       decryptFailed: 'Advanced decryption failed.',
+      passwordDecryptUnavailable: 'Password unavailable',
+      passwordDecryptUnavailableDesc:
+        'Password could not be decrypted in this session. Re-unlock the vault or restore from a healthy backup.',
+      passwordRepairNotice:
+        'This password could not be decrypted in the current session. Enter a new password before saving this record.',
+      passwordRepairPlaceholder: 'Enter a new password to repair this record',
+      passwordRepairRequired: 'Enter a new password before saving this record.',
       fileTooLarge: 'Aegis: {{name}} exceeds 50MB limit.',
       editEntry: 'Edit Entry',
       itemHistory: 'Item History',
@@ -1947,6 +1954,13 @@ export const resources = {
       uploadingAttachments: 'Dosyalar güvenle şifreleniyor...',
       decryptingAttachment: '{{name}} deşifre ediliyor...',
       decryptFailed: 'Gelişmiş dekripsiyon başarısız oldu.',
+      passwordDecryptUnavailable: 'Şifre kullanılamıyor',
+      passwordDecryptUnavailableDesc:
+        'Şifre bu oturumda çözülemedi. Kasayı yeniden açın veya sağlıklı bir yedekten geri yükleyin.',
+      passwordRepairNotice:
+        'Bu şifre mevcut oturumda çözülemedi. Bu kaydı kaydetmeden önce yeni bir şifre girin.',
+      passwordRepairPlaceholder: 'Bu kaydı onarmak için yeni şifre girin',
+      passwordRepairRequired: 'Bu kaydı kaydetmeden önce yeni bir şifre girin.',
       fileTooLarge: 'Aegis: {{name}} 50MB sınırını aşıyor.',
       editEntry: 'Kaydı Düzenle',
       itemHistory: 'Öğe Geçmişi',
@@ -2704,6 +2718,13 @@ const trTranslationFixes: Record<string, string> = {
   uploadingAttachments: 'Dosyalar güvenle şifreleniyor...',
   decryptingAttachment: '{{name}} deşifre ediliyor...',
   decryptFailed: 'Gelişmiş dekripsiyon başarısız oldu.',
+  passwordDecryptUnavailable: 'Şifre kullanılamıyor',
+  passwordDecryptUnavailableDesc:
+    'Şifre bu oturumda çözülemedi. Kasayı yeniden açın veya sağlıklı bir yedekten geri yükleyin.',
+  passwordRepairNotice:
+    'Bu şifre mevcut oturumda çözülemedi. Bu kaydı kaydetmeden önce yeni bir şifre girin.',
+  passwordRepairPlaceholder: 'Bu kaydı onarmak için yeni şifre girin',
+  passwordRepairRequired: 'Bu kaydı kaydetmeden önce yeni bir şifre girin.',
   fileTooLarge: 'Aegis: {{name}} 50MB sınırını aşıyor.',
   editEntry: 'Kaydı Düzenle',
   hidePassword: 'Şifreyi Gizle',

@@ -372,7 +372,7 @@ export class VaultEntryService {
                   );
                   decryptedEntry.pass = dec.decode(plainBuffer);
                 } catch {
-                  decryptedEntry.pass = '��DECRYPT_ERROR��';
+                  decryptedEntry.pass = 'DECRYPT_ERROR';
                 }
               }
 
