@@ -174,18 +174,23 @@ The vault core is decomposed into **9 dedicated service modules** under `src/lib
 | **Branches**                   | 75.4%                        |
 | **Functions**                  | 90.6%                        |
 | **Lines**                      | 89.43%                       |
-| **Mutation Resilience**        | 76.0% (Stryker)              |
-| **Crypto Vault Mutation Gate** | 97.16% (80% break threshold) |
+| **Mutation Resilience**        | 83.88% (Stryker gate)        |
+| **Crypto Vault Mutation Gate** | 83.67% (80% break threshold) |
 
 ### Mutation Resilience (Security Services)
 
-| Service Category      | Mutation Score |
-| --------------------- | -------------- |
-| WebAuthn / Passkeys   | 82.5%          |
-| Vault Logic / Crypto  | 80.3%          |
-| Extension Bridge      | 75.6%          |
-| Passkey Storage (IDB) | 72.7%          |
-| Crypto Vault Domain   | 97.16%         |
+| Service Category            | Mutation Score |
+| --------------------------- | -------------- |
+| Recovery Drill              | 97.00%         |
+| Crypto Vault Domain         | 83.67%         |
+| WebAuthn Service            | 81.71%         |
+| WebAuthn PRF Utilities      | 76.67%         |
+| **Mutation Gate Composite** | **83.88%**     |
+
+The default mutation gate focuses on deterministic security/domain modules that are suitable for
+Vitest mutation testing. Broader storage/facade modules such as SQLite OPFS persistence and the
+VaultService orchestrator can be inspected with the extended mutation profile without blocking the
+release gate.
 
 ```bash
 # Run unit tests
@@ -202,6 +207,9 @@ npm run test:mutate
 
 # Run crypto vault mutation quality gate
 npm run test:mutate:crypto
+
+# Run extended exploratory mutation analysis
+npm run test:mutate:extended
 
 # Full CI quality gate (lint + unit + regression + e2e)
 npm run test:quality-gate
@@ -286,20 +294,21 @@ npm run cli -- export --format json
 
 ## 📜 Scripts Reference
 
-| Command                       | Description                                           |
-| ----------------------------- | ----------------------------------------------------- |
-| `npm run dev`                 | Start Vite dev server                                 |
-| `npm run build`               | TypeScript check + Vite production build              |
-| `npm run lint`                | ESLint (zero errors enforced)                         |
-| `npm run test`                | Run all unit tests                                    |
-| `npm run test:coverage`       | Tests with v8 coverage report                         |
-| `npm run test:e2e`            | Playwright end-to-end tests                           |
-| `npm run test:quality-gate`   | Full CI quality gate (lint + unit + regression + e2e) |
-| `npm run test:mutate`         | Stryker mutation testing                              |
-| `npm run test:mutate:crypto`  | Crypto Vault mutation gate, break threshold 80%       |
-| `npm run format`              | Prettier code formatting                              |
-| `npm run release:trust-chain` | SBOM + provenance + signing + verification            |
-| `npm run cli`                 | Aegis CLI interface                                   |
+| Command                        | Description                                           |
+| ------------------------------ | ----------------------------------------------------- |
+| `npm run dev`                  | Start Vite dev server                                 |
+| `npm run build`                | TypeScript check + Vite production build              |
+| `npm run lint`                 | ESLint (zero errors enforced)                         |
+| `npm run test`                 | Run all unit tests                                    |
+| `npm run test:coverage`        | Tests with v8 coverage report                         |
+| `npm run test:e2e`             | Playwright end-to-end tests                           |
+| `npm run test:quality-gate`    | Full CI quality gate (lint + unit + regression + e2e) |
+| `npm run test:mutate`          | Stryker mutation gate for deterministic security core |
+| `npm run test:mutate:extended` | Extended exploratory mutation analysis                |
+| `npm run test:mutate:crypto`   | Crypto Vault mutation gate, break threshold 80%       |
+| `npm run format`               | Prettier code formatting                              |
+| `npm run release:trust-chain`  | SBOM + provenance + signing + verification            |
+| `npm run cli`                  | Aegis CLI interface                                   |
 
 ---
 

@@ -107,6 +107,66 @@ describe('CryptoWalletVault', () => {
     expect(JSON.parse(entry.notes || '{}').secretKind).toBe('seed_phrase');
   });
 
+  it('validates supported watch-only address formats by chain', () => {
+    expect(
+      CryptoWalletVault.validateAddress('bitcoin', 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080')
+    ).toBe(true);
+    expect(
+      CryptoWalletVault.validateAddress('ethereum', '0x742d35Cc6634C0532925a3b844Bc454e4438f44e')
+    ).toBe(true);
+    expect(
+      CryptoWalletVault.validateAddress('solana', '81H1rKZHjpSsnr6Epumw9XVTfqAnqSHcTKm7D3VsEd74')
+    ).toBe(true);
+    expect(CryptoWalletVault.validateAddress('tron', 'TQBz3q8Ddjap3K8QdFQHtJKBxbvXMCi62E')).toBe(
+      true
+    );
+    expect(
+      CryptoWalletVault.validateAddress('litecoin', 'ltc1qgqj1K9aZ3i42HbsRWK7m1SbUgXmak')
+    ).toBe(true);
+    expect(CryptoWalletVault.validateAddress('other', 'watch-only-reference')).toBe(true);
+
+    expect(CryptoWalletVault.validateAddress('ethereum', 'not-an-evm-address')).toBe(false);
+    expect(CryptoWalletVault.validateAddress('bitcoin', '')).toBe(false);
+  });
+
+  it('supports extended public key watch-only flows without allowing chain confusion', () => {
+    const xpub = `xpub${'A'.repeat(100)}`;
+
+    expect(CryptoWalletVault.isExtendedPublicKey(xpub)).toBe(true);
+    expect(CryptoWalletVault.getExtendedKeyType(xpub)).toBe('xpub');
+    expect(CryptoWalletVault.validateAddress('bitcoin', xpub)).toBe(true);
+    expect(CryptoWalletVault.validateAddress('other', xpub)).toBe(true);
+    expect(CryptoWalletVault.validateAddress('ethereum', xpub)).toBe(false);
+    expect(CryptoWalletVault.detectChainFromAddress(xpub)).toBe('bitcoin');
+  });
+
+  it('detects chain mismatch information for address safety warnings', () => {
+    expect(
+      CryptoWalletVault.getChainMismatchInfo(
+        'bitcoin',
+        '0x742d35Cc6634C0532925a3b844Bc454e4438f44e'
+      )
+    ).toEqual({ mismatch: true, detectedChain: 'ethereum' });
+
+    expect(
+      CryptoWalletVault.getChainMismatchInfo('other', '0x742d35Cc6634C0532925a3b844Bc454e4438f44e')
+    ).toEqual({ mismatch: false, detectedChain: 'ethereum' });
+
+    expect(CryptoWalletVault.getChainMismatchInfo('solana', 'unknown')).toEqual({
+      mismatch: false,
+      detectedChain: null,
+    });
+  });
+
+  it('returns stable address format hints for the supported chains', () => {
+    expect(CryptoWalletVault.getAddressFormatHint('bitcoin')).toContain('xpub');
+    expect(CryptoWalletVault.getAddressFormatHint('ethereum')).toContain('0x');
+    expect(CryptoWalletVault.getAddressFormatHint('solana')).toContain('Base58');
+    expect(CryptoWalletVault.getAddressFormatHint('tron')).toContain('34');
+    expect(CryptoWalletVault.getAddressFormatHint('litecoin')).toContain('ltc1');
+    expect(CryptoWalletVault.getAddressFormatHint('other')).toContain('140');
+  });
+
   it('falls back to watch-only when vault-secret mode has blank secret material', () => {
     const entry = CryptoWalletVault.fromDraft({
       name: 'Blank Secret',
