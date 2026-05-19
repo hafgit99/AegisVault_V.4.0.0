@@ -38,6 +38,7 @@ describe('ExportService regression tests', () => {
         password: 'secretPass123',
         category: 'Work',
         website: 'https://github.com',
+        favorite: false,
         tags: ['dev'],
         notes: '',
         cardDetails: null,

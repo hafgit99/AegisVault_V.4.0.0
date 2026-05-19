@@ -588,7 +588,7 @@ describe('SQLiteOPFS', () => {
     // The exact expected string if NO mutations occurred.
     // If a literal like 'General' changes to '', or new Date().toISOString() changes, this kills it.
     expect(fakeDb.lastSql).toContain(
-      "VALUES (999, 'Untitled', NULL, NULL, '', NULL, NULL, NULL, NULL, 'General', NULL, NULL, '', NULL, NULL, NULL, NULL, '[]', '2026-01-01T00:00:00.000Z', 0, '[]', 0, '[]', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
+      "VALUES (999, 'Untitled', NULL, NULL, '', NULL, NULL, NULL, NULL, 'General', NULL, NULL, '', NULL, NULL, NULL, NULL, '[]', '2026-01-01T00:00:00.000Z', 0, '[]', 0, 0, '[]', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
     );
 
     // Now test with specific values to ensure they do not trigger fallbacks
@@ -604,7 +604,7 @@ describe('SQLiteOPFS', () => {
     } as any);
 
     expect(fakeDb.lastSql).toContain(
-      "VALUES (888, 'T', NULL, NULL, 'usr', NULL, NULL, NULL, NULL, 'Work', NULL, NULL, 'a.com', NULL, NULL, NULL, NULL, '[]', '2026-01-01T00:00:00.000Z', 0, '[\"a\"]', 0, '[{\"id\":\"1\"}]', 'del', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
+      "VALUES (888, 'T', NULL, NULL, 'usr', NULL, NULL, NULL, NULL, 'Work', NULL, NULL, 'a.com', NULL, NULL, NULL, NULL, '[]', '2026-01-01T00:00:00.000Z', 0, '[\"a\"]', 0, 0, '[{\"id\":\"1\"}]', 'del', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
     );
 
     vi.useRealTimers();
@@ -691,7 +691,7 @@ describe('SQLiteOPFS', () => {
     expect(removeEntry).not.toHaveBeenCalledWith('sqlite');
   });
 
-  it('putPassword correctly maps all 42 fields into the SQL string', () => {
+  it('putPassword correctly maps all 43 fields into the SQL string', () => {
     const sqlite = new SQLiteOPFS('exhaustive-db');
     const fakeDb = new FakeDb();
     (sqlite as any).db = fakeDb;
@@ -719,6 +719,7 @@ describe('SQLiteOPFS', () => {
       strength: 50,
       tags: ['tag1'],
       pwned_count: 5,
+      favorite: true,
       attachments: [{ id: 'a1' }],
       deletedAt: '2026-01-02',
       totp_secret: 'TS',
@@ -770,26 +771,27 @@ describe('SQLiteOPFS', () => {
     expect(vals[19]).toBe('50');
     expect(vals[20]).toBe('["tag1"]');
     expect(vals[21]).toBe('5');
-    expect(vals[22]).toBe('[{"id":"a1"}]');
-    expect(vals[23]).toBe('2026-01-02');
-    expect(vals[24]).toBe('TS');
-    expect(vals[25]).toBe('TIV2');
-    expect(vals[26]).toBe('TI');
-    expect(vals[27]).toBe('SHA1');
-    expect(vals[28]).toBe('6');
-    expect(vals[29]).toBe('30');
-    expect(vals[30]).toBe('EN');
-    expect(vals[31]).toBe('NIV');
-    expect(vals[32]).toBe('EPM');
-    expect(vals[33]).toBe('PMIV');
-    expect(vals[34]).toBe('ECD');
-    expect(vals[35]).toBe('CDIV');
-    expect(vals[36]).toBe('EID');
-    expect(vals[37]).toBe('IDIV');
-    expect(vals[38]).toBe('EAD');
-    expect(vals[39]).toBe('ADIV');
-    expect(vals[40]).toBe('EH');
-    expect(vals[41]).toBe('HIV');
+    expect(vals[22]).toBe('1');
+    expect(vals[23]).toBe('[{"id":"a1"}]');
+    expect(vals[24]).toBe('2026-01-02');
+    expect(vals[25]).toBe('TS');
+    expect(vals[26]).toBe('TIV2');
+    expect(vals[27]).toBe('TI');
+    expect(vals[28]).toBe('SHA1');
+    expect(vals[29]).toBe('6');
+    expect(vals[30]).toBe('30');
+    expect(vals[31]).toBe('EN');
+    expect(vals[32]).toBe('NIV');
+    expect(vals[33]).toBe('EPM');
+    expect(vals[34]).toBe('PMIV');
+    expect(vals[35]).toBe('ECD');
+    expect(vals[36]).toBe('CDIV');
+    expect(vals[37]).toBe('EID');
+    expect(vals[38]).toBe('IDIV');
+    expect(vals[39]).toBe('EAD');
+    expect(vals[40]).toBe('ADIV');
+    expect(vals[41]).toBe('EH');
+    expect(vals[42]).toBe('HIV');
   });
 
   it('wipeAll clears all tables and deletes the file from OPFS', async () => {
