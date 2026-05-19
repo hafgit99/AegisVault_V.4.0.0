@@ -132,95 +132,101 @@ export function DashboardHeader({
                   {t('v5DashboardTitle')}
                 </h1>
                 <div className="mt-1 flex items-center gap-1.5 whitespace-nowrap">
-                  <span className="dashboard-storage-chip">WASM SQLCipher</span>
+                  <span className="dashboard-storage-chip">{t('storageEngineLabel')}</span>
                   <span className="dashboard-storage-dot" aria-hidden="true" />
-                  <span className="dashboard-storage-status">Active</span>
+                  <span className="dashboard-storage-status">{t('storageStatusActive')}</span>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="dashboard-top-actions flex min-w-0 items-center justify-end gap-2 overflow-x-auto">
-            <button
-              type="button"
-              onClick={handleLanguageToggle}
-              className="toolbar-control flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm transition-all"
-              aria-label={t('changeLanguageAria', 'Change language')}
-            >
-              <Globe className="w-3.5 h-3.5" />
-              {i18n.language.startsWith('en') ? 'EN' : 'TR'}
-            </button>
-            <button
-              onClick={onDonationOpen}
-              className="toolbar-control group relative shrink-0 rounded-full p-2.5 shadow-sm transition-all"
-              title={t('donateBtn')}
-              aria-label={t('donateAria', 'Open donation dialog')}
-            >
-              <Heart className="w-5 h-5 fill-current opacity-80 group-hover:opacity-100" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-400 shadow-[0_0_0_3px_rgba(251,113,133,0.14)]" />
-            </button>
-            <button
-              onClick={onSettingsOpen}
-              className="toolbar-control shrink-0 rounded-full p-2.5 shadow-sm transition-all"
-              aria-label={t('settingsAria', 'Open settings')}
-            >
-              <Settings className="w-5 h-5" />
-            </button>
-            <button
-              onClick={onQuickAliasOpen}
-              className="toolbar-control flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm transition-all text-[var(--color-sage-green)]"
-              aria-label={t('quickAliasTooltip')}
-              title={t('quickAliasTooltip')}
-            >
-              <AtSign className="w-4 h-4" />
-              <span className="hidden xl:inline">{t('quickAliasTooltip')}</span>
-            </button>
-            <button
-              type="button"
-              onClick={onThemeToggle}
-              className="toolbar-control flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold shadow-sm transition-all md:text-sm"
-              aria-label={t('toggleTheme', 'Toggle theme')}
-              title={
-                themeMode === 'dark'
-                  ? t('switchToLight', 'Switch to light mode')
-                  : t('switchToDark', 'Switch to dark mode')
-              }
-            >
-              {themeMode === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              {themeMode === 'dark' ? t('lightMode', 'Light') : t('darkMode', 'Dark')}
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                setViewDensity(viewDensity === 'comfortable' ? 'compact' : 'comfortable')
-              }
-              className="toolbar-control flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold shadow-sm outline-none transition-all md:text-sm"
-              title={t('viewDensityToggle', 'Toggle card density')}
-              aria-label={t('viewDensityToggleAria', 'Toggle card density')}
-            >
-              {viewDensity === 'comfortable' ? (
-                <Rows3 className="w-4 h-4" />
-              ) : (
-                <Rows2 className="w-4 h-4" />
-              )}
-              {viewDensity === 'comfortable'
-                ? t('densityCompact', 'Compact')
-                : t('densityComfortable', 'Comfortable')}
-            </button>
-            <button
-              onClick={handleLock}
-              className="v5-lock-vault-btn flex shrink-0 items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-600 shadow-sm transition-all hover:bg-red-500 hover:text-white active:scale-95"
-              aria-label={t('lockVaultAria', 'Lock vault')}
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden md:inline">{t('lockVault')}</span>
-            </button>
+            <div className="v5-dashboard-utility-group flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={handleLanguageToggle}
+                className="toolbar-control v5-dashboard-icon-control flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm transition-all"
+                aria-label={t('changeLanguageAria', 'Change language')}
+              >
+                <Globe className="w-3.5 h-3.5" />
+                {i18n.language.startsWith('en') ? 'EN' : 'TR'}
+              </button>
+              <button
+                onClick={onDonationOpen}
+                className="toolbar-control v5-dashboard-icon-control group relative shrink-0 rounded-full p-2.5 shadow-sm transition-all"
+                title={t('donateBtn')}
+                aria-label={t('donateAria', 'Open donation dialog')}
+              >
+                <Heart className="w-5 h-5 opacity-80 group-hover:opacity-100" />
+                <span className="v5-dashboard-alert-dot absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-400 shadow-[0_0_0_3px_rgba(251,113,133,0.14)]" />
+              </button>
+              <button
+                onClick={onSettingsOpen}
+                className="toolbar-control v5-dashboard-icon-control shrink-0 rounded-full p-2.5 shadow-sm transition-all"
+                aria-label={t('settingsAria', 'Open settings')}
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="v5-dashboard-command-group flex shrink-0 items-center gap-2">
+              <button
+                onClick={onQuickAliasOpen}
+                className="toolbar-control v5-dashboard-primary-tool flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm transition-all text-[var(--color-sage-green)]"
+                aria-label={t('quickAliasTooltip')}
+                title={t('quickAliasTooltip')}
+              >
+                <AtSign className="w-4 h-4" />
+                <span className="hidden xl:inline">{t('quickAliasTooltip')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={onThemeToggle}
+                className="toolbar-control v5-dashboard-mode-control flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold shadow-sm transition-all md:text-sm"
+                aria-label={t('toggleTheme', 'Toggle theme')}
+                title={
+                  themeMode === 'dark'
+                    ? t('switchToLight', 'Switch to light mode')
+                    : t('switchToDark', 'Switch to dark mode')
+                }
+              >
+                {themeMode === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                {themeMode === 'dark' ? t('lightMode', 'Light') : t('darkMode', 'Dark')}
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setViewDensity(viewDensity === 'comfortable' ? 'compact' : 'comfortable')
+                }
+                className="toolbar-control v5-dashboard-mode-control flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold shadow-sm outline-none transition-all md:text-sm"
+                title={t('viewDensityToggle', 'Toggle card density')}
+                aria-label={t('viewDensityToggleAria', 'Toggle card density')}
+              >
+                {viewDensity === 'comfortable' ? (
+                  <Rows3 className="w-4 h-4" />
+                ) : (
+                  <Rows2 className="w-4 h-4" />
+                )}
+                {viewDensity === 'comfortable'
+                  ? t('densityCompact', 'Compact')
+                  : t('densityComfortable', 'Comfortable')}
+              </button>
+              <button
+                onClick={handleLock}
+                className="v5-lock-vault-btn flex shrink-0 items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-600 shadow-sm transition-all hover:bg-red-500 hover:text-white active:scale-95"
+                aria-label={t('lockVaultAria', 'Lock vault')}
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden md:inline">{t('lockVault')}</span>
+              </button>
+            </div>
           </div>
         </div>
 
         <div className="dashboard-search-row v5-dashboard-search-row flex min-w-0 items-center justify-end gap-2 overflow-x-auto">
           <div className="v5-dashboard-search-box group relative min-w-[210px] shrink">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-50 transition-opacity group-focus-within:opacity-100" />
+            <span className="v5-dashboard-search-icon-wrap pointer-events-none absolute inset-y-0 left-3 flex items-center">
+              <Search className="v5-dashboard-search-icon h-4 w-4 transition-colors" />
+            </span>
             <input
               ref={searchRef}
               type="text"
@@ -231,75 +237,77 @@ export function DashboardHeader({
               aria-label={t('searchVaultAria', 'Search vault records')}
             />
           </div>
-          <div className="toolbar-chip-group v5-search-scope-group flex shrink-0 items-center gap-1 rounded-full px-1.5 py-1">
-            <button
-              type="button"
-              onClick={() => setSearchScope('all')}
-              aria-pressed={searchScope === 'all'}
-              aria-label={t('searchScopeAria', { scope: t('searchScopeAll', 'All') })}
-              className={`v5-search-scope-btn rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
-                searchScope === 'all'
-                  ? 'bg-[var(--color-sage-green)] text-white'
-                  : 'text-[var(--color-deep-navy)]/70 hover:bg-white/60'
-              }`}
+          <div className="v5-dashboard-search-tools flex shrink-0 items-center gap-2">
+            <div className="toolbar-chip-group v5-search-scope-group flex shrink-0 items-center gap-1 rounded-full px-1.5 py-1">
+              <button
+                type="button"
+                onClick={() => setSearchScope('all')}
+                aria-pressed={searchScope === 'all'}
+                aria-label={t('searchScopeAria', { scope: t('searchScopeAll', 'All') })}
+                className={`v5-search-scope-btn rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
+                  searchScope === 'all'
+                    ? 'bg-[var(--color-sage-green)] text-white'
+                    : 'text-[var(--color-deep-navy)]/70 hover:bg-white/60'
+                }`}
+              >
+                {t('searchScopeAll', 'All')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchScope('title')}
+                aria-pressed={searchScope === 'title'}
+                aria-label={t('searchScopeAria', { scope: t('searchScopeTitle', 'Title') })}
+                className={`v5-search-scope-btn rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
+                  searchScope === 'title'
+                    ? 'bg-[var(--color-sage-green)] text-white'
+                    : 'text-[var(--color-deep-navy)]/70 hover:bg-white/60'
+                }`}
+              >
+                {t('searchScopeTitle', 'Title')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchScope('username')}
+                aria-pressed={searchScope === 'username'}
+                aria-label={t('searchScopeAria', { scope: t('searchScopeUsername', 'User') })}
+                className={`v5-search-scope-btn rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
+                  searchScope === 'username'
+                    ? 'bg-[var(--color-sage-green)] text-white'
+                    : 'text-[var(--color-deep-navy)]/70 hover:bg-white/60'
+                }`}
+              >
+                {t('searchScopeUsername', 'User')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchScope('tags')}
+                aria-pressed={searchScope === 'tags'}
+                aria-label={t('searchScopeAria', { scope: t('searchScopeTags', 'Tags') })}
+                className={`v5-search-scope-btn rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
+                  searchScope === 'tags'
+                    ? 'bg-[var(--color-sage-green)] text-white'
+                    : 'text-[var(--color-deep-navy)]/70 hover:bg-white/60'
+                }`}
+              >
+                {t('searchScopeTags', 'Tags')}
+              </button>
+            </div>
+            <select
+              value={sortOption}
+              onChange={(e) =>
+                setSortOption(
+                  e.target.value as 'updated_desc' | 'updated_asc' | 'title_asc' | 'title_desc'
+                )
+              }
+              className="toolbar-control v5-dashboard-sort-select shrink-0 rounded-full px-3 py-2 text-xs font-semibold shadow-sm outline-none transition-all md:text-sm"
+              aria-label={t('sortBy', 'Sort by')}
             >
-              {t('searchScopeAll', 'All')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSearchScope('title')}
-              aria-pressed={searchScope === 'title'}
-              aria-label={t('searchScopeAria', { scope: t('searchScopeTitle', 'Title') })}
-              className={`v5-search-scope-btn rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
-                searchScope === 'title'
-                  ? 'bg-[var(--color-sage-green)] text-white'
-                  : 'text-[var(--color-deep-navy)]/70 hover:bg-white/60'
-              }`}
-            >
-              {t('searchScopeTitle', 'Title')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSearchScope('username')}
-              aria-pressed={searchScope === 'username'}
-              aria-label={t('searchScopeAria', { scope: t('searchScopeUsername', 'User') })}
-              className={`v5-search-scope-btn rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
-                searchScope === 'username'
-                  ? 'bg-[var(--color-sage-green)] text-white'
-                  : 'text-[var(--color-deep-navy)]/70 hover:bg-white/60'
-              }`}
-            >
-              {t('searchScopeUsername', 'User')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSearchScope('tags')}
-              aria-pressed={searchScope === 'tags'}
-              aria-label={t('searchScopeAria', { scope: t('searchScopeTags', 'Tags') })}
-              className={`v5-search-scope-btn rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
-                searchScope === 'tags'
-                  ? 'bg-[var(--color-sage-green)] text-white'
-                  : 'text-[var(--color-deep-navy)]/70 hover:bg-white/60'
-              }`}
-            >
-              {t('searchScopeTags', 'Tags')}
-            </button>
+              <option value="updated_desc">{t('sortUpdatedDesc', 'Date (Newest)')}</option>
+              <option value="updated_asc">{t('sortUpdatedAsc', 'Date (Oldest)')}</option>
+              <option value="title_asc">{t('sortTitleAsc', 'Name (A-Z)')}</option>
+              <option value="title_desc">{t('sortTitleDesc', 'Name (Z-A)')}</option>
+            </select>
           </div>
-          <select
-            value={sortOption}
-            onChange={(e) =>
-              setSortOption(
-                e.target.value as 'updated_desc' | 'updated_asc' | 'title_asc' | 'title_desc'
-              )
-            }
-            className="toolbar-control shrink-0 rounded-full px-3 py-2 text-xs font-semibold shadow-sm outline-none transition-all md:text-sm"
-            aria-label={t('sortBy', 'Sort by')}
-          >
-            <option value="updated_desc">{t('sortUpdatedDesc', 'Date (Newest)')}</option>
-            <option value="updated_asc">{t('sortUpdatedAsc', 'Date (Oldest)')}</option>
-            <option value="title_asc">{t('sortTitleAsc', 'Name (A-Z)')}</option>
-            <option value="title_desc">{t('sortTitleDesc', 'Name (Z-A)')}</option>
-          </select>
         </div>
       </header>
     </>

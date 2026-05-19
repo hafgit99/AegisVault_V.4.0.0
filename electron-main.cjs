@@ -4,7 +4,7 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-const { app, BrowserWindow, ipcMain, session, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, session, dialog, clipboard } = require('electron');
 const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
@@ -37,6 +37,62 @@ const RAPID_REPAIR_WINDOW_MS = 12 * 60 * 60 * 1000;
 const NATIVE_BRIDGE_MESSAGE_TTL_MS = 15 * 1000;
 const STARTUP_DIAGNOSTIC_EVENT_LIMIT = 20;
 const startupDiagnosticEvents = [];
+let secureClipboardTimer = null;
+let secureClipboardRetryTimer = null;
+let secureClipboardExpectedText = '';
+
+function clearSecureClipboard(expectedText, options = {}) {
+  try {
+    const expected = typeof expectedText === 'string' ? expectedText : secureClipboardExpectedText;
+    if (!options.force && expected && clipboard.readText() !== expected) {
+      return { success: true, skipped: true };
+    }
+    clipboard.writeText(' ');
+    clipboard.clear();
+    clipboard.writeText('');
+    return { success: true, cleared: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  } finally {
+    if (secureClipboardTimer) {
+      clearTimeout(secureClipboardTimer);
+      secureClipboardTimer = null;
+    }
+    if (!options.keepState) {
+      if (secureClipboardRetryTimer) {
+        clearInterval(secureClipboardRetryTimer);
+        secureClipboardRetryTimer = null;
+      }
+      secureClipboardExpectedText = '';
+    }
+  }
+}
+
+function scheduleSecureClipboardClear(text, ttlMs) {
+  if (secureClipboardTimer) {
+    clearTimeout(secureClipboardTimer);
+    secureClipboardTimer = null;
+  }
+  if (secureClipboardRetryTimer) {
+    clearInterval(secureClipboardRetryTimer);
+    secureClipboardRetryTimer = null;
+  }
+
+  secureClipboardExpectedText = text;
+  const ttl = Math.min(300000, Math.max(5000, Number(ttlMs) || 30000));
+  secureClipboardTimer = setTimeout(() => {
+    clearSecureClipboard(text, { force: true, keepState: true });
+
+    let attempts = 0;
+    secureClipboardRetryTimer = setInterval(() => {
+      attempts += 1;
+      clearSecureClipboard(text, { force: true, keepState: attempts < 10 });
+    }, 1000);
+  }, ttl);
+}
 
 // ─────────────────────────────────────────────────────────────────
 // 📡 Yerel HTTP Sync Server (Extension İletişimi)
@@ -2615,6 +2671,39 @@ ipcMain.on('lock-vault', (event) => {
 
   vaultState.unlocked = false;
   vaultState.entryCount = 0;
+  clearSecureClipboard();
+});
+
+ipcMain.handle('secure-clipboard-write', (event, payload) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) {
+    console.warn('[IPC] Unauthorized IPC sender for secure-clipboard-write');
+    return { success: false, error: 'UNAUTHORIZED_SENDER' };
+  }
+
+  const text = typeof payload?.text === 'string' ? payload.text : '';
+  if (!text) return { success: false, error: 'EMPTY_CLIPBOARD_TEXT' };
+
+  try {
+    clipboard.writeText(text);
+    scheduleSecureClipboardClear(text, Number(payload?.ttlMs) || 30000);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+});
+
+ipcMain.handle('secure-clipboard-clear', (event, expectedText) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) {
+    console.warn('[IPC] Unauthorized IPC sender for secure-clipboard-clear');
+    return { success: false, error: 'UNAUTHORIZED_SENDER' };
+  }
+
+  return clearSecureClipboard(typeof expectedText === 'string' ? expectedText : undefined, {
+    force: true,
+  });
 });
 
 ipcMain.on('aegis-domain-credentials-response', (event, payload) => {
@@ -2982,6 +3071,7 @@ app.on('window-all-closed', () => {
   pendingPasskeyAuthRequests.clear();
   pendingAutosaveCredentialRequests.clear();
   pendingVaultCliRequests.clear();
+  clearSecureClipboard();
 
   if (process.platform !== 'darwin') {
     app.quit();
@@ -2989,5 +3079,6 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  clearSecureClipboard();
   stopNativeBridgeServer();
 });

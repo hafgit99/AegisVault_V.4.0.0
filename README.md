@@ -188,9 +188,10 @@ The vault core is decomposed into **9 dedicated service modules** under `src/lib
 | **Mutation Gate Composite** | **83.88%**     |
 
 The default mutation gate focuses on deterministic security/domain modules that are suitable for
-Vitest mutation testing. Broader storage/facade modules such as SQLite OPFS persistence and the
-VaultService orchestrator can be inspected with the extended mutation profile without blocking the
-release gate.
+Vitest mutation testing. The extended profile keeps the broad historical report shape by including
+legacy module families, Android-side security modules, storage/facade modules such as SQLite OPFS
+persistence and the VaultService orchestrator. The extended profile is diagnostic and does not block
+the release gate.
 
 ```bash
 # Run unit tests

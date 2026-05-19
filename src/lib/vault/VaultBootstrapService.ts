@@ -105,6 +105,7 @@ export class VaultBootstrapService {
     }
 
     let currentSaltB64 = metadata?.salt;
+    let usesLegacyFallbackSalt = false;
 
     if (!currentSaltB64) {
       const txCheck = opfsMockDb.transaction('passwords', 'readonly');
@@ -114,13 +115,15 @@ export class VaultBootstrapService {
       if (passwordsCount > 0) {
         const oldSaltBytes = new TextEncoder().encode('aegis-premium-salt-v4');
         currentSaltB64 = btoa(String.fromCharCode(...oldSaltBytes));
+        usesLegacyFallbackSalt = true;
       }
     }
 
-    const vaultVersion = metadata?.version || 2;
+    const vaultVersion = metadata?.version || (usesLegacyFallbackSalt ? 2 : 3);
     const deriveResult = await deriveMasterKey(password, secretKey, currentSaltB64, vaultVersion);
     const newSaltB64 = deriveResult.saltB64;
-    const activeKey = deriveResult.aesKey;
+    let activeKey = deriveResult.aesKey;
+    let activeSensitiveMaterial = deriveResult.sensitiveMaterial;
 
     if (activeKey) setAesKey(activeKey);
 
@@ -343,6 +346,70 @@ export class VaultBootstrapService {
       }
     }
 
+    const canDecryptAnyStoredPassword = async (key: CryptoKey, entries: VaultEntry[]) => {
+      const encryptedEntries = entries.filter((entry) => entry.encrypted_password && entry.iv);
+      if (encryptedEntries.length === 0) return true;
+
+      for (const entry of encryptedEntries.slice(0, 5)) {
+        try {
+          const cipherArray = isLikelyHexUtil(entry.encrypted_password!)
+            ? hexToBuffer(entry.encrypted_password!)
+            : Uint8Array.from(atob(entry.encrypted_password!), (c) => c.charCodeAt(0));
+          const ivArray = isLikelyHexUtil(entry.iv!)
+            ? hexToBuffer(entry.iv!)
+            : Uint8Array.from(atob(entry.iv!), (c) => c.charCodeAt(0));
+          await window.crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: toBufferSource(ivArray) },
+            key,
+            toBufferSource(cipherArray)
+          );
+          return true;
+        } catch {
+          /* try next sample */
+        }
+      }
+      return false;
+    };
+
+    if (!isSetupAction && metadata?.version === 3 && passwordsCount > 0 && currentSaltB64) {
+      const storedEntries =
+        useSQLite && sqliteDb && sqliteDb.countPasswords() > 0
+          ? (sqliteDb.getAllPasswords() as VaultEntry[])
+          : ((await opfsMockDb.getAll('passwords')) as VaultEntry[]);
+
+      const currentKeyWorks = await canDecryptAnyStoredPassword(activeKey, storedEntries);
+      if (!currentKeyWorks) {
+        const legacyDerive = await deriveMasterKey(password, secretKey, currentSaltB64, 2);
+        const legacyKeyWorks = await canDecryptAnyStoredPassword(
+          legacyDerive.aesKey,
+          storedEntries
+        );
+        if (legacyKeyWorks) {
+          activeKey = legacyDerive.aesKey;
+          activeSensitiveMaterial = legacyDerive.sensitiveMaterial;
+          setAesKey(activeKey);
+
+          const repairedMetadata = {
+            id: 'main_salt',
+            salt: currentSaltB64,
+            createdAt: metadata.createdAt || new Date().toISOString(),
+            version: 2,
+          };
+          const txRepair = opfsMockDb.transaction('vault_metadata', 'readwrite');
+          await txRepair.objectStore('vault_metadata').put(repairedMetadata);
+          await txRepair.done;
+          if (useSQLite && sqliteDb) {
+            sqliteDb.putMetadata('main_salt', repairedMetadata);
+          }
+          console.warn(
+            '[VaultBootstrapService] Legacy v2 vault-key fallback applied and metadata repaired.'
+          );
+        } else {
+          setAesKey(activeKey);
+        }
+      }
+    }
+
     console.log(`SQLCipher: PRAGMA key uygulandi. [${dbName}] baglantisi hazir.`);
 
     if (useSQLite && sqliteDb) {
@@ -397,7 +464,7 @@ export class VaultBootstrapService {
       sqliteDb,
       useSQLite,
       aesKey: activeKey,
-      sensitiveMaterial: deriveResult.sensitiveMaterial,
+      sensitiveMaterial: activeSensitiveMaterial,
     };
   }
 

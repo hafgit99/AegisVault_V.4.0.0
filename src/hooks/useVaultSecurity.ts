@@ -25,6 +25,12 @@ export interface WatchtowerData {
   score: number;
 }
 
+const isUsableWatchtowerPassword = (value: unknown): value is string =>
+  typeof value === 'string' &&
+  value.length > 0 &&
+  !value.toUpperCase().includes('DECRYPT_ERROR') &&
+  value !== 'SANITIZE_OVERWRITE';
+
 export function useVaultSecurity(
   passwords: VaultEntry[],
   passwordsRef: MutableRefObject<VaultEntry[]>,
@@ -97,7 +103,7 @@ export function useVaultSecurity(
     const reusedSet = new Set<string>();
 
     passwords.forEach((p) => {
-      if (p.pass) {
+      if (isUsableWatchtowerPassword(p.pass)) {
         if (seenPasswords.has(p.pass)) reusedSet.add(p.pass);
         else seenPasswords.add(p.pass);
       }
@@ -109,8 +115,9 @@ export function useVaultSecurity(
     passwords.forEach((p) => {
       let pwdScore = 100;
 
-      const isWeak = !p.pass || p.pass.length < 8;
-      const isReused = p.pass && reusedSet.has(p.pass);
+      const usablePassword = isUsableWatchtowerPassword(p.pass) ? p.pass : '';
+      const isWeak = usablePassword.length > 0 && usablePassword.length < 8;
+      const isReused = usablePassword && reusedSet.has(usablePassword);
       const isOld = p.updated_at && Date.now() - new Date(p.updated_at).getTime() > oneYearMs;
       const isPwned = (p.pwned_count || 0) > 0;
       const aliasRisk = p.aliasDetails
@@ -179,7 +186,9 @@ export function useVaultSecurity(
     setHibpLastResult('idle');
 
     let hadUnknown = false;
-    const passwordsWithSecret = currentPasswords.filter((item) => Boolean(item.pass));
+    const passwordsWithSecret = currentPasswords.filter((item) =>
+      isUsableWatchtowerPassword(item.pass)
+    );
     const uniqueSecrets = Array.from(
       new Set(passwordsWithSecret.map((item) => String(item.pass || '')))
     );

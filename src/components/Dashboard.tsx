@@ -53,7 +53,6 @@ function DashboardInner() {
     handleLock,
     handleRestoreEntry,
     viewDensity,
-    watchtower,
   } = useVault();
 
   const searchRef = useRef<HTMLInputElement>(null);
@@ -74,20 +73,32 @@ function DashboardInner() {
   const startNewEntry = () => {
     setEditEntry({
       category:
-        categoryFilter && categoryFilter !== 'Trash' && !categoryFilter.startsWith('#')
+        categoryFilter &&
+        categoryFilter !== 'Trash' &&
+        !categoryFilter.startsWith('#') &&
+        !categoryFilter.startsWith('__watchtower:')
           ? categoryFilter
           : 'General',
     });
     setIsAdding(true);
   };
 
-  const totalSecurityIssues =
-    (watchtower?.weak || 0) +
-    (watchtower?.reused || 0) +
-    (watchtower?.old || 0) +
-    (watchtower?.pwned || 0) +
-    (watchtower?.aliasAtRisk || 0) +
-    (watchtower?.aliasNeedsRotation || 0);
+  const vaultPanelTitle =
+    categoryFilter === 'Trash'
+      ? t('trash')
+      : categoryFilter === '__watchtower:weak'
+        ? t('weakPasswords')
+        : categoryFilter === '__watchtower:reused'
+          ? t('reusedPasswords')
+          : categoryFilter === '__watchtower:old'
+            ? t('oldPasswords')
+            : categoryFilter === '__watchtower:pwned'
+              ? t('pwnedPasswords')
+              : categoryFilter === '__watchtower:alias-risk'
+                ? t('watchtowerAliasAtRisk')
+                : categoryFilter === '__watchtower:alias-rotation'
+                  ? t('watchtowerAliasNeedsRotation')
+                  : t('yourVault');
 
   useKeyboardShortcuts({
     onSearch: () => searchRef.current?.focus(),
@@ -284,9 +295,7 @@ function DashboardInner() {
           <div className="v5-vault-panel-header flex items-end justify-between gap-4">
             <div>
               <span className="v5-section-kicker">{t('v5VaultWorkspace')}</span>
-              <h2 className="mt-2 text-2xl font-semibold mb-1">
-                {categoryFilter === 'Trash' ? t('trash') : t('yourVault')}
-              </h2>
+              <h2 className="mt-2 text-2xl font-semibold mb-1">{vaultPanelTitle}</h2>
               <p className="v5-vault-status-row flex items-center gap-2 text-sm text-[var(--color-deep-navy)]/65 dark:text-white/70">
                 {t('zeroKnowledge')}
                 {!isDecrypting && (
@@ -400,10 +409,10 @@ function DashboardInner() {
           aria-label={t('dashboardCategoriesSecurityAria', 'Categories and security')}
           className="v5-dashboard-rail lg:col-span-4 xl:col-span-3 flex flex-col gap-5 xl:gap-6"
         >
-          <div className={totalSecurityIssues > 0 ? 'order-1' : 'order-2'}>
+          <div>
             <WatchtowerPanel />
           </div>
-          <div className={totalSecurityIssues > 0 ? 'order-2' : 'order-1'}>
+          <div>
             <CategorySidebar
               onDownloadEmergencyKit={downloadEmergencyKit}
               isGeneratingKit={showEmergencyKit}

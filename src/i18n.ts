@@ -21,6 +21,13 @@ export const resources = {
       v5LoginProofPasskeyTitle: 'Passkey-ready access',
       v5LoginProofPasskeyDesc:
         'Trusted device unlocks can be bound, rotated, and revoked without weakening the vault.',
+      v5LoginBadgeZeroKnowledge: 'Zero-knowledge',
+      v5LoginBadgeOfflineVault: 'Offline vault',
+      v5LoginBadgeNoCloud: 'No cloud dependency',
+      v5LoginAccessKicker: 'Secure access',
+      v5LoginStepMaster: 'Master password',
+      v5LoginStepDevice: 'Device secret',
+      v5LoginStepGenerate: 'Generate device secret',
       v5DashboardTitle: 'Command Center',
       v5VaultWorkspace: 'Vault workspace',
       v5EntryRecord: 'Encrypted record',
@@ -1494,6 +1501,13 @@ export const resources = {
       v5LoginProofPasskeyTitle: 'Passkey hazır erişim',
       v5LoginProofPasskeyDesc:
         'Güvenilir cihaz kilitleri kasayı zayıflatmadan bağlanabilir, döndürülebilir ve iptal edilebilir.',
+      v5LoginBadgeZeroKnowledge: 'Sıfır bilgi',
+      v5LoginBadgeOfflineVault: 'Çevrimdışı kasa',
+      v5LoginBadgeNoCloud: 'Bulut zorunlu değil',
+      v5LoginAccessKicker: 'Güvenli erişim',
+      v5LoginStepMaster: 'Ana şifre',
+      v5LoginStepDevice: 'Cihaz sırrı',
+      v5LoginStepGenerate: 'Cihaz sırrı üret',
       v5DashboardTitle: 'Kontrol Merkezi',
       v5VaultWorkspace: 'Kasa çalışma alanı',
       v5EntryRecord: 'Şifreli kayıt',
@@ -1715,7 +1729,7 @@ export const resources = {
         'Güvenli depolama geçişinden sonra artık gerekli olmayan eski Aegis localStorage anahtarlarını ve yardımcı kayıtları temizler.',
       storageAuditRun: 'Denetim Temizliğini Çalıştır',
       storageAuditDone: 'Depolama denetimi tamamlandı. {{count}} eski anahtar temizlendi.',
-      hibpPrivacyToggle: 'HIBP ihlal taramasını etkinleştir (gizlilik modu)',
+      hibpPrivacyToggle: 'HIBP gizlilik taraması',
       hibpSettingsTitle: 'HIBP Gizlilik Ayarları',
       hibpSettingsDesc:
         'Have I Been Pwned taraması için davranış ve gizlilik varsayılanlarını yönetin.',
@@ -1980,7 +1994,7 @@ export const resources = {
       oldPasswords: 'Eski (180+ Gün)',
       pwnedPasswords: 'Sızdırılmış Şifreler',
       watchtowerAliasAtRisk: 'Riskli aliaslar',
-      watchtowerAliasNeedsRotation: 'Rotasyon bekleyen aliaslar',
+      watchtowerAliasNeedsRotation: 'Alias rotasyonu',
       scanningProgress: 'Taranıyor ({{progress}}%)',
       hibpScan: 'K-Anonymity HIBP Taraması',
       categoriesTitle: 'Kategoriler',
@@ -2566,6 +2580,13 @@ const trTranslationFixes: Record<string, string> = {
   v5LoginProofPasskeyTitle: 'Passkey hazır erişim',
   v5LoginProofPasskeyDesc:
     'Güvenilir cihaz kilitleri kasayı zayıflatmadan bağlanabilir, döndürülebilir ve iptal edilebilir.',
+  v5LoginBadgeZeroKnowledge: 'Sıfır bilgi',
+  v5LoginBadgeOfflineVault: 'Çevrimdışı kasa',
+  v5LoginBadgeNoCloud: 'Bulut zorunlu değil',
+  v5LoginAccessKicker: 'Güvenli erişim',
+  v5LoginStepMaster: 'Ana şifre',
+  v5LoginStepDevice: 'Cihaz sırrı',
+  v5LoginStepGenerate: 'Cihaz sırrı üret',
   v5DashboardTitle: 'Kontrol Merkezi',
   v5VaultWorkspace: 'Kasa çalışma alanı',
   v5EntryRecord: 'Şifreli kayıt',
@@ -2612,7 +2633,7 @@ const trTranslationFixes: Record<string, string> = {
     'Bu cihazdaki biyometrik kilit kaldırılsın mı? İstediğiniz zaman tekrar kaydedebilirsiniz.',
   passkeyCreatedAt: 'Oluşturulma',
   passkeyLastUsedAt: 'Son kullanım',
-  hibpPrivacyToggle: 'HIBP ihlal taramasını etkinleştir (gizlilik modu)',
+  hibpPrivacyToggle: 'HIBP gizlilik taraması',
   hibpSettingsTitle: 'HIBP Gizlilik Ayarları',
   hibpSettingsDesc:
     'Have I Been Pwned taraması için davranış ve gizlilik varsayılanlarını yönetin.',
@@ -3358,6 +3379,47 @@ const repairTranslationTree = <T>(node: T): T => {
 Object.assign(resources.tr.translation as Record<string, unknown>, trTranslationFixes);
 
 Object.assign(resources.en.translation as Record<string, unknown>, {
+  v5LoginTitle: 'Private vault control center',
+  v5LoginDesc:
+    'A calm workspace for local vault ownership, two-secret unlocks, passkeys, and tested recovery flows.',
+  v5LoginProofLocalTitle: 'Local-first vault',
+  v5LoginProofLocalDesc:
+    'Your encrypted vault stays on this device unless you choose to export or transfer it.',
+  v5LoginProofTwoSecretTitle: 'Two-secret unlock',
+  v5LoginProofTwoSecretDesc:
+    'Your master password and device secret work together before the vault key is derived.',
+  v5LoginProofPasskeyTitle: 'Passkey-ready access',
+  v5LoginProofPasskeyDesc:
+    'Trusted device unlocks can be registered, rotated, and revoked without weakening your vault.',
+  v5LoginBadgeZeroKnowledge: 'Zero-knowledge',
+  v5LoginBadgeOfflineVault: 'Offline vault',
+  v5LoginBadgeNoCloud: 'No cloud dependency',
+  v5LoginAccessKicker: 'Secure access',
+  v5LoginStepMaster: 'Master password',
+  v5LoginStepDevice: 'Device secret',
+  v5LoginStepGenerate: 'Generate device secret',
+  v5DashboardTitle: 'Vault Center',
+  v5VaultWorkspace: 'Private vault',
+  storageEngineLabel: 'Local encrypted vault',
+  storageStatusActive: 'Ready',
+  zeroKnowledge: 'Local zero-knowledge storage',
+  vaultEmptyTitle: 'Your vault is ready',
+  vaultEmptyDesc: 'Add your first encrypted record to start organizing private credentials.',
+  trashEmptyTitle: 'Trash is clear',
+  trashEmptyDesc: 'Deleted records appear here before permanent removal.',
+  emptyStateLocal: 'Private vault',
+  emptyStateArchive: 'Trash review',
+  emptyStateEncrypted: 'Encrypted at rest',
+  emptyStateOffline: 'Works offline',
+  emptyStateRecoverable: 'Recovery-ready',
+  passwordDecryptUnavailable: 'This secret cannot be opened',
+  passwordDecryptUnavailableDesc:
+    'This record could not be decrypted with the current session key. Unlock the vault again or restore from a verified backup.',
+  passwordRepairNotice:
+    'This secret could not be decrypted in the current session. Enter a new password before saving this record.',
+  passwordRepairPlaceholder: 'Enter a replacement password for this record',
+  passwordRepairRequired: 'Enter a new password before saving this record.',
+  secretMenuActive: 'Advanced safety tools are available.',
   securityModeTitle: 'Enterprise Hardened Mode',
   securityModeDesc:
     'Choose a security profile that constrains risky features and enforces stricter session behavior.',
@@ -3866,6 +3928,54 @@ Object.assign(resources.tr.translation as Record<string, unknown>, {
     'Kripto Kasa kayitlari bulundu. Gercek geri yukleme sonrasi ag ve adres bilgisini dogrulayin.',
   'recoveryDrillWarning.RECOVERY_DRILL_PASSKEY_REENROLLMENT_REVIEW':
     'Passkey metadatasi bulundu. Cihaza bagli authenticator kayitlari servis tarafinda yeniden kayit gerektirebilir.',
+});
+
+Object.assign(resources.tr.translation as Record<string, unknown>, {
+  v5LoginTitle: 'Özel kasa kontrol merkezi',
+  v5LoginDesc:
+    'Yerel kasa sahipliği, iki sırla açma, passkey ve test edilmiş kurtarma akışları için sakin bir çalışma alanı.',
+  v5LoginProofLocalTitle: 'Yerel öncelikli kasa',
+  v5LoginProofLocalDesc:
+    'Şifreli kasanız siz dışa aktarmayı veya aktarmayı seçmediğiniz sürece bu cihazda kalır.',
+  v5LoginProofTwoSecretTitle: 'İki sırla açma',
+  v5LoginProofTwoSecretDesc:
+    'Ana şifre ve cihaz sırrı, kasa anahtarı türetilmeden önce birlikte çalışır.',
+  v5LoginProofPasskeyTitle: 'Passkey hazır erişim',
+  v5LoginProofPasskeyDesc:
+    'Güvenilir cihaz kilitleri kasayı zayıflatmadan kaydedilebilir, döndürülebilir ve iptal edilebilir.',
+  v5LoginBadgeZeroKnowledge: 'Sıfır bilgi',
+  v5LoginBadgeOfflineVault: 'Çevrimdışı kasa',
+  v5LoginBadgeNoCloud: 'Bulut zorunlu değil',
+  v5LoginAccessKicker: 'Güvenli erişim',
+  v5LoginStepMaster: 'Ana şifre',
+  v5LoginStepDevice: 'Cihaz sırrı',
+  v5LoginStepGenerate: 'Cihaz sırrı üret',
+  v5DashboardTitle: 'Kasa Merkezi',
+  v5VaultWorkspace: 'Özel kasa',
+  storageEngineLabel: 'Yerel şifreli kasa',
+  storageStatusActive: 'Hazır',
+  zeroKnowledge: 'Yerel sıfır bilgi depolama',
+  vaultEmptyTitle: 'Kasanız kullanıma hazır',
+  vaultEmptyDesc: 'Özel kimlik bilgilerinizi düzenlemek için ilk şifreli kaydınızı ekleyin.',
+  trashEmptyTitle: 'Çöp kutusu temiz',
+  trashEmptyDesc: 'Silinen kayıtlar kalıcı temizleme öncesinde burada incelenir.',
+  emptyStateLocal: 'Özel kasa',
+  emptyStateArchive: 'Çöp inceleme',
+  emptyStateEncrypted: 'Şifreli saklama',
+  emptyStateOffline: 'Çevrimdışı çalışır',
+  emptyStateRecoverable: 'Kurtarmaya hazır',
+  twoSecretConcept: 'İki sırlı koruma hazır',
+  protectedBy: 'Yerel şifreli kasa koruması aktif',
+  passwordDecryptUnavailable: 'Bu sır açılamıyor',
+  passwordDecryptUnavailableDesc:
+    'Bu kayıt mevcut oturum anahtarıyla çözülemedi. Kasayı yeniden açın veya doğrulanmış bir yedekten geri yükleyin.',
+  passwordRepairNotice:
+    'Bu sır mevcut oturumda çözülemedi. Kaydı kaydetmeden önce yeni bir parola girin.',
+  passwordRepairPlaceholder: 'Bu kayıt için yeni parola girin',
+  passwordRepairRequired: 'Kaydı kaydetmeden önce yeni bir parola girin.',
+  secretMenuActive: 'Gelişmiş güvenlik araçları kullanılabilir.',
+  offlinePwaActive: 'Yerel erişim hazır',
+  airgappedSync: 'Bu cihazda çevrimdışı çalışma etkin',
 });
 
 resources.tr.translation = repairTranslationTree(resources.tr.translation);

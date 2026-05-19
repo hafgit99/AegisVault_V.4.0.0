@@ -229,6 +229,18 @@ contextBridge.exposeInMainWorld('aegisElectron', {
 
   getStartupDiagnostics: () => ipcRenderer.invoke('get-startup-diagnostics'),
 
+  secureClipboardWrite: (text, ttlMs) =>
+    ipcRenderer.invoke('secure-clipboard-write', {
+      text: typeof text === 'string' ? text : '',
+      ttlMs: Number.isFinite(Number(ttlMs)) ? Number(ttlMs) : 30000,
+    }),
+
+  secureClipboardClear: (expectedText) =>
+    ipcRenderer.invoke(
+      'secure-clipboard-clear',
+      typeof expectedText === 'string' ? expectedText : undefined
+    ),
+
   reloadApp: () => ipcRenderer.invoke('reload-app'),
 
   quitApp: () => ipcRenderer.invoke('quit-app'),

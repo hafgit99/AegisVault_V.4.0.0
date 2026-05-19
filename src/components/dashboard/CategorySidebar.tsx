@@ -30,11 +30,11 @@ export function CategorySidebar({ onDownloadEmergencyKit, isGeneratingKit }: Cat
               {t('categoriesTitle')}
             </h3>
           </div>
-          <span className="v5-rail-status-chip">
+          <span className="v5-rail-status-chip v5-category-count-chip">
             {categories.length + 1} {t('categoryScopeCount')}
           </span>
         </div>
-        <div className="flex flex-col gap-2.5">
+        <div className="v5-category-list flex flex-col gap-2.5">
           <button
             onClick={() => setCategoryFilter('')}
             className={`category-item v5-category-item flex items-center justify-between px-3 py-2.5 rounded-xl transition-all w-full text-left ${

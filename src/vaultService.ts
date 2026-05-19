@@ -14,6 +14,7 @@ import {
   type VaultAttachmentMeta,
   type StoredCredential,
   hexToBuffer,
+  isLikelyHex,
   toBufferSource,
 } from './lib/crypto-types';
 
@@ -420,6 +421,94 @@ export class VaultService {
 
     this.decryptedEntriesCache = result.cache;
     return result.entries;
+  }
+
+  async getDecryptedPasswordById(id: number): Promise<string> {
+    if (!this.aesKey || (!this.opfsMockDb && !this.sqliteDb)) {
+      throw new Error('Vault is locked');
+    }
+
+    const entry =
+      this.useSQLite && this.sqliteDb
+        ? (this.sqliteDb.getPassword(id) as VaultEntry | null)
+        : ((await this.opfsMockDb!.get('passwords', id)) as VaultEntry | undefined);
+
+    if (!entry) throw new Error('Entry not found');
+
+    const isUsableSecret = (value: unknown): value is string =>
+      typeof value === 'string' &&
+      value.length > 0 &&
+      !value.toUpperCase().includes('DECRYPT_ERROR') &&
+      value !== 'SANITIZE_OVERWRITE';
+
+    const decodeStoredBytes = (value: string) =>
+      isLikelyHex(value)
+        ? hexToBuffer(value)
+        : Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+
+    const decryptStoredPassword = async (
+      candidate: Partial<VaultEntry>
+    ): Promise<string | null> => {
+      if (!candidate.encrypted_password || !candidate.iv) return null;
+
+      try {
+        const plainBuffer = await window.crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: toBufferSource(decodeStoredBytes(candidate.iv)) },
+          this.aesKey!,
+          toBufferSource(decodeStoredBytes(candidate.encrypted_password))
+        );
+        const secret = new TextDecoder().decode(plainBuffer);
+        return isUsableSecret(secret) ? secret : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const repairStoredPassword = async (secret: string) => {
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const cipher = await window.crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: toBufferSource(iv) },
+        this.aesKey!,
+        toBufferSource(new TextEncoder().encode(secret))
+      );
+      const repairedEntry = {
+        ...entry,
+        encrypted_password: Array.from(new Uint8Array(cipher))
+          .map((byte) => byte.toString(16).padStart(2, '0'))
+          .join(''),
+        iv: Array.from(iv)
+          .map((byte) => byte.toString(16).padStart(2, '0'))
+          .join(''),
+        updated_at: new Date().toISOString(),
+      };
+      delete (repairedEntry as Partial<VaultEntry>).pass;
+
+      if (this.useSQLite && this.sqliteDb) {
+        this.sqliteDb.putPassword(repairedEntry as unknown as Record<string, unknown>);
+      }
+      if (this.opfsMockDb) {
+        await this.opfsMockDb.put('passwords', repairedEntry);
+      }
+      this.decryptedEntriesCache = null;
+    };
+
+    if (isUsableSecret(entry.pass)) return entry.pass;
+
+    const currentSecret = await decryptStoredPassword(entry);
+    if (currentSecret) return currentSecret;
+
+    const history = await this.decryptHistory(entry);
+    for (const historicEntry of history) {
+      const recoveredSecret = isUsableSecret(historicEntry.pass)
+        ? historicEntry.pass
+        : await decryptStoredPassword(historicEntry);
+      if (recoveredSecret) {
+        await repairStoredPassword(recoveredSecret);
+        return recoveredSecret;
+      }
+    }
+
+    throw new Error('Password unavailable');
   }
 
   async bulkAddPasswords(

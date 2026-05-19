@@ -20,6 +20,8 @@ export function WatchtowerPanel() {
   const { t } = useTranslation();
   const {
     watchtower,
+    categoryFilter,
+    setCategoryFilter,
     isPwnedScanning,
     pwnedScanProgress,
     handleScanPwned,
@@ -37,6 +39,10 @@ export function WatchtowerPanel() {
     watchtower.pwned +
     watchtower.aliasAtRisk +
     watchtower.aliasNeedsRotation;
+  const toggleWatchtowerFilter = (filter: string) => {
+    setCategoryFilter(categoryFilter === filter ? '' : filter);
+  };
+  const isActiveFilter = (filter: string) => categoryFilter === filter;
 
   return (
     <GlowCard className="watchtower-surface v5-rail-card v5-watchtower-card rounded-xl p-5 relative">
@@ -58,8 +64,13 @@ export function WatchtowerPanel() {
         </span>
       </div>
 
-      <div className="flex flex-col gap-2.5">
-        <div className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
+      <div className="v5-watchtower-list flex flex-col gap-2.5">
+        <button
+          type="button"
+          onClick={() => toggleWatchtowerFilter('__watchtower:weak')}
+          aria-pressed={isActiveFilter('__watchtower:weak')}
+          className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl text-left"
+        >
           <div className="flex items-center gap-2">
             <AlertTriangle
               className={`w-4 h-4 ${watchtower.weak > 0 ? 'text-red-500' : 'text-[var(--color-sage-green)]'}`}
@@ -71,9 +82,14 @@ export function WatchtowerPanel() {
           >
             {watchtower.weak}
           </span>
-        </div>
+        </button>
 
-        <div className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
+        <button
+          type="button"
+          onClick={() => toggleWatchtowerFilter('__watchtower:reused')}
+          aria-pressed={isActiveFilter('__watchtower:reused')}
+          className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl text-left"
+        >
           <div className="flex items-center gap-2">
             <KeyRound
               className={`w-4 h-4 ${watchtower.reused > 0 ? 'text-amber-500' : 'text-[var(--color-sage-green)]'}`}
@@ -85,9 +101,14 @@ export function WatchtowerPanel() {
           >
             {watchtower.reused}
           </span>
-        </div>
+        </button>
 
-        <div className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
+        <button
+          type="button"
+          onClick={() => toggleWatchtowerFilter('__watchtower:old')}
+          aria-pressed={isActiveFilter('__watchtower:old')}
+          className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl text-left"
+        >
           <div className="flex items-center gap-2">
             <Clock4
               className={`w-4 h-4 ${watchtower.old > 0 ? 'text-blue-500' : 'text-[var(--color-sage-green)]'}`}
@@ -99,9 +120,14 @@ export function WatchtowerPanel() {
           >
             {watchtower.old}
           </span>
-        </div>
+        </button>
 
-        <div className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
+        <button
+          type="button"
+          onClick={() => toggleWatchtowerFilter('__watchtower:pwned')}
+          aria-pressed={isActiveFilter('__watchtower:pwned')}
+          className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl text-left"
+        >
           <div className="flex items-center gap-2">
             <ShieldAlert
               className={`w-4 h-4 ${watchtower.pwned > 0 ? 'text-red-500' : 'text-[var(--color-sage-green)]'}`}
@@ -113,9 +139,14 @@ export function WatchtowerPanel() {
           >
             {watchtower.pwned}
           </span>
-        </div>
+        </button>
 
-        <div className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
+        <button
+          type="button"
+          onClick={() => toggleWatchtowerFilter('__watchtower:alias-risk')}
+          aria-pressed={isActiveFilter('__watchtower:alias-risk')}
+          className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl text-left"
+        >
           <div className="flex items-center gap-2">
             <AtSign
               className={`w-4 h-4 ${watchtower.aliasAtRisk > 0 ? 'text-amber-500' : 'text-[var(--color-sage-green)]'}`}
@@ -127,9 +158,14 @@ export function WatchtowerPanel() {
           >
             {watchtower.aliasAtRisk}
           </span>
-        </div>
+        </button>
 
-        <div className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl">
+        <button
+          type="button"
+          onClick={() => toggleWatchtowerFilter('__watchtower:alias-rotation')}
+          aria-pressed={isActiveFilter('__watchtower:alias-rotation')}
+          className="watchtower-item v5-watchtower-item flex justify-between items-center px-3 py-2.5 rounded-xl text-left"
+        >
           <div className="flex items-center gap-2">
             <RefreshCw
               className={`w-4 h-4 ${watchtower.aliasNeedsRotation > 0 ? 'text-sky-500' : 'text-[var(--color-sage-green)]'}`}
@@ -141,13 +177,13 @@ export function WatchtowerPanel() {
           >
             {watchtower.aliasNeedsRotation}
           </span>
-        </div>
+        </button>
       </div>
 
       <button
         onClick={handleScanPwned}
         disabled={isPwnedScanning || passwords.length === 0 || !hibpEnabled || hibpPolicyLocked}
-        className="mt-4 w-full flex items-center justify-center gap-2 bg-gradient-to-r from-red-500/10 to-amber-500/10 hover:from-red-500/20 hover:to-amber-500/20 border border-red-500/20 text-red-600 py-2.5 rounded-xl text-xs font-bold shadow-sm transition-all relative overflow-hidden disabled:opacity-50"
+        className="v5-watchtower-scan-btn mt-4 w-full flex items-center justify-center gap-2 border py-2.5 rounded-xl text-xs font-bold shadow-sm transition-all relative overflow-hidden disabled:opacity-50"
       >
         {isPwnedScanning ? (
           <>

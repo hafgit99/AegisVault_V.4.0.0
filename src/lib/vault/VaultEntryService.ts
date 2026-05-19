@@ -17,6 +17,49 @@ import {
   toBufferSource,
 } from '../crypto-types';
 import { VaultSearchIndexer } from './VaultSearchIndexer';
+import { AliasProviderService } from '../AliasProviderService';
+
+const WATCHTOWER_FILTER_PREFIX = '__watchtower:';
+const isUsableWatchtowerPassword = (value: unknown): value is string =>
+  typeof value === 'string' &&
+  value.length > 0 &&
+  !value.toUpperCase().includes('DECRYPT_ERROR') &&
+  value !== 'SANITIZE_OVERWRITE';
+
+const applyWatchtowerFilter = (entries: VaultEntry[], categoryFilter: string): VaultEntry[] => {
+  if (!categoryFilter.startsWith(WATCHTOWER_FILTER_PREFIX)) return entries;
+
+  const filter = categoryFilter.slice(WATCHTOWER_FILTER_PREFIX.length);
+  const seenPasswords = new Set<string>();
+  const reusedPasswords = new Set<string>();
+
+  entries.forEach((entry) => {
+    if (!isUsableWatchtowerPassword(entry.pass)) return;
+    if (seenPasswords.has(entry.pass)) reusedPasswords.add(entry.pass);
+    else seenPasswords.add(entry.pass);
+  });
+
+  const oneYearMs = 1000 * 60 * 60 * 24 * 365;
+
+  return entries.filter((entry) => {
+    const usablePassword = isUsableWatchtowerPassword(entry.pass) ? entry.pass : '';
+    if (filter === 'weak') return usablePassword.length > 0 && usablePassword.length < 8;
+    if (filter === 'reused') return Boolean(usablePassword && reusedPasswords.has(usablePassword));
+    if (filter === 'old') {
+      return Boolean(
+        entry.updated_at && Date.now() - new Date(entry.updated_at).getTime() > oneYearMs
+      );
+    }
+    if (filter === 'pwned') return (entry.pwned_count || 0) > 0;
+
+    const aliasRisk = entry.aliasDetails
+      ? AliasProviderService.evaluateAliasRisk(entry.aliasDetails)
+      : null;
+    if (filter === 'alias-risk') return Boolean(aliasRisk && aliasRisk.score < 75);
+    if (filter === 'alias-rotation') return Boolean(aliasRisk?.needsRotation);
+    return true;
+  });
+};
 
 export class VaultEntryService {
   static async addPassword(args: {
@@ -69,14 +112,36 @@ export class VaultEntryService {
       throw new Error('Vault storage (IDB/SQLite) not initialized');
     }
 
-    const enc = new TextEncoder();
-    const iv = generateRandomBytes(12);
+    let oldEntry: VaultEntry | null = null;
+    if (entry.id) {
+      if (useSQLite && sqliteDb) {
+        oldEntry = sqliteDb.getPassword(entry.id) as VaultEntry;
+      } else if (opfsMockDb) {
+        oldEntry = await opfsMockDb.get('passwords', entry.id);
+      }
+    }
 
-    const cipherBuffer = await window.crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: toBufferSource(iv) },
-      aesKey,
-      toBufferSource(enc.encode(entry.pass || ''))
+    const enc = new TextEncoder();
+    const hasUsablePassword =
+      typeof entry.pass === 'string' &&
+      entry.pass.length > 0 &&
+      !entry.pass.toUpperCase().includes('DECRYPT_ERROR');
+    const shouldPreserveExistingPassword = Boolean(
+      entry.id && !hasUsablePassword && oldEntry?.encrypted_password && oldEntry?.iv
     );
+    let encryptedPassword = oldEntry?.encrypted_password || '';
+    let passwordIv = oldEntry?.iv || '';
+
+    if (!shouldPreserveExistingPassword) {
+      const iv = generateRandomBytes(12);
+      const cipherBuffer = await window.crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: toBufferSource(iv) },
+        aesKey,
+        toBufferSource(enc.encode(entry.pass || ''))
+      );
+      encryptedPassword = bufferToHex(cipherBuffer);
+      passwordIv = bufferToHex(iv);
+    }
 
     const {
       title,
@@ -121,10 +186,12 @@ export class VaultEntryService {
       encrypted_tags: encrypted_tags as string | undefined,
       tags_iv: tags_iv as string | undefined,
       search_index: (search_index as string[]) || [],
-      encrypted_password: bufferToHex(cipherBuffer),
-      iv: bufferToHex(iv),
+      encrypted_password: encryptedPassword,
+      iv: passwordIv,
       updated_at: new Date().toISOString(),
-      strength: calculateStrength(entry.pass || ''),
+      strength: hasUsablePassword
+        ? calculateStrength(entry.pass || '')
+        : oldEntry?.strength || calculateStrength(entry.pass || ''),
       pwned_count: entry.pwned_count || 0,
     };
 
@@ -240,13 +307,6 @@ export class VaultEntryService {
 
     // --- Professional Item Versioning & History ---
     if (entry.id) {
-      let oldEntry: VaultEntry | null = null;
-      if (useSQLite && sqliteDb) {
-        oldEntry = sqliteDb.getPassword(entry.id) as VaultEntry;
-      } else if (opfsMockDb) {
-        oldEntry = await opfsMockDb.get('passwords', entry.id);
-      }
-
       if (oldEntry) {
         let historyList: VaultEntry[] = [];
         if (oldEntry.encrypted_history && oldEntry.history_iv) {
@@ -400,7 +460,13 @@ export class VaultEntryService {
     let filtered = decryptedEntriesCache || [];
     filtered = isTrash ? filtered.filter((e) => e.deletedAt) : filtered.filter((e) => !e.deletedAt);
 
-    if (categoryFilter && categoryFilter !== 'Trash') {
+    filtered = applyWatchtowerFilter(filtered, categoryFilter);
+
+    if (
+      categoryFilter &&
+      categoryFilter !== 'Trash' &&
+      !categoryFilter.startsWith(WATCHTOWER_FILTER_PREFIX)
+    ) {
       if (categoryFilter.startsWith('#')) {
         const tag = categoryFilter.substring(1);
         filtered = filtered.filter((e) => e.tags && e.tags.includes(tag));
@@ -552,7 +618,7 @@ export class VaultEntryService {
         id: 'main_salt',
         salt: newMainSaltB64,
         createdAt: new Date().toISOString(),
-        version: 2,
+        version: 3,
       });
       sqliteDb.putMetadata('auth_credential', {
         id: 'auth_credential',
@@ -571,7 +637,7 @@ export class VaultEntryService {
       id: 'main_salt',
       salt: newMainSaltB64,
       createdAt: new Date().toISOString(),
-      version: 2,
+      version: 3,
     });
     await metaStore.put({ id: 'auth_credential', credential: newCredential });
     for (const item of updatedEntriesToSave) {

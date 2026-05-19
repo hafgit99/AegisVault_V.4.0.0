@@ -4,6 +4,19 @@ import { SecureAppSettings } from '../lib/SecureAppSettings';
 const clampClipboardTimeout = (value: number): number =>
   Math.min(300, Math.max(5, Math.round(value)));
 
+type SecureClipboardBridge = {
+  secureClipboardWrite?: (
+    text: string,
+    ttlMs: number
+  ) => Promise<{ success?: boolean; error?: string }>;
+  secureClipboardClear?: (
+    expectedText?: string
+  ) => Promise<{ success?: boolean; cleared?: boolean; skipped?: boolean; error?: string }>;
+};
+
+const getSecureClipboardBridge = (): SecureClipboardBridge | undefined =>
+  (window as Window & { aegisElectron?: SecureClipboardBridge }).aegisElectron;
+
 export function useClipboard(timeoutSecondsOverride?: number) {
   const [configuredTimeoutSeconds, setConfiguredTimeoutSeconds] = useState<number>(() => {
     if (typeof timeoutSecondsOverride === 'number') {
@@ -36,7 +49,16 @@ export function useClipboard(timeoutSecondsOverride?: number) {
   const copy = useCallback(
     async (id: number, text: string): Promise<boolean> => {
       try {
-        await navigator.clipboard.writeText(text);
+        const electronClipboard = getSecureClipboardBridge();
+        if (electronClipboard?.secureClipboardWrite) {
+          const result = await electronClipboard.secureClipboardWrite(
+            text,
+            configuredTimeoutSeconds * 1000
+          );
+          if (!result?.success) return false;
+        } else {
+          await navigator.clipboard.writeText(text);
+        }
       } catch {
         return false;
       }
@@ -58,11 +80,22 @@ export function useClipboard(timeoutSecondsOverride?: number) {
 
             void (async () => {
               try {
-                if (copiedText && typeof navigator.clipboard.readText === 'function') {
-                  const currentClipboard = await navigator.clipboard.readText();
-                  if (currentClipboard !== copiedText) return;
+                const electronClipboard = getSecureClipboardBridge();
+                if (electronClipboard?.secureClipboardClear) {
+                  await electronClipboard.secureClipboardClear(copiedText || undefined);
+                  return;
                 }
 
+                if (copiedText && typeof navigator.clipboard.readText === 'function') {
+                  const currentClipboard = await navigator.clipboard.readText();
+                  if (currentClipboard !== copiedText) {
+                    copiedTextRef.current = null;
+                    setCopiedId(null);
+                    return;
+                  }
+                }
+
+                await navigator.clipboard.writeText(' ');
                 await navigator.clipboard.writeText('');
               } catch {
                 // Clipboard access can be denied by the browser; UI state still expires.

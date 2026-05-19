@@ -82,12 +82,12 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         className="donation-surface relative w-full max-w-5xl max-h-[92vh] overflow-hidden rounded-[1.75rem] border shadow-2xl flex flex-col md:flex-row"
       >
         {/* Left Side: Info */}
-        <div className="donation-hero-panel w-full md:w-[38%] p-8 md:p-12 text-white flex flex-col justify-between relative overflow-hidden">
+        <div className="donation-hero-panel w-full md:w-[34%] p-7 md:p-9 text-white flex flex-col justify-between relative overflow-hidden">
           <div className="relative z-10">
-            <div className="donation-hero-icon w-16 h-16 rounded-2xl flex items-center justify-center mb-8">
-              <Heart className="w-8 h-8 text-white fill-white/20" />
+            <div className="donation-hero-icon w-12 h-12 rounded-2xl flex items-center justify-center mb-7">
+              <Heart className="w-6 h-6 text-white fill-white/15" />
             </div>
-            <h2 className="text-4xl font-bold tracking-tight mb-4">{t('donateTitle')}</h2>
+            <h2 className="text-3xl font-bold tracking-tight mb-4">{t('donateTitle')}</h2>
             <p className="text-white/84 leading-relaxed text-sm">{t('donateDesc')}</p>
           </div>
 
@@ -99,8 +99,8 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         </div>
 
         {/* Right Side: Crypto Grid */}
-        <div className="donation-right-panel flex-1 p-6 md:p-10 overflow-y-auto custom-scrollbar backdrop-blur-sm">
-          <div className="flex justify-between items-center mb-8">
+        <div className="donation-right-panel flex-1 p-5 md:p-8 overflow-y-auto custom-scrollbar backdrop-blur-sm">
+          <div className="donation-content-header flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-[var(--color-deep-navy)]">{t('donateBtn')}</h3>
             <button
               onClick={onClose}
@@ -111,7 +111,7 @@ export function DonationModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
+          <div className="donation-grid grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
             {cryptoAddresses.map((crypto, index) => (
               <div
                 key={crypto.symbol}

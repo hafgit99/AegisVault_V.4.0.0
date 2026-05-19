@@ -216,8 +216,8 @@ export function PasskeySiteInventoryModal({
         className="absolute inset-0 bg-[var(--color-deep-navy)]/55 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="settings-drawer-surface relative z-10 flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[2rem] border border-white/20 shadow-2xl dark:border-white/10">
-        <div className="flex items-start justify-between gap-4 border-b border-black/5 px-6 py-5 dark:border-white/10">
+      <div className="settings-drawer-surface v5-passkey-inventory-modal relative z-10 flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[2rem] border border-white/20 shadow-2xl dark:border-white/10">
+        <div className="v5-passkey-inventory-header flex items-start justify-between gap-4 border-b border-black/5 px-6 py-5 dark:border-white/10">
           <div>
             <h3 className="text-xl font-semibold text-[var(--color-deep-navy)] dark:text-white">
               {t('passkeyInventorySiteModalTitle', 'Site passkey inventory')}
@@ -238,7 +238,7 @@ export function PasskeySiteInventoryModal({
           </button>
         </div>
 
-        <div className="settings-card-surface-muted border-b border-black/5 px-6 py-4 dark:border-white/10">
+        <div className="v5-passkey-inventory-controls settings-card-surface-muted border-b border-black/5 px-6 py-4 dark:border-white/10">
           <div className="flex flex-wrap gap-2">
             {[
               { key: 'all', label: t('passkeyInventoryFilterAll', 'All') },
@@ -356,7 +356,7 @@ export function PasskeySiteInventoryModal({
             </div>
           </div>
           {selectedSummary.total > 0 ? (
-            <div className="settings-card-surface-muted mt-3 rounded-2xl border px-4 py-3 text-[11px] text-[var(--color-deep-navy)] dark:text-white">
+            <div className="v5-passkey-summary-card settings-card-surface-muted mt-3 rounded-2xl border px-4 py-3 text-[11px] text-[var(--color-deep-navy)] dark:text-white">
               <div className="font-semibold">
                 {t('passkeyInventorySelectionSummaryTitle', 'Selection summary')}
               </div>
@@ -411,7 +411,7 @@ export function PasskeySiteInventoryModal({
             </div>
           ) : null}
           {nextPriorityEntry ? (
-            <div className="settings-card-surface-muted mt-3 rounded-2xl border px-4 py-3 text-[11px] text-[var(--color-deep-navy)] dark:text-white">
+            <div className="v5-passkey-summary-card settings-card-surface-muted mt-3 rounded-2xl border px-4 py-3 text-[11px] text-[var(--color-deep-navy)] dark:text-white">
               <div className="font-semibold">{t('passkeyInventoryQueueTitle', 'Triage queue')}</div>
               <div className="mt-2 flex flex-wrap gap-2">
                 <span className="rounded-full bg-amber-500/12 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300">
@@ -450,7 +450,7 @@ export function PasskeySiteInventoryModal({
             </div>
           ) : null}
           {remediationResult ? (
-            <div className="settings-card-surface-muted mt-3 rounded-2xl border px-4 py-3 text-[11px] text-[var(--color-deep-navy)] dark:text-white">
+            <div className="v5-passkey-summary-card settings-card-surface-muted mt-3 rounded-2xl border px-4 py-3 text-[11px] text-[var(--color-deep-navy)] dark:text-white">
               <div className="font-semibold">
                 {t('passkeyInventoryQueueResultTitle', 'Last remediation result')}
               </div>
@@ -497,13 +497,13 @@ export function PasskeySiteInventoryModal({
             {filteredEntries.map((entry) => (
               <div
                 key={entry.id}
-                className="settings-card-surface rounded-2xl border px-4 py-4 text-left transition hover:border-[var(--color-sage-green)]/25 hover:bg-[var(--color-sage-green)]/8 dark:hover:bg-[var(--color-sage-green)]/10"
+                className="v5-passkey-inventory-row settings-card-surface rounded-2xl border px-4 py-4 text-left transition hover:border-[var(--color-sage-green)]/25 hover:bg-[var(--color-sage-green)]/8 dark:hover:bg-[var(--color-sage-green)]/10"
               >
                 <div className="flex items-start justify-between gap-4">
                   <button
                     type="button"
                     onClick={() => toggleSelected(entry.id)}
-                    className="mt-0.5 shrink-0 rounded-lg p-1 text-[var(--color-deep-navy)]/60 transition hover:bg-black/5 hover:text-[var(--color-deep-navy)] dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-white"
+                    className="v5-passkey-select-btn mt-0.5 shrink-0 rounded-lg p-1 text-[var(--color-deep-navy)]/60 transition hover:bg-black/5 hover:text-[var(--color-deep-navy)] dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-white"
                     aria-pressed={selectedIds.includes(entry.id)}
                   >
                     {selectedIds.includes(entry.id) ? (
@@ -516,7 +516,7 @@ export function PasskeySiteInventoryModal({
                     <button
                       type="button"
                       onClick={() => onOpenEntry(entry)}
-                      className="font-semibold text-[var(--color-deep-navy)] transition hover:text-[var(--color-sage-green)] dark:text-white dark:hover:text-emerald-200"
+                      className="v5-passkey-row-title font-semibold text-[var(--color-deep-navy)] transition hover:text-[var(--color-sage-green)] dark:text-white dark:hover:text-emerald-200"
                     >
                       {entry.title}
                     </button>
@@ -597,7 +597,7 @@ export function PasskeySiteInventoryModal({
                     )}
                   </div>
                 </div>
-                <div className="settings-card-surface-muted mt-3 rounded-2xl border px-3 py-3">
+                <div className="v5-passkey-recommendation settings-card-surface-muted mt-3 rounded-2xl border px-3 py-3">
                   <div className="settings-section-kicker">
                     {t('passkeyInventoryEntryRecommendedLabel', 'Recommended next step')}
                   </div>

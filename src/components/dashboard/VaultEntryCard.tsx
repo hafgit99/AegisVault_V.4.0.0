@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { SharedSpaceService } from '../../lib/SharedSpaceService';
 import { VaultSharingLinkService } from '../../lib/VaultSharingLinkService';
+import { useState } from 'react';
 
 interface VaultEntryCardProps {
   entry: VaultEntry;
@@ -35,6 +36,7 @@ interface VaultEntryCardProps {
  */
 export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
   const { t } = useTranslation();
+  const [recoveredPassword, setRecoveredPassword] = useState('');
   const {
     copiedId,
     handleCopyItem,
@@ -69,7 +71,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
 
   const passwordDecryptFailed =
     typeof p.pass === 'string' && p.pass.toUpperCase().includes('DECRYPT_ERROR');
-  const safePassword = passwordDecryptFailed ? '' : p.pass || '';
+  const safePassword = recoveredPassword || (passwordDecryptFailed ? '' : p.pass || '');
   const isVulnerable =
     passwordDecryptFailed || !safePassword || safePassword.length < 8 || (p.pwned_count || 0) > 0;
   const sharingSpace = p.sharing?.[0]?.space_id
@@ -122,11 +124,62 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
     return `${raw.slice(0, 2)}••••${raw.slice(-2)}`;
   };
 
+  const handleCopyPassword = async () => {
+    if (!isExportAllowed) {
+      toast.warning(t('sharingExportBlocked', 'Export is disabled for this shared space'));
+      return;
+    }
+
+    try {
+      const password = safePassword
+        ? safePassword
+        : await vaultService.getDecryptedPasswordById(p.id);
+
+      if (!password) {
+        toast.error(t('passwordDecryptUnavailable', 'Password unavailable'));
+        return;
+      }
+
+      handleCopyItem(p.id, password);
+      if (password !== recoveredPassword) setRecoveredPassword(password);
+    } catch {
+      toast.error(
+        t('passwordDecryptUnavailableDesc', 'Password could not be decrypted in this session.')
+      );
+    }
+  };
+
+  const handleTogglePasswordVisibility = async () => {
+    if (visiblePasswords.has(p.id)) {
+      toggleVisibility(p.id);
+      return;
+    }
+
+    if (safePassword) {
+      toggleVisibility(p.id);
+      return;
+    }
+
+    try {
+      const password = await vaultService.getDecryptedPasswordById(p.id);
+      if (!password) {
+        toast.error(t('passwordDecryptUnavailable', 'Password unavailable'));
+        return;
+      }
+      setRecoveredPassword(password);
+      toggleVisibility(p.id);
+    } catch {
+      toast.error(
+        t('passwordDecryptUnavailableDesc', 'Password could not be decrypted in this session.')
+      );
+    }
+  };
+
   return (
     <article
       className={`vault-entry-card v5-vault-entry-card grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] ${compact ? 'gap-3 p-4' : 'gap-4 p-5 md:p-6'} rounded-[1.25rem] transition-all relative group/item`}
     >
-      <div className="flex items-start gap-4 md:gap-5 relative z-10 min-w-0">
+      <div className="v5-entry-main flex items-start gap-4 md:gap-5 relative z-10 min-w-0">
         <div
           className={`vault-entry-icon ${compact ? 'w-12 h-12' : 'w-14 h-14 md:w-16 md:h-16'} shrink-0 rounded-[1.25rem] flex items-center justify-center shadow-sm`}
         >
@@ -134,7 +187,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             {getCategoryIcon(p.category)}
           </div>
         </div>
-        <div className="flex-1 min-w-0 flex flex-col gap-3">
+        <div className="v5-entry-content flex-1 min-w-0 flex flex-col gap-3">
           <div className="v5-entry-title-row min-h-7 flex flex-wrap items-center gap-2">
             <h3
               className={`${compact ? 'text-base' : 'text-lg'} font-bold text-[var(--color-deep-navy)] truncate min-w-0`}
@@ -142,16 +195,6 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
               {p.title}
             </h3>
             <div className="vault-entry-badges v5-entry-badge-row flex min-w-0 flex-wrap items-center gap-1.5">
-              {sharedSpaceName && (
-                <span className="v5-entry-badge rounded-full bg-[var(--color-sage-green)]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-sage-green)]">
-                  {sharedSpaceName}
-                </span>
-              )}
-              {isSitePasskeyRecord && (
-                <span className="v5-entry-badge rounded-full bg-sky-500/12 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-sky-700 dark:text-sky-300">
-                  {t('passkeys')}
-                </span>
-              )}
               {(p.pwned_count || 0) > 0 && (
                 <span
                   className="v5-entry-badge bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest font-black"
@@ -178,10 +221,18 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             </span>
             {websiteHost ? <span className="v5-entry-website-chip">{websiteHost}</span> : null}
             {hasTotp ? <span className="v5-entry-status-chip">{t('totp', '2FA')}</span> : null}
+            {isSitePasskeyRecord ? (
+              <span className="v5-entry-status-chip v5-entry-status-chip-info">
+                {t('passkeys')}
+              </span>
+            ) : null}
             {p.aliasDetails?.email ? (
               <span className="v5-entry-status-chip v5-entry-status-chip-info">
                 {t('aliasBadge')}
               </span>
+            ) : null}
+            {sharedSpaceName ? (
+              <span className="v5-entry-status-chip">{sharedSpaceName}</span>
             ) : null}
             {attachmentCount > 0 ? (
               <span className="v5-entry-status-chip">
@@ -191,7 +242,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
           </div>
 
           <div
-            className={`flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mt-1 ${compact ? 'text-xs' : 'text-sm'}`}
+            className={`v5-entry-meta-line flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mt-1 ${compact ? 'text-xs' : 'text-sm'}`}
           >
             <p className="vault-entry-meta v5-entry-identity-line font-[var(--font-geist-mono)] tracking-tight truncate flex items-center gap-2">
               {isSitePasskeyRecord ? p.passkeyMetadata?.rp_id || p.username : p.username}
@@ -221,23 +272,23 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                 }`}
               >
                 {visiblePasswords.has(p.id)
-                  ? passwordDecryptFailed
+                  ? !safePassword
                     ? t('passwordDecryptUnavailable', 'Password unavailable')
                     : safePassword
                   : '••••••••'}
               </span>
               <button
-                onClick={() => toggleVisibility(p.id)}
+                onClick={handleTogglePasswordVisibility}
                 className="v5-entry-inline-icon p-1.5 rounded-md entry-action-btn-muted transition-all"
                 title={
-                  passwordDecryptFailed
+                  passwordDecryptFailed && !safePassword
                     ? t('passwordDecryptUnavailable', 'Password unavailable')
                     : visiblePasswords.has(p.id)
                       ? t('hidePassword', 'Hide Password')
                       : t('showPassword', 'Show password')
                 }
                 aria-label={
-                  passwordDecryptFailed
+                  passwordDecryptFailed && !safePassword
                     ? t('passwordDecryptUnavailable', 'Password unavailable')
                     : visiblePasswords.has(p.id)
                       ? t('hidePassword', 'Hide Password')
@@ -356,9 +407,9 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
       </div>
 
       {/* Actions */}
-      <div className="flex items-stretch xl:items-start justify-end relative z-10 shrink-0 xl:min-w-[238px]">
+      <div className="v5-entry-action-area flex items-stretch xl:items-start justify-end relative z-10 shrink-0 xl:min-w-[184px]">
         <div className="v5-entry-actions-rail flex flex-col-reverse xl:flex-col justify-between gap-3 w-full xl:w-auto">
-          <div className="hidden lg:flex items-center justify-end gap-3 xl:min-h-7">
+          <div className="v5-entry-strength-summary hidden lg:flex items-center justify-end gap-3 xl:min-h-7">
             <div className="w-24 h-2 entry-divider rounded-full overflow-hidden">
               <div
                 className="h-full"
@@ -397,127 +448,96 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                   {t('updateNow')}
                 </button>
               )}
-              {canEdit ? (
-                <button
-                  onClick={() => onEdit({ ...p, pass: p.pass || '' })}
-                  className="vault-action-btn p-3 rounded-xl transition-all flex items-center justify-center"
-                  title={t('editEntry', 'Edit')}
-                >
-                  <Edit2 className="w-5 h-5" />
-                </button>
-              ) : (
-                <span
-                  className="p-3 rounded-xl opacity-30 cursor-not-allowed"
-                  title={t('sharingNoEditPermission', 'View only — no edit permission')}
-                >
-                  <Edit2 className="w-5 h-5" />
-                </span>
-              )}
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    if (!isExportAllowed) {
-                      toast.warning(
-                        t('sharingExportBlocked', 'Export is disabled for this shared space')
-                      );
-                      return;
-                    }
-                    if (passwordDecryptFailed) {
-                      toast.error(
-                        t(
-                          'passwordDecryptUnavailableDesc',
-                          'Password could not be decrypted in this session.'
-                        )
-                      );
-                      return;
-                    }
-                    handleCopyItem(p.id, safePassword);
-                  }}
-                  className={`relative z-10 p-3 rounded-xl transition-all flex items-center justify-center ${
-                    !isExportAllowed || passwordDecryptFailed
-                      ? 'opacity-30 cursor-not-allowed vault-action-btn'
-                      : isCopied
-                        ? 'bg-[var(--color-sage-green)] text-[var(--color-deep-navy)] shadow-[0_0_15px_rgba(135,159,132,0.4)] scale-110'
-                        : 'vault-action-btn hover:shadow-md'
-                  }`}
-                  title={
-                    !isExportAllowed
-                      ? t('sharingExportBlocked', 'Export is disabled for this shared space')
-                      : passwordDecryptFailed
-                        ? t('passwordDecryptUnavailable', 'Password unavailable')
+              <div className="v5-entry-icon-actions">
+                {canEdit ? (
+                  <button
+                    onClick={() => onEdit({ ...p, pass: p.pass || '' })}
+                    className="vault-action-btn p-3 rounded-xl transition-all flex items-center justify-center"
+                    title={t('editEntry', 'Edit')}
+                  >
+                    <Edit2 className="w-5 h-5" />
+                  </button>
+                ) : (
+                  <span
+                    className="p-3 rounded-xl opacity-30 cursor-not-allowed"
+                    title={t('sharingNoEditPermission', 'View only — no edit permission')}
+                  >
+                    <Edit2 className="w-5 h-5" />
+                  </span>
+                )}
+                <div className="relative">
+                  <button
+                    onClick={handleCopyPassword}
+                    className={`relative z-10 p-3 rounded-xl transition-all flex items-center justify-center ${
+                      !isExportAllowed
+                        ? 'opacity-30 cursor-not-allowed vault-action-btn'
+                        : isCopied
+                          ? 'vault-action-btn v5-entry-copy-success'
+                          : 'vault-action-btn hover:shadow-md'
+                    }`}
+                    title={
+                      !isExportAllowed
+                        ? t('sharingExportBlocked', 'Export is disabled for this shared space')
                         : t('copyPassword', 'Copy password')
-                  }
-                >
-                  {isCopied ? (
-                    <Check className="w-5 h-5 text-[var(--color-sage-green)] drop-shadow-[0_0_8px_rgba(135,159,132,0.8)]" />
-                  ) : (
-                    <Copy className="w-5 h-5 opacity-70" />
-                  )}
-                </button>
-                {isCopied && (
-                  <div className="absolute inset-0 pointer-events-none flex justify-center items-center">
-                    {[...Array(6)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="absolute w-2 h-2 bg-[var(--color-sage-green)] rounded-full animate-float opacity-0"
-                        style={{
-                          transform: `rotate(${i * 60}deg)`,
-                          animationDelay: `${i * 0.05}s`,
+                    }
+                  >
+                    {isCopied ? (
+                      <Check className="w-5 h-5" />
+                    ) : (
+                      <Copy className="w-5 h-5 opacity-70" />
+                    )}
+                  </button>
+                </div>
+
+                {categoryFilter === 'Trash' ? (
+                  <>
+                    <button
+                      onClick={() => handleRestoreEntry(p.id)}
+                      className="p-3 rounded-xl bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)] hover:bg-[var(--color-sage-green)] hover:text-white transition-all shadow-sm"
+                      title={t('restore')}
+                    >
+                      <FileUp className="w-5 h-5" />
+                    </button>
+                    {canDelete ? (
+                      <button
+                        onClick={async () => {
+                          if (confirm(t('confirmDeleteCard'))) {
+                            await vaultService.deletePermanently(p.id);
+                            toast.success(t('itemDeleted'));
+                            loadPasswords();
+                          }
                         }}
-                      />
-                    ))}
-                  </div>
+                        className="p-3 rounded-xl bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                        title={t('deletePermanently')}
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    ) : (
+                      <span
+                        className="p-3 rounded-xl opacity-30 cursor-not-allowed"
+                        title={t('sharingNoDeletePermission', 'No delete permission')}
+                      >
+                        <X className="w-5 h-5" />
+                      </span>
+                    )}
+                  </>
+                ) : canDelete ? (
+                  <button
+                    onClick={() => handleDeleteEntry(p.id)}
+                    className="vault-action-btn p-3 rounded-xl hover:bg-red-500/10 hover:text-red-500 transition-all flex items-center justify-center"
+                    title={t('moveToTrash')}
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                ) : (
+                  <span
+                    className="p-3 rounded-xl opacity-30 cursor-not-allowed"
+                    title={t('sharingNoDeletePermission', 'No delete permission')}
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </span>
                 )}
               </div>
-
-              {categoryFilter === 'Trash' ? (
-                <>
-                  <button
-                    onClick={() => handleRestoreEntry(p.id)}
-                    className="p-3 rounded-xl bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)] hover:bg-[var(--color-sage-green)] hover:text-white transition-all shadow-sm"
-                    title={t('restore')}
-                  >
-                    <FileUp className="w-5 h-5" />
-                  </button>
-                  {canDelete ? (
-                    <button
-                      onClick={async () => {
-                        if (confirm(t('confirmDeleteCard'))) {
-                          await vaultService.deletePermanently(p.id);
-                          toast.success(t('itemDeleted'));
-                          loadPasswords();
-                        }
-                      }}
-                      className="p-3 rounded-xl bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white transition-all shadow-sm"
-                      title={t('deletePermanently')}
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  ) : (
-                    <span
-                      className="p-3 rounded-xl opacity-30 cursor-not-allowed"
-                      title={t('sharingNoDeletePermission', 'No delete permission')}
-                    >
-                      <X className="w-5 h-5" />
-                    </span>
-                  )}
-                </>
-              ) : canDelete ? (
-                <button
-                  onClick={() => handleDeleteEntry(p.id)}
-                  className="vault-action-btn p-3 rounded-xl hover:bg-red-500/10 hover:text-red-500 transition-all flex items-center justify-center"
-                  title={t('moveToTrash')}
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              ) : (
-                <span
-                  className="p-3 rounded-xl opacity-30 cursor-not-allowed"
-                  title={t('sharingNoDeletePermission', 'No delete permission')}
-                >
-                  <Trash2 className="w-5 h-5" />
-                </span>
-              )}
             </div>
           </div>
         </div>

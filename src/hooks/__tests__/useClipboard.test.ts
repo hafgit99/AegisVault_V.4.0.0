@@ -15,6 +15,7 @@ describe('useClipboard', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    delete (window as typeof window & { aegisElectron?: unknown }).aegisElectron;
     vi.restoreAllMocks();
   });
 
@@ -64,6 +65,34 @@ describe('useClipboard', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1);
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('vault-secret');
     expect(result.current.timeLeft).toBe(0);
+    expect(result.current.copiedId).toBeNull();
+  });
+
+  it('uses Electron secure clipboard bridge when available', async () => {
+    const secureClipboardWrite = vi.fn().mockResolvedValue({ success: true });
+    const secureClipboardClear = vi.fn().mockResolvedValue({ success: true, cleared: true });
+    Object.assign(window, {
+      aegisElectron: {
+        secureClipboardWrite,
+        secureClipboardClear,
+      },
+    });
+
+    const { result } = renderHook(() => useClipboard(5));
+
+    await act(async () => {
+      await result.current.copy(11, 'desktop-secret');
+    });
+
+    expect(secureClipboardWrite).toHaveBeenCalledWith('desktop-secret', 5000);
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+      await Promise.resolve();
+    });
+
+    expect(secureClipboardClear).toHaveBeenCalledWith('desktop-secret');
     expect(result.current.copiedId).toBeNull();
   });
 });

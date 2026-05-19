@@ -13,6 +13,11 @@ import {
   Plus,
   Trash2,
   ChevronDown,
+  Database,
+  ShieldCheck,
+  Sparkles,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import {
   authenticatePasskeyWithPRF,
@@ -57,6 +62,9 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
   const [hasPasskey, setHasPasskey] = useState(false);
   const [passkeyNeedsRotation, setPasskeyNeedsRotation] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() =>
+    document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'
+  );
 
   // Multi-Vault state
   const [vaultProfiles, setVaultProfiles] = useState<VaultProfile[]>([]);
@@ -124,6 +132,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
       const savedTheme = SecureAppSettings.getThemeMode();
       if (savedTheme === 'dark' || savedTheme === 'light') {
         document.documentElement.setAttribute('data-theme', savedTheme);
+        setThemeMode(savedTheme);
       }
     } catch {
       /* ignore */
@@ -467,14 +476,32 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
     );
   };
 
+  const handleThemeToggle = () => {
+    const nextTheme = themeMode === 'dark' ? 'light' : 'dark';
+    setThemeMode(nextTheme);
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    SecureAppSettings.setThemeMode(nextTheme);
+  };
+
   return (
     <div className="vault-login-root v5-login-root relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-cloud-dancer)] px-4 py-8">
-      {/* Language Toggle */}
-      <div className="absolute right-4 top-4 z-50">
+      <div className="v5-login-top-actions absolute right-4 top-4 z-50 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleThemeToggle}
+          className="vault-login-control flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm backdrop-blur-md transition-all"
+        >
+          {themeMode === 'dark' ? (
+            <Sun className="h-3.5 w-3.5" />
+          ) : (
+            <Moon className="h-3.5 w-3.5" />
+          )}
+          {themeMode === 'dark' ? t('lightMode', 'Light') : t('darkMode', 'Dark')}
+        </button>
         <button
           type="button"
           onClick={handleLanguageToggle}
-          className="vault-login-control flex items-center gap-2 px-3 py-1.5 rounded-full transition-all text-xs font-bold shadow-sm backdrop-blur-md"
+          className="vault-login-control flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm backdrop-blur-md transition-all"
         >
           <Globe className="w-3.5 h-3.5" />
           {i18n.language.startsWith('en') ? 'EN' : 'TR'}
@@ -510,10 +537,26 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
             </div>
 
             <p className="v5-login-desc max-w-xl text-base">{t('v5LoginDesc')}</p>
+
+            <div className="v5-login-security-strip mt-8">
+              <span>
+                <ShieldCheck className="h-4 w-4" />
+                {t('v5LoginBadgeZeroKnowledge', 'Zero-knowledge')}
+              </span>
+              <span>
+                <Database className="h-4 w-4" />
+                {t('v5LoginBadgeOfflineVault', 'Offline vault')}
+              </span>
+              <span>
+                <Sparkles className="h-4 w-4" />
+                {t('v5LoginBadgeNoCloud', 'No cloud dependency')}
+              </span>
+            </div>
           </div>
 
           <div className="grid gap-3">
             <div className="v5-login-proof-card">
+              <span className="v5-login-proof-index">01</span>
               <Lock className="h-5 w-5" />
               <div>
                 <h2>{t('v5LoginProofLocalTitle')}</h2>
@@ -521,6 +564,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
               </div>
             </div>
             <div className="v5-login-proof-card">
+              <span className="v5-login-proof-index">02</span>
               <KeyRound className="h-5 w-5" />
               <div>
                 <h2>{t('v5LoginProofTwoSecretTitle')}</h2>
@@ -528,6 +572,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
               </div>
             </div>
             <div className="v5-login-proof-card">
+              <span className="v5-login-proof-index">03</span>
               <Fingerprint className="h-5 w-5" />
               <div>
                 <h2>{t('v5LoginProofPasskeyTitle')}</h2>
@@ -547,6 +592,10 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
                 alt="Aegis Logo"
                 className="w-full h-full object-contain drop-shadow-md"
               />
+            </div>
+            <div className="v5-login-form-kicker mb-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              {t('v5LoginAccessKicker', 'Secure access')}
             </div>
             <h1 className="v5-login-form-title mb-2 text-3xl font-semibold tracking-tight text-[var(--color-deep-navy)]">
               {isSetupMode ? t('setupVault') : t('premiumVault')}
@@ -691,53 +740,78 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
                 <span>{t('encryptedVaultTrust', 'SQLCipher protected')}</span>
               </div>
             </div>
+
+            <div className="v5-login-unlock-map mb-4 w-full">
+              <div className={`v5-login-unlock-step ${password ? 'is-ready' : ''}`}>
+                <span>1</span>
+                <strong>{t('v5LoginStepMaster', 'Master password')}</strong>
+              </div>
+              <div
+                className={`v5-login-unlock-step ${isSetupMode ? 'is-pending' : secretKey ? 'is-ready' : ''}`}
+              >
+                <span>2</span>
+                <strong>
+                  {isSetupMode
+                    ? t('v5LoginStepGenerate', 'Generate device secret')
+                    : t('v5LoginStepDevice', 'Device secret')}
+                </strong>
+              </div>
+            </div>
           </div>
 
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             {!showSetupSecret ? (
-              <div className="relative group">
-                <Lock
-                  className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 transition-colors ${isError ? 'text-red-500/60' : 'text-[var(--color-deep-navy)]/40 group-focus-within:text-[var(--color-sage-green)]'}`}
-                />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder={isSetupMode ? t('createMasterPassword') : t('masterPassword')}
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (isError) setIsError(false);
-                  }}
-                  disabled={isDecrypting}
-                  className={`vault-login-input w-full rounded-xl py-3.5 pl-11 pr-12 text-sm font-medium outline-none border shadow-inner transition-all disabled:opacity-50 ${isError ? 'border-red-500/50 focus:border-red-500/80 bg-red-50/20 text-red-900' : ''}`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-deep-navy)]/40 hover:text-[var(--color-sage-green)] transition-colors"
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
+              <label className="v5-login-input-group group">
+                <span className="v5-login-field-label">
+                  {isSetupMode ? t('createMasterPassword') : t('masterPassword')}
+                </span>
+                <div className="relative">
+                  <Lock
+                    className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 transition-colors ${isError ? 'text-red-500/60' : 'text-[var(--color-deep-navy)]/40 group-focus-within:text-[var(--color-sage-green)]'}`}
+                  />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder={isSetupMode ? t('createMasterPassword') : t('masterPassword')}
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (isError) setIsError(false);
+                    }}
+                    disabled={isDecrypting}
+                    className={`vault-login-input w-full rounded-xl py-3.5 pl-11 pr-12 text-sm font-medium outline-none border shadow-inner transition-all disabled:opacity-50 ${isError ? 'border-red-500/50 focus:border-red-500/80 bg-red-50/20 text-red-900' : ''}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-deep-navy)]/40 hover:text-[var(--color-sage-green)] transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+              </label>
             ) : null}
 
             {!isSetupMode && !showSetupSecret && (
-              <div className="relative group">
-                <KeyRound
-                  className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 transition-colors ${isError ? 'text-red-500/60' : 'text-[var(--color-deep-navy)]/40 group-focus-within:text-[var(--color-sage-green)]'}`}
-                />
-                <input
-                  type="text"
-                  placeholder={t('deviceSecretKey')}
-                  value={secretKey}
-                  onChange={(e) => {
-                    setSecretKey(e.target.value);
-                    if (isError) setIsError(false);
-                  }}
-                  disabled={isDecrypting}
-                  className={`vault-login-input w-full rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium outline-none border shadow-inner transition-all disabled:opacity-50 pass-font ${isError ? 'border-red-500/50 focus:border-red-500/80 bg-red-50/20 text-red-900' : ''}`}
-                />
-              </div>
+              <label className="v5-login-input-group group">
+                <span className="v5-login-field-label">{t('deviceSecretKey')}</span>
+                <div className="relative">
+                  <KeyRound
+                    className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 transition-colors ${isError ? 'text-red-500/60' : 'text-[var(--color-deep-navy)]/40 group-focus-within:text-[var(--color-sage-green)]'}`}
+                  />
+                  <input
+                    type="text"
+                    placeholder={t('deviceSecretKey')}
+                    value={secretKey}
+                    onChange={(e) => {
+                      setSecretKey(e.target.value);
+                      if (isError) setIsError(false);
+                    }}
+                    disabled={isDecrypting}
+                    className={`vault-login-input w-full rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium outline-none border shadow-inner transition-all disabled:opacity-50 pass-font ${isError ? 'border-red-500/50 focus:border-red-500/80 bg-red-50/20 text-red-900' : ''}`}
+                  />
+                </div>
+              </label>
             )}
 
             {isSetupMode && showSetupSecret && !isDecrypting && (

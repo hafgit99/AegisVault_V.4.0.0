@@ -581,6 +581,37 @@ describe('VaultService Security & Cryptography', () => {
   });
 
   it('11. Attachment Yönetimi: Silme ve deşifreleme', async () => {
+    const dbName = `bulk_reopen_vault_${dbNameCounter}`;
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
+
+    const result = await vaultService.bulkAddPasswords([
+      {
+        title: 'Imported Site',
+        username: 'imported@example.com',
+        pass: 'ImportedSecret123!',
+        website: 'https://example.com',
+      },
+    ]);
+
+    expect(result.total).toBe(1);
+    let all = await vaultService.getPasswords();
+    expect(all[0]?.pass).toBe('ImportedSecret123!');
+    const importedEntryId = Number(all[0]?.id);
+
+    await vaultService.lock();
+    vaultService = new VaultService();
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, false);
+
+    all = await vaultService.getPasswords();
+    expect(all[0]?.pass).toBe('ImportedSecret123!');
+    await expect(vaultService.getDecryptedPasswordById(importedEntryId)).resolves.toBe(
+      'ImportedSecret123!'
+    );
+
+    await vaultService.lock();
+  });
+
+  it('11b. Attachment management stays decryptable', async () => {
     const dbName = `attach_mgt_vault_${dbNameCounter}`;
     await vaultService.initDb(TEST_PASSWORD, SEC_KEY, dbName, true);
     const entryId = await vaultService.addPassword({ title: 'Attach Mgt', pass: 'p' });
