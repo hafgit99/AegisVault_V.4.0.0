@@ -1061,4 +1061,31 @@ describe('VaultService Security & Cryptography', () => {
     await vaultService.deletePermanently(entryId);
     expect((vaultService as any).decryptedEntriesCache).toBeNull();
   });
+
+  it('37. Favorites can be toggled and filtered', async () => {
+    await vaultService.initDb(TEST_PASSWORD, SEC_KEY, `favorite_vault_${dbNameCounter}`, true);
+    const favoriteId = await vaultService.addPassword({
+      title: 'Primary Mail',
+      username: 'owner@example.com',
+      pass: 'FavoritePass123!',
+      category: 'General',
+    });
+    await vaultService.addPassword({
+      title: 'Archive Mail',
+      username: 'archive@example.com',
+      pass: 'ArchivePass123!',
+      category: 'General',
+    });
+
+    await vaultService.setFavorite(favoriteId, true);
+
+    let results = await vaultService.getPasswords('', '__favorites');
+    expect(results).toHaveLength(1);
+    expect(results[0].title).toBe('Primary Mail');
+    expect(results[0].favorite).toBe(true);
+
+    await vaultService.setFavorite(favoriteId, false);
+    results = await vaultService.getPasswords('', '__favorites');
+    expect(results).toHaveLength(0);
+  });
 });

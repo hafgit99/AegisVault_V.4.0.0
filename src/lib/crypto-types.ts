@@ -285,6 +285,7 @@ export interface VaultEntry {
   strength?: number;
   tags?: string[];
   pwned_count?: number; // Tracks HIBP breaches
+  favorite?: boolean; // User-pinned record for quick access
   attachments?: VaultAttachmentMeta[];
   deletedAt?: string; // ISO String indicating when it was moved to trash
 

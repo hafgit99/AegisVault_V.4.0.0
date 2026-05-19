@@ -14,6 +14,7 @@ import {
   FileText,
   ShieldCheck,
   AlertTriangle,
+  Star,
 } from 'lucide-react';
 import { TOTPWidget } from './TOTPWidget';
 import { getCategoryIcon } from '../../lib/getCategoryIcon';
@@ -46,6 +47,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
     loadPasswords,
     handleDeleteEntry,
     handleRestoreEntry,
+    handleToggleFavorite,
     viewDensity,
   } = useVault();
 
@@ -94,6 +96,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
     strengthTone === 'strong' ? t('strong') : strengthTone === 'average' ? t('average') : t('weak');
   const hasTotp = Boolean(p.totpSecret);
   const attachmentCount = p.attachments?.length || 0;
+  const isFavorite = Boolean(p.favorite);
   const websiteHost = (() => {
     const value = String(p.website || '').trim();
     if (!value) return '';
@@ -449,6 +452,20 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                 </button>
               )}
               <div className="v5-entry-icon-actions">
+                {categoryFilter !== 'Trash' ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleToggleFavorite(p.id, !isFavorite)}
+                    className={`vault-action-btn v5-entry-favorite-btn ${
+                      isFavorite ? 'v5-entry-favorite-btn-active' : ''
+                    }`}
+                    title={isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
+                    aria-label={isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
+                    aria-pressed={isFavorite}
+                  >
+                    <Star className="w-5 h-5" fill={isFavorite ? 'currentColor' : 'none'} />
+                  </button>
+                ) : null}
                 {canEdit ? (
                   <button
                     onClick={() => onEdit({ ...p, pass: p.pass || '' })}

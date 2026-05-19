@@ -1,4 +1,4 @@
-import { ChevronRight, Hash, Trash2, Tag, ShieldCheck, Download } from 'lucide-react';
+import { ChevronRight, Hash, Trash2, Tag, ShieldCheck, Download, Star } from 'lucide-react';
 import { GlowCard } from '../ui/GlowCard';
 import { getCategoryIcon } from '../../lib/getCategoryIcon';
 import { useVault } from '../../contexts/VaultContext';
@@ -31,7 +31,7 @@ export function CategorySidebar({ onDownloadEmergencyKit, isGeneratingKit }: Cat
             </h3>
           </div>
           <span className="v5-rail-status-chip v5-category-count-chip">
-            {categories.length + 1} {t('categoryScopeCount')}
+            {categories.length + 2} {t('categoryScopeCount')}
           </span>
         </div>
         <div className="v5-category-list flex flex-col gap-2.5">
@@ -61,6 +61,18 @@ export function CategorySidebar({ onDownloadEmergencyKit, isGeneratingKit }: Cat
               <ChevronRight className="w-4 h-4 opacity-30" />
             </button>
           ))}
+          <button
+            onClick={() => setCategoryFilter('__favorites')}
+            className={`category-item v5-category-item flex items-center justify-between px-3 py-2.5 rounded-xl transition-all w-full text-left ${
+              categoryFilter === '__favorites' ? 'category-item-active shadow-sm' : 'bg-transparent'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Star className="w-5 h-5 text-amber-500" />
+              <span className="font-medium text-sm">{t('favorites')}</span>
+            </div>
+            <ChevronRight className="w-4 h-4 opacity-30" />
+          </button>
           <div className="h-px sidebar-divider my-1 w-full" />
           <button
             onClick={() => setCategoryFilter('Trash')}

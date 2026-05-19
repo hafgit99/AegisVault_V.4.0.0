@@ -20,6 +20,7 @@ import { VaultSearchIndexer } from './VaultSearchIndexer';
 import { AliasProviderService } from '../AliasProviderService';
 
 const WATCHTOWER_FILTER_PREFIX = '__watchtower:';
+const FAVORITES_FILTER = '__favorites';
 const isUsableWatchtowerPassword = (value: unknown): value is string =>
   typeof value === 'string' &&
   value.length > 0 &&
@@ -193,6 +194,7 @@ export class VaultEntryService {
         ? calculateStrength(entry.pass || '')
         : oldEntry?.strength || calculateStrength(entry.pass || ''),
       pwned_count: entry.pwned_count || 0,
+      favorite: Boolean(entry.favorite ?? oldEntry?.favorite),
     };
 
     if (entry.totpSecret) {
@@ -465,6 +467,7 @@ export class VaultEntryService {
     if (
       categoryFilter &&
       categoryFilter !== 'Trash' &&
+      categoryFilter !== FAVORITES_FILTER &&
       !categoryFilter.startsWith(WATCHTOWER_FILTER_PREFIX)
     ) {
       if (categoryFilter.startsWith('#')) {
@@ -473,6 +476,10 @@ export class VaultEntryService {
       } else {
         filtered = filtered.filter((e) => e.category === categoryFilter);
       }
+    }
+
+    if (categoryFilter === FAVORITES_FILTER) {
+      filtered = filtered.filter((e) => Boolean(e.favorite));
     }
 
     const searched = SearchService.searchDecrypted(filtered, searchQuery, searchScope);
@@ -738,6 +745,7 @@ export class VaultEntryService {
         updated_at: new Date().toISOString(),
         strength: calculateStrength(entry.pass),
         pwned_count: entry.pwned_count || 0,
+        favorite: Boolean(entry.favorite),
       };
 
       newEntries.push(newEntry);

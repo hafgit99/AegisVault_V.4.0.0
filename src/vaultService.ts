@@ -382,6 +382,36 @@ export class VaultService {
     return this.addPassword({ ...entry, id });
   }
 
+  async setFavorite(id: number, favorite: boolean): Promise<void> {
+    return this.withMutationLock(async () => {
+      if (!this.aesKey || (!this.opfsMockDb && !this.sqliteDb)) {
+        throw new Error('Vault is locked');
+      }
+
+      const entry =
+        this.useSQLite && this.sqliteDb
+          ? (this.sqliteDb.getPassword(id) as VaultEntry | null)
+          : ((await this.opfsMockDb!.get('passwords', id)) as VaultEntry | undefined);
+
+      if (!entry) throw new Error('Entry not found');
+
+      const updatedEntry: VaultEntry = {
+        ...entry,
+        favorite,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (this.useSQLite && this.sqliteDb) {
+        this.sqliteDb.putPassword(updatedEntry as unknown as Record<string, unknown>);
+      }
+      if (this.opfsMockDb) {
+        await this.opfsMockDb.put('passwords', updatedEntry);
+      }
+
+      this.decryptedEntriesCache = null;
+    });
+  }
+
   async decryptHistory(entry: VaultEntry): Promise<VaultEntry[]> {
     if (!this.aesKey || !entry.encrypted_history || !entry.history_iv) return [];
     try {

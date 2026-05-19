@@ -157,4 +157,42 @@ test.describe('Dashboard UI', () => {
     const statusText = page.locator('text=/WASM SQLCipher/i').first();
     await expect(statusText).toBeVisible({ timeout: 5000 });
   });
+
+  test('should mark an entry as favorite and filter favorite records', async ({ page }) => {
+    await createEntry(page, {
+      title: 'Favorite Portal',
+      username: 'favorite@example.com',
+      password: 'FavoritePass123!',
+      category: 'General',
+    });
+    await createEntry(page, {
+      title: 'Regular Portal',
+      username: 'regular@example.com',
+      password: 'RegularPass123!',
+      category: 'General',
+    });
+
+    const favoriteCard = page.locator('.vault-entry-card').filter({ hasText: 'Favorite Portal' });
+    const favoriteButton = favoriteCard
+      .locator('button[aria-label="Add to favorites"], button[aria-label="Favorilere ekle"]')
+      .first();
+    await favoriteButton.click({ force: true });
+    await expect(favoriteCard.locator('button[aria-pressed="true"]').first()).toBeVisible({
+      timeout: 10000,
+    });
+
+    await page
+      .locator('.category-item:has-text("Favorites"), .category-item:has-text("Favoriler")')
+      .first()
+      .click();
+
+    await expect(
+      page.locator('.vault-entry-card').filter({ hasText: 'Favorite Portal' })
+    ).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(
+      page.locator('.vault-entry-card').filter({ hasText: 'Regular Portal' })
+    ).toHaveCount(0);
+  });
 });

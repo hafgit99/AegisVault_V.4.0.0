@@ -8,6 +8,7 @@ export interface ExportableVaultEntry {
   pass?: string;
   category: string;
   website?: string;
+  favorite?: boolean;
   tags?: string[];
   notes?: string;
   cardDetails?: VaultCardDetails | null;
@@ -105,6 +106,7 @@ export class ExportService {
       'Password',
       'Category',
       'Website',
+      'Favorite',
       'Tags',
       'Notes',
       'Cardholder Name',
@@ -131,6 +133,7 @@ export class ExportService {
         escapeCsvField(sanitizeCsvText(entry.pass || '', 1024)),
         escapeCsvField(sanitizeCsvText(entry.category, 64)),
         escapeCsvField(sanitizeCsvText(entry.website || '', 512)),
+        entry.favorite ? 'true' : 'false',
         escapeCsvField(
           (entry.tags || [])
             .map((tag) => sanitizeCsvText(tag, 64))
@@ -169,6 +172,7 @@ export class ExportService {
         password: sanitizeText(entry.pass || '', 1024),
         category: sanitizeText(entry.category, 64),
         website: sanitizeText(entry.website || '', 512),
+        favorite: Boolean(entry.favorite),
         tags: (entry.tags || [])
           .map((tag) => sanitizeText(tag, 64))
           .filter(Boolean)
@@ -189,6 +193,7 @@ export class ExportService {
       pass: sanitizeText(entry.pass || '', 1024),
       category: sanitizeText(entry.category, 64),
       website: sanitizeText(entry.website, 512),
+      favorite: Boolean(entry.favorite),
       tags: (entry.tags || [])
         .map((tag) => sanitizeText(tag, 64))
         .filter(Boolean)

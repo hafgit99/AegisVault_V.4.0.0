@@ -259,6 +259,28 @@ export function useVaultData() {
     }
   }, [loadPasswords, t]);
 
+  const handleToggleFavorite = useCallback(
+    async (id: number, favorite: boolean) => {
+      const previousPasswords = passwordsRef.current;
+      const nextPasswords = previousPasswords.map((entry) =>
+        entry.id === id ? { ...entry, favorite } : entry
+      );
+      passwordsRef.current = nextPasswords;
+      setPasswords(nextPasswords);
+
+      try {
+        await vaultService.setFavorite(id, favorite);
+        toast.success(favorite ? t('favoriteAdded') : t('favoriteRemoved'));
+        loadPasswords();
+      } catch (error: unknown) {
+        passwordsRef.current = previousPasswords;
+        setPasswords(previousPasswords);
+        toast.error(`Favorite update failed: ${getErrorMessage(error)}`);
+      }
+    },
+    [loadPasswords, t]
+  );
+
   // ─── Tags ───
   const uniqueTags = (() => {
     const set = new Set<string>();
@@ -294,5 +316,6 @@ export function useVaultData() {
     handleDeleteEntry,
     handleRestoreEntry,
     handleEmptyTrash,
+    handleToggleFavorite,
   };
 }

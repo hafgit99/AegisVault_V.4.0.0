@@ -127,6 +127,15 @@ const hasHeader = (headers: string[], ...candidates: string[]): boolean =>
 const findHeaderIndex = (headers: string[], ...candidates: string[]): number =>
   headers.findIndex((value) => candidates.includes(value));
 
+const parseFavoriteFlag = (value: unknown): boolean => {
+  const normalized = String(value ?? '')
+    .trim()
+    .toLowerCase();
+  return ['1', 'true', 'yes', 'y', 'starred', 'favorite', 'favourite', 'favori'].includes(
+    normalized
+  );
+};
+
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0;
 
@@ -141,6 +150,7 @@ const buildEntry = (candidate: {
   pass?: string;
   website?: string;
   category?: string;
+  favorite?: boolean;
   tags?: string[];
   notes?: string;
   cardDetails?: {
@@ -177,6 +187,7 @@ const buildEntry = (candidate: {
     pass,
     website,
     category: normalizeCategory(sanitizeText(candidate.category, 64)),
+    favorite: Boolean(candidate.favorite),
     tags: (candidate.tags || [])
       .map((tag) => sanitizeText(tag, 64))
       .filter(Boolean)
@@ -193,6 +204,7 @@ const toCanonicalRecord = (candidate: {
   pass?: string;
   website?: string;
   category?: string;
+  favorite?: boolean;
   tags?: string[];
   notes?: string;
   cardDetails?: {
@@ -242,7 +254,7 @@ const toCanonicalRecord = (candidate: {
     username,
     url,
     category: normalizeCanonicalCategory(candidate.category),
-    favorite: false,
+    favorite: Boolean(candidate.favorite),
     tags,
     deleted_at: null,
     secret: {
@@ -541,6 +553,7 @@ export class ImportService {
     );
     const passIdx = findHeaderIndex(headers, 'password', 'login_password', 'pass');
     const categoryIdx = findHeaderIndex(headers, 'category', 'folder', 'group', 'vault');
+    const favoriteIdx = findHeaderIndex(headers, 'favorite', 'favourite', 'starred', 'favori');
     const tagsIdx = findHeaderIndex(headers, 'tags', 'tag');
     const notesIdx = findHeaderIndex(headers, 'notes', 'note');
     const cardholderNameIdx = findHeaderIndex(headers, 'cardholder name', 'cardholder_name');
@@ -612,6 +625,7 @@ export class ImportService {
           pass,
           website,
           category: categoryIdx !== -1 ? cols[categoryIdx] : 'General',
+          favorite: favoriteIdx !== -1 ? parseFavoriteFlag(cols[favoriteIdx]) : false,
           tags,
           notes: notesIdx !== -1 ? cols[notesIdx] : '',
           cardDetails: {

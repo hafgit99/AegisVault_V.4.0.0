@@ -56,6 +56,7 @@ export interface VaultContextType {
   handleDeleteEntry: (id: number) => Promise<void>;
   handleRestoreEntry: (id: number) => Promise<void>;
   handleEmptyTrash: () => Promise<void>;
+  handleToggleFavorite: (id: number, favorite: boolean) => Promise<void>;
 
   // Clipboard
   copiedId: number | null;
@@ -139,6 +140,7 @@ export function VaultProvider({ children, onLock }: VaultProviderProps) {
     handleDeleteEntry,
     handleRestoreEntry,
     handleEmptyTrash,
+    handleToggleFavorite,
   } = vaultData;
 
   const security = useVaultSecurity(passwords, passwordsRef, loadPasswords);
@@ -233,6 +235,7 @@ export function VaultProvider({ children, onLock }: VaultProviderProps) {
     handleDeleteEntry,
     handleRestoreEntry,
     handleEmptyTrash,
+    handleToggleFavorite,
     copiedId,
     handleCopyItem,
     timeLeft,

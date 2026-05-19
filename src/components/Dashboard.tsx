@@ -75,6 +75,7 @@ function DashboardInner() {
       category:
         categoryFilter &&
         categoryFilter !== 'Trash' &&
+        categoryFilter !== '__favorites' &&
         !categoryFilter.startsWith('#') &&
         !categoryFilter.startsWith('__watchtower:')
           ? categoryFilter
@@ -86,19 +87,21 @@ function DashboardInner() {
   const vaultPanelTitle =
     categoryFilter === 'Trash'
       ? t('trash')
-      : categoryFilter === '__watchtower:weak'
-        ? t('weakPasswords')
-        : categoryFilter === '__watchtower:reused'
-          ? t('reusedPasswords')
-          : categoryFilter === '__watchtower:old'
-            ? t('oldPasswords')
-            : categoryFilter === '__watchtower:pwned'
-              ? t('pwnedPasswords')
-              : categoryFilter === '__watchtower:alias-risk'
-                ? t('watchtowerAliasAtRisk')
-                : categoryFilter === '__watchtower:alias-rotation'
-                  ? t('watchtowerAliasNeedsRotation')
-                  : t('yourVault');
+      : categoryFilter === '__favorites'
+        ? t('favorites')
+        : categoryFilter === '__watchtower:weak'
+          ? t('weakPasswords')
+          : categoryFilter === '__watchtower:reused'
+            ? t('reusedPasswords')
+            : categoryFilter === '__watchtower:old'
+              ? t('oldPasswords')
+              : categoryFilter === '__watchtower:pwned'
+                ? t('pwnedPasswords')
+                : categoryFilter === '__watchtower:alias-risk'
+                  ? t('watchtowerAliasAtRisk')
+                  : categoryFilter === '__watchtower:alias-rotation'
+                    ? t('watchtowerAliasNeedsRotation')
+                    : t('yourVault');
 
   useKeyboardShortcuts({
     onSearch: () => searchRef.current?.focus(),
@@ -362,13 +365,25 @@ function DashboardInner() {
                 </div>
                 <div className="max-w-md text-center">
                   <div className="dashboard-empty-kicker">
-                    {categoryFilter === 'Trash' ? t('emptyStateArchive') : t('emptyStateLocal')}
+                    {categoryFilter === 'Trash'
+                      ? t('emptyStateArchive')
+                      : categoryFilter === '__favorites'
+                        ? t('favoritesEmptyKicker')
+                        : t('emptyStateLocal')}
                   </div>
                   <h3 className="dashboard-empty-title">
-                    {categoryFilter === 'Trash' ? t('trashEmptyTitle') : t('vaultEmptyTitle')}
+                    {categoryFilter === 'Trash'
+                      ? t('trashEmptyTitle')
+                      : categoryFilter === '__favorites'
+                        ? t('favoritesEmptyTitle')
+                        : t('vaultEmptyTitle')}
                   </h3>
                   <p className="dashboard-empty-copy">
-                    {categoryFilter === 'Trash' ? t('trashEmptyDesc') : t('vaultEmptyDesc')}
+                    {categoryFilter === 'Trash'
+                      ? t('trashEmptyDesc')
+                      : categoryFilter === '__favorites'
+                        ? t('favoritesEmptyDesc')
+                        : t('vaultEmptyDesc')}
                   </p>
                 </div>
                 <div className="dashboard-empty-trust-row">
