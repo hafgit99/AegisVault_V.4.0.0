@@ -119,11 +119,7 @@ export function TOTPWidget({
             r="15.9"
             fill="none"
             stroke={
-              remaining <= 5
-                ? '#ef4444'
-                : remaining <= 10
-                  ? '#f59e0b'
-                  : 'var(--color-sage-green)'
+              remaining <= 5 ? '#ef4444' : remaining <= 10 ? '#f59e0b' : 'var(--color-sage-green)'
             }
             strokeWidth="2.5"
             strokeDasharray="100"
@@ -131,9 +127,7 @@ export function TOTPWidget({
             strokeLinecap="round"
             style={{
               transition:
-                remaining === period
-                  ? 'none'
-                  : 'stroke-dashoffset 1s linear, stroke 0.3s ease',
+                remaining === period ? 'none' : 'stroke-dashoffset 1s linear, stroke 0.3s ease',
             }}
           />
         </svg>
@@ -179,4 +173,3 @@ export function TOTPWidget({
     </div>
   );
 }
-
