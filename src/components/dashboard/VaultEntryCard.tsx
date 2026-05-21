@@ -791,7 +791,11 @@ export function VaultEntryCard({
                   <button
                     type="button"
                     data-card-action="true"
-                    onClick={() => void handleToggleFavorite(p.id, !isFavorite)}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void handleToggleFavorite(p.id, !isFavorite);
+                    }}
                     className={`vault-action-btn v5-entry-favorite-btn ${
                       isFavorite ? 'v5-entry-favorite-btn-active' : ''
                     }`}

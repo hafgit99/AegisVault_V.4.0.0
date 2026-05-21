@@ -10,7 +10,7 @@ interface VirtualizedVaultListProps {
 
 const getEntryHeight = (entry: VaultEntry, density: 'comfortable' | 'compact') => {
   const compact = density === 'compact';
-  let height = compact ? 166 : 204;
+  let height = compact ? 214 : 252;
 
   const hasDetailStrip =
     Boolean(entry.aliasDetails?.email) ||
@@ -18,12 +18,12 @@ const getEntryHeight = (entry: VaultEntry, density: 'comfortable' | 'compact') =
     Boolean(entry.identityDetails) ||
     Boolean(entry.passkeyMetadata);
 
-  if (hasDetailStrip) height += compact ? 34 : 42;
-  if (entry.attachments?.length) height += compact ? 34 : 42;
-  if (entry.totpSecret) height += compact ? 58 : 68;
-  if (entry.notes && entry.category !== 'Notes') height += compact ? 40 : 48;
+  if (hasDetailStrip) height += compact ? 38 : 46;
+  if (entry.attachments?.length) height += compact ? 38 : 46;
+  if (entry.totpSecret) height += compact ? 62 : 74;
+  if (entry.notes && entry.category !== 'Notes') height += compact ? 44 : 54;
 
-  return Math.min(height, compact ? 320 : 380);
+  return Math.min(height, compact ? 380 : 460);
 };
 
 const getExpandedEntryExtraHeight = (entry: VaultEntry, density: 'comfortable' | 'compact') => {

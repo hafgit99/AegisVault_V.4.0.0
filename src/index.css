@@ -7396,9 +7396,7 @@
 
 .v5-virtualized-entry-shell {
   overflow: visible;
-  transition:
-    top 220ms cubic-bezier(0.22, 1, 0.36, 1),
-    min-height 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: min-height 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .v5-vault-entry-card::before {

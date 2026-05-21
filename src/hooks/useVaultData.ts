@@ -271,14 +271,13 @@ export function useVaultData() {
       try {
         await vaultService.setFavorite(id, favorite);
         toast.success(favorite ? t('favoriteAdded') : t('favoriteRemoved'));
-        loadPasswords();
       } catch (error: unknown) {
         passwordsRef.current = previousPasswords;
         setPasswords(previousPasswords);
         toast.error(`Favorite update failed: ${getErrorMessage(error)}`);
       }
     },
-    [loadPasswords, t]
+    [t]
   );
 
   // ─── Tags ───
