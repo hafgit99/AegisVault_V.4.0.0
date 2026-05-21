@@ -377,13 +377,16 @@ test.describe('Chaos: Data Integrity', () => {
             '.entry-form-surface button[type="submit"], .entry-form-surface button:has-text("Save"), .entry-form-surface button:has-text("Kaydet")'
           )
           .first();
-        await saveBtn.click({ force: true });
-      }
 
-      await page
-        .waitForSelector('.entry-form-surface', { state: 'hidden', timeout: 10000 })
-        .catch(() => {});
-      await page.waitForTimeout(500);
+        // Retry-based save — avoids fixed waits that cause timeouts in Firefox
+        await expect(async () => {
+          const closed = (await page.locator('.entry-form-surface').count()) === 0;
+          if (!closed) {
+            await saveBtn.click({ force: true }).catch(() => {});
+          }
+          expect(closed).toBeTruthy();
+        }).toPass({ timeout: 15000 });
+      }
     }
 
     expect(dialogFired).toBe(false);
