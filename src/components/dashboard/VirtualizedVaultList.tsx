@@ -26,6 +26,17 @@ const getEntryHeight = (entry: VaultEntry, density: 'comfortable' | 'compact') =
   return Math.min(height, compact ? 320 : 380);
 };
 
+const getExpandedEntryExtraHeight = (entry: VaultEntry, density: 'comfortable' | 'compact') => {
+  const compact = density === 'compact';
+  let extraHeight = compact ? 250 : 290;
+
+  if (entry.tags?.length) extraHeight += compact ? 38 : 44;
+  if (entry.notes) extraHeight += compact ? 76 : 92;
+  if (entry.attachments?.length) extraHeight += compact ? 54 : 64;
+
+  return Math.min(extraHeight, compact ? 430 : 520);
+};
+
 /**
  * VirtualizedVaultList — Aegis Vault Devasa Kasa Optimizasyonu (Adım 5.3)
  * Modern DOM Virtualization tekniğiyle 1000+ girdiyi 60 FPS'te render eder.
@@ -36,13 +47,19 @@ const getEntryHeight = (entry: VaultEntry, density: 'comfortable' | 'compact') =
 export function VirtualizedVaultList({ entries, onEdit, viewDensity }: VirtualizedVaultListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
+  const [expandedEntryId, setExpandedEntryId] = useState<number | null>(null);
   const [containerHeight, setContainerHeight] = useState(600); // Varsayılan height
 
   // Dinamik yükseklik hesaplama (Theme bazlı)
   const GAP = viewDensity === 'compact' ? 12 : 16;
   const itemHeights = useMemo(
-    () => entries.map((entry) => getEntryHeight(entry, viewDensity)),
-    [entries, viewDensity]
+    () =>
+      entries.map((entry) => {
+        const baseHeight = getEntryHeight(entry, viewDensity);
+        if (entry.id !== expandedEntryId) return baseHeight;
+        return baseHeight + getExpandedEntryExtraHeight(entry, viewDensity);
+      }),
+    [entries, expandedEntryId, viewDensity]
   );
   const layout = useMemo(() => {
     let offset = 0;
@@ -68,6 +85,13 @@ export function VirtualizedVaultList({ entries, onEdit, viewDensity }: Virtualiz
     window.addEventListener('resize', updateHeight);
     return () => window.removeEventListener('resize', updateHeight);
   }, []);
+
+  useEffect(() => {
+    if (expandedEntryId === null) return;
+    if (!entries.some((entry) => entry.id === expandedEntryId)) {
+      setExpandedEntryId(null);
+    }
+  }, [entries, expandedEntryId]);
 
   const totalHeight = layout.totalHeight;
 
@@ -102,13 +126,18 @@ export function VirtualizedVaultList({ entries, onEdit, viewDensity }: Virtualiz
           return (
             <div
               key={entry.id}
-              className="absolute left-0 w-full"
+              className="absolute left-0 w-full v5-virtualized-entry-shell"
               style={{
                 top: layout.offsets[absoluteIndex],
                 minHeight: itemHeights[absoluteIndex],
               }}
             >
-              <VaultEntryCard entry={entry} onEdit={onEdit} />
+              <VaultEntryCard
+                entry={entry}
+                onEdit={onEdit}
+                isExpanded={expandedEntryId === entry.id}
+                onExpandedChange={(expanded) => setExpandedEntryId(expanded ? entry.id : null)}
+              />
             </div>
           );
         })}

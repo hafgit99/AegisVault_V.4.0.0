@@ -88,7 +88,7 @@ function App() {
                   transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
                   className="w-full flex-1 flex flex-col"
                 >
-                  <Dashboard onLock={() => setIsUnlocked(false)} />
+                  <Dashboard onLock={() => setIsUnlocked(false)} introBlocked={showOnboarding} />
                 </motion.div>
               ) : (
                 <motion.div

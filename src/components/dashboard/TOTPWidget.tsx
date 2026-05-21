@@ -14,7 +14,7 @@ interface TOTPWidgetProps {
 
 /**
  * TOTPWidget — Gerçek zamanlı TOTP kodu göstergesi.
- * 30 saniye geri sayım, dairesel progress ve kopyalama özelliği.
+ * Dairesel geri sayım zamanlayıcısı ve premium mikro-animasyonlar.
  */
 export function TOTPWidget({
   totpSecret,
@@ -27,6 +27,7 @@ export function TOTPWidget({
   const [code, setCode] = useState('');
   const [remaining, setRemaining] = useState(getRemainingSeconds(period));
   const [copied, setCopied] = useState(false);
+  const [pulse, setPulse] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refreshCode = useCallback(async () => {
@@ -67,6 +68,15 @@ export function TOTPWidget({
     };
   }, [refreshCode, period]);
 
+  // Kod yenilendiğinde hafif scale pulse efekti
+  useEffect(() => {
+    if (code && code !== 'ERROR') {
+      setPulse(true);
+      const timer = setTimeout(() => setPulse(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [code]);
+
   const handleCopy = () => {
     navigator.clipboard.writeText(code);
     setCopied(true);
@@ -74,8 +84,6 @@ export function TOTPWidget({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Dairesel progress yüzdesi
-  const progress = (remaining / period) * 100;
   const isLow = remaining <= 5;
 
   // Kodu gruplara ayır (6 → 3+3, 8 → 4+4)
@@ -94,36 +102,50 @@ export function TOTPWidget({
           : 'bg-[var(--color-sage-green)]/10 border border-[var(--color-sage-green)]/30'
       }`}
     >
-      {/* Circular Timer */}
-      <div className="relative w-8 h-8 shrink-0">
+      {/* Circular Timer (Radyal Zamanlayıcı) */}
+      <div className="relative w-10 h-10 shrink-0">
         <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 36 36">
           <circle
             cx="18"
             cy="18"
-            r="16"
-            fill="transparent"
-            stroke="currentColor"
-            strokeWidth="3"
-            className="text-black/5"
+            r="15.9"
+            fill="none"
+            stroke="var(--aegis-border-subtle)"
+            strokeWidth="2.5"
           />
           <circle
             cx="18"
             cy="18"
-            r="16"
-            fill="transparent"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeDasharray={2 * Math.PI * 16}
-            strokeDashoffset={2 * Math.PI * 16 * (1 - progress / 100)}
+            r="15.9"
+            fill="none"
+            stroke={
+              remaining <= 5
+                ? '#ef4444'
+                : remaining <= 10
+                  ? '#f59e0b'
+                  : 'var(--color-sage-green)'
+            }
+            strokeWidth="2.5"
+            strokeDasharray="100"
+            strokeDashoffset={100 - (remaining / period) * 100}
             strokeLinecap="round"
-            className={`transition-all duration-1000 ease-linear ${
-              isLow ? 'text-red-500' : 'text-[var(--color-sage-green)]'
-            }`}
+            style={{
+              transition:
+                remaining === period
+                  ? 'none'
+                  : 'stroke-dashoffset 1s linear, stroke 0.3s ease',
+            }}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
           <span
-            className={`text-[9px] font-bold ${isLow ? 'text-red-500' : 'text-[var(--color-deep-navy)]'}`}
+            className={`text-[10px] font-bold transition-colors duration-350 ${
+              remaining <= 5
+                ? 'text-red-500'
+                : remaining <= 10
+                  ? 'text-amber-500'
+                  : 'text-[var(--color-deep-navy)]'
+            }`}
           >
             {remaining}
           </span>
@@ -133,12 +155,12 @@ export function TOTPWidget({
       {/* TOTP Code */}
       <div className="flex flex-col">
         <span className="text-[9px] uppercase font-bold tracking-widest opacity-50 flex items-center gap-1">
-          <ShieldCheck className="w-2.5 h-2.5" /> 2FA {issuer && `• ${issuer}`}
+          <ShieldCheck className="w-2.5 h-2.5" /> {t('totp', '2FA')} {issuer && `• ${issuer}`}
         </span>
         <span
-          className={`font-mono text-lg font-bold tracking-[0.3em] select-all transition-colors ${
+          className={`font-mono text-lg font-bold tracking-[0.3em] select-all transition-all duration-300 origin-left inline-block ${
             isLow ? 'text-red-600' : 'text-[var(--color-deep-navy)]'
-          }`}
+          } ${pulse ? 'scale-105 text-[var(--color-sage-green)]' : 'scale-100'}`}
         >
           {formattedCode}
         </span>
@@ -157,3 +179,4 @@ export function TOTPWidget({
     </div>
   );
 }
+

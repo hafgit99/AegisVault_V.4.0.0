@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 
 interface ShortcutConfigs {
   onSearch?: () => void;
+  onCommandPalette?: () => void;
   onLock?: () => void;
   onNewEntry?: () => void;
   onEscape?: () => void;
@@ -11,17 +12,26 @@ export const useKeyboardShortcuts = (configs: ShortcutConfigs) => {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const isMod = event.ctrlKey || event.metaKey;
+      const key = event.key.toLowerCase();
 
-      // Ctrl + F or Ctrl + K: Search
-      if (isMod && (event.key === 'f' || event.key === 'k')) {
+      // Ctrl + F / Ctrl + K: Focus Search
+      if (isMod && (key === 'f' || (key === 'k' && !event.shiftKey))) {
         if (configs.onSearch) {
           event.preventDefault();
           configs.onSearch();
         }
       }
 
+      // Ctrl + P / Ctrl + Shift + K: Toggle Command Palette
+      if (isMod && (key === 'p' || (key === 'k' && event.shiftKey))) {
+        if (configs.onCommandPalette) {
+          event.preventDefault();
+          configs.onCommandPalette();
+        }
+      }
+
       // Ctrl + L: Lock
-      if (isMod && event.key === 'l') {
+      if (isMod && key === 'l') {
         if (configs.onLock) {
           event.preventDefault();
           configs.onLock();
@@ -29,7 +39,7 @@ export const useKeyboardShortcuts = (configs: ShortcutConfigs) => {
       }
 
       // Ctrl + N: New Entry
-      if (isMod && event.key === 'n') {
+      if (isMod && key === 'n') {
         if (configs.onNewEntry) {
           event.preventDefault();
           configs.onNewEntry();

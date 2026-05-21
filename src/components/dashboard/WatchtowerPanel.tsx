@@ -8,6 +8,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { GlowCard } from '../ui/GlowCard';
+import { SecurityScoreGauge } from '../ui/SecurityScoreGauge';
 import { useVault } from '../../contexts/VaultContext';
 import { useTranslation } from 'react-i18next';
 
@@ -43,6 +44,21 @@ export function WatchtowerPanel() {
     setCategoryFilter(categoryFilter === filter ? '' : filter);
   };
   const isActiveFilter = (filter: string) => categoryFilter === filter;
+  const focusPrimaryFinding = () => {
+    if (watchtower.pwned > 0) {
+      toggleWatchtowerFilter('__watchtower:pwned');
+      return;
+    }
+    if (watchtower.weak > 0) {
+      toggleWatchtowerFilter('__watchtower:weak');
+      return;
+    }
+    if (watchtower.reused > 0) {
+      toggleWatchtowerFilter('__watchtower:reused');
+      return;
+    }
+    toggleWatchtowerFilter('__watchtower:old');
+  };
 
   return (
     <GlowCard className="watchtower-surface v5-rail-card v5-watchtower-card rounded-[var(--radius)] p-5 relative">
@@ -62,6 +78,10 @@ export function WatchtowerPanel() {
             ? t('watchtowerSummaryIssues', { count: totalFindings })
             : t('watchtowerSummaryClean')}
         </span>
+      </div>
+
+      <div className="v5-watchtower-gauge-hero">
+        <SecurityScoreGauge score={watchtower.score} onClick={focusPrimaryFinding} size="hero" />
       </div>
 
       <div className="v5-watchtower-list flex flex-col gap-2.5">

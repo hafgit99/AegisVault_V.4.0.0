@@ -2357,7 +2357,7 @@ export function SettingsDrawer({
                         }}
                         className={`flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left transition ${
                           activeTab === section.id
-                            ? 'bg-[#111827] text-white ring-1 ring-[var(--color-sage-green)]/35'
+                            ? 'bg-[var(--aegis-surface-soft)] text-[var(--aegis-text-primary)] ring-1 ring-[var(--aegis-border-accent)] dark:bg-[#111827] dark:text-white dark:ring-[var(--color-sage-green)]/35'
                             : 'text-[var(--color-deep-navy)]/78 hover:bg-black/5 dark:text-white/78 dark:hover:bg-white/10'
                         }`}
                       >
@@ -2367,7 +2367,7 @@ export function SettingsDrawer({
                           <span
                             className={`mt-1 block text-xs leading-5 ${
                               activeTab === section.id
-                                ? 'text-white/70'
+                                ? 'text-[var(--aegis-text-secondary)] dark:text-white/70'
                                 : 'text-[var(--color-deep-navy)]/55 dark:text-white/55'
                             }`}
                           >
@@ -2477,7 +2477,7 @@ export function SettingsDrawer({
                           aria-current={activeTab === section.id ? 'page' : undefined}
                           className={`v5-settings-nav-item group flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left outline-none transition-all ${
                             activeTab === section.id
-                              ? 'v5-settings-nav-item-active bg-[#0a1128] text-white shadow-sm ring-1 ring-black/10 dark:bg-[#111827] dark:text-white dark:ring-[var(--color-sage-green)]/35'
+                              ? 'v5-settings-nav-item-active bg-[var(--aegis-surface-soft)] text-[var(--aegis-text-primary)] shadow-sm ring-1 ring-[var(--aegis-border-accent)] dark:bg-[#111827] dark:text-white dark:ring-[var(--color-sage-green)]/35'
                               : 'text-[var(--color-deep-navy)]/75 hover:bg-black/5 hover:text-[var(--color-deep-navy)] dark:text-white/78 dark:hover:bg-white/10'
                           }`}
                         >
@@ -2489,7 +2489,7 @@ export function SettingsDrawer({
                                 <span
                                   className={`v5-settings-nav-badge rounded-full px-2 py-0.5 text-[10px] font-bold ${
                                     activeTab === section.id
-                                      ? 'bg-white/15 text-white'
+                                      ? 'bg-[var(--aegis-surface-muted)] text-[var(--aegis-accent-strong)] dark:bg-white/15 dark:text-white'
                                       : 'bg-black/5 text-[var(--color-deep-navy)]/55 dark:bg-white/10 dark:text-white/55'
                                   }`}
                                 >
@@ -2500,7 +2500,7 @@ export function SettingsDrawer({
                             <span
                               className={`mt-1 block text-xs leading-5 ${
                                 activeTab === section.id
-                                  ? 'text-white/70'
+                                  ? 'text-[var(--aegis-text-secondary)] dark:text-white/70'
                                   : 'text-[var(--color-deep-navy)]/55 dark:text-white/55'
                               }`}
                             >

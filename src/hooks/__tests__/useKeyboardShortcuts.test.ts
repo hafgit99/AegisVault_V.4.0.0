@@ -17,6 +17,49 @@ describe('useKeyboardShortcuts', () => {
     expect(onSearch).toHaveBeenCalled();
   });
 
+  it('should call onSearch when Ctrl+K is pressed', () => {
+    const onSearch = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onSearch }));
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'k',
+      ctrlKey: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(event);
+
+    expect(onSearch).toHaveBeenCalled();
+  });
+
+  it('should call onCommandPalette when Ctrl+P is pressed', () => {
+    const onCommandPalette = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onCommandPalette }));
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'p',
+      ctrlKey: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(event);
+
+    expect(onCommandPalette).toHaveBeenCalled();
+  });
+
+  it('should call onCommandPalette when Ctrl+Shift+K is pressed', () => {
+    const onCommandPalette = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onCommandPalette }));
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'K',
+      ctrlKey: true,
+      shiftKey: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(event);
+
+    expect(onCommandPalette).toHaveBeenCalled();
+  });
+
   it('should call onLock when Ctrl+L is pressed', () => {
     const onLock = vi.fn();
     renderHook(() => useKeyboardShortcuts({ onLock }));
