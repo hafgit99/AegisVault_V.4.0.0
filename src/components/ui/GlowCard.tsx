@@ -30,7 +30,7 @@ export function GlowCard({
         className="pointer-events-none absolute -inset-px transition-opacity duration-500 z-0"
         style={{
           opacity,
-          background: `radial-gradient(520px circle at ${position.x}px ${position.y}px, rgba(135,159,132,0.1), transparent 42%)`,
+          background: `radial-gradient(520px circle at ${position.x}px ${position.y}px, var(--glow-radial-color), transparent 42%)`,
         }}
       />
       <div className="relative z-10 w-full h-full flex flex-col">{children}</div>

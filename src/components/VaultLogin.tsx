@@ -31,8 +31,61 @@ import { VaultManager, type VaultProfile } from '../lib/VaultManager';
 import { WipeConfirmationModal } from './WipeConfirmationModal';
 import { PasskeyBindingService } from '../lib/PasskeyBindingService';
 import { SecureAppSettings } from '../lib/SecureAppSettings';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const PASSKEY_ROTATION_DAYS = 90;
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.05,
+    },
+  },
+} as const;
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: 'spring',
+      stiffness: 120,
+      damping: 18,
+    },
+  },
+} as const;
+
+const cardVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      type: 'spring',
+      stiffness: 100,
+      damping: 15,
+    },
+  },
+} as const;
+
+const rightPanelVariants = {
+  hidden: { opacity: 0, scale: 0.98, y: 10 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      type: 'spring',
+      stiffness: 110,
+      damping: 16,
+      delay: 0.1,
+    },
+  },
+} as const;
 
 type WindowWithElectronLanguageBridge = Window &
   typeof globalThis & {
@@ -486,46 +539,65 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
   return (
     <div className="vault-login-root v5-login-root relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-cloud-dancer)] px-4 py-8">
       <div className="v5-login-top-actions absolute right-4 top-4 z-50 flex items-center gap-2">
-        <button
+        <motion.button
           type="button"
           onClick={handleThemeToggle}
-          className="vault-login-control flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm backdrop-blur-md transition-all"
+          whileHover={{ scale: 1.05, y: -0.5 }}
+          whileTap={{ scale: 0.95 }}
+          className="vault-login-control flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm backdrop-blur-md transition-all cursor-pointer"
         >
           {themeMode === 'dark' ? (
-            <Sun className="h-3.5 w-3.5" />
+            <Sun className="h-3.5 w-3.5 text-amber-400" />
           ) : (
-            <Moon className="h-3.5 w-3.5" />
+            <Moon className="h-3.5 w-3.5 text-[var(--color-deep-navy)]" />
           )}
           {themeMode === 'dark' ? t('lightMode', 'Light') : t('darkMode', 'Dark')}
-        </button>
-        <button
+        </motion.button>
+        <motion.button
           type="button"
           onClick={handleLanguageToggle}
-          className="vault-login-control flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm backdrop-blur-md transition-all"
+          whileHover={{ scale: 1.05, y: -0.5 }}
+          whileTap={{ scale: 0.95 }}
+          className="vault-login-control flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm backdrop-blur-md transition-all cursor-pointer"
         >
           <Globe className="w-3.5 h-3.5" />
           {i18n.language.startsWith('en') ? 'EN' : 'TR'}
-        </button>
+        </motion.button>
       </div>
 
       <div className="v5-login-backdrop absolute inset-0 z-0" aria-hidden="true" />
 
-      <main className="v5-login-shell relative z-10 grid w-full max-w-6xl grid-cols-1 overflow-hidden rounded-2xl border shadow-2xl lg:grid-cols-[minmax(0,1fr)_448px]">
-        <section className="v5-login-intro hidden min-h-[640px] flex-col justify-between p-10 lg:flex xl:p-12">
+      <main className="v5-login-shell vault-login-surface relative z-10 grid w-full max-w-6xl grid-cols-1 overflow-hidden rounded-2xl border shadow-2xl lg:grid-cols-[minmax(0,1fr)_448px]">
+        <motion.section
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="v5-login-intro hidden min-h-[640px] flex-col justify-between p-10 lg:flex xl:p-12"
+        >
           <div>
-            <div className="v5-login-kicker mb-8 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-extrabold uppercase">
-              <Shield className="h-3.5 w-3.5" />
+            <motion.div
+              variants={itemVariants}
+              className="v5-login-kicker mb-8 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-extrabold uppercase"
+            >
+              <Shield className="h-3.5 w-3.5 text-[var(--color-sage-green)] animate-pulse" />
               {t('v5LoginEyebrow')}
-            </div>
+            </motion.div>
 
-            <div className="v5-login-brand-lockup mb-10 flex items-center gap-4">
-              <div className="v5-login-brand-icon flex h-16 w-16 items-center justify-center rounded-2xl p-1 shadow-inner">
+            <motion.div
+              variants={itemVariants}
+              className="v5-login-brand-lockup mb-10 flex items-center gap-4"
+            >
+              <motion.div
+                whileHover={{ scale: 1.05, rotate: 2 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 10 }}
+                className="v5-login-brand-icon flex h-16 w-16 items-center justify-center rounded-2xl p-1 shadow-inner cursor-pointer"
+              >
                 <img
                   src="./icon.png"
                   alt="Aegis Logo"
                   className="h-full w-full object-contain drop-shadow-md"
                 />
-              </div>
+              </motion.div>
               <div>
                 <p className="v5-login-brand-eyebrow text-sm font-extrabold uppercase text-white/64">
                   Aegis Vault
@@ -534,56 +606,61 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
                   {t('v5LoginTitle')}
                 </h1>
               </div>
-            </div>
+            </motion.div>
 
-            <p className="v5-login-desc max-w-xl text-base">{t('v5LoginDesc')}</p>
+            <motion.p variants={itemVariants} className="v5-login-desc max-w-xl text-base">
+              {t('v5LoginDesc')}
+            </motion.p>
 
-            <div className="v5-login-security-strip mt-8">
-              <span>
+            <motion.div variants={itemVariants} className="v5-login-security-strip mt-8">
+              <motion.span whileHover={{ scale: 1.02 }} className="cursor-default">
                 <ShieldCheck className="h-4 w-4" />
                 {t('v5LoginBadgeZeroKnowledge', 'Zero-knowledge')}
-              </span>
-              <span>
+              </motion.span>
+              <motion.span whileHover={{ scale: 1.02 }} className="cursor-default">
                 <Database className="h-4 w-4" />
                 {t('v5LoginBadgeOfflineVault', 'Offline vault')}
-              </span>
-              <span>
+              </motion.span>
+              <motion.span whileHover={{ scale: 1.02 }} className="cursor-default">
                 <Sparkles className="h-4 w-4" />
                 {t('v5LoginBadgeNoCloud', 'No cloud dependency')}
-              </span>
-            </div>
+              </motion.span>
+            </motion.div>
           </div>
 
           <div className="grid gap-3">
-            <div className="v5-login-proof-card">
+            <motion.div variants={cardVariants} className="v5-login-proof-card">
               <span className="v5-login-proof-index">01</span>
               <Lock className="h-5 w-5" />
               <div>
                 <h2>{t('v5LoginProofLocalTitle')}</h2>
                 <p>{t('v5LoginProofLocalDesc')}</p>
               </div>
-            </div>
-            <div className="v5-login-proof-card">
+            </motion.div>
+            <motion.div variants={cardVariants} className="v5-login-proof-card">
               <span className="v5-login-proof-index">02</span>
               <KeyRound className="h-5 w-5" />
               <div>
                 <h2>{t('v5LoginProofTwoSecretTitle')}</h2>
                 <p>{t('v5LoginProofTwoSecretDesc')}</p>
               </div>
-            </div>
-            <div className="v5-login-proof-card">
+            </motion.div>
+            <motion.div variants={cardVariants} className="v5-login-proof-card">
               <span className="v5-login-proof-index">03</span>
               <Fingerprint className="h-5 w-5" />
               <div>
                 <h2>{t('v5LoginProofPasskeyTitle')}</h2>
                 <p>{t('v5LoginProofPasskeyDesc')}</p>
               </div>
-            </div>
+            </motion.div>
           </div>
-        </section>
+        </motion.section>
 
-        <section
-          className={`vault-login-surface v5-login-panel relative w-full p-6 transition-all duration-300 sm:p-8 ${isError ? 'animate-shake border-red-500/40 shadow-[0_0_40px_rgba(239,68,68,0.15)] bg-red-50/20' : ''}`}
+        <motion.section
+          variants={rightPanelVariants}
+          initial="hidden"
+          animate="visible"
+          className="v5-login-panel flex flex-col justify-between"
         >
           <div className="v5-login-form-header flex flex-col items-center text-center">
             <div className="vault-login-logo-container mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-inner p-1 lg:hidden">
@@ -607,10 +684,12 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
             {/* ─── Multi-Vault Selector ─── */}
             {vaultProfiles.length > 0 && activeProfile && (
               <div className="relative w-full mb-3">
-                <button
+                <motion.button
                   type="button"
                   onClick={() => setShowVaultSelector(!showVaultSelector)}
-                  className="vault-login-field w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all text-left"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  className="vault-login-field w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all text-left cursor-pointer"
                   aria-expanded={showVaultSelector}
                   aria-haspopup="listbox"
                 >
@@ -624,87 +703,94 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
                   <ChevronDown
                     className={`w-4 h-4 text-[var(--color-deep-navy)]/40 transition-transform ${showVaultSelector ? 'rotate-180' : ''}`}
                   />
-                </button>
+                </motion.button>
 
-                {showVaultSelector && (
-                  <div
-                    className="vault-login-dropdown absolute top-full left-0 right-0 mt-1 rounded-xl shadow-xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
-                    role="listbox"
-                  >
-                    {vaultProfiles.map((profile) => (
-                      <div
-                        key={profile.id}
-                        className={`flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--color-sage-green)]/10 transition-colors cursor-pointer group ${profile.id === activeProfile.id ? 'bg-[var(--color-sage-green)]/5' : ''}`}
-                        onClick={() => handleSwitchVault(profile)}
-                        role="option"
-                        aria-selected={profile.id === activeProfile.id}
-                      >
-                        <div
-                          className="w-3 h-3 rounded-full shrink-0"
-                          style={{ backgroundColor: profile.color }}
-                        />
-                        <span className="text-sm font-medium text-[var(--color-deep-navy)] flex-1 truncate">
-                          {profile.name}
-                        </span>
-                        {profile.id === activeProfile.id && (
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-sage-green)] bg-[var(--color-sage-green)]/10 px-2 py-0.5 rounded-full">
-                            {t('active', 'Active')}
+                <AnimatePresence>
+                  {showVaultSelector && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                      className="vault-login-dropdown absolute top-full left-0 right-0 mt-1 rounded-xl shadow-xl z-20 overflow-hidden"
+                      role="listbox"
+                    >
+                      {vaultProfiles.map((profile) => (
+                        <motion.div
+                          key={profile.id}
+                          whileHover={{ x: 2 }}
+                          className={`flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--color-sage-green)]/10 transition-colors cursor-pointer group ${profile.id === activeProfile.id ? 'bg-[var(--color-sage-green)]/5' : ''}`}
+                          onClick={() => handleSwitchVault(profile)}
+                          role="option"
+                          aria-selected={profile.id === activeProfile.id}
+                        >
+                          <div
+                            className="w-3 h-3 rounded-full shrink-0"
+                            style={{ backgroundColor: profile.color }}
+                          />
+                          <span className="text-sm font-medium text-[var(--color-deep-navy)] flex-1 truncate">
+                            {profile.name}
                           </span>
-                        )}
-                        {!profile.isDefault && (
+                          {profile.id === activeProfile.id && (
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-sage-green)] bg-[var(--color-sage-green)]/10 px-2 py-0.5 rounded-full">
+                              {t('active', 'Active')}
+                            </span>
+                          )}
+                          {!profile.isDefault && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteVault(profile.id);
+                              }}
+                              className="p-1 rounded-md hover:bg-red-100 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                              aria-label={t('deleteVault', 'Delete vault')}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </motion.div>
+                      ))}
+
+                      {/* New Vault */}
+                      {showNewVaultInput ? (
+                        <div className="flex items-center gap-2 px-4 py-2.5 border-t vault-login-dropdown-divider">
+                          <input
+                            autoFocus
+                            type="text"
+                            value={newVaultName}
+                            onChange={(e) => setNewVaultName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleCreateVault();
+                              if (e.key === 'Escape') setShowNewVaultInput(false);
+                            }}
+                            placeholder={t('vaultName', 'Vault name...')}
+                            className="flex-1 text-sm bg-transparent outline-none placeholder:text-gray-400"
+                          />
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteVault(profile.id);
-                            }}
-                            className="p-1 rounded-md hover:bg-red-100 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                            aria-label={t('deleteVault', 'Delete vault')}
+                            onClick={handleCreateVault}
+                            className="vault-login-create-btn text-[var(--color-sage-green)] text-xs font-bold hover:underline cursor-pointer"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            {t('create', 'Create')}
                           </button>
-                        )}
-                      </div>
-                    ))}
-
-                    {/* New Vault */}
-                    {showNewVaultInput ? (
-                      <div className="flex items-center gap-2 px-4 py-2.5 border-t vault-login-dropdown-divider">
-                        <input
-                          autoFocus
-                          type="text"
-                          value={newVaultName}
-                          onChange={(e) => setNewVaultName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleCreateVault();
-                            if (e.key === 'Escape') setShowNewVaultInput(false);
-                          }}
-                          placeholder={t('vaultName', 'Vault name...')}
-                          className="flex-1 text-sm bg-transparent outline-none placeholder:text-gray-400"
-                        />
+                        </div>
+                      ) : (
                         <button
                           type="button"
-                          onClick={handleCreateVault}
-                          className="vault-login-create-btn text-[var(--color-sage-green)] text-xs font-bold hover:underline"
+                          onClick={() => setShowNewVaultInput(true)}
+                          className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-bold text-[var(--color-sage-green)] hover:bg-[var(--color-sage-green)]/5 transition-colors border-t vault-login-dropdown-divider cursor-pointer"
                         >
-                          {t('create', 'Create')}
+                          <Plus className="w-3.5 h-3.5" /> {t('createNewVault', 'Create New Vault')}
                         </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setShowNewVaultInput(true)}
-                        className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-bold text-[var(--color-sage-green)] hover:bg-[var(--color-sage-green)]/5 transition-colors border-t vault-login-dropdown-divider"
-                      >
-                        <Plus className="w-3.5 h-3.5" /> {t('createNewVault', 'Create New Vault')}
-                      </button>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
 
-            <div className="vault-login-tabs flex p-1 rounded-xl w-full mb-2">
+            <div className="vault-login-tabs flex p-1 rounded-xl w-full mb-2 relative z-0">
               <button
                 type="button"
                 onClick={() => {
@@ -712,8 +798,15 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
                   setShowSetupSecret(false);
                   setSecretKey('');
                 }}
-                className={`login-tab-btn flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${!isSetupMode ? 'vault-login-tab-active text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60'}`}
+                className={`login-tab-btn relative flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all z-10 cursor-pointer ${!isSetupMode ? 'vault-login-tab-active text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60 dark:text-[#f8fafc]/60'}`}
               >
+                {!isSetupMode && (
+                  <motion.div
+                    layoutId="activeLoginTab"
+                    className="absolute inset-0 bg-gradient-to-br from-[#2f4b6d] to-[#294260] rounded-lg -z-10 shadow-sm"
+                    transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+                  />
+                )}
                 {t('unlock')}
               </button>
               <button
@@ -724,8 +817,15 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
                   setSecretKey('');
                   setShowSetupSecret(false);
                 }}
-                className={`login-tab-btn flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${isSetupMode ? 'vault-login-tab-active text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60'}`}
+                className={`login-tab-btn relative flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all z-10 cursor-pointer ${isSetupMode ? 'vault-login-tab-active text-white shadow-sm' : 'text-[var(--color-deep-navy)]/60 dark:text-[#f8fafc]/60'}`}
               >
+                {isSetupMode && (
+                  <motion.div
+                    layoutId="activeLoginTab"
+                    className="absolute inset-0 bg-gradient-to-br from-[#2f4b6d] to-[#294260] rounded-lg -z-10 shadow-sm"
+                    transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+                  />
+                )}
                 {t('initialize')}
               </button>
             </div>
@@ -827,14 +927,16 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
                   </div>
                 </div>
 
-                <button
+                <motion.button
                   type="button"
                   onClick={handleDownloadKit}
-                  className="vault-login-download-btn flex items-center justify-center gap-2 w-full rounded-xl py-3.5 text-sm font-semibold tracking-wide shadow-sm transition-all active:scale-95"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="vault-login-download-btn flex items-center justify-center gap-2 w-full rounded-xl py-3.5 text-sm font-semibold tracking-wide shadow-sm transition-all cursor-pointer"
                 >
                   <FileDown className="w-4 h-4 text-[var(--color-sage-green)]" />
                   {t('downloadKit')}
-                </button>
+                </motion.button>
               </div>
             )}
 
@@ -891,9 +993,11 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
                 {t('accessDenied')}
               </div>
             ) : (
-              <button
+              <motion.button
                 type="submit"
-                className="vault-login-unlock-btn btn-ink mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-deep-navy)] py-3.5 text-sm font-semibold tracking-wide text-white shadow-lg transition-all hover:bg-[var(--color-deep-navy)]/90 active:scale-95"
+                whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(41, 66, 96, 0.25)' }}
+                whileTap={{ scale: 0.98 }}
+                className="vault-login-unlock-btn btn-ink mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-deep-navy)] py-3.5 text-sm font-semibold tracking-wide text-white shadow-lg transition-all cursor-pointer"
               >
                 {isSetupMode && !showSetupSecret ? (
                   <>
@@ -906,20 +1010,22 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
                 ) : (
                   t('unlockVault')
                 )}
-              </button>
+              </motion.button>
             )}
 
             {!isSetupMode && !showSetupSecret && !isDecrypting && (
               <>
-                <button
+                <motion.button
                   type="button"
                   onClick={handlePasskeyAction}
-                  className="vault-login-passkey relative mt-2 flex w-full items-center justify-center gap-3 rounded-xl py-3.5 text-sm font-semibold tracking-wide transition-all shadow-sm active:scale-95 group overflow-hidden"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="vault-login-passkey relative mt-2 flex w-full items-center justify-center gap-3 rounded-xl py-3.5 text-sm font-semibold tracking-wide transition-all shadow-sm group overflow-hidden cursor-pointer"
                 >
                   <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none" />
                   <Fingerprint className="w-5 h-5 text-[var(--color-sage-green)] group-hover:scale-110 transition-transform" />
                   {hasPasskey ? t('biometricsUnlock') : t('biometricsRegister')}
-                </button>
+                </motion.button>
 
                 {hasPasskey && passkeyNeedsRotation && (
                   <div className="mt-2 w-full rounded-xl border border-amber-300/40 bg-amber-50/60 px-3 py-2 text-[11px] font-medium text-amber-700">
@@ -928,28 +1034,32 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
                 )}
 
                 {hasPasskey && (
-                  <button
+                  <motion.button
                     type="button"
                     onClick={handleRevokePasskey}
-                    className="mt-2 text-[11px] font-semibold text-[var(--color-deep-navy)]/60 hover:text-red-600 transition-colors"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="mt-2 text-[11px] font-semibold text-[var(--color-deep-navy)]/60 hover:text-red-600 transition-colors cursor-pointer"
                   >
                     {t('passkeyRevokeButton')}
-                  </button>
+                  </motion.button>
                 )}
               </>
             )}
 
             {isSetupMode && !isDecrypting && (
-              <button
+              <motion.button
                 type="button"
                 onClick={() => setShowWipeModal(true)}
-                className="mt-6 text-[10px] font-bold uppercase tracking-[0.2em] text-red-500/60 hover:text-red-600 transition-colors text-center"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="mt-6 text-[10px] font-bold uppercase tracking-[0.2em] text-red-500/60 hover:text-red-600 transition-colors text-center cursor-pointer"
               >
                 {t('factoryResetBtn')}
-              </button>
+              </motion.button>
             )}
           </form>
-        </section>
+        </motion.section>
       </main>
 
       <div className="vault-login-foot absolute bottom-8 text-center text-xs font-medium text-[var(--color-deep-navy)]/50 tracking-widest uppercase">

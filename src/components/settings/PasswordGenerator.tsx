@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+﻿import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Wand2, Copy, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
@@ -85,14 +85,14 @@ export function PasswordGenerator({ isOpen }: { isOpen: boolean }) {
         <div className="flex gap-2">
           <button
             onClick={handleGenerateStandalone}
-            className="password-generator-btn p-2.5 rounded-lg bg-white/80 hover:bg-white text-[var(--color-deep-navy)] hover:text-[var(--color-sage-green)] transition-all shadow active:scale-95"
+            className="password-generator-btn p-2.5 rounded-xl bg-white/80 hover:bg-white text-[var(--color-deep-navy)] hover:text-[var(--color-sage-green)] transition-all shadow active:scale-95"
             title={t('regenerateBtn')}
           >
             <Wand2 className="w-5 h-5" />
           </button>
           <button
             onClick={copyStandalonePassword}
-            className={`password-generator-btn p-2.5 rounded-lg transition-all shadow ${isStandaloneCopied ? 'bg-[var(--color-sage-green)] text-white scale-110' : 'bg-white/80 hover:bg-white hover:text-[var(--color-sage-green)]'}`}
+            className={`password-generator-btn p-2.5 rounded-xl transition-all shadow ${isStandaloneCopied ? 'bg-[var(--color-sage-green)] text-white scale-110' : 'bg-white/80 hover:bg-white hover:text-[var(--color-sage-green)]'}`}
             title={t('copyPasswordBtn')}
           >
             {isStandaloneCopied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}

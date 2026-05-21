@@ -1,4 +1,4 @@
-import { AtSign, ExternalLink, RefreshCw, Sparkles, ShieldAlert, Undo2 } from 'lucide-react';
+﻿import { AtSign, ExternalLink, RefreshCw, Sparkles, ShieldAlert, Undo2 } from 'lucide-react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -134,7 +134,7 @@ export function AliasIdentityPanel({ entry, setEntry }: AliasIdentityPanelProps)
                 : null,
             }));
           }}
-          className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+          className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
         >
           {providers.map((provider) => (
             <option key={provider.id} value={provider.id}>
@@ -169,7 +169,7 @@ export function AliasIdentityPanel({ entry, setEntry }: AliasIdentityPanelProps)
                   },
             }))
           }
-          className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+          className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
         />
 
         <div className="md:col-span-2 flex gap-2">
@@ -202,12 +202,12 @@ export function AliasIdentityPanel({ entry, setEntry }: AliasIdentityPanelProps)
                 },
               }))
             }
-            className="entry-field flex-1 rounded-lg py-2.5 px-3 text-sm font-medium outline-none font-[var(--font-geist-mono)]"
+            className="entry-field flex-1 rounded-xl py-2.5 px-3 text-sm font-medium outline-none font-[var(--font-geist-mono)]"
           />
           <button
             type="button"
             onClick={applyGeneratedAlias}
-            className="px-3 py-2 rounded-lg totp-btn-secondary transition-all border border-[var(--color-sage-green)]/20 flex items-center gap-1.5 text-xs font-bold"
+            className="px-3 py-2 rounded-xl totp-btn-secondary transition-all border border-[var(--color-sage-green)]/20 flex items-center gap-1.5 text-xs font-bold"
           >
             <Sparkles className="w-3.5 h-3.5" />
             {t('aliasGenerate')}
@@ -231,7 +231,7 @@ export function AliasIdentityPanel({ entry, setEntry }: AliasIdentityPanelProps)
                 : null,
             }))
           }
-          className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none md:col-span-2"
+          className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none md:col-span-2"
         />
       </div>
 
@@ -240,7 +240,7 @@ export function AliasIdentityPanel({ entry, setEntry }: AliasIdentityPanelProps)
           type="button"
           onClick={queueAliasRotation}
           disabled={!entry.aliasDetails?.email}
-          className="alias-action-btn px-3 py-2 rounded-lg bg-slate-500/10 text-slate-700 dark:text-slate-200 border border-slate-500/20 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
+          className="alias-action-btn px-3 py-2 rounded-xl bg-slate-500/10 text-slate-700 dark:text-slate-200 border border-slate-500/20 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           {t('aliasQueueRotation')}
@@ -249,7 +249,7 @@ export function AliasIdentityPanel({ entry, setEntry }: AliasIdentityPanelProps)
           type="button"
           onClick={rotateAlias}
           disabled={!entry.aliasDetails?.email}
-          className="alias-action-btn px-3 py-2 rounded-lg bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/20 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
+          className="alias-action-btn px-3 py-2 rounded-xl bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/20 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           {t('aliasRotate')}
@@ -258,7 +258,7 @@ export function AliasIdentityPanel({ entry, setEntry }: AliasIdentityPanelProps)
           type="button"
           onClick={markCompromised}
           disabled={!entry.aliasDetails?.email}
-          className="alias-action-btn px-3 py-2 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
+          className="alias-action-btn px-3 py-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
         >
           <ShieldAlert className="w-3.5 h-3.5" />
           {t('aliasMarkExposed')}
@@ -269,7 +269,7 @@ export function AliasIdentityPanel({ entry, setEntry }: AliasIdentityPanelProps)
           disabled={
             !entry.aliasDetails?.history?.some((item) => item.email !== entry.aliasDetails?.email)
           }
-          className="alias-action-btn px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
+          className="alias-action-btn px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
         >
           <Undo2 className="w-3.5 h-3.5" />
           {t('aliasRollback')}
@@ -282,7 +282,7 @@ export function AliasIdentityPanel({ entry, setEntry }: AliasIdentityPanelProps)
               aliasDetails: null,
             }))
           }
-          className="alias-action-btn px-3 py-2 rounded-lg bg-white/70 text-[var(--color-deep-navy)] border border-black/10 dark:bg-white/10 dark:text-white text-xs font-bold flex items-center gap-1.5"
+          className="alias-action-btn px-3 py-2 rounded-xl bg-white/70 text-[var(--color-deep-navy)] border border-black/10 dark:bg-white/10 dark:text-white text-xs font-bold flex items-center gap-1.5"
         >
           <AtSign className="w-3.5 h-3.5" />
           {t('aliasClear')}
@@ -327,7 +327,7 @@ export function AliasIdentityPanel({ entry, setEntry }: AliasIdentityPanelProps)
             </a>
           ) : null}
           {entry.aliasDetails.rotationQueue?.length ? (
-            <div className="mt-2 rounded-lg bg-black/5 px-2.5 py-2 dark:bg-white/5">
+            <div className="mt-2 rounded-xl bg-black/5 px-2.5 py-2 dark:bg-white/5">
               <div className="text-[11px] font-semibold">
                 {t('aliasQueueSummary', { count: entry.aliasDetails.rotationQueue.length })}
               </div>

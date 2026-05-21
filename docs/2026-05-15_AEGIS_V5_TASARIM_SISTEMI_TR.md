@@ -1,153 +1,189 @@
-# Aegis Vault 5.0 Tasarim Sistemi Standardi
+# 🔒 Aegis Vault - Premium Tasarım ve 1Password İlhamlı Arayüz Dönüşüm Raporu
 
-**Tarih:** 2026-05-15  
-**Durum:** Faz 1 uygulama baslangici  
-**Amac:** Aegis Vault arayuzunde renk, yuzey, buton, rozet, input ve focus davranislarini koyu/acik mod ile Turkce/Ingilizce metinlere dayanikli tek bir sistem altinda toplamak.
+**Tarih:** 21 Mayıs 2026  
+**Proje:** Aegis Vault V.5.0.0  
+**Doküman:** Arayüz Modernizasyonu ve Rekabetçi Tasarım Stratejisi  
+**Durum:** Taslak & İncelemeye Hazır
 
-## 1. Temel Yaklasim
+---
 
-Aegis Vault bir sifre yoneticisi oldugu icin tasarim dili dekoratif olmaktan cok guven veren, okunabilir ve kontrollu olmalidir. Bu nedenle Faz 1'de yeni bir gorsel katman eklemek yerine mevcut V5 arayuzunu besleyen semantik tokenlar olusturulmustur.
+## 🎯 1. Giriş ve Genel Hedefler
 
-Bu yaklasim su avantajlari saglar:
+Şifre yöneticileri ve dijital kasalar alanındaki rekabet son derece yoğundur. Bu alanda güvenliği sağlamak kadar, kullanıcılara **"güvende olma psikolojisini"** hissettirmek de kritiktir. UI/UX dünyasında bilinen en temel gerçeklerden biri şudur: **"Kullanıcılar iyi tasarlanmış sistemlerin daha güvenli olduğuna inanırlar."**
 
-- Koyu ve acik mod ayni karar sistemiyle calisir.
-- Yeni ekranlar ayni buton, rozet ve kart dilini kullanir.
-- Kritik aksiyonlar daha net ayrisir.
-- Uzun Turkce metinlerde buton ve rozetler daha dayanikli olur.
-- Sonraki fazlarda kayit kartlari, formlar ve ayarlar daha kolay standardize edilir.
+Aegis Vault'un mevcut tasarım dili olan **"Sessiz Lüks" (Quiet Luxury)**; **Cloud Dancer (`#f0eee9`)**, **Deep Navy (`#0a1128`)** ve **Sage Green (`#72886f`)** tonlarıyla son derece elit ve zengin bir temel sunmaktadır. Ancak, sektörün zirvesinde yer alan **1Password** gibi rakipleri geride bırakmak için bu minimalist şıklığı, modern bir **"Cyber-Glass" (Siber Cam)** derinliği ve son derece sade, premium bir sadelikle (Simplicity) harmanlamamız gerekmektedir.
 
-## 2. Semantik Token Gruplari
+Bu rapor; Aegis Vault'un arayüzünü daha sade, akıcı ve premium gösterecek, 1Password'ün en başarılı tasarım taktiklerini kendi kimliğimize entegre edecek somut tasarım önerileri ve uygulama rehberini sunmaktadır.
 
-### 2.1 Yuzey Tokenlari
+---
 
-- `--aegis-surface-canvas`: Sayfa arka plani.
-- `--aegis-surface-base`: Standart kart ve panel zemini.
-- `--aegis-surface-raised`: Input, buton ve one cikan kart zemini.
-- `--aegis-surface-muted`: Ikinci seviye bilgi kutulari.
-- `--aegis-surface-soft`: Hover, secili veya dusuk vurgu zeminleri.
+## 🌟 2. 1Password Tasarım Felsefesi ve Başarı Kriterleri
 
-### 2.2 Metin Tokenlari
+1Password'ün arayüzünde kullanıcıyı büyüleyen ve "Premium" hissettiren ana faktörler şunlardır:
 
-- `--aegis-text-primary`: Ana baslik ve kritik metin.
-- `--aegis-text-secondary`: Aciklama ve ikincil bilgi.
-- `--aegis-text-muted`: Placeholder, yardimci metin ve dusuk vurgu.
-- `--aegis-text-inverse`: Koyu zemin uzerindeki ters metin.
+1. **Aşırı Basitleştirilmiş Düzen (Ultimate Decluttering):** 1Password, karmaşık şifre verilerini göstermek yerine sadece o an ihtiyaç duyulan bilgiye odaklanır. Gereksiz tüm çizgi, çerçeve ve border'lar elenmiştir. Bölmeler arasındaki ayrım çizgilerle değil, geniş boşluklar (Whitespace) ve yumuşak arka plan tonu geçişleriyle sağlanır.
+2. **Akışkan Üç Sütunlu Yapı (Fluid 3-Column Layout):** Sol tarafta kategoriler/kasalar, ortada arama ve öğe listesi, sağ tarafta ise seçili öğenin detayları bulunur. Bu yapı, kullanıcının kaybolmasını önler ve tek bir ekranda tüm kontrolü sağlar.
+3. **Yumuşak Geometri ve "Squircle" Köşeler:** Düğmelerden kartlara, form alanlarından modal pencerelere kadar her şey keskin olmayan, göze son derece estetik gelen yuvarlatılmış köşelere (`border-radius: 12px` - `24px`) sahiptir.
+4. **Premium Karanlık Mod (Space & Depth):** 1Password asla tamamen siyah (`#000000`) bir karanlık mod kullanmaz. Bunun yerine derin, kadifemsi bir uzay laciverti/kömür grisi tercih edilir. Bu derinlik, üzerine gelen kartların hafif parlamalarla (Glow) öne çıkmasını sağlar.
+5. **Mikro Etkileşimler (Micro-animations):** Şifreyi kopyaladığınızda beliren pürüzsüz onay animasyonu, arama çubuğuna tıkladığınızdaki akıcı genişleme ve kartların üzerindeki yumuşak hover efektleri arayüze "yaşıyormuş" hissi verir.
 
-### 2.3 Kenarlik ve Focus Tokenlari
+---
 
-- `--aegis-border-subtle`: Standart ince ayrim.
-- `--aegis-border-strong`: Input ve kontrol kenarligi.
-- `--aegis-border-accent`: Focus, hover ve secili durum vurgusu.
-- `--aegis-focus-ring`: Klavye ve focus gorunurlugu.
+## 🛠️ 3. Aegis Vault İçin 5 Altın Tasarım Önerisi
 
-### 2.4 Durum Tokenlari
+### 🎨 A. Renk Derinliğini HSL Geçişleriyle Optimize Edin
 
-- `--aegis-success`: Basarili ve guvenli durum.
-- `--aegis-warning`: Dikkat gerektiren durum.
-- `--aegis-danger`: Riskli veya geri alinamaz aksiyon.
-- `--aegis-info`: Bilgilendirici durum.
+Karanlık modu donuk gri tonlarından arındırıp, 1Password'ün kadifemsi derinliğine yaklaştırmalıyız.
 
-Her durumun soft arka plan karsiligi vardir:
+- **Aydınlık Mod:** Arka planı tamamen beyaz değil, gözü yormayan premium bir kağıt tonu olan fildişi/kum beji (`hsl(43, 20%, 96%)`) seviyesinde tutun.
+- **Karanlık Mod:** OLED dostu ancak derinlik hissi sunan çok koyu bir gece mavisi/uzay boşluğu tonu (`hsl(222, 47%, 9%)`) kullanın.
+- **Siber Parlama (Glow Accent):** Sage Green rengimizin yanına, şifre gücünü ve aktif TOTP sayaçlarını gösterecek hafif siber parıltılı turkuaz/yeşil tonu (`hsl(158, 64%, 52%)`) ekleyin.
 
-- `--aegis-success-soft`
-- `--aegis-warning-soft`
-- `--aegis-danger-soft`
-- `--aegis-info-soft`
+### 🌌 B. Çerçevesiz Tasarım ve "Likit Cam" Efekti (Backdrop Blur)
 
-## 3. Ortak Bilesen Siniflari
+Görsel kalabalığı azaltmak için sert kenarlıkları kaldırıp yerine gelişmiş cam efekti uygulayacağız.
 
-### 3.1 Yuzeyler
+- **Gereksiz Çizgileri Eleyin:** Kartların etrafındaki kalın border'ları kaldırın. Bunun yerine çok ince, yarı saydam sınır çizgileri (`rgba(255,255,255,0.06)`) ve derin gölgeler (Soft Shadows) kullanın.
+- **Likit Cam Paneller:** Panellerin arkasındaki `backdrop-filter: blur(24px)` yoğunluğunu artırarak arkadaki gradyanların yumuşakça süzülmesini sağlayın.
 
-- `aegis-surface` / `v5-surface-standard`
-- `aegis-surface-raised` / `v5-surface-raised`
-- `aegis-surface-muted` / `v5-surface-muted`
+### ✍️ C. Tipografi ve Geometrik Netlik
 
-Bu siniflar kart, panel, empty-state ve modal alt bolumlerinde kullanilmalidir.
+Premium hissin %70'i doğru tipografiden gelir.
 
-### 3.2 Butonlar
+- **Outfit & Inter İşbirliği:** Başlıklar için modern, teknolojik ve yuvarlak hatlara sahip **Outfit** fontunu; gövde metinleri ve şifre detayları için ise okunabilirliği en yüksek font olan **Inter** fontunu entegre edin.
+- **Hassas Harf Aralığı (Letter Spacing):** Başlıklarda `letter-spacing: -0.02em` kullanarak daha sıkı, elit bir duruş yakalayın.
 
-- `aegis-btn` / `v5-btn`
-- `aegis-btn-primary` / `v5-btn-primary`
-- `aegis-btn-secondary` / `v5-btn-secondary`
-- `aegis-btn-success` / `v5-btn-success`
-- `aegis-btn-warning` / `v5-btn-warning`
-- `aegis-btn-danger` / `v5-btn-danger`
+### ⚡ D. Kusursuz Mikro Etkileşimler ve Hover Tepkileri
 
-Kullanim ilkeleri:
+Uygulamanın statik kalmasını önleyip kullanıcıya geri bildirim verin.
 
-- Ana aksiyon icin primary.
-- Ikincil ama normal aksiyon icin secondary.
-- Guvenli/basarili durum icin success.
-- Dikkat gerektiren ama yikici olmayan islem icin warning.
-- Silme, sifirlama, geri alinamaz islem icin danger.
+- **Hover Yükselmesi (Elevation):** Şifre kartlarının üzerine gelindiğinde kart hafifçe yukarı kalkmalı (`transform: translateY(-3px)`) ve arkasındaki gölge yumuşakça büyüyerek kartın "havada süzüldüğü" hissini vermelidir.
+- **Focus Efekti:** Arama veya veri giriş kutularına tıklandığında sadece çerçeve rengi değişmesin; arka plandan hafif bir neon yeşil parıltı (`box-shadow: 0 0 20px rgba(114, 136, 111, 0.2)`) süzülsün.
 
-### 3.3 Rozetler
+### 📐 E. Form ve Detay Alanlarının Sadeleştirilmesi (Information Hierarchy)
 
-- `aegis-badge` / `v5-badge`
-- `aegis-badge-positive` / `v5-badge-positive`
-- `aegis-badge-warning` / `v5-badge-warning`
-- `aegis-badge-danger` / `v5-badge-danger`
+Detay ekranlarını 1Password gibi son derece sade hale getirin.
 
-Rozetlerde uzun Turkce metin kullanilmamali; mumkunse 1-3 kelime tercih edilmelidir.
+- **Gizlenebilir Alanlar:** Şifreler varsayılan olarak gizli kalmalı, yanındaki "göz" ikonuna basıldığında pürüzsüz bir opaklık geçişiyle (fade-in) görünür olmalıdır.
+- **Tek Tıkla Kopyalama Alanları:** Şifre veya kullanıcı adının üzerine gelindiğinde sağ tarafta beliren minimal bir kopyalama butonu ve kopyalandığında "Kopyalandı!" yazan akıcı, mikro bir onay rozeti (badge) bulunmalıdır.
 
-## 4. Geriye Uyumlu Sinif Eslemesi
+---
 
-Faz 1 kapsaminda mevcut siniflar yeni token sistemine baglanmistir:
+## 💻 4. Teknik Uygulama Rehberi (CSS Değişkenleri & Bileşen Yapısı)
 
-- `btn-ink`
-- `settings-action-btn-primary`
-- `settings-action-btn-secondary`
-- `settings-action-btn-danger`
-- `settings-secondary-btn`
-- `settings-plain-btn`
-- `settings-pill-secondary`
-- `totp-btn-secondary`
-- `entry-action-btn-muted`
-- `recovery-drill-run-btn`
-- `sensitive-action-confirm-btn`
-- `emergency-kit-btn`
-- `settings-badge-muted`
-- `settings-badge-positive`
-- `passkey-status-chip`
-- `v5-entry-badge`
-- `dashboard-storage-chip`
-- `v5-vault-count-chip`
+Bu premium dönüşümü uygulamak için `src/index.css` dosyamıza ve ana stil şablonumuza uygulayabileceğimiz güncellenmiş modern CSS yapısı aşağıdadır:
 
-Bu sayede mevcut ekranlarda buyuk refactor yapmadan tutarlilik baslatilmistir.
+### 🌟 CSS Değişkenleri (Premium & Siber Tonlar)
 
-## 5. Yeni Ekranlar Icin Kural
+```css
+:root {
+  /* Aydınlık Mod - Premium Sessiz Lüks */
+  --bg-primary: #f6f5f1; /* Sıcak premium fildişi tonu */
+  --bg-surface: rgba(255, 255, 255, 0.65); /* Yarı saydam cam yüzey */
+  --text-primary: #0f172a; /* Derin slate lacivert */
+  --text-muted: #475569; /* Yumuşak gövde rengi */
+  --color-accent: #5b6e59; /* Modernize edilmiş Sage Green */
+  --color-glow: #10b981; /* Siber aktif yeşil */
 
-Yeni bir UI parcasi eklenirken once mevcut ortak siniflar kullanilmalidir. Ozel renk veya elle yazilmis `rgba` degeri sadece gercekten ekrana ozel bir durum varsa tercih edilmelidir.
+  --border-glass: rgba(15, 23, 42, 0.05);
+  --shadow-premium: 0 10px 30px -10px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.02);
+  --radius-premium: 1.25rem; /* Yumuşak köşeler (20px) */
+}
 
-Onerilen oncelik:
+[data-theme='dark'] {
+  /* Karanlık Mod - 1Password Tarzı Cyber-Space Derinliği */
+  --bg-primary: #0a0d16; /* Derin uzay siyahı (Tam simsiyah değil) */
+  --bg-surface: rgba(18, 24, 38, 0.6); /* Siber cam yüzey */
+  --text-primary: #f8fafc; /* Pürüzsüz açık gri/beyaz */
+  --text-muted: #94a3b8; /* Yarı saydam metin rengi */
+  --color-accent: #8cb090; /* Karanlık modda parlayan Sage */
+  --color-glow: #34d399; /* Siber yeşil parıltı */
 
-1. Token kullan.
-2. Ortak `aegis-*` veya `v5-*` sinifini kullan.
-3. Mevcut ekran sinifini tokenlara bagla.
-4. En son care olarak yeni ozel stil yaz.
+  --border-glass: rgba(255, 255, 255, 0.06);
+  --shadow-premium: 0 20px 40px -15px rgba(0, 0, 0, 0.5), 0 1px 5px rgba(255, 255, 255, 0.02);
+}
+```
 
-## 6. Kontrol Listesi
+### 🌌 Premium Cam Kart Tasarımı (Glass Card CSS)
 
-Her yeni tasarim degisikliginde asagidaki kontroller yapilmalidir:
+Kartların etrafındaki sınırları kaldırıp derinlik katmak için kullanacağımız sınıf:
 
-- Koyu mod okunabilir mi?
-- Acik mod input ve kart sinirlari net mi?
-- Turkce uzun metin buton veya rozeti bozuyor mu?
-- Ingilizce kisa metin bosluklari dengesiz gosteriyor mu?
-- Focus halkasi gorunur mu?
-- Disabled durum gercekten pasif gorunuyor mu?
-- Danger aksiyon normal primary aksiyona benzemiyor mu?
-- Success rengi koyu modda fazla parlak veya okunmaz degil mi?
+```css
+.premium-card {
+  background: var(--bg-surface);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-premium);
+  box-shadow: var(--shadow-premium);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
-## 7. Sonraki Fazlara Etkisi
+.premium-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(140, 176, 144, 0.2); /* Hafif sage green ışıması */
+  box-shadow:
+    0 30px 60px -15px rgba(0, 0, 0, 0.25),
+    0 0 20px rgba(140, 176, 144, 0.05);
+}
+```
 
-Bu standardizasyon sonraki calismalarin temelidir:
+### ⚡ 1Password Tarzı Giriş Alanları (Input Fields)
 
-- Faz 2 ana giris ekrani tipografi ve yuzey rafinesi
-- Faz 3 kayit kartlari mikro detaylari
-- Faz 4 uzun kayit formu bolumleme
-- Faz 5 ayarlar deneyimi
-- Faz 8 yedekleme ve kurtarma provasi sihirbazi
-- Faz 9 kripto kasa watch-only gorsel dili
+```css
+.premium-input {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-glass);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: var(--text-primary);
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
 
-Bu dosya, yeni tasarim kararlarinda referans alinacak temel tasarim sistemi notudur.
+.premium-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--color-accent);
+  box-shadow:
+    0 0 0 4px rgba(140, 176, 144, 0.15),
+    0 8px 20px -5px rgba(0, 0, 0, 0.1);
+}
+```
+
+---
+
+## 🚀 5. Aegis Vault'u Rakiplerinin Önüne Geçirecek 3 Benzersiz Özellik
+
+1. **"Liquid Category Switcher" (Akışkan Kategori Geçişi):** Sol menüdeki kategoriler arasında geçiş yaparken, aktif kategoriyi gösteren arka plan kutusunun menü elemanları arasında pürüzsüzce kayarak hareket etmesi (`framer-motion` layoutId animasyonu). Bu, Apple ve 1Password seviyesinde bir etkileşim kalitesi sunar.
+2. **"Duress Mode Visual Blur" (Baskı Altında Gizleme Akışı):** Güvenlik hassasiyeti yüksek durumlarda, ekranın tamamını anında premium bir cam buğusu ile kaplayan ve sadece master şifre girildiğinde buğunun yavaşça çözüldüğü bir animasyon efekti. Hem siber güvenliği vurgular hem de premium hissi zirveye çıkarır.
+3. **"Fluid Search & Highlight" (Anlık Arama ve Odaklama):** Arama yapıldığında, uyuşmayan kartların pürüzsüzce opaklığının azalarak arkaya çekilmesi, eşleşen kartın ise hafifçe parlayarak öne çıkması. Bu akıcılık, kullanıcının binlerce şifre arasından aradığını anında bulmasını son derece tatmin edici bir deneyim haline getirir.
+
+---
+
+## 📈 6. Karşılaştırma Analizi
+
+| Tasarım Alanı       | Sıradan Şifre Yöneticileri (Rakipler)                   | Aegis Vault (Önerilen Premium Yol)                                      |
+| :------------------ | :------------------------------------------------------ | :---------------------------------------------------------------------- |
+| **Görsel Düzen**    | Çok fazla çizgi, kalabalık listeler, boğucu border'lar. | Çerçevesiz, geniş boşluklu, sadeleştirilmiş 3 sütunlu düzen.            |
+| **Renkler**         | Düz siyah veya sönük gri arka planlar.                  | Canlı siber ışımalar barındıran derin HSL Uzay Boşluğu Gece Mavisi.     |
+| **Geometri**        | Keskin köşeler, standart butonlar.                      | Ultra yumuşak köşeli, organik squircle yapılar.                         |
+| **Animasyonlar**    | Ya hiç yok ya da yavaş ve kesintili.                    | Akıcı geçişler, hover parlamaları ve pürüzsüz mikro onay animasyonları. |
+| **Kullanıcı Hissi** | Sıkıcı bir veri tabanı yönetim paneli.                  | Değerli dijital varlıkların korunduğu şık ve premium bir kasa.          |
+
+---
+
+## 🎯 7. Sonuç ve Önerilen Yol Haritası
+
+Aegis Vault'u görsel olarak rakiplerinin önüne geçirmek için radikal arayüz değişiklikleri yerine **"Sadelik ve Premium Detaylar" (Simplicity & Craftsmanship)** üzerine odaklanmalıyız. 1Password'ün başarısının sırrı, işlevselliği son derece sade ve kusursuz çalışan görsel detaylarla sunmasıdır.
+
+**Hemen Atılabilecek İlk 3 Adım:**
+
+1. **Tipografi Güncellemesi:** Projeye Google Fonts üzerinden `Outfit` ve `Inter` fontlarını entegre edip başlık hiyerarşisini sıkılaştırmak.
+2. **CSS Değişkenleri Değişimi:** `src/index.css` dosyasındaki karanlık mod arka planını `hsl(222, 47%, 9%)` olarak güncellemek ve kart çerçeve opaklıklarını azaltmak.
+3. **Buton ve Kart Köşelerini Yumuşatmak:** Tüm kart ve modal bileşenlerinde `rounded-2xl` ve `rounded-3xl` sınıflarını yaygınlaştırmak.
+
+Bu adımlar tamamlandığında Aegis Vault, teknik gücünü dünyaca ünlü bir tasarım zarafetiyle taçlandırmış olacaktır.
+
+---
+
+_Rapor Antigravity UI/UX Baş Geliştirici Ajanı tarafından hazırlanmıştır._

@@ -49,9 +49,34 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
     handleRestoreEntry,
     handleToggleFavorite,
     viewDensity,
+    searchQuery,
+    searchScope,
   } = useVault();
 
   const isCopied = copiedId === p.id;
+
+  const isSearching = searchQuery.trim().length > 0;
+
+  const isMatched = (() => {
+    if (!isSearching) return true;
+    const q = searchQuery.toLowerCase().trim();
+
+    const titleMatch = (p.title || '').toLowerCase().includes(q);
+    const userMatch = (p.username || '').toLowerCase().includes(q);
+    const tagMatch = p.tags ? p.tags.some((tg) => tg.toLowerCase().includes(q)) : false;
+
+    if (searchScope === 'title') return titleMatch;
+    if (searchScope === 'username') return userMatch;
+    if (searchScope === 'tags') return tagMatch;
+
+    return (
+      titleMatch ||
+      userMatch ||
+      tagMatch ||
+      (p.website || '').toLowerCase().includes(q) ||
+      (p.notes || '').toLowerCase().includes(q)
+    );
+  })();
 
   const handleDownloadAttachment = async (attachmentId: string, name: string) => {
     try {
@@ -180,11 +205,19 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
 
   return (
     <article
-      className={`vault-entry-card v5-vault-entry-card grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] ${compact ? 'gap-3 p-4' : 'gap-4 p-5 md:p-6'} rounded-[1.25rem] transition-all relative group/item`}
+      className={`vault-entry-card v5-vault-entry-card grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] ${
+        compact ? 'gap-3 p-4' : 'gap-4 p-5 md:p-6'
+      } rounded-[var(--radius)] transition-all duration-300 ease-out relative group/item ${
+        isSearching
+          ? isMatched
+            ? 'v5-entry-card-matched border-[var(--aegis-border-accent)] z-10 scale-[1.01] shadow-[0_4px_24px_rgba(114,136,111,0.12)]'
+            : 'opacity-30 scale-[0.98] blur-[0.5px] pointer-events-none'
+          : ''
+      }`}
     >
       <div className="v5-entry-main flex items-start gap-4 md:gap-5 relative z-10 min-w-0">
         <div
-          className={`vault-entry-icon ${compact ? 'w-12 h-12' : 'w-14 h-14 md:w-16 md:h-16'} shrink-0 rounded-[1.25rem] flex items-center justify-center shadow-sm`}
+          className={`vault-entry-icon ${compact ? 'w-12 h-12' : 'w-14 h-14 md:w-16 md:h-16'} shrink-0 rounded-2xl flex items-center justify-center shadow-sm`}
         >
           <div className={compact ? 'scale-100' : 'scale-110 md:scale-125'}>
             {getCategoryIcon(p.category)}
@@ -193,7 +226,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
         <div className="v5-entry-content flex-1 min-w-0 flex flex-col gap-3">
           <div className="v5-entry-title-row min-h-7 flex flex-wrap items-center gap-2">
             <h3
-              className={`${compact ? 'text-base' : 'text-lg'} font-bold text-[var(--color-deep-navy)] truncate min-w-0`}
+              className={`${compact ? 'text-base' : 'text-lg'} font-[var(--font-outfit)] font-bold tracking-tight text-[var(--color-deep-navy)] truncate min-w-0`}
             >
               {p.title}
             </h3>
@@ -250,7 +283,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             <p className="vault-entry-meta v5-entry-identity-line font-[var(--font-geist-mono)] tracking-tight truncate flex items-center gap-2">
               {isSitePasskeyRecord ? p.passkeyMetadata?.rp_id || p.username : p.username}
               {p.tags && p.tags.length > 0 && (
-                <span className="hidden xl:flex items-center gap-1 opacity-70 border border-black/10 px-1.5 py-0.5 rounded text-[10px] ml-2">
+                <span className="hidden xl:flex items-center gap-1 opacity-70 border border-black/10 px-1.5 py-0.5 rounded-md text-[10px] ml-2">
                   <Tag className="w-2.5 h-2.5" /> {p.tags[0]}{' '}
                   {p.tags.length > 1 && `+${p.tags.length - 1}`}
                 </span>
@@ -309,7 +342,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
 
           <div className="space-y-2">
             {isCardRecord && (
-              <div className="vault-entry-notes-box v5-entry-detail-strip flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-lg">
+              <div className="vault-entry-notes-box v5-entry-detail-strip flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-xl">
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-sage-green)]">
                   {t('cards')}
                 </span>
@@ -332,7 +365,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             )}
 
             {isIdentityRecord && (
-              <div className="vault-entry-notes-box v5-entry-detail-strip flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-lg">
+              <div className="vault-entry-notes-box v5-entry-detail-strip flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-xl">
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-sage-green)]">
                   {t('identities')}
                 </span>
@@ -353,7 +386,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
             )}
 
             {p.aliasDetails?.email ? (
-              <div className="vault-entry-notes-box v5-entry-detail-strip v5-entry-alias-strip flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-lg">
+              <div className="vault-entry-notes-box v5-entry-detail-strip v5-entry-alias-strip flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-xl">
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-sky-700 dark:text-sky-300">
                   {t('aliasBadge')}
                 </span>
@@ -372,7 +405,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                   <button
                     key={att.id}
                     onClick={() => handleDownloadAttachment(att.id, att.name)}
-                    className="v5-entry-attachment-chip group flex items-center gap-1.5 bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)] border border-[var(--color-sage-green)]/30 hover:bg-[var(--color-sage-green)]/20 px-2.5 py-1 rounded-md text-[11px] font-bold shadow-sm transition-all relative overflow-hidden"
+                    className="v5-entry-attachment-chip group flex items-center gap-1.5 bg-[var(--color-sage-green)]/10 text-[var(--color-sage-green)] border border-[var(--color-sage-green)]/30 hover:bg-[var(--color-sage-green)]/20 px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-sm transition-all relative overflow-hidden"
                     title={`Download ${att.name} (${(att.size / (1024 * 1024)).toFixed(2)}MB)`}
                   >
                     <Paperclip className="w-3 h-3 group-hover:scale-110 transition-transform" />
@@ -398,7 +431,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
 
             {/* Secure Notes Preview */}
             {p.notes && p.category !== 'Notes' && (
-              <div className="vault-entry-notes-box v5-entry-detail-strip flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg">
+              <div className="vault-entry-notes-box v5-entry-detail-strip flex items-start gap-1.5 px-2.5 py-1.5 rounded-xl">
                 <FileText className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
                 <p className="text-[11px] text-[var(--color-deep-navy)]/70 line-clamp-2 leading-relaxed">
                   {p.notes.length > 120 ? p.notes.slice(0, 120) + '...' : p.notes}
@@ -446,7 +479,7 @@ export function VaultEntryCard({ entry: p, onEdit }: VaultEntryCardProps) {
                     onEdit({ ...p });
                     toast.info(t('updateNow'));
                   }}
-                  className="vault-update-btn v5-entry-update-btn px-3 py-1.5 rounded-lg bg-red-500/10 text-red-600 text-[10px] font-black uppercase tracking-tighter hover:bg-red-500 hover:text-white transition-all"
+                  className="vault-update-btn v5-entry-update-btn px-3 py-1.5 rounded-xl bg-red-500/10 text-red-600 text-[10px] font-black uppercase tracking-tighter hover:bg-red-500 hover:text-white transition-all"
                 >
                   {t('updateNow')}
                 </button>

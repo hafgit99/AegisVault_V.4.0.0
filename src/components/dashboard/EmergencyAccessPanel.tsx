@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { AlertTriangle, Clock3, LifeBuoy, ShieldCheck, UserPlus, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type {
@@ -147,7 +147,7 @@ export function EmergencyAccessPanel({
             onChange={(event) =>
               onUpdatePolicy({ default_wait_hours: Number(event.target.value || 48) })
             }
-            className="settings-inline-input w-20 rounded-lg px-2 py-1 text-right"
+            className="settings-inline-input w-20 rounded-xl px-2 py-1 text-right"
           />
         </label>
         <label className="settings-card-item rounded-2xl p-3 flex items-center justify-between gap-3 text-[11px]">
@@ -160,7 +160,7 @@ export function EmergencyAccessPanel({
             onChange={(event) =>
               onUpdatePolicy({ grant_ttl_hours: Number(event.target.value || 24) })
             }
-            className="settings-inline-input w-20 rounded-lg px-2 py-1 text-right"
+            className="settings-inline-input w-20 rounded-xl px-2 py-1 text-right"
           />
         </label>
       </div>
@@ -179,21 +179,21 @@ export function EmergencyAccessPanel({
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder={t('emergencyAccessContactName')}
-              className="entry-field rounded-lg py-2 px-3 text-sm font-medium outline-none"
+              className="entry-field rounded-xl py-2 px-3 text-sm font-medium outline-none"
             />
             <input
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               placeholder={t('emergencyAccessContactEmail')}
-              className="entry-field rounded-lg py-2 px-3 text-sm font-medium outline-none"
+              className="entry-field rounded-xl py-2 px-3 text-sm font-medium outline-none"
             />
             <select
               value={permission}
               onChange={(event) =>
                 setPermission(event.target.value === 'full_access' ? 'full_access' : 'read_only')
               }
-              className="entry-field rounded-lg py-2 px-3 text-sm font-medium outline-none"
+              className="entry-field rounded-xl py-2 px-3 text-sm font-medium outline-none"
             >
               <option value="read_only">{t('emergencyAccessPermissionReadOnly')}</option>
               <option value="full_access">{t('emergencyAccessPermissionFullAccess')}</option>
@@ -207,14 +207,14 @@ export function EmergencyAccessPanel({
                 setWaitHours(Number(event.target.value || policy.default_wait_hours))
               }
               placeholder={t('emergencyAccessWaitHours')}
-              className="entry-field rounded-lg py-2 px-3 text-sm font-medium outline-none"
+              className="entry-field rounded-xl py-2 px-3 text-sm font-medium outline-none"
             />
             <input
               type="text"
               value={note}
               onChange={(event) => setNote(event.target.value)}
               placeholder={t('emergencyAccessContactNote')}
-              className="entry-field md:col-span-2 rounded-lg py-2 px-3 text-sm font-medium outline-none"
+              className="entry-field md:col-span-2 rounded-xl py-2 px-3 text-sm font-medium outline-none"
             />
             <button
               type="button"

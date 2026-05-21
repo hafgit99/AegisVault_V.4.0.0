@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+﻿import { useState, lazy, Suspense } from 'react';
 import {
   X,
   Wand2,
@@ -45,8 +45,8 @@ interface EntryFormProps {
 }
 
 /**
- * EntryForm — Yeni kasa girişi oluşturma / mevcut girişi düzenleme formu.
- * Kategori bazlı dinamik placeholder'lar, etiket yönetimi ve dosya ek şifreleme kuyruğu içerir.
+ * EntryForm â€” Yeni kasa giriÅŸi oluÅŸturma / mevcut giriÅŸi dÃ¼zenleme formu.
+ * Kategori bazlÄ± dinamik placeholder'lar, etiket yÃ¶netimi ve dosya ek ÅŸifreleme kuyruÄŸu iÃ§erir.
  */
 export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
   const { t } = useTranslation();
@@ -202,7 +202,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
     {
       label: isCryptoWalletCategory
         ? t('entrySignalAddress', 'Adres')
-        : t('entrySignalSecret', 'Sır'),
+        : t('entrySignalSecret', 'SÄ±r'),
       done: hasSecretMaterial,
     },
     { label: t('entrySignalPrivacy', 'Gizlilik'), done: hasPrivacyLayer },
@@ -269,7 +269,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Edit modunda kaldırılan mevcut ekleri fiziksel olarak da sil
+    // Edit modunda kaldÄ±rÄ±lan mevcut ekleri fiziksel olarak da sil
     if (newEntry.id && removedAttachmentIds.length > 0) {
       for (const attachmentId of removedAttachmentIds) {
         try {
@@ -433,7 +433,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
             }
             value={newEntry.title}
             onChange={(e) => setNewEntry({ ...newEntry, title: e.target.value })}
-            className="entry-field col-span-1 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+            className="entry-field col-span-1 rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
           />
           <select
             value={newEntry.category}
@@ -480,7 +480,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                     : prev.passkeyMetadata,
               }))
             }
-            className="entry-field col-span-1 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+            className="entry-field col-span-1 rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
           >
             <option value="General">{t('general')}</option>
             <option value="Cards">{t('cards')}</option>
@@ -505,7 +505,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                       chain: e.target.value as CryptoWalletChain,
                     }))
                   }
-                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 >
                   <option value="bitcoin">Bitcoin</option>
                   <option value="ethereum">Ethereum / EVM</option>
@@ -522,7 +522,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                       custodyMode: e.target.value as CryptoWalletCustodyMode,
                     }))
                   }
-                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 >
                   <option value="watch_only">{t('cryptoWalletWatchOnly')}</option>
                   <option value="vault_secret">{t('cryptoWalletVaultSecret')}</option>
@@ -536,7 +536,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                   placeholder={t('cryptoWalletAddressPlaceholder')}
                   value={newEntry.username || ''}
                   onChange={(e) => setNewEntry({ ...newEntry, username: e.target.value })}
-                  className="entry-field md:col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field md:col-span-2 rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 />
                 {hasCryptoAddressInput && (
                   <div
@@ -566,7 +566,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                       derivationPath: e.target.value,
                     }))
                   }
-                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 />
                 <input
                   type="text"
@@ -578,7 +578,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                       lastKnownBalance: e.target.value,
                     }))
                   }
-                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 />
                 {cryptoWalletDraft.custodyMode === 'vault_secret' && (
                   <>
@@ -594,7 +594,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                           secretKind: e.target.value as 'seed_phrase' | 'private_key',
                         }))
                       }
-                      className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                      className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                     >
                       <option value="seed_phrase">{t('cryptoWalletSeedPhrase')}</option>
                       <option value="private_key">{t('cryptoWalletPrivateKey')}</option>
@@ -604,7 +604,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                       placeholder={t('cryptoWalletSecretPlaceholder')}
                       value={newEntry.pass || ''}
                       onChange={(e) => setNewEntry({ ...newEntry, pass: e.target.value })}
-                      className="entry-field md:col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none resize-none min-h-[92px]"
+                      className="entry-field md:col-span-2 rounded-xl py-2.5 px-3 text-sm font-medium outline-none resize-none min-h-[92px]"
                     />
                   </>
                 )}
@@ -614,7 +614,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                   onChange={(e) =>
                     setCryptoWalletDraft((prev) => ({ ...prev, notes: e.target.value }))
                   }
-                  className="entry-field md:col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none resize-none"
+                  className="entry-field md:col-span-2 rounded-xl py-2.5 px-3 text-sm font-medium outline-none resize-none"
                 />
               </div>
               <p className="mt-3 text-xs leading-5 text-[var(--color-deep-navy)]/60 dark:text-white/60">
@@ -637,7 +637,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
               }
               value={newEntry.username}
               onChange={(e) => setNewEntry({ ...newEntry, username: e.target.value })}
-              className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              className="entry-field col-span-2 rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
             />
           )}
 
@@ -655,7 +655,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
               }
               value={newEntry.website || ''}
               onChange={(e) => setNewEntry({ ...newEntry, website: e.target.value })}
-              className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              className="entry-field col-span-2 rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
             />
           )}
 
@@ -668,7 +668,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                     placeholder={t('placeholderNotePass')}
                     value={newEntry.pass || ''}
                     onChange={(e) => setNewEntry({ ...newEntry, pass: e.target.value })}
-                    className="entry-field w-full rounded-lg py-2.5 px-3 h-32 text-sm font-medium outline-none resize-none overflow-y-auto"
+                    className="entry-field w-full rounded-xl py-2.5 px-3 h-32 text-sm font-medium outline-none resize-none overflow-y-auto"
                   />
                 ) : (
                   <input
@@ -708,7 +708,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                           : prev.passkeyMetadata,
                       }));
                     }}
-                    className="entry-field w-full rounded-lg py-2.5 pl-3 pr-20 text-sm font-medium outline-none pass-font"
+                    className="entry-field w-full rounded-xl py-2.5 pl-3 pr-20 text-sm font-medium outline-none pass-font"
                   />
                 )}
 
@@ -764,7 +764,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                   setTagInput('');
                 }
               }}
-              className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+              className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
             />
             {newEntry.tags && newEntry.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-1">
@@ -809,7 +809,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
             </div>
 
             {sharedSpaces.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-[var(--color-sage-green)]/25 px-3 py-2 text-xs text-[var(--color-deep-navy)]/60">
+              <div className="rounded-xl border border-dashed border-[var(--color-sage-green)]/25 px-3 py-2 text-xs text-[var(--color-deep-navy)]/60">
                 {t('entrySharingNoSpaces')}
               </div>
             ) : (
@@ -828,7 +828,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                         space_id: nextSpaceId,
                       }));
                     }}
-                    className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                    className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                   >
                     <option value="">{t('entrySharingSpacePlaceholder')}</option>
                     {sharedSpaces.map((space) => (
@@ -851,7 +851,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                       )
                     }
                     disabled={!primarySharing?.space_id}
-                    className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none disabled:opacity-50"
+                    className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none disabled:opacity-50"
                   >
                     <option value="viewer">{t('entrySharingRoleViewer')}</option>
                     <option value="editor">{t('entrySharingRoleEditor')}</option>
@@ -859,7 +859,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <label className="flex items-center gap-2 rounded-lg border border-black/5 bg-white/60 px-3 py-2 text-xs font-medium text-[var(--color-deep-navy)]/75">
+                  <label className="flex items-center gap-2 rounded-xl border border-black/5 bg-white/60 px-3 py-2 text-xs font-medium text-[var(--color-deep-navy)]/75">
                     <input
                       type="checkbox"
                       checked={Boolean(primarySharing?.is_sensitive)}
@@ -877,7 +877,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                     />
                     {t('entrySharingSensitive')}
                   </label>
-                  <label className="flex items-center gap-2 rounded-lg border border-black/5 bg-white/60 px-3 py-2 text-xs font-medium text-[var(--color-deep-navy)]/75">
+                  <label className="flex items-center gap-2 rounded-xl border border-black/5 bg-white/60 px-3 py-2 text-xs font-medium text-[var(--color-deep-navy)]/75">
                     <input
                       type="checkbox"
                       checked={Boolean(primarySharing?.emergency_access)}
@@ -912,7 +912,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                     )
                   }
                   placeholder={t('entrySharingNotesPlaceholder')}
-                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none disabled:opacity-50"
+                  className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none disabled:opacity-50"
                 />
               </div>
             )}
@@ -929,26 +929,26 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                 placeholder={t('passkeyRpIdPlaceholder')}
                 value={newEntry.passkeyMetadata?.rp_id || ''}
                 onChange={(e) => updatePasskeyMetadata({ rp_id: e.target.value })}
-                className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                className="entry-field col-span-2 rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
               />
               <input
                 type="text"
                 placeholder={t('passkeyDisplayNamePlaceholder')}
                 value={newEntry.passkeyMetadata?.display_name || ''}
                 onChange={(e) => updatePasskeyMetadata({ display_name: e.target.value })}
-                className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                className="entry-field col-span-2 rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
               />
               <input
                 type="text"
                 placeholder={t('passkeyUserHandlePlaceholder')}
                 value={newEntry.passkeyMetadata?.user_handle || ''}
                 onChange={(e) => updatePasskeyMetadata({ user_handle: e.target.value })}
-                className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                className="entry-field col-span-2 rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
               />
               <select
                 value={newEntry.passkeyMetadata?.mode || 'site_passkey_mvp'}
                 onChange={(e) => updatePasskeyMetadata({ mode: e.target.value })}
-                className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                className="entry-field col-span-2 rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
               >
                 <option value="site_passkey_mvp">{t('passkeyModeSiteMvp')}</option>
                 <option value="vault_unlock">{t('passkeyModeVaultUnlock')}</option>
@@ -968,7 +968,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                   placeholder={t('cardholderNamePlaceholder')}
                   value={newEntry.cardDetails?.cardholder_name || ''}
                   onChange={(e) => updateCardDetails({ cardholder_name: e.target.value })}
-                  className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field col-span-2 rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 />
                 <input
                   type="text"
@@ -981,12 +981,12 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                       setNewEntry((prev) => ({ ...prev, pass: value }));
                     }
                   }}
-                  className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field col-span-2 rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 />
                 <select
                   value={newEntry.cardDetails?.brand || ''}
                   onChange={(e) => updateCardDetails({ brand: e.target.value })}
-                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 >
                   <option value="">{t('cardBrandPlaceholder')}</option>
                   <option value="visa">{t('cardBrandVisa')}</option>
@@ -1000,42 +1000,42 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                   placeholder={t('cardExpiryMonthPlaceholder')}
                   value={newEntry.cardDetails?.expiry_month || ''}
                   onChange={(e) => updateCardDetails({ expiry_month: e.target.value })}
-                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 />
                 <input
                   type="text"
                   placeholder={t('cardExpiryYearPlaceholder')}
                   value={newEntry.cardDetails?.expiry_year || ''}
                   onChange={(e) => updateCardDetails({ expiry_year: e.target.value })}
-                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 />
                 <input
                   type="text"
                   placeholder={t('cardCvvPlaceholder')}
                   value={newEntry.cardDetails?.cvv || ''}
                   onChange={(e) => updateCardDetails({ cvv: e.target.value })}
-                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 />
                 <input
                   type="text"
                   placeholder={t('cardPinPlaceholder')}
                   value={newEntry.cardDetails?.pin || ''}
                   onChange={(e) => updateCardDetails({ pin: e.target.value })}
-                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 />
                 <input
                   type="text"
                   placeholder={t('cardBillingZipPlaceholder')}
                   value={newEntry.cardDetails?.billing_zip || ''}
                   onChange={(e) => updateCardDetails({ billing_zip: e.target.value })}
-                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 />
                 <textarea
                   rows={2}
                   placeholder={t('cardBillingAddressPlaceholder')}
                   value={newEntry.cardDetails?.billing_address || ''}
                   onChange={(e) => updateCardDetails({ billing_address: e.target.value })}
-                  className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none resize-none"
+                  className="entry-field col-span-2 rounded-xl py-2.5 px-3 text-sm font-medium outline-none resize-none"
                 />
               </div>
             </div>
@@ -1050,7 +1050,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                 <select
                   value={newEntry.identityDetails?.document_type || ''}
                   onChange={(e) => updateIdentityDetails({ document_type: e.target.value })}
-                  className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field col-span-2 rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 >
                   <option value="">{t('identityDocumentTypePlaceholder')}</option>
                   <option value="national_id">{t('identityDocumentTypeNationalId')}</option>
@@ -1066,42 +1066,42 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                   placeholder={t('identityNumberPlaceholder')}
                   value={newEntry.identityDetails?.identity_number || ''}
                   onChange={(e) => updateIdentityDetails({ identity_number: e.target.value })}
-                  className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field col-span-2 rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 />
                 <input
                   type="text"
                   placeholder={t('identityIssuingCountryPlaceholder')}
                   value={newEntry.identityDetails?.issuing_country || ''}
                   onChange={(e) => updateIdentityDetails({ issuing_country: e.target.value })}
-                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 />
                 <input
                   type="text"
                   placeholder={t('identityNationalityPlaceholder')}
                   value={newEntry.identityDetails?.nationality || ''}
                   onChange={(e) => updateIdentityDetails({ nationality: e.target.value })}
-                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 />
                 <input
                   type="text"
                   placeholder={t('identityBirthDatePlaceholder')}
                   value={newEntry.identityDetails?.date_of_birth || ''}
                   onChange={(e) => updateIdentityDetails({ date_of_birth: e.target.value })}
-                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 />
                 <input
                   type="text"
                   placeholder={t('identityIssuedAtPlaceholder')}
                   value={newEntry.identityDetails?.issued_at || ''}
                   onChange={(e) => updateIdentityDetails({ issued_at: e.target.value })}
-                  className="entry-field rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 />
                 <input
                   type="text"
                   placeholder={t('identityExpiresAtPlaceholder')}
                   value={newEntry.identityDetails?.expires_at || ''}
                   onChange={(e) => updateIdentityDetails({ expires_at: e.target.value })}
-                  className="entry-field col-span-2 rounded-lg py-2.5 px-3 text-sm font-medium outline-none"
+                  className="entry-field col-span-2 rounded-xl py-2.5 px-3 text-sm font-medium outline-none"
                 />
               </div>
             </div>
@@ -1118,7 +1118,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                 <button
                   type="button"
                   onClick={() => setShowTotpSection(true)}
-                  className="text-xs flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-all font-bold rounded-lg border border-blue-500/20"
+                  className="text-xs flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-all font-bold rounded-xl border border-blue-500/20"
                 >
                   <KeyRound className="w-3.5 h-3.5" /> {t('addTOTP', 'Add 2FA (TOTP)')}
                 </button>
@@ -1170,7 +1170,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                               totp_period: params.period,
                             }));
                           } catch {
-                            // Henüz geçerli URI değil, devam et
+                            // HenÃ¼z geÃ§erli URI deÄŸil, devam et
                           }
                         } else {
                           // Manuel Base32 secret
@@ -1183,12 +1183,12 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                           }));
                         }
                       }}
-                      className="entry-field flex-1 rounded-lg py-2 px-3 text-sm font-mono outline-none"
+                      className="entry-field flex-1 rounded-xl py-2 px-3 text-sm font-mono outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => setShowQRScanner(true)}
-                      className="px-3 py-2 rounded-lg totp-btn-secondary transition-all border border-[var(--color-sage-green)]/20 flex items-center gap-1.5 text-xs font-bold"
+                      className="px-3 py-2 rounded-xl totp-btn-secondary transition-all border border-[var(--color-sage-green)]/20 flex items-center gap-1.5 text-xs font-bold"
                       title={t('scanQR', 'Scan QR Code')}
                       aria-label={t('scanQR', 'Scan QR Code')}
                     >
@@ -1198,10 +1198,10 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                   </div>
                   {newEntry.totpSecret && (
                     <div className="flex items-center gap-3 text-[10px] text-blue-600/70">
-                      <span>✓ {newEntry.totp_issuer || 'Manual'}</span>
-                      <span>• {newEntry.totp_algorithm || 'SHA-1'}</span>
-                      <span>• {newEntry.totp_digits || 6} digits</span>
-                      <span>• {newEntry.totp_period || 30}s</span>
+                      <span>âœ“ {newEntry.totp_issuer || 'Manual'}</span>
+                      <span>â€¢ {newEntry.totp_algorithm || 'SHA-1'}</span>
+                      <span>â€¢ {newEntry.totp_digits || 6} digits</span>
+                      <span>â€¢ {newEntry.totp_period || 30}s</span>
                     </div>
                   )}
                 </div>
@@ -1223,7 +1223,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                   placeholder={t('secureNotesPlaceholder', 'Add encrypted notes (optional)...')}
                   value={newEntry.notes || ''}
                   onChange={(e) => setNewEntry({ ...newEntry, notes: e.target.value })}
-                  className="entry-field w-full rounded-lg py-2.5 px-3 text-sm font-medium outline-none resize-none overflow-y-auto"
+                  className="entry-field w-full rounded-xl py-2.5 px-3 text-sm font-medium outline-none resize-none overflow-y-auto"
                 />
               </div>
             )}
@@ -1233,7 +1233,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                 <div className="flex items-center gap-2">
                   <FileUp className="h-3.5 w-3.5 text-[var(--color-sage-green)]" />
                   <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-sage-green)]">
-                    {t('encryptedAttachments', 'Şifreli ekler')}
+                    {t('encryptedAttachments', 'Åifreli ekler')}
                   </span>
                 </div>
                 <span className="text-[11px] font-semibold text-[var(--color-deep-navy)]/55 dark:text-white/55">
@@ -1251,13 +1251,13 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                   />
                   <label
                     htmlFor="aegis-file-upload"
-                    className="v5-upload-trigger cursor-pointer text-xs flex items-center gap-1.5 px-3 py-2 totp-btn-secondary transition-all font-bold rounded-lg border border-[var(--color-sage-green)]/30"
+                    className="v5-upload-trigger cursor-pointer text-xs flex items-center gap-1.5 px-3 py-2 totp-btn-secondary transition-all font-bold rounded-xl border border-[var(--color-sage-green)]/30"
                   >
                     <Paperclip className="w-3.5 h-3.5" /> {t('uploadAttachment')}
                   </label>
                 </div>
                 {newAttachments.length > 0 && (
-                  <div className="flex flex-col gap-1.5 mt-2 p-2 entry-notes-box rounded-lg shadow-inner">
+                  <div className="flex flex-col gap-1.5 mt-2 p-2 entry-notes-box rounded-xl shadow-inner">
                     <div className="text-[10px] uppercase font-bold text-yellow-600 tracking-wider flex items-center gap-1">
                       <Lock className="w-3 h-3" /> {t('encryptedQueue')}
                     </div>
@@ -1294,7 +1294,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                 )}
 
                 {visibleExistingAttachments.length > 0 && (
-                  <div className="flex flex-col gap-1.5 mt-2 p-2 entry-notes-box rounded-lg shadow-inner">
+                  <div className="flex flex-col gap-1.5 mt-2 p-2 entry-notes-box rounded-xl shadow-inner">
                     <div className="text-[10px] uppercase font-bold text-[var(--color-sage-green)] tracking-wider flex items-center gap-1">
                       <Paperclip className="w-3 h-3" />{' '}
                       {t('existingAttachments', 'Existing Attachments')}
@@ -1355,7 +1355,7 @@ export function EntryForm({ initialEntry, onClose }: EntryFormProps) {
                   {historyList.map((version, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between p-2 rounded-lg bg-white/50 border border-black/5 hover:border-[var(--color-sage-green)]/30 transition-all"
+                      className="flex items-center justify-between p-2 rounded-xl bg-white/50 border border-black/5 hover:border-[var(--color-sage-green)]/30 transition-all"
                     >
                       <div className="flex flex-col gap-0.5">
                         <span className="text-xs font-semibold text-[var(--color-deep-navy)]">

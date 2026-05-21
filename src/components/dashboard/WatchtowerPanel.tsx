@@ -45,7 +45,7 @@ export function WatchtowerPanel() {
   const isActiveFilter = (filter: string) => categoryFilter === filter;
 
   return (
-    <GlowCard className="watchtower-surface v5-rail-card v5-watchtower-card rounded-xl p-5 relative">
+    <GlowCard className="watchtower-surface v5-rail-card v5-watchtower-card rounded-[var(--radius)] p-5 relative">
       <div className="v5-rail-heading mb-3">
         <div className="flex min-w-0 items-center gap-2">
           <ShieldAlert className="w-4 h-4" />

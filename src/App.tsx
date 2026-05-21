@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { VaultLogin } from './components/VaultLogin';
 import './i18n';
 import { useTranslation } from 'react-i18next';
@@ -71,17 +72,41 @@ function App() {
         role="application"
         aria-label={t('appAriaLabel', 'Aegis Vault Password Manager')}
       >
-        <div id="main-content" tabIndex={-1} className="w-full flex flex-col items-center flex-1">
+        <div
+          id="main-content"
+          tabIndex={-1}
+          className="w-full flex flex-col items-center flex-1 relative overflow-hidden"
+        >
           <Suspense fallback={<AppLoadingFallback />}>
-            {isUnlocked ? (
-              <Dashboard onLock={() => setIsUnlocked(false)} />
-            ) : (
-              <VaultLogin
-                onUnlock={() => {
-                  setIsUnlocked(true);
-                }}
-              />
-            )}
+            <AnimatePresence mode="wait">
+              {isUnlocked ? (
+                <motion.div
+                  key="dashboard"
+                  initial={{ opacity: 0, filter: 'blur(30px)', scale: 0.96 }}
+                  animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
+                  exit={{ opacity: 0, filter: 'blur(30px)', scale: 0.96 }}
+                  transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                  className="w-full flex-1 flex flex-col"
+                >
+                  <Dashboard onLock={() => setIsUnlocked(false)} />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="login"
+                  initial={{ opacity: 0, filter: 'blur(30px)' }}
+                  animate={{ opacity: 1, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, filter: 'blur(30px)', scale: 1.04 }}
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  className="w-full flex-1 flex flex-col items-center justify-center"
+                >
+                  <VaultLogin
+                    onUnlock={() => {
+                      setIsUnlocked(true);
+                    }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Suspense>
         </div>
         <ToastContainer position="bottom-right" theme="light" role="status" aria-live="polite" />
