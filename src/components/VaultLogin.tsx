@@ -116,7 +116,7 @@ export function VaultLogin({ onUnlock }: { onUnlock: () => void }) {
   const [passkeyNeedsRotation, setPasskeyNeedsRotation] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() =>
-    document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'
+    document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'
   );
 
   // Multi-Vault state

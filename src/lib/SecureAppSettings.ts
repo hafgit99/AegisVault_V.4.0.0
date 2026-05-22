@@ -256,7 +256,7 @@ const DEFAULT_STATE: SecureAppSettingsState = {
   autoLockTime: 2,
   clipboardClearSeconds: 30,
   viewDensity: 'comfortable',
-  themeMode: 'light',
+  themeMode: 'dark',
   hasSeenTour: false,
   encryptionProfile: 'balanced',
   vaultProfiles: [],
@@ -961,9 +961,11 @@ const normalizeState = (value: unknown): SecureAppSettingsState => {
         : DEFAULT_STATE.clipboardClearSeconds,
     viewDensity: candidate.viewDensity === 'compact' ? 'compact' : 'comfortable',
     themeMode:
-      candidate.themeMode === 'dark' || candidate.themeMode === 'system'
+      candidate.themeMode === 'light' ||
+      candidate.themeMode === 'dark' ||
+      candidate.themeMode === 'system'
         ? candidate.themeMode
-        : 'light',
+        : DEFAULT_STATE.themeMode,
     hasSeenTour: Boolean(candidate.hasSeenTour),
     encryptionProfile:
       candidate.encryptionProfile === 'maximum' || candidate.encryptionProfile === 'performance'
@@ -1123,7 +1125,12 @@ const loadLegacyState = (): SecureAppSettingsState => {
       ),
       viewDensity:
         localStorage.getItem(LEGACY_KEYS.viewDensity) === 'compact' ? 'compact' : 'comfortable',
-      themeMode: localStorage.getItem(LEGACY_KEYS.themeMode) === 'dark' ? 'dark' : 'light',
+      themeMode: (() => {
+        const storedTheme = localStorage.getItem(LEGACY_KEYS.themeMode);
+        return storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system'
+          ? storedTheme
+          : DEFAULT_STATE.themeMode;
+      })(),
       hasSeenTour: localStorage.getItem(LEGACY_KEYS.seenTour) === 'true',
       encryptionProfile:
         localStorage.getItem(LEGACY_KEYS.encryptionProfile) === 'maximum' ||
@@ -1407,6 +1414,11 @@ export class SecureAppSettings {
   static setThemeMode(value: ThemeMode): void {
     ensureMutableState();
     stateCache.themeMode = value;
+    try {
+      localStorage.setItem(LEGACY_KEYS.themeMode, value);
+    } catch {
+      // Theme is mirrored in localStorage only to prevent a first-paint flash.
+    }
     void schedulePersist();
   }
 

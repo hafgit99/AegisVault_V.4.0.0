@@ -6,6 +6,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
+## [5.0.1] — 2026-05-22
+
+### Added
+
+- Secure Electron update checks that read GitHub Releases metadata without automatic download or installation.
+- Manual update control in Settings > Advanced with release trust indicators for manifest, SBOM, provenance and checksum assets.
+- Daily startup update notification banner for the desktop app, with Turkish and English copy.
+
+### Changed
+
+- Default desktop theme behavior now opens in dark mode until the user explicitly changes the preference.
+- Dashboard vault list sizing and card rendering were refined for denser first-screen visibility.
+
+### Fixed
+
+- Clipboard expiry behavior, dashboard card actions and recent UI regressions around settings, entry cards and recovery flows were stabilized.
+
+---
+
 ## [5.0.0] — 2026-05-03
 
 ### ⚡ Highlights
@@ -265,6 +284,7 @@ Aegis Vault 5.0 is a major evolution — the Security Center transforms from pas
 
 ---
 
+[5.0.1]: https://github.com/hafgit99/AegisVault_V.4.0.0/compare/v5.0.0...v5.0.1
 [5.0.0]: https://github.com/hafgit99/AegisVault_V.4.0.0/compare/v4.2.3...v5.0.0
 [4.2.3]: https://github.com/hafgit99/AegisVault_V.4.0.0/compare/v4.2.2...v4.2.3
 [4.2.2]: https://github.com/hafgit99/AegisVault_V.4.0.0/compare/v4.2.1...v4.2.2

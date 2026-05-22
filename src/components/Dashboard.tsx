@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, Suspense, useCallback, useRef } from 'react';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
-import { ArchiveX, Plus, ShieldCheck, Trash2 } from 'lucide-react';
+import { ArchiveX, ExternalLink, Plus, ShieldCheck, Trash2, X } from 'lucide-react';
 import { vaultService, type VaultEntry } from '../vaultService';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
@@ -48,6 +48,24 @@ interface DashboardInnerProps {
   introBlocked?: boolean;
 }
 
+interface DashboardUpdateCheckResult {
+  ok?: boolean;
+  currentVersion?: string;
+  latestVersion?: string;
+  updateAvailable?: boolean;
+  releaseUrl?: string;
+  name?: string;
+  publishedAt?: string;
+}
+
+type WindowWithUpdateBridge = Window &
+  typeof globalThis & {
+    aegisElectron?: {
+      checkForUpdates?: () => Promise<DashboardUpdateCheckResult>;
+      openReleasePage?: (releaseUrl?: string) => Promise<unknown>;
+    };
+  };
+
 function DashboardInner({ introBlocked = false }: DashboardInnerProps) {
   const { t } = useTranslation();
   const {
@@ -74,11 +92,13 @@ function DashboardInner({ introBlocked = false }: DashboardInnerProps) {
   const [playIntroMotion, setPlayIntroMotion] = useState(false);
   const [spotlightOpen, setSpotlightOpen] = useState(false);
   const [spotlightSettled, setSpotlightSettled] = useState(false);
+  const [availableUpdate, setAvailableUpdate] = useState<DashboardUpdateCheckResult | null>(null);
+  const [updateBannerDismissed, setUpdateBannerDismissed] = useState(false);
   const [, setLogoClicks] = useState(0);
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => {
     const saved = SecureAppSettings.getThemeMode();
     if (saved === 'light' || saved === 'dark') return saved;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return 'dark';
   });
 
   const startNewEntry = () => {
@@ -181,8 +201,39 @@ function DashboardInner({ introBlocked = false }: DashboardInnerProps) {
   useEffect(() => {
     void SecureAppSettings.initialize().then(() => {
       const storedTheme = SecureAppSettings.getThemeMode();
-      setThemeMode(storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : 'light');
+      setThemeMode(storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : 'dark');
     });
+  }, []);
+
+  useEffect(() => {
+    const electronApi = (window as WindowWithUpdateBridge).aegisElectron;
+    if (!electronApi?.checkForUpdates) return;
+    if (window.localStorage.getItem('aegis:update-check-enabled') === '0') return;
+
+    const lastCheck = Number(window.localStorage.getItem('aegis:update-last-check') || 0);
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    if (Date.now() - lastCheck < oneDayMs) return;
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      electronApi
+        .checkForUpdates?.()
+        .then((result) => {
+          window.localStorage.setItem('aegis:update-last-check', String(Date.now()));
+          if (!cancelled && result?.ok && result.updateAvailable) {
+            setAvailableUpdate(result);
+            setUpdateBannerDismissed(false);
+          }
+        })
+        .catch(() => {
+          window.localStorage.setItem('aegis:update-last-check', String(Date.now()));
+        });
+    }, 1500);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, []);
 
   const handleLogoClick = () => {
@@ -338,6 +389,56 @@ function DashboardInner({ introBlocked = false }: DashboardInnerProps) {
         />
       </div>
 
+      {availableUpdate?.updateAvailable && !updateBannerDismissed && (
+        <div className="mx-auto mb-4 max-w-[1400px] px-4 xl:px-8">
+          <div className="rounded-2xl border border-amber-400/25 bg-amber-50/80 px-4 py-3 text-[var(--color-deep-navy)] shadow-sm backdrop-blur dark:border-amber-300/20 dark:bg-amber-400/10 dark:text-white">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="mt-0.5 rounded-xl bg-amber-500/15 p-2 text-amber-700 dark:text-amber-200">
+                  <ShieldCheck className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-extrabold tracking-tight">
+                    {t('updateBannerTitle', 'Aegis Vault update available')}
+                  </p>
+                  <p className="mt-0.5 text-xs leading-relaxed opacity-75">
+                    {t('updateBannerDesc', {
+                      defaultValue:
+                        'Current: {{current}} · Latest: {{latest}}. Review the signed GitHub release before installing.',
+                      current: availableUpdate.currentVersion || '5.0.1',
+                      latest: availableUpdate.latestVersion || availableUpdate.name || 'latest',
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    (window as WindowWithUpdateBridge).aegisElectron?.openReleasePage?.(
+                      availableUpdate.releaseUrl
+                    )
+                  }
+                  className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-deep-navy)] px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:opacity-90 active:scale-95 dark:bg-white dark:text-[var(--color-deep-navy)]"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  {t('updateOpenRelease', 'Open release')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUpdateBannerDismissed(true)}
+                  className="rounded-xl border border-black/10 p-2 text-[var(--color-deep-navy)]/70 transition-all hover:bg-black/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/10"
+                  aria-label={t('dismiss', 'Dismiss')}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main
         role="main"
         aria-label={t('vaultEntriesAria', 'Vault entries')}
@@ -451,7 +552,7 @@ function DashboardInner({ introBlocked = false }: DashboardInnerProps) {
                   )}
                 </div>
               ) : (
-                <div className="h-[65vh] mt-4">
+                <div className="h-[calc(100vh-18rem)] min-h-[500px] mt-4">
                   <VirtualizedVaultList
                     entries={passwords}
                     onEdit={handleEditEntry}

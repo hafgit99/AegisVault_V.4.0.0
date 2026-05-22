@@ -18,6 +18,9 @@ import {
   SlidersHorizontal,
   Users,
   ChevronDown,
+  RefreshCw,
+  ExternalLink,
+  Bell,
 } from 'lucide-react';
 import { GlowCard } from '../ui/GlowCard';
 import { getCategoryIcon } from '../../lib/getCategoryIcon';
@@ -180,9 +183,32 @@ interface DesktopPairingRemoveResult {
   error?: string;
 }
 
+interface UpdateCheckResult {
+  ok?: boolean;
+  currentVersion?: string;
+  latestVersion?: string;
+  updateAvailable?: boolean;
+  releaseUrl?: string;
+  releasesUrl?: string;
+  tagName?: string;
+  name?: string;
+  publishedAt?: string;
+  bodyPreview?: string;
+  error?: string;
+  status?: number;
+  trust?: {
+    manifest?: boolean;
+    sbom?: boolean;
+    provenance?: boolean;
+    checksum?: boolean;
+  };
+}
+
 interface SettingsElectronApi {
   listExtensionPairings?: () => Promise<DesktopPairingRecord[]>;
   removeExtensionPairing?: (extensionId: string) => Promise<DesktopPairingRemoveResult>;
+  checkForUpdates?: () => Promise<UpdateCheckResult>;
+  openReleasePage?: (releaseUrl?: string) => Promise<{ success?: boolean; error?: string }>;
 }
 
 type WindowWithAegisElectron = Window &
@@ -348,6 +374,12 @@ export function SettingsDrawer({
   );
   const [desktopPairings, setDesktopPairings] = useState<DesktopPairingRecord[]>([]);
   const [loadingDesktopPairings, setLoadingDesktopPairings] = useState(false);
+  const [updateCheckResult, setUpdateCheckResult] = useState<UpdateCheckResult | null>(null);
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
+  const [updateCheckEnabled, setUpdateCheckEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    return window.localStorage.getItem('aegis:update-check-enabled') !== '0';
+  });
   const passkeyActiveDeviceRef = useRef<HTMLDivElement | null>(null);
   const passkeyRevocationRef = useRef<HTMLDivElement | null>(null);
   const passkeyPolicyRef = useRef<HTMLDivElement | null>(null);
@@ -1229,6 +1261,60 @@ export function SettingsDrawer({
         setLoadingDesktopPairings(false);
       });
   }, [isOpen]);
+
+  const persistUpdateCheckPreference = (enabled: boolean) => {
+    setUpdateCheckEnabled(enabled);
+    window.localStorage.setItem('aegis:update-check-enabled', enabled ? '1' : '0');
+    window.dispatchEvent(
+      new CustomEvent('aegis-update-check-setting-changed', {
+        detail: { enabled },
+      })
+    );
+  };
+
+  const handleCheckForUpdates = async () => {
+    const electronApi = getElectronApi();
+    if (!electronApi?.checkForUpdates) {
+      toast.info(
+        t(
+          'updateCheckElectronOnlyToast',
+          'Update checks are available in the Electron desktop build.'
+        )
+      );
+      return;
+    }
+
+    setIsCheckingUpdates(true);
+    try {
+      const result = await electronApi.checkForUpdates();
+      setUpdateCheckResult(result);
+      window.localStorage.setItem('aegis:update-last-check', String(Date.now()));
+
+      if (!result?.ok) {
+        toast.error(t('updateCheckFailedToast', 'Update check could not be completed.'));
+      } else if (result.updateAvailable) {
+        toast.success(t('updateAvailableToast', 'A new Aegis Vault release is available.'));
+      } else {
+        toast.info(t('updateCurrentToast', 'Aegis Vault is up to date.'));
+      }
+    } catch {
+      toast.error(t('updateCheckFailedToast', 'Update check could not be completed.'));
+    } finally {
+      setIsCheckingUpdates(false);
+    }
+  };
+
+  const handleOpenReleasePage = async (releaseUrl?: string) => {
+    const electronApi = getElectronApi();
+    if (!electronApi?.openReleasePage) {
+      toast.info(
+        t('updateReleasePageElectronOnlyToast', 'Release page opening is available on desktop.')
+      );
+      return;
+    }
+
+    await electronApi.openReleasePage(releaseUrl || updateCheckResult?.releaseUrl);
+  };
 
   // Action Wrappers for ReAuth (P1-3)
   const requireAuth = (name: string, action: () => void) => {
@@ -3876,6 +3962,147 @@ export function SettingsDrawer({
 
                     {activeTab === 'advanced' && (
                       <div className="flex flex-col space-y-5 animate-in fade-in duration-500">
+                        <div className="settings-panel rounded-xl p-6 shadow-sm">
+                          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-3">
+                                <div className="settings-empty-state-icon">
+                                  <Bell className="h-5 w-5" />
+                                </div>
+                                <div>
+                                  <p className="settings-section-kicker">
+                                    {t('updateCheckKicker', 'Release safety')}
+                                  </p>
+                                  <h3 className="text-lg font-bold tracking-tight text-[var(--color-deep-navy)]">
+                                    {t('updateCheckTitle', 'Secure update check')}
+                                  </h3>
+                                </div>
+                              </div>
+                              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--color-deep-navy)]/70">
+                                {t(
+                                  'updateCheckDesc',
+                                  'Aegis checks GitHub Releases metadata only. Downloads and installation remain under your control.'
+                                )}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                              <button
+                                type="button"
+                                onClick={handleCheckForUpdates}
+                                disabled={isCheckingUpdates}
+                                className="settings-plain-btn inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold transition-all active:scale-95 disabled:opacity-60"
+                              >
+                                <RefreshCw
+                                  className={`h-4 w-4 ${isCheckingUpdates ? 'animate-spin' : ''}`}
+                                />
+                                {isCheckingUpdates
+                                  ? t('updateChecking', 'Checking...')
+                                  : t('updateCheckNow', 'Check now')}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenReleasePage(updateCheckResult?.releaseUrl)}
+                                className="btn-ink inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-bold text-white transition-all active:scale-95"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                                {t('updateOpenReleases', 'Open releases')}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="mt-5 grid gap-3 md:grid-cols-3">
+                            <div className="settings-card-surface-muted rounded-xl border px-4 py-3">
+                              <p className="settings-section-kicker">
+                                {t('updateCurrentVersion', 'Current')}
+                              </p>
+                              <p className="mt-1 text-lg font-extrabold tracking-tight">
+                                {updateCheckResult?.currentVersion || '5.0.1'}
+                              </p>
+                            </div>
+                            <div className="settings-card-surface-muted rounded-xl border px-4 py-3">
+                              <p className="settings-section-kicker">
+                                {t('updateLatestVersion', 'Latest')}
+                              </p>
+                              <p className="mt-1 text-lg font-extrabold tracking-tight">
+                                {updateCheckResult?.latestVersion ||
+                                  t('updateNotCheckedYet', 'Not checked')}
+                              </p>
+                            </div>
+                            <div className="settings-card-surface-muted rounded-xl border px-4 py-3">
+                              <p className="settings-section-kicker">
+                                {t('updateStatusLabel', 'Status')}
+                              </p>
+                              <p
+                                className={`mt-1 text-sm font-extrabold ${
+                                  updateCheckResult?.updateAvailable
+                                    ? 'text-amber-600'
+                                    : updateCheckResult?.ok
+                                      ? 'text-emerald-600'
+                                      : 'text-[var(--color-deep-navy)]/70'
+                                }`}
+                              >
+                                {updateCheckResult?.updateAvailable
+                                  ? t('updateAvailable', 'Update available')
+                                  : updateCheckResult?.ok
+                                    ? t('updateUpToDate', 'Up to date')
+                                    : t('updateIdle', 'Ready to check')}
+                              </p>
+                            </div>
+                          </div>
+
+                          {updateCheckResult?.bodyPreview && (
+                            <div className="settings-card-surface-muted mt-4 rounded-xl border px-4 py-3 text-xs leading-relaxed text-[var(--color-deep-navy)]/70">
+                              {updateCheckResult.bodyPreview}
+                            </div>
+                          )}
+
+                          <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <label className="settings-card-surface-muted flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-4 py-3 text-xs font-semibold text-[var(--color-deep-navy)] md:min-w-[300px]">
+                              <span>
+                                {t(
+                                  'updateCheckDailyToggle',
+                                  'Check once per day when the desktop app opens'
+                                )}
+                              </span>
+                              <input
+                                type="checkbox"
+                                checked={updateCheckEnabled}
+                                onChange={(event) =>
+                                  persistUpdateCheckPreference(event.target.checked)
+                                }
+                                className="h-4 w-4 accent-[var(--color-sage-green)]"
+                              />
+                            </label>
+
+                            <div className="flex flex-wrap gap-2">
+                              {[
+                                ['manifest', t('updateTrustManifest', 'Signed manifest')],
+                                ['sbom', t('updateTrustSbom', 'SBOM')],
+                                ['provenance', t('updateTrustProvenance', 'Provenance')],
+                                ['checksum', t('updateTrustChecksum', 'Checksum')],
+                              ].map(([key, label]) => {
+                                const verified =
+                                  updateCheckResult?.trust?.[
+                                    key as keyof NonNullable<UpdateCheckResult['trust']>
+                                  ];
+                                return (
+                                  <span
+                                    key={key}
+                                    className={`rounded-full border px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] ${
+                                      verified
+                                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700'
+                                        : 'border-black/10 bg-black/5 text-[var(--color-deep-navy)]/55 dark:border-white/10 dark:bg-white/5 dark:text-white/55'
+                                    }`}
+                                  >
+                                    {label}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+
                         <ReleaseTrustPanel
                           summary={releaseTrustSummary}
                           checklistStatus={releaseTrustChecklist}

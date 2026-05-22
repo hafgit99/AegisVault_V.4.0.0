@@ -6,6 +6,17 @@ import '@fontsource/geist-sans/index.css';
 import '@fontsource/geist-mono/index.css';
 import { ElectronFailSafe } from './components/ElectronFailSafe';
 
+const applyBootTheme = () => {
+  try {
+    const storedTheme = window.localStorage.getItem('aegis:theme-mode');
+    document.documentElement.setAttribute('data-theme', storedTheme === 'light' ? 'light' : 'dark');
+  } catch {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+};
+
+applyBootTheme();
+
 const rootElement = document.getElementById('root');
 
 if (!rootElement) {

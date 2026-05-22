@@ -22,6 +22,15 @@ describe('SecureAppSettings', () => {
     }
   });
 
+  it('defaults first launch theme to dark until the user chooses light', () => {
+    expect(SecureAppSettings.getThemeMode()).toBe('dark');
+
+    SecureAppSettings.resetForTests();
+    localStorage.setItem('aegis:theme-mode', 'light');
+
+    expect(SecureAppSettings.getThemeMode()).toBe('light');
+  });
+
   it('bootstraps legacy settings once and keeps in-memory updates stable', () => {
     localStorage.setItem('aegis_security_mode_profile', 'strict');
     localStorage.setItem('aegis_allow_plaintext_export', '1');

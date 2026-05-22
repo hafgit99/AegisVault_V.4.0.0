@@ -36,7 +36,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { SharedSpaceService } from '../../lib/SharedSpaceService';
 import { VaultSharingLinkService } from '../../lib/VaultSharingLinkService';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 
 interface VaultEntryCardProps {
@@ -252,7 +252,7 @@ function renderSecureOfflineIcon(p: VaultEntry, websiteHost: string, i18n: any, 
  * VaultEntryCard — Tek bir kasa girişini gösteren kart bileşeni.
  * Parola göster/gizle, kopyala, düzenle, sil/geri yükle ve ek dosya indirme aksiyonlarını içerir.
  */
-export function VaultEntryCard({
+export const VaultEntryCard = memo(function VaultEntryCard({
   entry: p,
   onEdit,
   isExpanded: controlledExpanded,
@@ -494,10 +494,8 @@ export function VaultEntryCard({
   };
 
   return (
-    <motion.article
+    <article
       ref={cardRef}
-      layout
-      initial={false}
       onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
       tabIndex={0}
@@ -1066,6 +1064,6 @@ export function VaultEntryCard({
           </motion.div>
         ) : null}
       </AnimatePresence>
-    </motion.article>
+    </article>
   );
-}
+});

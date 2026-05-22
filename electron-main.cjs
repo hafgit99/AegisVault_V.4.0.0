@@ -4,7 +4,7 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-const { app, BrowserWindow, ipcMain, session, dialog, clipboard } = require('electron');
+const { app, BrowserWindow, ipcMain, session, dialog, clipboard, shell } = require('electron');
 const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
@@ -40,6 +40,131 @@ const startupDiagnosticEvents = [];
 let secureClipboardTimer = null;
 let secureClipboardRetryTimer = null;
 let secureClipboardExpectedText = '';
+const UPDATE_REPO_OWNER = 'hafgit99';
+const UPDATE_REPO_NAME = 'AegisVault_V.4.0.0';
+const UPDATE_RELEASES_URL = `https://github.com/${UPDATE_REPO_OWNER}/${UPDATE_REPO_NAME}/releases`;
+const UPDATE_RELEASES_API_URL = `https://api.github.com/repos/${UPDATE_REPO_OWNER}/${UPDATE_REPO_NAME}/releases/latest`;
+const UPDATE_CHECK_TIMEOUT_MS = 8000;
+
+function normalizeReleaseVersion(value) {
+  return String(value || '')
+    .trim()
+    .replace(/^v/i, '')
+    .split('-')[0]
+    .replace(/[^\d.]/g, '');
+}
+
+function compareReleaseVersions(left, right) {
+  const leftParts = normalizeReleaseVersion(left).split('.').map(Number);
+  const rightParts = normalizeReleaseVersion(right).split('.').map(Number);
+  const maxLength = Math.max(leftParts.length, rightParts.length, 3);
+
+  for (let index = 0; index < maxLength; index += 1) {
+    const leftValue = Number.isFinite(leftParts[index]) ? leftParts[index] : 0;
+    const rightValue = Number.isFinite(rightParts[index]) ? rightParts[index] : 0;
+    if (leftValue > rightValue) return 1;
+    if (leftValue < rightValue) return -1;
+  }
+
+  return 0;
+}
+
+function sanitizeReleaseText(value, maxLength = 600) {
+  return String(value || '')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+}
+
+function isAllowedReleaseUrl(value) {
+  try {
+    const url = new URL(String(value || UPDATE_RELEASES_URL));
+    return (
+      url.protocol === 'https:' &&
+      url.hostname === 'github.com' &&
+      url.pathname.startsWith(`/${UPDATE_REPO_OWNER}/${UPDATE_REPO_NAME}/releases`)
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function checkLatestReleaseMetadata() {
+  const currentVersion = app.getVersion();
+
+  if (typeof fetch !== 'function') {
+    return {
+      ok: false,
+      currentVersion,
+      error: 'FETCH_UNAVAILABLE',
+    };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), UPDATE_CHECK_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(UPDATE_RELEASES_API_URL, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': `Aegis-Vault/${currentVersion}`,
+      },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        currentVersion,
+        status: response.status,
+        error: `HTTP_${response.status}`,
+      };
+    }
+
+    const release = await response.json();
+    const tagName = sanitizeReleaseText(release?.tag_name, 80);
+    const latestVersion = normalizeReleaseVersion(tagName || release?.name);
+    const releaseUrl = isAllowedReleaseUrl(release?.html_url)
+      ? String(release.html_url)
+      : UPDATE_RELEASES_URL;
+    const assets = Array.isArray(release?.assets) ? release.assets : [];
+    const assetNames = assets
+      .map((asset) => sanitizeReleaseText(asset?.name, 120).toLowerCase())
+      .filter(Boolean);
+
+    return {
+      ok: true,
+      currentVersion,
+      latestVersion: latestVersion || currentVersion,
+      updateAvailable: latestVersion
+        ? compareReleaseVersions(latestVersion, currentVersion) > 0
+        : false,
+      releaseUrl,
+      releasesUrl: UPDATE_RELEASES_URL,
+      tagName,
+      name: sanitizeReleaseText(release?.name || tagName, 120),
+      publishedAt: sanitizeReleaseText(release?.published_at, 40),
+      prerelease: Boolean(release?.prerelease),
+      draft: Boolean(release?.draft),
+      bodyPreview: sanitizeReleaseText(release?.body, 600),
+      trust: {
+        manifest: assetNames.some((name) => name.includes('manifest')),
+        sbom: assetNames.some((name) => name.includes('sbom')),
+        provenance: assetNames.some((name) => name.includes('provenance')),
+        checksum: assetNames.some((name) => name.includes('sha') || name.includes('checksum')),
+      },
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      currentVersion,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function clearSecureClipboard(expectedText, options = {}) {
   try {
@@ -2865,6 +2990,26 @@ ipcMain.handle('get-startup-diagnostics', (event) => {
   }
 
   return getStartupDiagnostics();
+});
+
+ipcMain.handle('check-for-updates', async (event) => {
+  if (event.sender !== mainWindow?.webContents) {
+    console.warn('[IPC] Unauthorized IPC sender for check-for-updates');
+    return { ok: false, error: 'UNAUTHORIZED_SENDER', currentVersion: app.getVersion() };
+  }
+
+  return checkLatestReleaseMetadata();
+});
+
+ipcMain.handle('open-release-page', async (event, releaseUrl) => {
+  if (event.sender !== mainWindow?.webContents) {
+    console.warn('[IPC] Unauthorized IPC sender for open-release-page');
+    return { success: false, error: 'UNAUTHORIZED_SENDER' };
+  }
+
+  const targetUrl = isAllowedReleaseUrl(releaseUrl) ? String(releaseUrl) : UPDATE_RELEASES_URL;
+  await shell.openExternal(targetUrl);
+  return { success: true, url: targetUrl };
 });
 
 ipcMain.handle('reload-app', (event) => {

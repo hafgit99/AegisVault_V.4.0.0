@@ -229,6 +229,11 @@ contextBridge.exposeInMainWorld('aegisElectron', {
 
   getStartupDiagnostics: () => ipcRenderer.invoke('get-startup-diagnostics'),
 
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+
+  openReleasePage: (releaseUrl) =>
+    ipcRenderer.invoke('open-release-page', typeof releaseUrl === 'string' ? releaseUrl : ''),
+
   secureClipboardWrite: (text, ttlMs) =>
     ipcRenderer.invoke('secure-clipboard-write', {
       text: typeof text === 'string' ? text : '',

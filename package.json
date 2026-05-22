@@ -1,7 +1,7 @@
 {
   "name": "aegis-4.0",
   "private": true,
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "Zero-Knowledge Password Manager | Secure & Premium Vault",
   "author": "hafgit99 <contact@aegisvault.pro>",
   "type": "module",

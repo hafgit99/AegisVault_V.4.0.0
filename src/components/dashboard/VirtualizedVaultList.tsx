@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import type { VaultEntry } from '../../vaultService';
 import { VaultEntryCard } from './VaultEntryCard';
 
@@ -8,144 +8,117 @@ interface VirtualizedVaultListProps {
   viewDensity: 'comfortable' | 'compact';
 }
 
-const getEntryHeight = (entry: VaultEntry, density: 'comfortable' | 'compact') => {
-  const compact = density === 'compact';
-  let height = compact ? 214 : 252;
-
-  const hasDetailStrip =
-    Boolean(entry.aliasDetails?.email) ||
-    Boolean(entry.cardDetails) ||
-    Boolean(entry.identityDetails) ||
-    Boolean(entry.passkeyMetadata);
-
-  if (hasDetailStrip) height += compact ? 38 : 46;
-  if (entry.attachments?.length) height += compact ? 38 : 46;
-  if (entry.totpSecret) height += compact ? 62 : 74;
-  if (entry.notes && entry.category !== 'Notes') height += compact ? 44 : 54;
-
-  return Math.min(height, compact ? 380 : 460);
-};
-
-const getExpandedEntryExtraHeight = (entry: VaultEntry, density: 'comfortable' | 'compact') => {
-  const compact = density === 'compact';
-  let extraHeight = compact ? 250 : 290;
-
-  if (entry.tags?.length) extraHeight += compact ? 38 : 44;
-  if (entry.notes) extraHeight += compact ? 76 : 92;
-  if (entry.attachments?.length) extraHeight += compact ? 54 : 64;
-
-  return Math.min(extraHeight, compact ? 430 : 520);
-};
-
 /**
- * VirtualizedVaultList — Aegis Vault Devasa Kasa Optimizasyonu (Adım 5.3)
- * Modern DOM Virtualization tekniğiyle 1000+ girdiyi 60 FPS'te render eder.
+ * Windowed vault list — only renders the cards visible in the scroll
+ * viewport plus a small overscan buffer. This keeps DOM node count
+ * constant (~20-30) regardless of the total entry count, preventing
+ * the massive layout/paint cost of rendering hundreds of motion.article
+ * elements simultaneously.
  *
- * Sadece ekranda görünen (ve biraz üst/alt) öğeleri DOM'da tutar,
- * bellek ve işlemci kullanımını %90 oranında azaltır.
+ * Uses a simple "estimate + measure" strategy:
+ *   1. Estimate each row height (compact ≈ 120px, comfortable ≈ 150px).
+ *   2. Compute which indices fall inside the visible window + overscan.
+ *   3. Render only those cards inside a spacer that preserves scroll height.
  */
 export function VirtualizedVaultList({ entries, onEdit, viewDensity }: VirtualizedVaultListProps) {
+  const [expandedEntryId, setExpandedEntryId] = useState<number | null>(null);
+
+  // Gap between cards (matches gap-3 = 12px / gap-4 = 16px)
+  const gap = viewDensity === 'compact' ? 12 : 16;
+  // Estimated height per card row including gap
+  const estimatedRowHeight = viewDensity === 'compact' ? 95 + gap : 115 + gap;
+  // How many extra rows to render above/below the viewport
+  const overscan = 5;
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
-  const [expandedEntryId, setExpandedEntryId] = useState<number | null>(null);
-  const [containerHeight, setContainerHeight] = useState(600); // Varsayılan height
+  const [containerHeight, setContainerHeight] = useState(800);
 
-  // Dinamik yükseklik hesaplama (Theme bazlı)
-  const GAP = viewDensity === 'compact' ? 12 : 16;
-  const itemHeights = useMemo(
-    () =>
-      entries.map((entry) => {
-        const baseHeight = getEntryHeight(entry, viewDensity);
-        if (entry.id !== expandedEntryId) return baseHeight;
-        return baseHeight + getExpandedEntryExtraHeight(entry, viewDensity);
-      }),
-    [entries, expandedEntryId, viewDensity]
-  );
-  const layout = useMemo(() => {
-    let offset = 0;
-    const offsets = itemHeights.map((height) => {
-      const current = offset;
-      offset += height + GAP;
-      return current;
-    });
-
-    return {
-      offsets,
-      totalHeight: Math.max(0, offset - GAP),
-    };
-  }, [GAP, itemHeights]);
-
+  // Measure container on mount and resize
   useEffect(() => {
-    const updateHeight = () => {
-      if (containerRef.current) {
-        setContainerHeight(containerRef.current.clientHeight);
-      }
+    const el = containerRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      setContainerHeight(el.clientHeight);
     };
-    updateHeight();
-    window.addEventListener('resize', updateHeight);
-    return () => window.removeEventListener('resize', updateHeight);
+    measure();
+
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
-  useEffect(() => {
-    if (expandedEntryId === null) return;
-    if (!entries.some((entry) => entry.id === expandedEntryId)) {
-      setExpandedEntryId(null);
+  const handleScroll = useCallback(() => {
+    const el = containerRef.current;
+    if (el) setScrollTop(el.scrollTop);
+  }, []);
+
+  // Calculate which entries to render
+  const { startIndex, endIndex, totalHeight, offsetTop } = useMemo(() => {
+    const total = entries.length;
+    if (total === 0) {
+      return { startIndex: 0, endIndex: 0, totalHeight: 0, offsetTop: 0 };
     }
-  }, [entries, expandedEntryId]);
 
-  const totalHeight = layout.totalHeight;
+    const totalH = total * estimatedRowHeight - gap; // last item has no trailing gap
 
-  // Buffer: Ekranda olmayan ama scroll'da takılma olmaması için önceden yüklenen miktar
-  const OVER_SCAN = 5;
-  const firstVisibleMatch = layout.offsets.findIndex(
-    (top, index) => top + (itemHeights[index] || 0) + GAP >= scrollTop
+    // First visible index
+    let start = Math.floor(scrollTop / estimatedRowHeight) - overscan;
+    start = Math.max(0, start);
+
+    // Last visible index
+    let end = Math.ceil((scrollTop + containerHeight) / estimatedRowHeight) + overscan;
+    end = Math.min(total, end);
+
+    const offset = start * estimatedRowHeight;
+
+    return { startIndex: start, endIndex: end, totalHeight: totalH, offsetTop: offset };
+  }, [entries.length, estimatedRowHeight, gap, scrollTop, containerHeight, overscan]);
+
+  const visibleEntries = useMemo(
+    () => entries.slice(startIndex, endIndex),
+    [entries, startIndex, endIndex]
   );
-  const firstVisibleIndex =
-    firstVisibleMatch === -1 ? Math.max(0, entries.length - 1) : firstVisibleMatch;
-  const startIndex = Math.max(0, firstVisibleIndex - OVER_SCAN);
-  let endIndex = startIndex;
-  const viewportBottom = scrollTop + containerHeight;
-  while (endIndex < entries.length && layout.offsets[endIndex] <= viewportBottom) {
-    endIndex += 1;
-  }
-  endIndex = Math.min(entries.length, endIndex + OVER_SCAN);
-
-  const visibleEntries = entries.slice(startIndex, endIndex);
 
   return (
     <div
-      className="relative w-full h-full min-h-[400px] overflow-y-auto pr-2 custom-scrollbar"
-      onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
       ref={containerRef}
+      onScroll={handleScroll}
+      className={`relative flex h-full min-h-[400px] w-full flex-col overflow-y-auto pr-2 custom-scrollbar`}
       role="list"
       aria-label="Virtualized secret list"
     >
-      <div className="relative w-full" style={{ height: totalHeight }}>
-        {visibleEntries.map((entry, index) => {
-          const absoluteIndex = startIndex + index;
-          return (
-            <div
-              key={entry.id}
-              className="absolute left-0 w-full v5-virtualized-entry-shell"
-              style={{
-                top: layout.offsets[absoluteIndex],
-                minHeight: itemHeights[absoluteIndex],
-              }}
-            >
-              <VaultEntryCard
-                entry={entry}
-                onEdit={onEdit}
-                isExpanded={expandedEntryId === entry.id}
-                onExpandedChange={(expanded) => setExpandedEntryId(expanded ? entry.id : null)}
-              />
-            </div>
-          );
-        })}
-      </div>
-
-      {entries.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center opacity-40 italic text-sm">
+      {entries.length === 0 ? (
+        <div className="flex min-h-[320px] items-center justify-center text-sm italic opacity-40">
           No items found
+        </div>
+      ) : (
+        /* Spacer container that maintains the full scroll height */
+        <div style={{ height: totalHeight, position: 'relative' }}>
+          {/* Positioned wrapper for the visible slice */}
+          <div
+            style={{
+              position: 'absolute',
+              top: offsetTop,
+              left: 0,
+              right: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: `${gap}px`,
+            }}
+          >
+            {visibleEntries.map((entry) => (
+              <div key={entry.id} className="w-full v5-virtualized-entry-shell">
+                <VaultEntryCard
+                  entry={entry}
+                  onEdit={onEdit}
+                  isExpanded={expandedEntryId === entry.id}
+                  onExpandedChange={(expanded) => setExpandedEntryId(expanded ? entry.id : null)}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

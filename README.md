@@ -11,7 +11,7 @@ _Offline-first, end-to-end encrypted credential management for Desktop, Browser 
 <br>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-5.0.0-6c5ce7.svg)](https://github.com/hafgit99/AegisVault_V.4.0.0)
+[![Version](https://img.shields.io/badge/Version-5.0.1-6c5ce7.svg)](https://github.com/hafgit99/AegisVault_V.4.0.0)
 [![Tests](https://img.shields.io/badge/Tests-891%2B%20passed-brightgreen.svg)](#test-coverage)
 [![Coverage](https://img.shields.io/badge/Coverage-87.36%25%20Statements-green.svg)](#test-coverage)
 [![E2E](https://img.shields.io/badge/E2E-189%20tests-0f766e.svg)](#test-coverage)
