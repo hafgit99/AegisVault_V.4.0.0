@@ -58,6 +58,8 @@ interface DashboardUpdateCheckResult {
   publishedAt?: string;
 }
 
+const AEGIS_RELEASE_PAGE_URL = 'https://github.com/hafgit99/AegisVault_V.4.0.0/releases/latest';
+
 type WindowWithUpdateBridge = Window &
   typeof globalThis & {
     aegisElectron?: {
@@ -417,7 +419,7 @@ function DashboardInner({ introBlocked = false }: DashboardInnerProps) {
                   type="button"
                   onClick={() =>
                     (window as WindowWithUpdateBridge).aegisElectron?.openReleasePage?.(
-                      availableUpdate.releaseUrl
+                      availableUpdate.releaseUrl || AEGIS_RELEASE_PAGE_URL
                     )
                   }
                   className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-deep-navy)] px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:opacity-90 active:scale-95 dark:bg-white dark:text-[var(--color-deep-navy)]"

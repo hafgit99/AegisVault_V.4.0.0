@@ -190,6 +190,7 @@ interface UpdateCheckResult {
   updateAvailable?: boolean;
   releaseUrl?: string;
   releasesUrl?: string;
+  latestReleasesUrl?: string;
   tagName?: string;
   name?: string;
   publishedAt?: string;
@@ -203,6 +204,8 @@ interface UpdateCheckResult {
     checksum?: boolean;
   };
 }
+
+const AEGIS_RELEASE_PAGE_URL = 'https://github.com/hafgit99/AegisVault_V.4.0.0/releases/latest';
 
 interface SettingsElectronApi {
   listExtensionPairings?: () => Promise<DesktopPairingRecord[]>;
@@ -1313,7 +1316,12 @@ export function SettingsDrawer({
       return;
     }
 
-    await electronApi.openReleasePage(releaseUrl || updateCheckResult?.releaseUrl);
+    const result = await electronApi.openReleasePage(
+      releaseUrl || updateCheckResult?.releaseUrl || AEGIS_RELEASE_PAGE_URL
+    );
+    if (result?.success === false) {
+      toast.error(t('updateReleasePageOpenFailed', 'Release page could not be opened.'));
+    }
   };
 
   // Action Wrappers for ReAuth (P1-3)

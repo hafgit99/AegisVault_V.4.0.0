@@ -43,6 +43,7 @@ let secureClipboardExpectedText = '';
 const UPDATE_REPO_OWNER = 'hafgit99';
 const UPDATE_REPO_NAME = 'AegisVault_V.4.0.0';
 const UPDATE_RELEASES_URL = `https://github.com/${UPDATE_REPO_OWNER}/${UPDATE_REPO_NAME}/releases`;
+const UPDATE_RELEASES_LATEST_URL = `${UPDATE_RELEASES_URL}/latest`;
 const UPDATE_RELEASES_API_URL = `https://api.github.com/repos/${UPDATE_REPO_OWNER}/${UPDATE_REPO_NAME}/releases/latest`;
 const UPDATE_CHECK_TIMEOUT_MS = 8000;
 
@@ -79,7 +80,7 @@ function sanitizeReleaseText(value, maxLength = 600) {
 
 function isAllowedReleaseUrl(value) {
   try {
-    const url = new URL(String(value || UPDATE_RELEASES_URL));
+    const url = new URL(String(value || UPDATE_RELEASES_LATEST_URL));
     return (
       url.protocol === 'https:' &&
       url.hostname === 'github.com' &&
@@ -87,6 +88,16 @@ function isAllowedReleaseUrl(value) {
     );
   } catch {
     return false;
+  }
+}
+
+function normalizeReleasePageUrl(value) {
+  try {
+    const candidate = new URL(String(value || UPDATE_RELEASES_LATEST_URL));
+    if (!isAllowedReleaseUrl(candidate.href)) return UPDATE_RELEASES_LATEST_URL;
+    return candidate.href;
+  } catch {
+    return UPDATE_RELEASES_LATEST_URL;
   }
 }
 
@@ -127,7 +138,7 @@ async function checkLatestReleaseMetadata() {
     const latestVersion = normalizeReleaseVersion(tagName || release?.name);
     const releaseUrl = isAllowedReleaseUrl(release?.html_url)
       ? String(release.html_url)
-      : UPDATE_RELEASES_URL;
+      : UPDATE_RELEASES_LATEST_URL;
     const assets = Array.isArray(release?.assets) ? release.assets : [];
     const assetNames = assets
       .map((asset) => sanitizeReleaseText(asset?.name, 120).toLowerCase())
@@ -142,6 +153,7 @@ async function checkLatestReleaseMetadata() {
         : false,
       releaseUrl,
       releasesUrl: UPDATE_RELEASES_URL,
+      latestReleasesUrl: UPDATE_RELEASES_LATEST_URL,
       tagName,
       name: sanitizeReleaseText(release?.name || tagName, 120),
       publishedAt: sanitizeReleaseText(release?.published_at, 40),
@@ -3007,9 +3019,18 @@ ipcMain.handle('open-release-page', async (event, releaseUrl) => {
     return { success: false, error: 'UNAUTHORIZED_SENDER' };
   }
 
-  const targetUrl = isAllowedReleaseUrl(releaseUrl) ? String(releaseUrl) : UPDATE_RELEASES_URL;
-  await shell.openExternal(targetUrl);
-  return { success: true, url: targetUrl };
+  const targetUrl = normalizeReleasePageUrl(releaseUrl);
+  try {
+    await shell.openExternal(targetUrl);
+    return { success: true, url: targetUrl };
+  } catch (error) {
+    console.error('[Aegis] Failed to open release page:', error);
+    return {
+      success: false,
+      url: targetUrl,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 });
 
 ipcMain.handle('reload-app', (event) => {

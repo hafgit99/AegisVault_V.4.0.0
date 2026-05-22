@@ -6,6 +6,7 @@
  * Renderer tarafında `window.aegisElectron` üzerinden erişilir.
  */
 const { contextBridge, ipcRenderer } = require('electron');
+const AEGIS_RELEASE_PAGE_URL = 'https://github.com/hafgit99/AegisVault_V.4.0.0/releases/latest';
 
 let domainCredentialProvider = null;
 let domainPasskeyProvider = null;
@@ -232,7 +233,12 @@ contextBridge.exposeInMainWorld('aegisElectron', {
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
 
   openReleasePage: (releaseUrl) =>
-    ipcRenderer.invoke('open-release-page', typeof releaseUrl === 'string' ? releaseUrl : ''),
+    ipcRenderer.invoke(
+      'open-release-page',
+      typeof releaseUrl === 'string' && releaseUrl.startsWith('https://')
+        ? releaseUrl
+        : AEGIS_RELEASE_PAGE_URL
+    ),
 
   secureClipboardWrite: (text, ttlMs) =>
     ipcRenderer.invoke('secure-clipboard-write', {
