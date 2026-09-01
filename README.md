@@ -9,7 +9,7 @@
 _Offline-first, end-to-end encrypted credential management for Desktop, Browser & CLI._
 
 <br>
-
+⚠️ **Superseded** — This is an archived earlier version. Active development continues at [Aegis Vault 7](https://github.com/hafgit99/aegis-vault-v7).
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-5.0.1-6c5ce7.svg)](https://github.com/hafgit99/AegisVault_V.4.0.0)
 [![Tests](https://img.shields.io/badge/Tests-891%2B%20passed-brightgreen.svg)](#test-coverage)
